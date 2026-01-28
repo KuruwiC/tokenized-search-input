@@ -1,0 +1,1397 @@
+/* ============================================
+   Keyframes (outside layers for broad compatibility)
+   ============================================ */
+
+@keyframes _tsi-token-insert {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ============================================
+   Design Tokens (CSS Custom Properties)
+   Must be outside @layer to be accessible everywhere
+   ============================================ */
+
+:root {
+  --tsi-font-size: 1rem;
+  --tsi-padding-x: 0.75rem;
+  --tsi-padding-y: 0.5rem;
+  --tsi-min-height: 2.75rem;
+  --tsi-token-size: 1.5rem;
+  --tsi-token-font-size: 1rem;
+  --tsi-token-icon-size: 0.875rem;
+  --tsi-token-spacer-width: 0.25rem;
+  --tsi-token-gap-y: 0.25rem;
+  --tsi-radius: 0.5rem;
+  --tsi-radius-inner: 0.25rem;
+  --tsi-border-width: 1px;
+  --tsi-ring-width: 0px;
+  --tsi-ring-color: hsl(0 0% 9%);
+  --tsi-ring-offset: 0px;
+  --tsi-ring-offset-color: hsl(0 0% 100%);
+  --tsi-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --tsi-z-dropdown: 50;
+  --tsi-background: hsl(0 0% 100%);
+  --tsi-foreground: hsl(0 0% 3.9%);
+  --tsi-muted: hsl(0 0% 96.1%);
+  --tsi-muted-foreground: hsl(0 0% 45.1%);
+  --tsi-muted-darker: hsl(0 0% 83.1%);
+  --tsi-border: hsl(0 0% 89.8%);
+  --tsi-border-hover: hsl(0 0% 63.9%);
+  --tsi-border-focus: hsl(0 0% 9%);
+  --tsi-primary: hsl(0 0% 9%);
+  --tsi-primary-muted: hsl(0 0% 96.1%);
+  --tsi-primary-muted-foreground: hsl(0 0% 9%);
+  --tsi-secondary: hsl(0 0% 45.1%);
+  --tsi-destructive: hsl(0 84.2% 60.2%);
+  --tsi-destructive-muted: hsl(0 84.2% 97%);
+  --tsi-selection: hsl(0 0% 65%);
+  --tsi-selection-foreground: hsl(0 0% 9%);
+  --tsi-expand-max-lines: 4;
+  --tsi-expand-max-height: calc(
+    var(--tsi-token-size) *
+    4 +
+    var(--tsi-token-gap-y) *
+    3 +
+    var(--tsi-padding-y) *
+    2
+  );
+}
+
+.dark,
+[data-theme="dark"] {
+  --tsi-background: hsl(0 0% 3.9%);
+  --tsi-foreground: hsl(0 0% 98%);
+  --tsi-muted: hsl(0 0% 14.9%);
+  --tsi-muted-foreground: hsl(0 0% 63.9%);
+  --tsi-muted-darker: hsl(0 0% 26%);
+  --tsi-border: hsl(0 0% 14.9%);
+  --tsi-border-hover: hsl(0 0% 45.1%);
+  --tsi-border-focus: hsl(0 0% 98%);
+  --tsi-ring-color: hsl(0 0% 98%);
+  --tsi-ring-offset-color: hsl(0 0% 3.9%);
+  --tsi-primary: hsl(0 0% 98%);
+  --tsi-primary-muted: hsl(0 0% 14.9%);
+  --tsi-primary-muted-foreground: hsl(0 0% 98%);
+  --tsi-secondary: hsl(0 0% 63.9%);
+  --tsi-destructive: hsl(0 62.8% 50.6%);
+  --tsi-destructive-muted: hsl(0 63% 15%);
+  --tsi-selection: hsl(0 0% 40%);
+  --tsi-selection-foreground: hsl(0 0% 98%);
+}
+
+/* ============================================
+   Base Layer - Scoped Reset
+   Reset styles are placed in @layer base so that
+   component styles in @layer components can override them
+   through CSS layer ordering (base < components).
+   ============================================ */
+
+@layer base {
+  :where(.tsi-container) *,
+  :where(.tsi-container) *::before,
+  :where(.tsi-container) *::after {
+    box-sizing: border-box;
+  }
+
+  :where(.tsi-container) button {
+    appearance: none;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    line-height: inherit;
+  }
+
+  :where(.tsi-container) input {
+    appearance: none;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    outline: none;
+    line-height: inherit;
+  }
+
+  :where(.tsi-container) input:focus,
+  :where(.tsi-container) input:focus-visible {
+    outline: none;
+  }
+
+  :where(.tsi-container) fieldset {
+    border: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  :where(.tsi-container) p {
+    margin: 0;
+  }
+
+  :where(.tsi-container) label {
+    font: inherit;
+    color: inherit;
+  }
+}
+
+/* ============================================
+   Components Layer
+   All component selectors use :where() for zero specificity,
+   and are placed in @layer components so that Tailwind's
+   @layer utilities can override them.
+   ============================================ */
+
+@layer components {
+  /* --- Container --- */
+
+  :where(.tsi-container) {
+    position: relative;
+    border-radius: var(--tsi-radius);
+    border: var(--tsi-border-width) solid var(--tsi-border);
+    background-color: var(--tsi-background);
+    transition: border-color 150ms;
+  }
+
+  :where(.tsi-container):focus-within {
+    border-color: var(--tsi-border-focus);
+    outline: var(--tsi-ring-width) solid var(--tsi-ring-color);
+    outline-offset: var(--tsi-ring-offset);
+  }
+
+  :where(.tsi-container--flex) {
+    display: flex;
+  }
+
+  /* --- Editor Content --- */
+
+  :where(.tsi-input) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: var(--tsi-min-height);
+    font-size: var(--tsi-font-size);
+    outline: none;
+    border-radius: inherit;
+    overflow: hidden;
+  }
+
+  :where(.tsi-input--flex-child) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  :where(.tsi-input--full-width) {
+    width: 100%;
+  }
+
+  :where(.tsi-input--clear-pad) {
+    padding-right: 2.5rem;
+  }
+
+  @media (min-width: 768px) {
+    :where(.tsi-input--clear-pad) {
+      padding-right: 2rem;
+    }
+  }
+
+  :where(.tsi-input--disabled) {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  :where(.tsi-input):focus {
+    outline: none;
+  }
+
+  :where(.tsi-input) .tiptap {
+    flex: 1;
+    min-width: 0;
+  }
+
+  :where(.tsi-input) .ProseMirror {
+    outline: none;
+    color: var(--tsi-foreground);
+    padding: var(--tsi-padding-y) var(--tsi-padding-x);
+  }
+
+  :where(.tsi-input) .ProseMirror p {
+    min-height: 1.5em;
+    line-height: calc(var(--tsi-token-size) + var(--tsi-token-gap-y));
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  /* Single line mode */
+
+  :where(.tsi-input.tsi-input--single-line) .ProseMirror {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  :where(.tsi-input.tsi-input--single-line) .ProseMirror p {
+    white-space: nowrap;
+    min-width: max-content;
+  }
+
+  :where(.tsi-input.tsi-input--single-line) .ProseMirror::-webkit-scrollbar {
+    display: none;
+  }
+
+  :where(.tsi-container--clearable .tsi-input--single-line) .ProseMirror p {
+    padding-right: 1rem;
+  }
+
+  /* Placeholder */
+
+  :where(.tsi-placeholder) {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    padding: var(--tsi-padding-y) var(--tsi-padding-x);
+    color: var(--tsi-muted-foreground);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    line-height: calc(var(--tsi-token-size) + var(--tsi-token-gap-y));
+  }
+
+  /* Expand on Focus */
+
+  :where(.tsi-wrapper--expand-on-focus) {
+    position: relative;
+    min-height: calc(
+      var(--tsi-token-size) +
+      var(--tsi-token-gap-y) +
+      var(--tsi-padding-y) *
+      2 +
+      var(--tsi-border-width) *
+      2
+    );
+  }
+
+  :where(.tsi-container--expand-on-focus) {
+    position: relative;
+  }
+
+  :where(.tsi-container--expand-on-focus):focus-within {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+  }
+
+  :where(.tsi-input.tsi-input--expand-on-focus) {
+    flex-wrap: wrap;
+    max-height: calc(var(--tsi-token-size) + var(--tsi-token-gap-y) + var(--tsi-padding-y) * 2);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  :where(.tsi-input.tsi-input--expand-on-focus)::-webkit-scrollbar {
+    display: none;
+  }
+
+  :where(.tsi-input.tsi-input--expand-on-focus) .ProseMirror p {
+    white-space: nowrap;
+    word-wrap: normal;
+    min-width: max-content;
+  }
+
+  :where(.tsi-container--clearable .tsi-input--expand-on-focus) .ProseMirror p {
+    padding-right: 1rem;
+  }
+
+  :where(.tsi-container--expand-on-focus):focus-within :where(.tsi-input--expand-on-focus) {
+    max-height: var(--tsi-expand-max-height);
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--tsi-border) transparent;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  :where(.tsi-container--expand-on-focus):focus-within
+    :where(.tsi-input--expand-on-focus)::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  :where(.tsi-container--expand-on-focus):focus-within
+    :where(.tsi-input--expand-on-focus)::-webkit-scrollbar-thumb {
+    background-color: var(--tsi-border);
+    border-radius: 2px;
+  }
+
+  :where(.tsi-container--expand-on-focus):focus-within
+    :where(.tsi-input--expand-on-focus)
+    .ProseMirror
+    p {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    min-width: auto;
+    padding-right: 0;
+  }
+
+  :where(.tsi-container--expand-on-focus .tsi-placeholder) {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  :where(.tsi-container--expand-on-focus):focus-within :where(.tsi-placeholder) {
+    white-space: normal;
+    text-overflow: clip;
+    z-index: 11;
+  }
+
+  /* ProseMirror node selection */
+
+  .ProseMirror-selectednode {
+    outline: none;
+  }
+
+  /* Spacer Node */
+
+  :where(._tsi-spacer) {
+    display: inline-block;
+    width: var(--tsi-token-spacer-width);
+    height: calc(var(--tsi-token-size) + var(--tsi-token-gap-y));
+    vertical-align: bottom;
+    user-select: text;
+    cursor: text;
+  }
+
+  :where(._tsi-spacer)::selection {
+    background-color: transparent;
+  }
+
+  /* Range Selection */
+
+  :where(._tsi-pm-range-selected) [data-filter-token],
+  :where(._tsi-pm-range-selected) [data-free-text-token] {
+    background-color: var(--tsi-selection);
+  }
+
+  /* Selection Pseudo-element */
+
+  :where(.tsi-input) .ProseMirror ::selection {
+    background-color: var(--tsi-selection);
+    color: var(--tsi-selection-foreground);
+  }
+
+  [data-focused="false"]::selection,
+  [data-focused="false"] *::selection {
+    background-color: transparent;
+  }
+
+  [data-focused="true"] input::selection {
+    background-color: var(--tsi-selection);
+    color: var(--tsi-selection-foreground);
+  }
+
+  /* Screen Reader */
+
+  :where(.tsi-sr-only) {
+    position: absolute;
+    width: 0.0625rem;
+    height: 0.0625rem;
+    padding: 0;
+    margin: -0.0625rem;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* === Token Wrapper (NodeViewWrapper) === */
+
+  :where(.tsi-token-wrapper) {
+    display: inline-flex;
+    vertical-align: bottom;
+    padding: calc(var(--tsi-token-gap-y) / 2) 0;
+    max-width: calc(100% - calc(var(--tsi-token-spacer-width) * 2));
+    min-width: 0;
+    user-select: text;
+    cursor: default;
+    touch-action: manipulation;
+    animation: _tsi-token-insert 200ms ease-out;
+  }
+
+  :where(.tsi-token-wrapper):focus {
+    outline: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where(.tsi-token-wrapper) {
+      animation: none;
+    }
+  }
+
+  /* === Token (inner span) === */
+
+  :where(.tsi-token) {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    padding: 0;
+    gap: 0.125rem;
+    overflow: hidden;
+    max-width: 100%;
+    min-width: 0;
+    height: var(--tsi-token-size);
+    font-size: var(--tsi-token-font-size);
+    line-height: var(--tsi-token-size);
+    border-radius: var(--tsi-radius);
+    border: 1px solid var(--tsi-border);
+    background-color: var(--tsi-muted);
+  }
+
+  :where(.tsi-token)[data-editable="true"][data-state="idle"] {
+    cursor: pointer;
+  }
+
+  :where(.tsi-token)[data-editable="true"][data-state="idle"]:hover {
+    border-color: var(--tsi-border-hover);
+  }
+
+  :where(.tsi-token)[data-invalid="true"] {
+    border-color: var(--tsi-destructive);
+    background-color: var(--tsi-destructive-muted);
+  }
+
+  :where(.tsi-token) > *:first-child {
+    border-radius: var(--tsi-radius-inner) 0 0 var(--tsi-radius-inner);
+  }
+
+  :where(.tsi-token) > *:last-child {
+    border-radius: 0 var(--tsi-radius-inner) var(--tsi-radius-inner) 0;
+  }
+
+  :where(.tsi-token) > span {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  :where(.tsi-token) > * {
+    min-width: 0;
+  }
+
+  /* === Token Label === */
+
+  :where(.tsi-token-label) {
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--tsi-foreground);
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+  }
+
+  :where(.tsi-token-label):first-child {
+    padding-left: 0.375rem;
+  }
+
+  :where(.tsi-token-label):last-child {
+    padding-right: 0.375rem;
+  }
+
+  :where(.tsi-token-label__icon) {
+    flex-shrink: 0;
+    width: var(--tsi-token-icon-size);
+    height: var(--tsi-token-icon-size);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  :where(.tsi-token-label__icon) > svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  :where(.tsi-token-label__text) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* === Token Operator === */
+
+  :where(.tsi-token-operator) {
+    flex-shrink: 0;
+    color: var(--tsi-muted-foreground);
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+  }
+
+  :where(.tsi-token-operator):first-child {
+    padding-left: 0.375rem;
+  }
+
+  :where(.tsi-token-operator):last-child {
+    padding-right: 0.375rem;
+  }
+
+  :where(.tsi-token-operator--interactive) {
+    flex-shrink: 0;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.125rem;
+    color: var(--tsi-muted-foreground);
+    cursor: pointer;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    transition: color 150ms;
+  }
+
+  :where(.tsi-token-operator--interactive):first-child {
+    padding-left: 0.375rem;
+  }
+
+  :where(.tsi-token-operator--interactive):last-child {
+    padding-right: 0.375rem;
+  }
+
+  :where(.tsi-token-operator--interactive):focus {
+    outline: none;
+  }
+
+  :where(.tsi-token-operator--interactive)[data-editable="true"]:focus {
+    background-color: var(--tsi-muted-darker);
+  }
+
+  :where(.tsi-token-operator--interactive)[data-editable="true"]:hover {
+    color: var(--tsi-foreground);
+  }
+
+  :where(.tsi-token-operator__label) {
+    pointer-events: none;
+  }
+
+  :where(.tsi-token-operator__chevron) {
+    width: 0.75rem;
+    height: 0.75rem;
+    color: var(--tsi-muted-foreground);
+    pointer-events: none;
+  }
+
+  /* Token Operator Dropdown */
+
+  :where(.tsi-token-operator__dropdown) {
+    z-index: var(--tsi-z-dropdown);
+    min-width: 6rem;
+    max-height: 12rem;
+    overflow: auto;
+    border-radius: 0.5rem;
+    border: 1px solid var(--tsi-border);
+    background-color: var(--tsi-background);
+    box-shadow: var(--tsi-shadow);
+    padding: 0.25rem 0;
+  }
+
+  :where(.tsi-token-operator__option) {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    cursor: pointer;
+    color: var(--tsi-foreground);
+  }
+
+  :where(.tsi-token-operator__option)[data-active="true"] {
+    background-color: var(--tsi-muted);
+    color: var(--tsi-primary-muted-foreground);
+  }
+
+  :where(.tsi-token-operator__option):not([data-active="true"]):hover {
+    background-color: color-mix(in srgb, var(--tsi-muted) 80%, transparent);
+  }
+
+  :where(.tsi-token-operator__check) {
+    width: 1rem;
+    height: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  :where(.tsi-token-operator__check-icon) {
+    width: 0.875rem;
+    height: 0.875rem;
+    color: var(--tsi-primary);
+  }
+
+  /* === Token Value === */
+
+  :where(.tsi-token-value) {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    align-self: stretch;
+  }
+
+  :where(.tsi-token-value):first-child {
+    padding-left: 0.375rem;
+  }
+
+  :where(.tsi-token-value):last-child {
+    padding-right: 0.375rem;
+  }
+
+  :where(.tsi-token-value):has(:focus) {
+    background-color: var(--tsi-muted-darker);
+  }
+
+  :where(.tsi-token-value__display) {
+    padding-left: 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  :where(.tsi-token-value__display-text) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  :where(.tsi-token-value__input) {
+    padding-left: 0.25rem;
+  }
+
+  /* === Icon Slot === */
+
+  :where(.tsi-icon-slot) {
+    flex-shrink: 0;
+    width: var(--tsi-token-icon-size);
+    height: var(--tsi-token-icon-size);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  :where(.tsi-icon-slot) > svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* === Token Delete Button === */
+
+  :where(.tsi-token-delete) {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: stretch;
+    padding-left: 0.25rem;
+    padding-right: 0.375rem;
+    color: var(--tsi-muted-foreground);
+    transition:
+      color 150ms,
+      background-color 150ms;
+  }
+
+  :where(.tsi-token-delete):focus {
+    outline: none;
+  }
+
+  :where(.tsi-token-delete)[data-editable="true"]:hover {
+    background-color: var(--tsi-muted-darker);
+    color: var(--tsi-foreground);
+  }
+
+  :where(.tsi-token-delete)[data-editable="true"]:focus {
+    background-color: var(--tsi-muted-darker);
+  }
+
+  :where(.tsi-token-delete__icon) {
+    width: 0.75rem;
+    height: 0.75rem;
+    pointer-events: none;
+  }
+
+  /* === Immutable Token Value === */
+
+  :where(.tsi-immutable-value) {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    color: var(--tsi-foreground);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  :where(.tsi-immutable-value):first-child {
+    padding-left: 0.375rem;
+  }
+
+  :where(.tsi-immutable-value):last-child {
+    padding-right: 0.375rem;
+  }
+
+  /* === Free Text Token === */
+
+  :where(.tsi-free-text-quote) {
+    display: inline-flex;
+    align-items: center;
+    align-self: stretch;
+    padding-left: 0.375rem;
+    color: var(--tsi-muted-foreground);
+  }
+
+  :where(.tsi-free-text-quote--end) {
+    padding-left: 0;
+    color: var(--tsi-muted-foreground);
+  }
+
+  /* === Clear Button === */
+
+  :where(.tsi-clear-button) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 0.375rem;
+    color: var(--tsi-muted-foreground);
+    transition: all 150ms ease-out;
+  }
+
+  :where(.tsi-clear-button--absolute) {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  :where(.tsi-clear-button--inline) {
+    position: relative;
+    flex-shrink: 0;
+    align-self: center;
+    margin-right: 0.5rem;
+  }
+
+  :where(.tsi-clear-button--hidden) {
+    opacity: 0;
+    scale: 0.75;
+    pointer-events: none;
+  }
+
+  :where(.tsi-clear-button--visible) {
+    opacity: 1;
+    scale: 1;
+    pointer-events: auto;
+  }
+
+  :where(.tsi-clear-button--disabled) {
+    opacity: 0.5;
+    scale: 1;
+    pointer-events: none;
+    cursor: not-allowed;
+  }
+
+  :where(.tsi-clear-button--interactive):hover {
+    background-color: color-mix(in srgb, var(--tsi-muted) 80%, transparent);
+    color: var(--tsi-foreground);
+  }
+
+  :where(.tsi-clear-button--interactive):active {
+    background-color: color-mix(in srgb, var(--tsi-muted) 70%, transparent);
+    scale: 0.95;
+  }
+
+  :where(.tsi-clear-button--interactive):focus {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--tsi-ring-color),
+      0 0 0 calc(2px + var(--tsi-ring-offset)) var(--tsi-ring-offset-color);
+  }
+
+  :where(.tsi-clear-button__icon) {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /* === Suggestion Dropdown === */
+
+  :where(.tsi-dropdown) {
+    position: absolute;
+    z-index: var(--tsi-z-dropdown);
+    width: max-content;
+    min-width: 12rem;
+    max-width: calc(100vw - 2rem);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    border-radius: 0.5rem;
+    border: 1px solid var(--tsi-border);
+    background-color: var(--tsi-background);
+    box-shadow: var(--tsi-shadow);
+  }
+
+  @media (min-width: 640px) {
+    :where(.tsi-dropdown) {
+      max-width: 24rem;
+    }
+  }
+
+  :where(.tsi-dropdown--date) {
+    position: absolute;
+    z-index: var(--tsi-z-dropdown);
+    width: max-content;
+    border-radius: 0.5rem;
+    border: 1px solid var(--tsi-border);
+    background-color: var(--tsi-background);
+    box-shadow: var(--tsi-shadow);
+  }
+
+  :where(.tsi-dropdown--top-full) {
+    top: 100%;
+    margin-top: 0.25rem;
+  }
+
+  /* === Suggestion Item (shared) === */
+
+  :where(.tsi-suggestion-item) {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--tsi-foreground);
+    transition: background-color 75ms;
+  }
+
+  :where(.tsi-suggestion-item):active {
+    background-color: color-mix(in srgb, var(--tsi-muted) 70%, transparent);
+  }
+
+  :where(.tsi-suggestion-item)[data-active="true"] {
+    background-color: var(--tsi-muted);
+    color: var(--tsi-primary-muted-foreground);
+  }
+
+  :where(.tsi-suggestion-item):not([data-active="true"]):hover {
+    background-color: color-mix(in srgb, var(--tsi-muted) 80%, transparent);
+  }
+
+  /* === Custom Suggestion Item === */
+
+  :where(.tsi-custom-suggestion-item) {
+    display: flex;
+    flex-direction: column;
+    padding: 0.625rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--tsi-foreground);
+    transition: background-color 75ms;
+  }
+
+  :where(.tsi-custom-suggestion-item):active {
+    background-color: color-mix(in srgb, var(--tsi-muted) 70%, transparent);
+  }
+
+  :where(.tsi-custom-suggestion-item)[data-active="true"] {
+    background-color: var(--tsi-muted);
+    color: var(--tsi-primary-muted-foreground);
+  }
+
+  :where(.tsi-custom-suggestion-item):not([data-active="true"]):hover {
+    background-color: color-mix(in srgb, var(--tsi-muted) 80%, transparent);
+  }
+
+  :where(.tsi-custom-suggestion-item__label) {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  :where(.tsi-custom-suggestion-item__description) {
+    font-size: 0.75rem;
+    color: var(--tsi-muted-foreground);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* === Field Category === */
+
+  :where(.tsi-field-category) {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--tsi-muted-foreground);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    user-select: none;
+    cursor: default;
+  }
+
+  :where(.tsi-field-category--separated) {
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--tsi-border);
+    padding-top: 0.5rem;
+  }
+
+  /* === Field Suggestion extras === */
+
+  :where(.tsi-field-icon) {
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+    color: var(--tsi-muted-foreground);
+  }
+
+  :where(.tsi-field-label) {
+    font-weight: 500;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  :where(.tsi-field-hint) {
+    flex-shrink: 0;
+    color: var(--tsi-muted-foreground);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 6rem;
+  }
+
+  :where(.tsi-field-key) {
+    flex-shrink: 0;
+    color: var(--tsi-muted-foreground);
+    font-size: 0.75rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  /* === Value Suggestion extras === */
+
+  :where(.tsi-value-check) {
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  :where(.tsi-value-check-icon) {
+    width: 0.875rem;
+    height: 0.875rem;
+    color: var(--tsi-primary);
+  }
+
+  :where(.tsi-value-label) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  /* === No Results === */
+
+  :where(.tsi-no-results) {
+    padding: 0.75rem;
+    text-align: center;
+    color: var(--tsi-muted-foreground);
+    font-size: 0.875rem;
+  }
+
+  /* === Suggestion List Container === */
+
+  :where(.tsi-suggestion-list) {
+    padding: 0.25rem 0;
+  }
+
+  /* === Divider === */
+
+  :where(.tsi-divider) {
+    border-top: 1px solid var(--tsi-border);
+  }
+
+  /* === Load More === */
+
+  :where(.tsi-load-more) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--tsi-muted-foreground);
+  }
+
+  /* === Utility: foreground text === */
+
+  :where(.tsi-text-foreground) {
+    color: var(--tsi-foreground);
+  }
+
+  /* ============================================
+     Calendar / Date Picker
+     ============================================ */
+
+  :where(.tsi-calendar) {
+    font-size: 0.875rem;
+    color: var(--tsi-foreground);
+  }
+
+  :where(.tsi-calendar-months) {
+    position: relative;
+  }
+
+  :where(.tsi-calendar-month) {
+    position: relative;
+  }
+
+  :where(.tsi-calendar-month) > * + * {
+    margin-top: 1rem;
+  }
+
+  :where(.tsi-calendar-caption) {
+    display: flex;
+    height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    margin-left: 2rem;
+    margin-right: 2rem;
+  }
+
+  :where(.tsi-calendar-caption-label) {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  :where(.tsi-calendar-nav) {
+    display: contents;
+  }
+
+  :where(.tsi-calendar-nav-btn) {
+    position: absolute;
+    top: 0;
+    z-index: 10;
+    display: inline-flex;
+    height: 2.25rem;
+    width: 1.75rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    color: var(--tsi-muted-foreground);
+  }
+
+  :where(.tsi-calendar-nav-btn):hover {
+    background-color: color-mix(in srgb, var(--tsi-muted) 80%, transparent);
+    color: var(--tsi-foreground);
+  }
+
+  :where(.tsi-calendar-nav-btn):focus {
+    outline: none;
+  }
+
+  :where(.tsi-calendar-nav-btn):focus-visible {
+    box-shadow:
+      0 0 0 2px var(--tsi-foreground),
+      0 0 0 3px var(--tsi-background);
+  }
+
+  :where(.tsi-calendar-nav-btn--prev) {
+    left: 0.25rem;
+  }
+
+  :where(.tsi-calendar-nav-btn--next) {
+    right: 0.25rem;
+  }
+
+  :where(.tsi-calendar-chevron) {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  :where(.tsi-calendar-grid) {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  :where(.tsi-calendar-weekdays) {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+  }
+
+  :where(.tsi-calendar-weekday) {
+    display: flex;
+    width: 2.25rem;
+    height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--tsi-muted-foreground);
+  }
+
+  :where(.tsi-calendar-week) {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+  }
+
+  :where(.tsi-calendar-day) {
+    position: relative;
+    display: flex;
+    width: 2.25rem;
+    height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  :where(.tsi-calendar-day-btn) {
+    display: inline-flex;
+    width: 2rem;
+    height: 2rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 400;
+    transition: background-color 150ms;
+  }
+
+  :where(.tsi-calendar-day-btn):hover {
+    background-color: color-mix(in srgb, var(--tsi-muted) 80%, transparent);
+  }
+
+  :where(.tsi-calendar-day-btn):focus {
+    outline: none;
+  }
+
+  :where(.tsi-calendar-day-btn):focus-visible {
+    box-shadow:
+      0 0 0 2px var(--tsi-foreground),
+      0 0 0 3px var(--tsi-background);
+  }
+
+  :where(.tsi-calendar-day-btn):disabled {
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  :where(.tsi-calendar-today) {
+    font-weight: 600;
+  }
+
+  :where(.tsi-calendar-selected) {
+    background-color: var(--tsi-primary);
+    color: var(--tsi-background);
+    border-radius: 0.375rem;
+  }
+
+  :where(.tsi-calendar-selected) :where(.tsi-calendar-day-btn):hover {
+    background-color: color-mix(in srgb, var(--tsi-primary) 90%, transparent);
+  }
+
+  :where(.tsi-calendar-outside) {
+    color: var(--tsi-border);
+  }
+
+  :where(.tsi-calendar-disabled) {
+    color: var(--tsi-border);
+  }
+
+  :where(.tsi-calendar-hidden) {
+    visibility: hidden;
+  }
+
+  /* === Picker Layout === */
+
+  :where(.tsi-picker-body) {
+    padding: 0.75rem;
+  }
+
+  :where(.tsi-picker-footer) {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid var(--tsi-border);
+    padding-top: 1rem;
+  }
+
+  :where(.tsi-picker-close-btn) {
+    height: 2rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    border-radius: 0.375rem;
+    background-color: var(--tsi-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--tsi-background);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  :where(.tsi-picker-close-btn):hover {
+    background-color: color-mix(in srgb, var(--tsi-primary) 90%, transparent);
+  }
+
+  :where(.tsi-picker-close-btn):focus {
+    outline: none;
+  }
+
+  :where(.tsi-picker-close-btn):focus-visible {
+    box-shadow:
+      0 0 0 2px var(--tsi-primary),
+      0 0 0 4px var(--tsi-background);
+  }
+
+  :where(.tsi-picker-close-btn__icon) {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /* === DateTime Picker extras === */
+
+  :where(.tsi-datetime-controls) {
+    margin-top: 1rem;
+    border-top: 1px solid var(--tsi-border);
+    padding-top: 1rem;
+  }
+
+  :where(.tsi-datetime-controls) > * + * {
+    margin-top: 0.75rem;
+  }
+
+  :where(.tsi-datetime-row) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+
+  :where(.tsi-utc-label) {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.875rem;
+    color: var(--tsi-muted-foreground);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  :where(.tsi-utc-checkbox) {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 0.25rem;
+    border: 1px solid var(--tsi-border);
+    color: var(--tsi-foreground);
+  }
+
+  :where(.tsi-utc-checkbox):focus {
+    box-shadow:
+      0 0 0 2px var(--tsi-foreground),
+      0 0 0 3px var(--tsi-background);
+  }
+
+  /* === Time Picker === */
+
+  :where(.tsi-time-picker) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  :where(.tsi-time-input) {
+    height: 2rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    font-size: 0.875rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--tsi-foreground);
+    border: 1px solid var(--tsi-border);
+    border-radius: 0.375rem;
+  }
+
+  :where(.tsi-time-input):focus {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--tsi-foreground),
+      0 0 0 3px var(--tsi-background);
+  }
+
+  :where(.tsi-time-input):disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  :where(.tsi-time-ampm-btn) {
+    height: 2rem;
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--tsi-foreground);
+    background-color: var(--tsi-background);
+    border: 1px solid var(--tsi-border);
+    border-radius: 0.375rem;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  }
+
+  :where(.tsi-time-ampm-btn):hover {
+    background-color: color-mix(in srgb, var(--tsi-muted) 80%, transparent);
+  }
+
+  :where(.tsi-time-ampm-btn):active {
+    background-color: color-mix(in srgb, var(--tsi-muted) 70%, transparent);
+  }
+
+  :where(.tsi-time-ampm-btn):focus {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--tsi-foreground),
+      0 0 0 3px var(--tsi-background);
+  }
+
+  :where(.tsi-time-ampm-btn):disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
