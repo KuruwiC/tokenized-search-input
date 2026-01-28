@@ -1,0 +1,25 @@
+{
+  "name": "tokenized-search-input",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "dev": "pnpm --filter @kuruwic/demo dev",
+    "dev:stories": "pnpm --filter @kuruwic/stories dev",
+    "build": "pnpm --filter @kuruwic/tokenized-search-input build",
+    "build:demo": "DEMO_BASE=/tokenized-search-input/ pnpm --filter @kuruwic/demo build",
+    "build:stories": "pnpm --filter @kuruwic/stories build",
+    "preview": "pnpm --filter @kuruwic/demo preview",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "lint:fix:unsafe": "biome check --write --unsafe .",
+    "format": "biome format --write .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm --filter @kuruwic/tokenized-search-input test",
+    "test:run": "pnpm --filter @kuruwic/tokenized-search-input test:run"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.10",
+    "typescript": "^5.7.2"
+  }
+}

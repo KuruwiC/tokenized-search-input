@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+@source "../src/**/*.{ts,tsx}";
+@source "./**/*.{ts,tsx}";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Dark mode support */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Base styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-gray-50);
+  color: var(--color-gray-900);
+}
+
+.dark body {
+  background-color: var(--color-gray-950);
+  color: var(--color-gray-100);
+}
+
+/* Code block styling */
+.code-block {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  background-color: var(--color-gray-900);
+  color: var(--color-gray-100);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+.dark .code-block {
+  background-color: var(--color-gray-800);
+}
+
+/* Syntax highlighting - minimal */
+.code-block .keyword {
+  color: var(--color-purple-400);
+}
+
+.code-block .string {
+  color: var(--color-green-400);
+}
+
+.code-block .comment {
+  color: var(--color-gray-500);
+}
+
+/* Demo section styling */
+.demo-section {
+  padding: 3rem 0;
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.dark .demo-section {
+  border-bottom-color: var(--color-gray-800);
+}
+
+.demo-section:last-child {
+  border-bottom: none;
+}
+
+/* Demo preview card */
+.demo-preview {
+  background-color: white;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 0.75rem;
+  padding: 1rem 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.dark .demo-preview {
+  background-color: var(--color-gray-900);
+  border-color: var(--color-gray-700);
+}
+
+/* Copy button */
+.copy-button {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  background-color: transparent;
+  color: var(--color-gray-400);
+  transition: all 0.15s ease;
+}
+
+.copy-button:hover {
+  background-color: var(--color-gray-700);
+  color: var(--color-gray-200);
+}
+
+/* Props table */
+.props-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.props-table th,
+.props-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.dark .props-table th,
+.dark .props-table td {
+  border-bottom-color: var(--color-gray-700);
+}
+
+.props-table th {
+  font-weight: 600;
+  color: var(--color-gray-600);
+  background-color: var(--color-gray-50);
+}
+
+.dark .props-table th {
+  color: var(--color-gray-400);
+  background-color: var(--color-gray-800);
+}
+
+.props-table code {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  background-color: var(--color-gray-100);
+}
+
+.dark .props-table code {
+  background-color: var(--color-gray-700);
+}
