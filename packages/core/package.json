@@ -1,0 +1,112 @@
+{
+  "name": "@kuruwic/tokenized-search-input",
+  "version": "0.1.0",
+  "description": "A reusable tokenized search input component with rich tag input",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./utils": {
+      "source": "./src/utils.ts",
+      "types": "./dist/utils.d.ts",
+      "import": "./dist/utils.js",
+      "require": "./dist/utils.cjs"
+    },
+    "./internal": {
+      "source": "./src/internal.ts",
+      "types": "./dist/internal.d.ts",
+      "import": "./dist/internal.js",
+      "require": "./dist/internal.cjs"
+    },
+    "./styles": {
+      "source": "./src/index.css",
+      "types": "./dist/index.css.d.ts",
+      "default": "./dist/index.css"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src",
+    "lint:fix": "biome check --write src",
+    "lint:fix:unsafe": "biome check --write --unsafe src",
+    "format": "biome format --write src",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:unit": "vitest run src/__tests__/unit",
+    "test:integration": "vitest run src/__tests__/integration",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@tiptap/core": "3.14.0",
+    "@tiptap/extension-document": "3.14.0",
+    "@tiptap/extension-history": "3.14.0",
+    "@tiptap/extension-paragraph": "3.14.0",
+    "@tiptap/extension-text": "3.14.0",
+    "@tiptap/pm": "3.14.0",
+    "@tiptap/react": "3.14.0",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "lucide-react": "^0.468.0",
+    "nanoid": "^5.1.6",
+    "react-day-picker": "^9.4.4"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.1",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^25.0.3",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^27.4.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7",
+    "vite-plugin-dts": "^4.4.0",
+    "vitest": "^4.0.16"
+  },
+  "keywords": [
+    "react",
+    "tiptap",
+    "prosemirror",
+    "tokenized-search",
+    "search-input",
+    "filter-input",
+    "tags-input",
+    "filter-tags",
+    "faceted-search",
+    "query-builder",
+    "autocomplete",
+    "suggestion",
+    "validation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KuruwiC/tokenized-search-input.git"
+  },
+  "homepage": "https://github.com/KuruwiC/tokenized-search-input",
+  "bugs": {
+    "url": "https://github.com/KuruwiC/tokenized-search-input/issues"
+  },
+  "author": "KuruwiC",
+  "sideEffects": false,
+  "license": "MIT"
+}

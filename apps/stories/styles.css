@@ -1,0 +1,4 @@
+@import "tailwindcss";
+@import "@kuruwic/tokenized-search-input/styles";
+
+@source "./stories/**/*.tsx";

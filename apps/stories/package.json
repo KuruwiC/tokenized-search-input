@@ -1,0 +1,30 @@
+{
+  "name": "@kuruwic/stories",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "ladle serve",
+    "build": "ladle build",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check stories",
+    "lint:fix": "biome check --write stories",
+    "format": "biome format --write stories"
+  },
+  "dependencies": {
+    "@kuruwic/tokenized-search-input": "workspace:*",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@ladle/react": "^5.1.1",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@tailwindcss/postcss": "^4.1.4",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.1.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7"
+  }
+}
