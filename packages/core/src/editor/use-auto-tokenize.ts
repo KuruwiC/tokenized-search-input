@@ -5,23 +5,24 @@ import { isFilterToken } from '../utils/node-predicates';
 import { findLastWordBoundary, isInsideQuotes } from '../utils/quoted-string';
 
 function focusEmptyFilterToken(editor: Editor, fieldKey: string, onFocused?: () => void): void {
-  requestAnimationFrame(() => {
-    if (editor.isDestroyed) return;
+  if (editor.isDestroyed) return;
 
-    let tokenPos: number | null = null;
-    editor.state.doc.descendants((node, pos) => {
-      if (isFilterToken(node) && node.attrs.key === fieldKey && !node.attrs.value) {
-        tokenPos = pos;
-        return false;
-      }
-      return true;
-    });
-
-    if (tokenPos !== null) {
-      editor.commands.focusFilterToken(tokenPos, 'end');
-      onFocused?.();
+  let tokenPos: number | null = null;
+  editor.state.doc.descendants((node, pos) => {
+    if (isFilterToken(node) && node.attrs.key === fieldKey && !node.attrs.value) {
+      tokenPos = pos;
+      return false;
     }
+    return true;
   });
+
+  // Set the plugin focus state synchronously. Deferring this until the next
+  // animation frame leaves a window where subsequent keystrokes are inserted
+  // into the editor instead of the newly-created token input.
+  if (tokenPos !== null) {
+    editor.commands.focusFilterToken(tokenPos, 'end');
+    onFocused?.();
+  }
 }
 
 // Object replacement characters (U+FFFC) representing non-text nodes
