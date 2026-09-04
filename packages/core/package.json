@@ -3,30 +3,44 @@
   "version": "0.1.0",
   "description": "A reusable tokenized search input component with rich tag input",
   "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "source": "./src/index.ts",
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./utils": {
-      "source": "./src/utils.ts",
-      "types": "./dist/utils.d.ts",
-      "import": "./dist/utils.js",
-      "require": "./dist/utils.cjs"
+      "import": {
+        "types": "./dist/utils.d.ts",
+        "default": "./dist/utils.js"
+      },
+      "require": {
+        "types": "./dist/utils.d.cts",
+        "default": "./dist/utils.cjs"
+      }
     },
     "./internal": {
-      "source": "./src/internal.ts",
-      "types": "./dist/internal.d.ts",
-      "import": "./dist/internal.js",
-      "require": "./dist/internal.cjs"
+      "import": {
+        "types": "./dist/internal.d.ts",
+        "default": "./dist/internal.js"
+      },
+      "require": {
+        "types": "./dist/internal.d.cts",
+        "default": "./dist/internal.cjs"
+      }
     },
     "./styles": {
-      "source": "./src/index.css",
       "types": "./dist/index.css.d.ts",
       "default": "./dist/index.css"
     }
@@ -36,6 +50,8 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build && node scripts/verify-dist.mjs",
+    "prepack": "pnpm build && node scripts/prepare-pack.mjs",
+    "postpack": "node scripts/cleanup-pack.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "biome check src",
     "lint:fix": "biome check --write src",
@@ -101,13 +117,15 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/KuruwiC/tokenized-search-input.git"
+    "url": "git+https://github.com/KuruwiC/tokenized-search-input.git"
   },
   "homepage": "https://github.com/KuruwiC/tokenized-search-input",
   "bugs": {
     "url": "https://github.com/KuruwiC/tokenized-search-input/issues"
   },
   "author": "KuruwiC",
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css"
+  ],
   "license": "MIT"
 }

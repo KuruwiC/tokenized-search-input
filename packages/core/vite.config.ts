@@ -1,4 +1,4 @@
-import { cpSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
@@ -10,6 +10,12 @@ function copyStyles(): Plugin {
     closeBundle() {
       cpSync(resolve(__dirname, 'src/index.css'), resolve(__dirname, 'dist/index.css'));
       writeFileSync(resolve(__dirname, 'dist/index.css.d.ts'), 'export {};\n');
+      for (const entry of ['index', 'utils', 'internal']) {
+        copyFileSync(
+          resolve(__dirname, `dist/${entry}.d.ts`),
+          resolve(__dirname, `dist/${entry}.d.cts`)
+        );
+      }
     },
   };
 }
