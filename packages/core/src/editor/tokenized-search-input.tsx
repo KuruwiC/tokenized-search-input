@@ -202,6 +202,7 @@ export interface TokenizedSearchInputProps {
    * Element to render at the start of the input.
    * Commonly used for a search icon.
    * For interactive elements, wrap in a button with proper aria-label.
+   * Mark purely decorative content with `aria-hidden="true"` on that content.
    */
   startAdornment?: React.ReactNode;
 
@@ -209,6 +210,7 @@ export interface TokenizedSearchInputProps {
    * Element to render at the end of the input (before clear button if enabled).
    * Can be used for action buttons like submit or voice search.
    * For interactive elements, wrap in a button with proper aria-label.
+   * Mark purely decorative content with `aria-hidden="true"` on that content.
    */
   endAdornment?: React.ReactNode;
 }
@@ -914,10 +916,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
         )}
       >
         {startAdornment && (
-          <div
-            className={cn('tsi-adornment', 'tsi-adornment--start', classNames?.startAdornment)}
-            aria-hidden="true"
-          >
+          <div className={cn('tsi-adornment', 'tsi-adornment--start', classNames?.startAdornment)}>
             {startAdornment}
           </div>
         )}
@@ -956,10 +955,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
             )}
 
             {endAdornment && (
-              <div
-                className={cn('tsi-adornment', 'tsi-adornment--end', classNames?.endAdornment)}
-                aria-hidden="true"
-              >
+              <div className={cn('tsi-adornment', 'tsi-adornment--end', classNames?.endAdornment)}>
                 {endAdornment}
               </div>
             )}

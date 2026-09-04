@@ -34,7 +34,7 @@ describe('Adornments', () => {
       expect(document.querySelector('.custom-start-class')).toBeInTheDocument();
     });
 
-    it('has aria-hidden on the adornment container', () => {
+    it('does not hide the adornment subtree from assistive technology', () => {
       render(
         <TokenizedSearchInput
           fields={basicFields}
@@ -43,7 +43,7 @@ describe('Adornments', () => {
       );
 
       const adornmentContainer = screen.getByTestId('start-icon').parentElement;
-      expect(adornmentContainer).toHaveAttribute('aria-hidden', 'true');
+      expect(adornmentContainer).not.toHaveAttribute('aria-hidden');
     });
   });
 
@@ -122,6 +122,7 @@ describe('Adornments', () => {
 
       await user.click(screen.getByTestId('submit-btn'));
       expect(handleClick).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument();
     });
 
     it('allows focus on interactive adornment buttons', async () => {
