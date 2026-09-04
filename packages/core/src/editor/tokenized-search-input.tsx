@@ -16,7 +16,7 @@ import {
   useState,
 } from 'react';
 import { ClipboardSerializer } from '../extensions/clipboard-serializer';
-import { EditorContextExtension } from '../extensions/editor-context';
+import { EDITOR_CONTEXT_UPDATED, EditorContextExtension } from '../extensions/editor-context';
 import { KeyboardShortcutsExtension } from '../extensions/keyboard-shortcuts';
 import { SpacerNode } from '../extensions/spacer-node';
 import { TokenNavigation } from '../extensions/token-navigation';
@@ -359,6 +359,10 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       }
     }, [fields]);
 
+    // Extensions must stay stable: changing them recreates the TipTap editor,
+    // which would discard content and history. Mutable configuration is kept
+    // in EditorContextStorage and synchronized below.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: dynamic props are intentionally stored in editor context
     const extensions = useMemo(
       () => [
         Document,
@@ -388,26 +392,13 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
           valueSuggestionsDisabled,
           validation,
           deserializeText,
+          serializeToken,
           delimiter: delimiterRef.current,
           classNames,
         }),
         KeyboardShortcutsExtension,
       ],
-      [
-        fields,
-        freeTextMode,
-        allowUnknownFields,
-        unknownFieldOperators,
-        hideUnknownFieldSingleOperator,
-        operatorLabels,
-        fieldSuggestionsDisabled,
-        valueSuggestionsDisabled,
-        validation,
-        serializeToken,
-        deserializeText,
-        classNames,
-        // Note: delimiterRef.current is intentionally not in deps - it never changes after mount
-      ]
+      []
     );
 
     const editor = useEditor({
@@ -578,21 +569,32 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
         freeTextMode,
         allowUnknownFields,
         unknownFieldOperators,
+        hideUnknownFieldSingleOperator,
         operatorLabels,
         fieldSuggestionsDisabled,
         valueSuggestionsDisabled,
         validation,
+        deserializeText,
+        serializeToken,
+        classNames,
       });
+      editor.view.dispatch(
+        editor.state.tr.setMeta('addToHistory', false).setMeta(EDITOR_CONTEXT_UPDATED, true)
+      );
     }, [
       editor,
       fields,
       freeTextMode,
       allowUnknownFields,
       unknownFieldOperators,
+      hideUnknownFieldSingleOperator,
       operatorLabels,
       fieldSuggestionsDisabled,
       valueSuggestionsDisabled,
       validation,
+      deserializeText,
+      serializeToken,
+      classNames,
     ]);
 
     // Update plugin state when suggestion disabled props change

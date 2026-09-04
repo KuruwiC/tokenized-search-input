@@ -1,6 +1,7 @@
 import type { NodeViewProps } from '@tiptap/react';
 import { useMemo, useRef } from 'react';
 import { getEditorContextFromEditor } from '../../extensions/editor-context';
+import { useEditorContextUpdate } from '../../hooks/use-editor-context-update';
 import {
   getDateDisplayValue,
   getDateTimeDisplayValue,
@@ -39,6 +40,7 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
   extension,
   decorations,
 }) => {
+  useEditorContextUpdate(editor);
   const { key, operator, value, invalid: storedInvalid } = node.attrs;
   const inputRef = useRef<HTMLInputElement>(null);
 

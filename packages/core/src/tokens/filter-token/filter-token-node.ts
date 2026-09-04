@@ -1,6 +1,7 @@
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 import { ReactNodeViewRenderer } from '@tiptap/react';
+import { getEditorContextFromEditor } from '../../extensions/editor-context';
 import {
   type CursorPosition,
   setTokenFocus,
@@ -199,7 +200,7 @@ export const FilterTokenNode = Node.create<FilterTokenOptions>({
               key: attrs.key,
               operator: attrs.operator,
               value: attrs.value,
-              fields: this.options.fields,
+              fields: getEditorContextFromEditor(this.editor).fields,
               overrides,
             })
           );

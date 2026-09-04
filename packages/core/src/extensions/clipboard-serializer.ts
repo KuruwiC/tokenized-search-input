@@ -4,6 +4,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { DEFAULT_TOKEN_DELIMITER, type FilterTokenAttrs } from '../types';
 import { NODE_TYPE_NAMES } from '../utils/node-predicates';
 import { escapeForQuotes, quoteIfNeeded } from '../utils/quoted-string';
+import { getEditorContextFromEditor } from './editor-context';
 
 /** Return null to use default serialization for that token. */
 export type SerializeTokenFn = (token: FilterTokenAttrs) => string | null;
@@ -135,14 +136,20 @@ export const ClipboardSerializer = Extension.create<ClipboardSerializerOptions>(
   },
 
   addProseMirrorPlugins() {
-    const { serializeToken, delimiter = DEFAULT_TOKEN_DELIMITER } = this.options;
+    const getSerializeOptions = () => {
+      const context = getEditorContextFromEditor(this.editor);
+      return {
+        serializeToken: context.serializeToken,
+        delimiter: context.delimiter ?? this.options.delimiter ?? DEFAULT_TOKEN_DELIMITER,
+      };
+    };
 
     return [
       new Plugin({
         key: new PluginKey('clipboardSerializer'),
         props: {
           clipboardTextSerializer: (slice: Slice): string => {
-            return serializeSliceToText(slice, { serializeToken, delimiter });
+            return serializeSliceToText(slice, getSerializeOptions());
           },
 
           handleDOMEvents: {
@@ -160,7 +167,7 @@ export const ClipboardSerializer = Extension.create<ClipboardSerializerOptions>(
               // Safari browser menu fires copy events without clipboardData
               if (!clipboardEvent.clipboardData) return false;
 
-              const text = serializeSliceToText(slice, { serializeToken, delimiter });
+              const text = serializeSliceToText(slice, getSerializeOptions());
               clipboardEvent.clipboardData.setData('text/plain', text);
               clipboardEvent.preventDefault();
               return true;
@@ -179,7 +186,7 @@ export const ClipboardSerializer = Extension.create<ClipboardSerializerOptions>(
               const clipboardEvent = event as ClipboardEvent;
               if (!clipboardEvent.clipboardData) return false;
 
-              const text = serializeSliceToText(slice, { serializeToken, delimiter });
+              const text = serializeSliceToText(slice, getSerializeOptions());
               clipboardEvent.clipboardData.setData('text/plain', text);
               clipboardEvent.preventDefault();
 

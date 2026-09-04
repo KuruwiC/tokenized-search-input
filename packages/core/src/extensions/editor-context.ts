@@ -10,6 +10,7 @@ import {
   DEFAULT_OPERATOR_LABELS,
   DEFAULT_TOKEN_DELIMITER,
   type FieldDefinition,
+  type FilterTokenAttrs,
   type FreeTextMode,
   type OperatorLabels,
   type ParsedToken,
@@ -25,6 +26,9 @@ import {
  * }
  */
 export type DeserializeTextFn = (text: string) => ParsedToken[] | null;
+
+/** Transaction metadata used to notify node views that context-backed UI changed. */
+export const EDITOR_CONTEXT_UPDATED = 'editorContextUpdated';
 
 export interface EditorCallbacks {
   onFieldSelect: (field: FieldDefinition) => void;
@@ -45,6 +49,7 @@ export interface EditorContextStorage {
   valueSuggestionsDisabled: boolean;
   validation: ValidationConfig | undefined;
   deserializeText: DeserializeTextFn | undefined;
+  serializeToken: ((token: FilterTokenAttrs) => string | null) | undefined;
   delimiter: string;
   classNames: ClassNames | undefined;
 }
@@ -57,16 +62,19 @@ const defaultCallbacks: EditorCallbacks = {
 };
 
 export interface EditorContextUpdate {
-  fields?: FieldDefinition[];
-  freeTextMode?: FreeTextMode;
-  allowUnknownFields?: boolean;
-  unknownFieldOperators?: readonly string[];
-  hideUnknownFieldSingleOperator?: boolean;
-  operatorLabels?: OperatorLabels;
+  fields?: FieldDefinition[] | undefined;
+  freeTextMode?: FreeTextMode | undefined;
+  allowUnknownFields?: boolean | undefined;
+  unknownFieldOperators?: readonly string[] | undefined;
+  hideUnknownFieldSingleOperator?: boolean | undefined;
+  operatorLabels?: OperatorLabels | undefined;
   callbacks?: Partial<EditorCallbacks>;
-  fieldSuggestionsDisabled?: boolean;
-  valueSuggestionsDisabled?: boolean;
-  validation?: ValidationConfig;
+  fieldSuggestionsDisabled?: boolean | undefined;
+  valueSuggestionsDisabled?: boolean | undefined;
+  validation?: ValidationConfig | undefined;
+  deserializeText?: DeserializeTextFn | undefined;
+  serializeToken?: ((token: FilterTokenAttrs) => string | null) | undefined;
+  classNames?: ClassNames | undefined;
 }
 
 declare module '@tiptap/core' {
@@ -103,6 +111,7 @@ export interface EditorContextOptions {
   valueSuggestionsDisabled?: boolean;
   validation?: ValidationConfig;
   deserializeText?: DeserializeTextFn;
+  serializeToken?: (token: FilterTokenAttrs) => string | null;
   /** Must be a single character. Cannot be changed after editor initialization. */
   delimiter?: string;
   /** Custom class names for styling component parts. */
@@ -125,6 +134,7 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
       valueSuggestionsDisabled: false,
       validation: undefined,
       deserializeText: undefined,
+      serializeToken: undefined,
       delimiter: DEFAULT_TOKEN_DELIMITER,
       classNames: undefined,
     };
@@ -143,6 +153,7 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
       valueSuggestionsDisabled: this.options.valueSuggestionsDisabled ?? false,
       validation: this.options.validation,
       deserializeText: this.options.deserializeText,
+      serializeToken: this.options.serializeToken,
       delimiter: this.options.delimiter ?? DEFAULT_TOKEN_DELIMITER,
       classNames: this.options.classNames,
     };
@@ -157,36 +168,30 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
         (context) =>
         ({ editor }) => {
           const storage = getStorage(editor);
-          if (context.fields !== undefined) {
-            storage.fields = context.fields;
-          }
-          if (context.freeTextMode !== undefined) {
-            storage.freeTextMode = context.freeTextMode;
-          }
-          if (context.allowUnknownFields !== undefined) {
-            storage.allowUnknownFields = context.allowUnknownFields;
-          }
-          if (context.unknownFieldOperators !== undefined) {
+          if ('fields' in context) storage.fields = context.fields ?? [];
+          if ('freeTextMode' in context) storage.freeTextMode = context.freeTextMode ?? 'plain';
+          if ('allowUnknownFields' in context)
+            storage.allowUnknownFields = context.allowUnknownFields ?? false;
+          if ('unknownFieldOperators' in context)
             storage.unknownFieldOperators = context.unknownFieldOperators;
-          }
-          if (context.hideUnknownFieldSingleOperator !== undefined) {
-            storage.hideUnknownFieldSingleOperator = context.hideUnknownFieldSingleOperator;
-          }
-          if (context.operatorLabels !== undefined) {
-            storage.operatorLabels = context.operatorLabels;
-          }
+          if ('hideUnknownFieldSingleOperator' in context)
+            storage.hideUnknownFieldSingleOperator =
+              context.hideUnknownFieldSingleOperator ?? false;
+          if ('operatorLabels' in context)
+            storage.operatorLabels = context.operatorLabels ?? DEFAULT_OPERATOR_LABELS;
           if (context.callbacks !== undefined) {
             storage.callbacks = { ...storage.callbacks, ...context.callbacks };
           }
-          if (context.fieldSuggestionsDisabled !== undefined) {
-            storage.fieldSuggestionsDisabled = context.fieldSuggestionsDisabled;
-          }
-          if (context.valueSuggestionsDisabled !== undefined) {
-            storage.valueSuggestionsDisabled = context.valueSuggestionsDisabled;
-          }
+          if ('fieldSuggestionsDisabled' in context)
+            storage.fieldSuggestionsDisabled = context.fieldSuggestionsDisabled ?? false;
+          if ('valueSuggestionsDisabled' in context)
+            storage.valueSuggestionsDisabled = context.valueSuggestionsDisabled ?? false;
           if ('validation' in context) {
             storage.validation = context.validation;
           }
+          if ('deserializeText' in context) storage.deserializeText = context.deserializeText;
+          if ('serializeToken' in context) storage.serializeToken = context.serializeToken;
+          if ('classNames' in context) storage.classNames = context.classNames;
           return true;
         },
 
@@ -303,6 +308,7 @@ export function getEditorContext(editor: {
       valueSuggestionsDisabled: false,
       validation: undefined,
       deserializeText: undefined,
+      serializeToken: undefined,
       delimiter: DEFAULT_TOKEN_DELIMITER,
       classNames: undefined,
     }
@@ -325,6 +331,7 @@ export function getEditorContextFromEditor(editor: { storage: unknown }): Editor
       valueSuggestionsDisabled: false,
       validation: undefined,
       deserializeText: undefined,
+      serializeToken: undefined,
       delimiter: DEFAULT_TOKEN_DELIMITER,
       classNames: undefined,
     };

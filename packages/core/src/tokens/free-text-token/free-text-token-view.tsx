@@ -1,5 +1,6 @@
 import type { NodeViewProps } from '@tiptap/react';
 import { getEditorContextFromEditor } from '../../extensions/editor-context';
+import { useEditorContextUpdate } from '../../hooks/use-editor-context-update';
 import { isRangeSelected } from '../../utils/decoration-helpers';
 import { Token } from '../composition';
 
@@ -11,6 +12,7 @@ export const FreeTextTokenView: React.FC<NodeViewProps> = ({
   getPos,
   decorations,
 }) => {
+  useEditorContextUpdate(editor);
   const { value, quoted } = node.attrs;
 
   const editorContext = getEditorContextFromEditor(editor);
