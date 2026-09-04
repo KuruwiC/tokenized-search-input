@@ -29,7 +29,7 @@ export interface ResolvedTokenData {
 
 export interface AsyncTokenResolverOptions<T> {
   /** Ref to TokenizedSearchInput */
-  inputRef: RefObject<TokenizedSearchInputRef | null>;
+  inputRef: RefObject<TokenizedSearchInputRef>;
 
   /** Field key to resolve (e.g., 'country') */
   fieldKey: string;
@@ -62,6 +62,12 @@ export interface AsyncTokenResolverOptions<T> {
    * - 'keep': Keep the token unchanged
    */
   onNotFound?: 'delete' | 'keep';
+
+  /**
+   * Called when the resolver rejects. The rejection is handled by the hook so
+   * it is safe to pass `resolveTokens` directly to `onChange`.
+   */
+  onError?: (error: unknown, values: string[]) => void;
 }
 
 export interface AsyncTokenResolverResult {
@@ -71,6 +77,51 @@ export interface AsyncTokenResolverResult {
 
 // Sentinel value to identify tokens currently being resolved
 const LOADING_MARKER = '__async_resolver_loading__';
+
+interface PendingToken {
+  id: string;
+  value: string;
+  displayValue: unknown;
+  startContent: unknown;
+}
+
+function collectPendingTokens(editor: Editor, fieldKey: string): PendingToken[] {
+  const tokens: PendingToken[] = [];
+
+  editor.state.doc.descendants((node) => {
+    if (
+      node.type.name === 'filterToken' &&
+      node.attrs.key === fieldKey &&
+      typeof node.attrs.id === 'string' &&
+      node.attrs.id.length > 0 &&
+      node.attrs.value &&
+      !node.attrs.displayValue &&
+      node.attrs.confirmed === true
+    ) {
+      tokens.push({
+        id: node.attrs.id,
+        value: node.attrs.value,
+        displayValue: node.attrs.displayValue,
+        startContent: node.attrs.startContent,
+      });
+    }
+    return true;
+  });
+
+  return tokens;
+}
+
+function findTokenById(editor: Editor, id: string): { pos: number; nodeSize: number } | null {
+  let match: { pos: number; nodeSize: number } | null = null;
+  editor.state.doc.descendants((node, pos) => {
+    if (node.type.name === 'filterToken' && node.attrs.id === id) {
+      match = { pos, nodeSize: node.nodeSize };
+      return false;
+    }
+    return true;
+  });
+  return match;
+}
 
 /**
  * Hook for resolving displayValue asynchronously for pasted/deserialized tokens.
@@ -122,107 +173,174 @@ export function useAsyncTokenResolver<T>(
     getDisplayData,
     loadingContent,
     onNotFound = 'delete',
+    onError,
   } = options;
 
-  // Track in-flight resolutions to prevent duplicate calls
-  const resolvingRef = useRef(false);
+  const activeResolutionRef = useRef<Promise<void> | null>(null);
+  const rerunRequestedRef = useRef(false);
+  const applyingResultRef = useRef(false);
 
-  const resolveTokens = useCallback(async () => {
-    const editor = getEditor(inputRef.current);
-    if (!editor) return;
+  const resolveTokens = useCallback((): Promise<void> => {
+    // Transactions created by this hook can synchronously invoke onChange.
+    // They are not new work and must not schedule another resolver pass.
+    if (applyingResultRef.current) return Promise.resolve();
 
-    if (resolvingRef.current) return;
-
-    const tokensToResolve: { pos: number; value: string }[] = [];
-    editor.state.doc.descendants((node, pos) => {
-      if (
-        node.type.name === 'filterToken' &&
-        node.attrs.key === fieldKey &&
-        node.attrs.value &&
-        !node.attrs.displayValue &&
-        node.attrs.confirmed === true
-      ) {
-        tokensToResolve.push({ pos, value: node.attrs.value });
-      }
-      return true;
-    });
-
-    if (tokensToResolve.length === 0) return;
-
-    resolvingRef.current = true;
-
-    try {
-      if (loadingContent) {
-        const tr = editor.state.tr;
-        for (const { pos } of tokensToResolve) {
-          updateTokenAttrs(tr, pos, {
-            displayValue: loadingContent.displayValue ?? LOADING_MARKER,
-            startContent: loadingContent.startContent,
-          });
-        }
-        editor.view.dispatch(tr);
-      }
-
-      const values = tokensToResolve.map((t) => t.value);
-      const resolvedItems = await resolve(values);
-      const itemMap = new Map(resolvedItems.map((item) => [getValue(item), item]));
-
-      // Re-collect token positions (may have shifted during async operation)
-      const loadingDisplayValue = loadingContent?.displayValue ?? LOADING_MARKER;
-      const currentTokens: { pos: number; value: string }[] = [];
-      editor.state.doc.descendants((node, pos) => {
-        if (
-          node.type.name === 'filterToken' &&
-          node.attrs.key === fieldKey &&
-          node.attrs.value &&
-          (loadingContent
-            ? node.attrs.displayValue === loadingDisplayValue
-            : !node.attrs.displayValue)
-        ) {
-          currentTokens.push({ pos, value: node.attrs.value });
-        }
-        return true;
-      });
-
-      const toUpdate: { pos: number; data: ResolvedTokenData }[] = [];
-      const toDelete: { pos: number; nodeSize: number }[] = [];
-
-      for (const { pos, value } of currentTokens) {
-        const item = itemMap.get(value);
-        if (item) {
-          toUpdate.push({ pos, data: getDisplayData(item) });
-        } else if (onNotFound === 'delete') {
-          const node = editor.state.doc.nodeAt(pos);
-          if (node) {
-            toDelete.push({ pos, nodeSize: node.nodeSize });
-          }
-        } else {
-          // onNotFound === 'keep': clear loading state, use value as displayValue
-          toUpdate.push({ pos, data: { displayValue: value } });
-        }
-      }
-
-      // Apply updates (display-only change, excluded from history)
-      if (toUpdate.length > 0) {
-        const tr = editor.state.tr;
-        for (const { pos, data } of toUpdate) {
-          updateTokenAttrs(tr, pos, data);
-        }
-        editor.view.dispatch(tr);
-      }
-
-      // Apply deletions (process in reverse order to maintain positions)
-      const sortedDeletes = [...toDelete].sort((a, b) => b.pos - a.pos);
-      for (const { pos, nodeSize } of sortedDeletes) {
-        editor
-          .chain()
-          .deleteRange({ from: pos, to: pos + nodeSize })
-          .run();
-      }
-    } finally {
-      resolvingRef.current = false;
+    if (activeResolutionRef.current) {
+      rerunRequestedRef.current = true;
+      return activeResolutionRef.current;
     }
-  }, [inputRef, fieldKey, resolve, getValue, getDisplayData, loadingContent, onNotFound]);
+
+    const run = async () => {
+      let shouldContinue = true;
+      const failedTokenIds = new Set<string>();
+
+      while (shouldContinue) {
+        rerunRequestedRef.current = false;
+
+        const editor = getEditor(inputRef.current);
+        if (!editor || editor.isDestroyed) return;
+
+        const tokensToResolve = collectPendingTokens(editor, fieldKey).filter(
+          (token) => !failedTokenIds.has(token.id)
+        );
+        if (tokensToResolve.length === 0) {
+          shouldContinue = rerunRequestedRef.current;
+          continue;
+        }
+
+        const loadingDisplayValue = loadingContent?.displayValue ?? LOADING_MARKER;
+
+        if (loadingContent) {
+          const tr = editor.state.tr;
+          for (const token of tokensToResolve) {
+            const current = findTokenById(editor, token.id);
+            const node = current ? tr.doc.nodeAt(current.pos) : null;
+            if (current && node?.attrs.value === token.value && !node.attrs.displayValue) {
+              updateTokenAttrs(tr, current.pos, {
+                displayValue: loadingDisplayValue,
+                startContent: loadingContent.startContent,
+              });
+            }
+          }
+          if (tr.docChanged) {
+            applyingResultRef.current = true;
+            try {
+              editor.view.dispatch(tr);
+            } finally {
+              applyingResultRef.current = false;
+            }
+          }
+        }
+
+        const values = [...new Set(tokensToResolve.map((token) => token.value))];
+        let resolvedItems: T[];
+
+        try {
+          resolvedItems = await resolve(values);
+        } catch (error) {
+          const currentEditor = getEditor(inputRef.current);
+          if (loadingContent && currentEditor === editor && !editor.isDestroyed) {
+            const tr = editor.state.tr;
+            for (const token of tokensToResolve) {
+              const current = findTokenById(editor, token.id);
+              const node = current ? tr.doc.nodeAt(current.pos) : null;
+              if (
+                current &&
+                node?.attrs.key === fieldKey &&
+                node.attrs.value === token.value &&
+                node.attrs.displayValue === loadingDisplayValue
+              ) {
+                updateTokenAttrs(tr, current.pos, {
+                  displayValue: token.displayValue,
+                  startContent: token.startContent,
+                });
+              }
+            }
+            if (tr.docChanged) {
+              applyingResultRef.current = true;
+              try {
+                editor.view.dispatch(tr);
+              } finally {
+                applyingResultRef.current = false;
+              }
+            }
+          }
+          for (const token of tokensToResolve) {
+            failedTokenIds.add(token.id);
+          }
+          onError?.(error, values);
+          shouldContinue = rerunRequestedRef.current;
+          continue;
+        }
+
+        const currentEditor = getEditor(inputRef.current);
+        if (currentEditor !== editor || editor.isDestroyed) return;
+
+        const itemMap = new Map(resolvedItems.map((item) => [getValue(item), item]));
+        const toUpdate: { pos: number; data: ResolvedTokenData }[] = [];
+        const toDelete: { pos: number; nodeSize: number }[] = [];
+
+        for (const token of tokensToResolve) {
+          const current = findTokenById(editor, token.id);
+          const node = current ? editor.state.doc.nodeAt(current.pos) : null;
+          const stillPending =
+            node?.attrs.key === fieldKey &&
+            node.attrs.value === token.value &&
+            node.attrs.confirmed === true &&
+            (loadingContent
+              ? node.attrs.displayValue === loadingDisplayValue
+              : !node.attrs.displayValue);
+
+          if (!current || !node || !stillPending) continue;
+
+          const item = itemMap.get(token.value);
+          if (item) {
+            toUpdate.push({ pos: current.pos, data: getDisplayData(item) });
+          } else if (onNotFound === 'delete') {
+            toDelete.push(current);
+          } else {
+            toUpdate.push({ pos: current.pos, data: { displayValue: token.value } });
+          }
+        }
+
+        applyingResultRef.current = true;
+        try {
+          if (toUpdate.length > 0) {
+            const tr = editor.state.tr;
+            for (const { pos, data } of toUpdate) {
+              updateTokenAttrs(tr, pos, data);
+            }
+            editor.view.dispatch(tr);
+          }
+
+          if (toDelete.length > 0) {
+            const tr = editor.state.tr;
+            for (const { pos, nodeSize } of [...toDelete].sort((a, b) => b.pos - a.pos)) {
+              tr.delete(pos, pos + nodeSize);
+            }
+            editor.view.dispatch(tr);
+          }
+        } finally {
+          applyingResultRef.current = false;
+        }
+
+        shouldContinue = rerunRequestedRef.current;
+      }
+    };
+
+    // Start on the next microtask so the shared promise is visible before any
+    // editor update can synchronously call resolveTokens again.
+    let activeResolution: Promise<void>;
+    activeResolution = Promise.resolve()
+      .then(run)
+      .finally(() => {
+        if (activeResolutionRef.current === activeResolution) {
+          activeResolutionRef.current = null;
+        }
+      });
+    activeResolutionRef.current = activeResolution;
+    return activeResolution;
+  }, [inputRef, fieldKey, resolve, getValue, getDisplayData, loadingContent, onNotFound, onError]);
 
   return { resolveTokens };
 }

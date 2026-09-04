@@ -818,6 +818,8 @@ const { resolveTokens } = useAsyncTokenResolver({
   },
   // Optional: What to do if value is not found ('delete' | 'keep', default: 'delete')
   onNotFound: 'delete',
+  // Optional: Handle resolver failures. Loading decoration is restored automatically.
+  onError: (error, values) => reportResolutionError(error, values),
 });
 
 // Trigger resolution on change
@@ -835,6 +837,7 @@ const { resolveTokens } = useAsyncTokenResolver({
 | `getDisplayData` | `(item: T) => ResolvedTokenData` | Yes | Convert item to display data |
 | `loadingContent` | `{ displayValue?, startContent? }` | No | Content to show while loading |
 | `onNotFound` | `'delete' \| 'keep'` | No | Action when value not found (default: `'delete'`) |
+| `onError` | `(error: unknown, values: string[]) => void` | No | Called when resolution fails; the rejection is handled and loading decoration is restored |
 
 ### Matchers
 
