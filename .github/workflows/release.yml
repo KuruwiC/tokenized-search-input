@@ -30,25 +30,28 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build core package
-        run: pnpm --filter @kuruwic/tokenized-search-input build
+      - name: Lint
+        run: pnpm lint
 
       - name: Type check
         run: pnpm typecheck
 
-      - name: Lint
-        run: pnpm lint
-
       - name: Test
         run: pnpm test:run
 
-      - name: Build
-        run: pnpm build
+      - name: Audit production dependencies
+        run: pnpm audit --prod
 
-      - name: Pack package
+      - name: Verify release tag
+        run: node packages/core/scripts/verify-tag.mjs
+
+      - name: Build, pack, and validate artifact
         run: |
           mkdir -p dist-packages
           cd packages/core && pnpm pack --pack-destination ../../dist-packages
+          cd ../..
+          node packages/core/scripts/verify-pack.mjs
+          pnpm exec publint dist-packages/*.tgz --strict
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

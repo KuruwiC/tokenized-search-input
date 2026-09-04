@@ -30,17 +30,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build core package
-        run: pnpm --filter @kuruwic/tokenized-search-input build
+      - name: Lint
+        run: pnpm lint
 
       - name: Type check
         run: pnpm typecheck
 
-      - name: Lint
-        run: pnpm lint
-
       - name: Test
         run: pnpm test:run
 
-      - name: Build
+      - name: Audit production dependencies
+        run: pnpm audit --prod
+
+      - name: Build and validate package
         run: pnpm build
+
+      - name: Validate package metadata
+        run: pnpm exec publint packages/core --pack false --strict
