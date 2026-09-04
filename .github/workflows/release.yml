@@ -36,11 +36,17 @@ jobs:
       - name: Type check
         run: pnpm typecheck
 
-      - name: Test
-        run: pnpm test:run
+      - name: Test with coverage thresholds
+        run: pnpm test:coverage
 
       - name: Audit production dependencies
         run: pnpm audit --prod
+
+      - name: Install Chromium
+        run: pnpm --filter @kuruwic/tokenized-search-input exec playwright install --with-deps chromium
+
+      - name: Run browser smoke test
+        run: pnpm --filter @kuruwic/tokenized-search-input test:browser
 
       - name: Verify release tag
         run: node packages/core/scripts/verify-tag.mjs
@@ -52,6 +58,11 @@ jobs:
           cd ../..
           node packages/core/scripts/verify-pack.mjs
           pnpm exec publint dist-packages/*.tgz --strict
+
+      - name: Verify React 19 peer compatibility
+        run: |
+          pnpm add --filter @kuruwic/tokenized-search-input --save-dev --lockfile=false react@19.1.1 react-dom@19.1.1
+          pnpm --filter @kuruwic/tokenized-search-input test:run
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

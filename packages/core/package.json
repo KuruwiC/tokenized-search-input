@@ -1,6 +1,6 @@
 {
   "name": "@kuruwic/tokenized-search-input",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A reusable tokenized search input component with rich tag input",
   "type": "module",
   "engines": {

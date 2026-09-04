@@ -24,13 +24,13 @@ A React component for building advanced search interfaces with tokenized filters
 
 ```bash
 # pnpm (recommended)
-pnpm add https://github.com/KuruwiC/tokenized-search-input/releases/download/v0.1.0/kuruwic-tokenized-search-input-0.1.0.tgz
+pnpm add https://github.com/KuruwiC/tokenized-search-input/releases/download/v0.1.1/kuruwic-tokenized-search-input-0.1.1.tgz
 
 # npm
-npm install https://github.com/KuruwiC/tokenized-search-input/releases/download/v0.1.0/kuruwic-tokenized-search-input-0.1.0.tgz
+npm install https://github.com/KuruwiC/tokenized-search-input/releases/download/v0.1.1/kuruwic-tokenized-search-input-0.1.1.tgz
 
 # yarn
-yarn add https://github.com/KuruwiC/tokenized-search-input/releases/download/v0.1.0/kuruwic-tokenized-search-input-0.1.0.tgz
+yarn add https://github.com/KuruwiC/tokenized-search-input/releases/download/v0.1.1/kuruwic-tokenized-search-input-0.1.1.tgz
 ```
 
 Or add directly to your `package.json`:
@@ -38,7 +38,7 @@ Or add directly to your `package.json`:
 ```json
 {
   "dependencies": {
-    "@kuruwic/tokenized-search-input": "https://github.com/KuruwiC/tokenized-search-input/releases/download/v0.1.0/kuruwic-tokenized-search-input-0.1.0.tgz"
+    "@kuruwic/tokenized-search-input": "https://github.com/KuruwiC/tokenized-search-input/releases/download/v0.1.1/kuruwic-tokenized-search-input-0.1.1.tgz"
   }
 }
 ```
