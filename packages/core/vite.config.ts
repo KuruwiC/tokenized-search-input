@@ -1,4 +1,4 @@
-import { copyFileSync, cpSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
@@ -18,6 +18,20 @@ function copyStyles(): Plugin {
       }
     },
   };
+}
+
+const packageManifest = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8')) as {
+  dependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+};
+const externalPackages = [
+  ...Object.keys(packageManifest.dependencies ?? {}),
+  ...Object.keys(packageManifest.peerDependencies ?? {}),
+];
+
+function isExternalPackage(id: string): boolean {
+  if (id.startsWith('.') || id.startsWith('/') || id.includes(':')) return false;
+  return externalPackages.some((name) => id === name || id.startsWith(`${name}/`));
 }
 
 export default defineConfig({
@@ -46,7 +60,7 @@ export default defineConfig({
       fileName: (format, entryName) => `${entryName}.${format === 'es' ? 'js' : 'cjs'}`,
     },
     rollupOptions: {
-      external: ['react', 'react-dom', 'react/jsx-runtime'],
+      external: isExternalPackage,
       output: {
         globals: {
           react: 'React',
