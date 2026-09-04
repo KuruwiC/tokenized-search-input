@@ -9,6 +9,7 @@ import {
   forwardRef,
   useCallback,
   useEffect,
+  useId,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -289,6 +290,9 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
     const [isEmpty, setIsEmpty] = useState(true);
     const [isInputFocused, setIsInputFocused] = useState(false);
     const pointerDownInSuggestionRef = useRef(false);
+    const instanceId = useId().replace(/:/g, '');
+    const suggestionListId = `tsi-suggestions-${instanceId}`;
+    const suggestionOptionIdPrefix = `tsi-suggestion-option-${instanceId}`;
 
     // Store initial delimiter value - cannot be changed after mount
     const delimiterValue = initialDelimiter ?? DEFAULT_TOKEN_DELIMITER;
@@ -533,6 +537,38 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
     const suggestionState = usePluginState(editor, suggestionKey);
     const isSuggestionOpen =
       suggestionState && suggestionState.type !== null && !suggestionState.dismissed;
+
+    // Dynamic combobox relationships must live on ProseMirror's actual
+    // contenteditable element, rather than EditorContent's wrapper.
+    useEffect(() => {
+      if (!editor) return;
+      const input = editor.view.dom;
+      const popupRole =
+        suggestionState?.type === 'date' || suggestionState?.type === 'datetime'
+          ? 'dialog'
+          : 'listbox';
+      input.setAttribute('aria-expanded', isSuggestionOpen ? 'true' : 'false');
+      input.setAttribute('aria-haspopup', popupRole);
+      if (isSuggestionOpen) {
+        input.setAttribute('aria-controls', suggestionListId);
+      } else {
+        input.removeAttribute('aria-controls');
+      }
+      const activeIndex = suggestionState?.activeIndex ?? -1;
+      const hasActiveOption = activeIndex >= 0 && isSuggestionOpen && popupRole === 'listbox';
+      if (hasActiveOption) {
+        input.setAttribute('aria-activedescendant', `${suggestionOptionIdPrefix}-${activeIndex}`);
+      } else {
+        input.removeAttribute('aria-activedescendant');
+      }
+    }, [
+      editor,
+      isSuggestionOpen,
+      suggestionState?.activeIndex,
+      suggestionState?.type,
+      suggestionListId,
+      suggestionOptionIdPrefix,
+    ]);
 
     // Update EditorContext when props change
     useEffect(() => {
@@ -932,7 +968,6 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
             disabled ? 'tsi-input--disabled' : '',
             classNames?.input
           )}
-          aria-expanded={isSuggestionOpen ? 'true' : 'false'}
         />
 
         {(clearable || endAdornment) && (
@@ -986,6 +1021,8 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
             renderDatePicker={renderDatePicker}
             renderDateTimePicker={renderDateTimePicker}
             paginationLabels={paginationLabels}
+            listboxId={suggestionListId}
+            optionIdPrefix={suggestionOptionIdPrefix}
           />
         )}
       </div>

@@ -26,6 +26,8 @@ interface CustomSuggestionListProps {
   onLoadMore?: () => void;
   /** Labels for pagination UI */
   paginationLabels?: PaginationLabels;
+  optionIdPrefix?: string;
+  optionIndexOffset?: number;
 }
 
 export const CustomSuggestionList: React.FC<CustomSuggestionListProps> = ({
@@ -40,6 +42,8 @@ export const CustomSuggestionList: React.FC<CustomSuggestionListProps> = ({
   isLoadingMore = false,
   onLoadMore,
   paginationLabels,
+  optionIdPrefix,
+  optionIndexOffset = 0,
 }) => {
   const labels = { ...DEFAULT_PAGINATION_LABELS, ...paginationLabels };
   const itemRefs = useScrollActiveIntoView<HTMLDivElement>(activeIndex);
@@ -75,11 +79,7 @@ export const CustomSuggestionList: React.FC<CustomSuggestionListProps> = ({
   }
 
   return (
-    <div
-      role="listbox"
-      aria-label="Custom suggestions"
-      className={cn('tsi-suggestion-list', className)}
-    >
+    <div className={cn('tsi-suggestion-list', className)}>
       {items.map((item, index) => {
         const isActive = index === activeIndex;
 
@@ -91,6 +91,7 @@ export const CustomSuggestionList: React.FC<CustomSuggestionListProps> = ({
               else itemRefs.current.delete(index);
             }}
             role="option"
+            id={optionIdPrefix ? `${optionIdPrefix}-${optionIndexOffset + index}` : undefined}
             tabIndex={-1}
             aria-selected={isActive}
             onMouseDown={(e) => e.preventDefault()}

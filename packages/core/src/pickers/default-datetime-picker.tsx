@@ -193,7 +193,7 @@ export const DefaultDateTimePicker: FC<DateTimePickerRenderProps> = ({
   };
 
   return (
-    <div className="tsi-picker-body" data-datetime-picker role="dialog">
+    <div className="tsi-picker-body" data-datetime-picker>
       <DayPicker
         mode="single"
         selected={valueAsLocalDate ?? undefined}

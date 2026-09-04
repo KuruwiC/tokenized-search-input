@@ -13,6 +13,7 @@ interface ValueSuggestionListProps {
   className?: string;
   /** Custom class for suggestion items */
   itemClassName?: string;
+  optionIdPrefix?: string;
 }
 
 export const ValueSuggestionList: React.FC<ValueSuggestionListProps> = ({
@@ -23,6 +24,7 @@ export const ValueSuggestionList: React.FC<ValueSuggestionListProps> = ({
   onActiveChange,
   className,
   itemClassName,
+  optionIdPrefix,
 }) => {
   const itemRefs = useScrollActiveIntoView<HTMLDivElement>(activeIndex);
   // items is already filtered by filter-token-view, no need to filter again
@@ -31,11 +33,7 @@ export const ValueSuggestionList: React.FC<ValueSuggestionListProps> = ({
   }
 
   return (
-    <div
-      role="listbox"
-      aria-label="Value suggestions"
-      className={cn('tsi-suggestion-list', className)}
-    >
+    <div className={cn('tsi-suggestion-list', className)}>
       {items.map((item, index) => {
         const value = getEnumValue(item);
         const displayValue = getEnumLabel(item);
@@ -49,6 +47,7 @@ export const ValueSuggestionList: React.FC<ValueSuggestionListProps> = ({
               else itemRefs.current.delete(index);
             }}
             role="option"
+            id={optionIdPrefix ? `${optionIdPrefix}-${index}` : undefined}
             tabIndex={-1}
             aria-selected={index === activeIndex}
             onMouseDown={(e) => e.preventDefault()}

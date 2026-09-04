@@ -64,7 +64,7 @@ export const DefaultDatePicker: FC<DatePickerRenderProps> = ({
   };
 
   return (
-    <div className="tsi-picker-body" data-date-picker role="dialog">
+    <div className="tsi-picker-body" data-date-picker>
       <DayPicker
         mode="single"
         selected={value ?? undefined}

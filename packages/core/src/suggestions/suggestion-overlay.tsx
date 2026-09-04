@@ -77,6 +77,9 @@ export interface SuggestionOverlayProps {
   renderDateTimePicker?: (props: DateTimePickerRenderProps) => React.ReactNode;
   /** Labels for pagination UI in custom suggestion list */
   paginationLabels?: PaginationLabels;
+  /** Stable ids shared by the combobox and its active options. */
+  listboxId: string;
+  optionIdPrefix: string;
 }
 
 export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
@@ -97,6 +100,8 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
   renderDatePicker,
   renderDateTimePicker,
   paginationLabels,
+  listboxId,
+  optionIdPrefix,
 }) => {
   const suggestionRef = useRef<HTMLDivElement>(null);
   const suggestionState = usePluginState(editor, suggestionKey);
@@ -459,6 +464,7 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
             hintClassName={classNames?.suggestionItemHint}
             iconClassName={classNames?.suggestionItemIcon}
             categoryClassName={classNames?.fieldCategory}
+            optionIdPrefix={optionIdPrefix}
           />
         );
 
@@ -471,6 +477,7 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
             activeIndex={activeIndex}
             onActiveChange={handleActiveChange}
             itemClassName={classNames?.suggestionItem}
+            optionIdPrefix={optionIdPrefix}
           />
         );
 
@@ -488,6 +495,7 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
             isLoadingMore={customIsLoadingMore}
             onLoadMore={onCustomLoadMore}
             paginationLabels={paginationLabels}
+            optionIdPrefix={optionIdPrefix}
           />
         );
 
@@ -541,6 +549,8 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
                   isLoadingMore={customIsLoadingMore}
                   onLoadMore={onCustomLoadMore}
                   paginationLabels={paginationLabels}
+                  optionIdPrefix={optionIdPrefix}
+                  optionIndexOffset={0}
                 />
                 {fieldItems.length > 0 && (
                   <div className={cn('tsi-divider', classNames?.divider)} />
@@ -557,6 +567,8 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
                 hintClassName={classNames?.suggestionItemHint}
                 iconClassName={classNames?.suggestionItemIcon}
                 categoryClassName={classNames?.fieldCategory}
+                optionIdPrefix={optionIdPrefix}
+                optionIndexOffset={isPrepend ? customItems.length : 0}
               />
             )}
             {!isPrepend && customItems.length > 0 && (
@@ -575,6 +587,8 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
                   isLoadingMore={customIsLoadingMore}
                   onLoadMore={onCustomLoadMore}
                   paginationLabels={paginationLabels}
+                  optionIdPrefix={optionIdPrefix}
+                  optionIndexOffset={isPrepend ? 0 : fieldItems.length}
                 />
               </>
             )}
@@ -683,6 +697,7 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
         classNames?.dropdown
       )}
       role={role}
+      id={listboxId}
     >
       {content}
     </div>

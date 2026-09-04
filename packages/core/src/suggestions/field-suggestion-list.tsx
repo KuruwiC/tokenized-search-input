@@ -16,6 +16,8 @@ interface FieldSuggestionListProps {
   iconClassName?: string;
   /** Custom class for category headers */
   categoryClassName?: string;
+  optionIdPrefix?: string;
+  optionIndexOffset?: number;
 }
 
 interface FieldGroup {
@@ -76,6 +78,8 @@ export const FieldSuggestionList: React.FC<FieldSuggestionListProps> = ({
   hintClassName,
   iconClassName,
   categoryClassName,
+  optionIdPrefix,
+  optionIndexOffset = 0,
 }) => {
   const groups = groupFieldsByCategory(fields);
   const hasMultipleCategories =
@@ -90,11 +94,7 @@ export const FieldSuggestionList: React.FC<FieldSuggestionListProps> = ({
   let flatIndex = 0;
 
   return (
-    <div
-      role="listbox"
-      aria-label="Available filter fields"
-      className={cn('tsi-suggestion-list', className)}
-    >
+    <div className={cn('tsi-suggestion-list', className)}>
       {groups.map((group, groupIndex) => (
         <fieldset key={group.category}>
           {hasMultipleCategories && (
@@ -123,6 +123,11 @@ export const FieldSuggestionList: React.FC<FieldSuggestionListProps> = ({
                   else itemRefs.current.delete(currentIndex);
                 }}
                 role="option"
+                id={
+                  optionIdPrefix
+                    ? `${optionIdPrefix}-${optionIndexOffset + currentIndex}`
+                    : undefined
+                }
                 tabIndex={-1}
                 aria-selected={isActive}
                 onMouseDown={(e) => e.preventDefault()}
