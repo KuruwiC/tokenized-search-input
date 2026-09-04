@@ -5,11 +5,11 @@
 // ============================================
 
 export { ClearButton, type ClearButtonProps } from './editor/clear-button';
-export {
-  TokenizedSearchInput,
-  type TokenizedSearchInputProps,
-  type TokenizedSearchInputRef,
-} from './editor/tokenized-search-input';
+export { TokenizedSearchInput } from './editor/tokenized-search-input';
+export type {
+  TokenizedSearchInputProps,
+  TokenizedSearchInputRef,
+} from './editor/tokenized-search-input.types';
 
 // ============================================
 // Date Picker Components

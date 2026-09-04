@@ -5,8 +5,6 @@ import { usePluginState } from '../hooks/use-plugin-state';
 import { useSuggestionPosition } from '../hooks/use-suggestion-position';
 import { useVisualViewport } from '../hooks/use-visual-viewport';
 import { isDateOnlyValue, isUTCValue } from '../pickers/date-format';
-import { DefaultDatePicker } from '../pickers/default-date-picker';
-import { DefaultDateTimePicker } from '../pickers/default-datetime-picker';
 import {
   closeSuggestion,
   isSuggestionOpen,
@@ -18,27 +16,21 @@ import {
 import type {
   ClassNames,
   CustomSuggestion,
-  DateFieldDefinition,
   DatePickerRenderProps,
-  DateTimeFieldDefinition,
   DateTimePickerRenderProps,
-  EnumValue,
   FieldDefinition,
   PaginationLabels,
 } from '../types';
 import { cn } from '../utils/cn';
 import { findFocusedFilterToken, getContainingFilterToken } from '../utils/dom-focus';
-import { CustomSuggestionList } from './custom-suggestion-list';
-
 import { type DismissReason, getDismissPolicy, shouldDismiss } from './dismiss-policy';
-import { FieldSuggestionList } from './field-suggestion-list';
 import {
   createBoundary,
   createTokenBoundary,
   createValueInputBoundary,
 } from './interaction-boundary';
+import { renderSuggestionContent } from './suggestion-content';
 import { useDismissManager } from './use-dismiss-manager';
-import { ValueSuggestionList } from './value-suggestion-list';
 
 export interface SuggestionOverlayProps {
   editor: Editor;
@@ -449,217 +441,42 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
   const { type, items, customItems, activeIndex, query, fieldKey, dateValue, customDisplayMode } =
     suggestionState;
 
-  const currentFieldDef = fieldKey ? fields.find((f) => f.key === fieldKey) : undefined;
+  if ((type === 'custom' || type === 'fieldWithCustom') && !onCustomSelect) return null;
+  if ((type === 'date' || type === 'datetime') && !fields.some((field) => field.key === fieldKey)) {
+    return null;
+  }
 
-  const renderContent = () => {
-    switch (type) {
-      case 'field':
-        return (
-          <FieldSuggestionList
-            fields={items as FieldDefinition[]}
-            onSelect={onFieldSelect}
-            activeIndex={activeIndex}
-            onActiveChange={handleActiveChange}
-            itemClassName={classNames?.suggestionItem}
-            hintClassName={classNames?.suggestionItemHint}
-            iconClassName={classNames?.suggestionItemIcon}
-            categoryClassName={classNames?.fieldCategory}
-            optionIdPrefix={optionIdPrefix}
-          />
-        );
-
-      case 'value':
-        return (
-          <ValueSuggestionList
-            items={items as EnumValue[]}
-            currentValue={query}
-            onSelect={onValueSelect}
-            activeIndex={activeIndex}
-            onActiveChange={handleActiveChange}
-            itemClassName={classNames?.suggestionItem}
-            optionIdPrefix={optionIdPrefix}
-          />
-        );
-
-      case 'custom':
-        if (!onCustomSelect) return null;
-        return (
-          <CustomSuggestionList
-            items={customItems}
-            onSelect={onCustomSelect}
-            activeIndex={activeIndex}
-            onActiveChange={handleActiveChange}
-            itemClassName={classNames?.suggestionItem}
-            descriptionClassName={classNames?.suggestionItemDescription}
-            hasMore={customHasMore}
-            isLoadingMore={customIsLoadingMore}
-            onLoadMore={onCustomLoadMore}
-            paginationLabels={paginationLabels}
-            optionIdPrefix={optionIdPrefix}
-          />
-        );
-
-      case 'fieldWithCustom': {
-        if (!onCustomSelect) return null;
-        const fieldItems = items as FieldDefinition[];
-        const isPrepend = customDisplayMode === 'prepend';
-
-        const getCustomActiveIndex = () => {
-          if (isPrepend) {
-            return activeIndex >= 0 && activeIndex < customItems.length ? activeIndex : -1;
-          }
-          return activeIndex >= fieldItems.length ? activeIndex - fieldItems.length : -1;
-        };
-
-        const getFieldActiveIndex = () => {
-          if (isPrepend) {
-            return activeIndex >= customItems.length ? activeIndex - customItems.length : -1;
-          }
-          return activeIndex >= 0 && activeIndex < fieldItems.length ? activeIndex : -1;
-        };
-
-        const handleCustomActiveChange = (idx: number) => {
-          if (isPrepend) {
-            handleActiveChange(idx);
-          } else {
-            handleActiveChange(idx + fieldItems.length);
-          }
-        };
-
-        const handleFieldActiveChange = (idx: number) => {
-          if (isPrepend) {
-            handleActiveChange(idx + customItems.length);
-          } else {
-            handleActiveChange(idx);
-          }
-        };
-
-        return (
-          <>
-            {isPrepend && customItems.length > 0 && (
-              <>
-                <CustomSuggestionList
-                  items={customItems}
-                  onSelect={onCustomSelect}
-                  activeIndex={getCustomActiveIndex()}
-                  onActiveChange={handleCustomActiveChange}
-                  itemClassName={classNames?.suggestionItem}
-                  descriptionClassName={classNames?.suggestionItemDescription}
-                  hasMore={customHasMore}
-                  isLoadingMore={customIsLoadingMore}
-                  onLoadMore={onCustomLoadMore}
-                  paginationLabels={paginationLabels}
-                  optionIdPrefix={optionIdPrefix}
-                  optionIndexOffset={0}
-                />
-                {fieldItems.length > 0 && (
-                  <div className={cn('tsi-divider', classNames?.divider)} />
-                )}
-              </>
-            )}
-            {fieldItems.length > 0 && (
-              <FieldSuggestionList
-                fields={fieldItems}
-                onSelect={onFieldSelect}
-                activeIndex={getFieldActiveIndex()}
-                onActiveChange={handleFieldActiveChange}
-                itemClassName={classNames?.suggestionItem}
-                hintClassName={classNames?.suggestionItemHint}
-                iconClassName={classNames?.suggestionItemIcon}
-                categoryClassName={classNames?.fieldCategory}
-                optionIdPrefix={optionIdPrefix}
-                optionIndexOffset={isPrepend ? customItems.length : 0}
-              />
-            )}
-            {!isPrepend && customItems.length > 0 && (
-              <>
-                {fieldItems.length > 0 && (
-                  <div className={cn('tsi-divider', classNames?.divider)} />
-                )}
-                <CustomSuggestionList
-                  items={customItems}
-                  onSelect={onCustomSelect}
-                  activeIndex={getCustomActiveIndex()}
-                  onActiveChange={handleCustomActiveChange}
-                  itemClassName={classNames?.suggestionItem}
-                  descriptionClassName={classNames?.suggestionItemDescription}
-                  hasMore={customHasMore}
-                  isLoadingMore={customIsLoadingMore}
-                  onLoadMore={onCustomLoadMore}
-                  paginationLabels={paginationLabels}
-                  optionIdPrefix={optionIdPrefix}
-                  optionIndexOffset={isPrepend ? 0 : fieldItems.length}
-                />
-              </>
-            )}
-          </>
-        );
-      }
-
-      case 'date': {
-        const dateFieldDef = currentFieldDef as DateFieldDefinition | undefined;
-        if (!dateFieldDef) return null;
-
-        const displayValue = syncedDate ?? dateValue;
-
-        const datePickerProps: DatePickerRenderProps = {
-          value: displayValue,
-          onChange: handleDateChangeInternal,
-          onClose: handleDateCloseInternal,
-          fieldDef: dateFieldDef,
-          restoreFocus,
-          defaultMonth: displayValue ?? new Date(),
-          confirmedValue: dateValue,
-        };
-
-        if (dateFieldDef.renderPicker) {
-          return dateFieldDef.renderPicker(datePickerProps);
-        }
-        if (renderDatePicker) {
-          return renderDatePicker(datePickerProps);
-        }
-
-        return <DefaultDatePicker {...datePickerProps} />;
-      }
-
-      case 'datetime': {
-        const datetimeFieldDef = currentFieldDef as DateTimeFieldDefinition | undefined;
-        if (!datetimeFieldDef) return null;
-
-        const displayValueDt = syncedDate ?? dateValue;
-
-        const datetimePickerProps: DateTimePickerRenderProps = {
-          value: displayValueDt,
-          onChange: handleDateChangeInternal,
-          onClose: handleDateCloseInternal,
-          fieldDef: datetimeFieldDef,
-          timeControls: {
-            isUTC: isUTC,
-            onUTCChange: handleUTCChangeInternal,
-            includeTime: includeTime,
-            onIncludeTimeChange: handleIncludeTimeChangeInternal,
-          },
-          restoreFocus,
-          defaultMonth: displayValueDt ?? new Date(),
-          confirmedValue: dateValue,
-        };
-
-        if (datetimeFieldDef.renderPicker) {
-          return datetimeFieldDef.renderPicker(datetimePickerProps);
-        }
-        if (renderDateTimePicker) {
-          return renderDateTimePicker(datetimePickerProps);
-        }
-
-        return <DefaultDateTimePicker {...datetimePickerProps} />;
-      }
-
-      default:
-        return null;
-    }
-  };
-
-  const content = renderContent();
+  const content = renderSuggestionContent({
+    type,
+    items,
+    customItems,
+    activeIndex,
+    query,
+    fieldKey,
+    dateValue,
+    customDisplayMode,
+    fields,
+    classNames,
+    onFieldSelect,
+    onValueSelect,
+    onCustomSelect,
+    onActiveChange: handleActiveChange,
+    customHasMore,
+    customIsLoadingMore,
+    onCustomLoadMore,
+    paginationLabels,
+    optionIdPrefix,
+    syncedDate,
+    renderDatePicker,
+    renderDateTimePicker,
+    onDateChange: handleDateChangeInternal,
+    onDateClose: handleDateCloseInternal,
+    restoreFocus,
+    isUTC,
+    onUTCChange: handleUTCChangeInternal,
+    includeTime,
+    onIncludeTimeChange: handleIncludeTimeChangeInternal,
+  });
   if (!content) return null;
 
   const role =
