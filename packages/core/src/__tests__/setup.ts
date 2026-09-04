@@ -9,8 +9,9 @@ const allowedConsoleMessages: RegExp[] = [
   // React 18 reports updates scheduled by Tiptap's asynchronous NodeViews;
   // wrapping every internal update would couple these integration tests to
   // Tiptap implementation details. Keep matching limited to this exact act
-  // warning and continue failing on every other React/runtime warning.
-  /^Warning: An update to (?:Portals|ForwardRef\(TokenizedSearchInput2\)|SuggestionOverlay|Token|TokenValue) inside a test was not wrapped in act\(\.\.\.\)/,
+  // warning (React 18 includes the "Warning: " prefix; React 19 does not)
+  // and continue failing on every other React/runtime warning.
+  /^(?:Warning: )?An update to (?:Portals|ForwardRef\(TokenizedSearchInput2\)|SuggestionOverlay|Token|TokenValue) inside a test was not wrapped in act\(\.\.\.\)/,
 ];
 
 const formatConsoleCall = (args: unknown[]) => format(...args);
@@ -53,103 +54,106 @@ afterEach(() => {
   }
 });
 
-// Mock window.matchMedia for tests
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: (query: string) => ({
-    matches: query.includes('min-width: 768px'),
-    media: query,
-    onchange: null,
-    addListener: () => {},
-    removeListener: () => {},
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    dispatchEvent: () => false,
-  }),
-});
+// SSR tests intentionally run without browser globals.
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  // Mock window.matchMedia for tests
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: (query: string) => ({
+      matches: query.includes('min-width: 768px'),
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
 
-// Mock ResizeObserver for tests
-class MockResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-window.ResizeObserver = MockResizeObserver;
-
-// Mock IntersectionObserver for tests
-class MockIntersectionObserver {
-  readonly root: Element | null = null;
-  readonly rootMargin: string = '';
-  readonly thresholds: ReadonlyArray<number> = [];
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-  takeRecords(): IntersectionObserverEntry[] {
-    return [];
+  // Mock ResizeObserver for tests
+  class MockResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
   }
-}
-window.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
+  window.ResizeObserver = MockResizeObserver;
 
-// Mock scrollIntoView for tests
-Element.prototype.scrollIntoView = () => {};
+  // Mock IntersectionObserver for tests
+  class MockIntersectionObserver {
+    readonly root: Element | null = null;
+    readonly rootMargin: string = '';
+    readonly thresholds: ReadonlyArray<number> = [];
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords(): IntersectionObserverEntry[] {
+      return [];
+    }
+  }
+  window.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
 
-// Mock getClientRects for ProseMirror
-Range.prototype.getClientRects = () => {
-  const list: DOMRect[] = [];
-  return {
-    length: 0,
-    item: () => null,
-    [Symbol.iterator]: () => list[Symbol.iterator](),
-  } as DOMRectList;
-};
+  // Mock scrollIntoView for tests
+  Element.prototype.scrollIntoView = () => {};
 
-// Mock getBoundingClientRect for Range
-Range.prototype.getBoundingClientRect = () => ({
-  x: 0,
-  y: 0,
-  width: 0,
-  height: 0,
-  top: 0,
-  right: 0,
-  bottom: 0,
-  left: 0,
-  toJSON: () => {},
-});
+  // Mock getClientRects for ProseMirror
+  Range.prototype.getClientRects = () => {
+    const list: DOMRect[] = [];
+    return {
+      length: 0,
+      item: () => null,
+      [Symbol.iterator]: () => list[Symbol.iterator](),
+    } as DOMRectList;
+  };
 
-// Mock document.elementFromPoint for ProseMirror
-document.elementFromPoint = () => null;
+  // Mock getBoundingClientRect for Range
+  Range.prototype.getBoundingClientRect = () => ({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    toJSON: () => {},
+  });
 
-// Mock createRange for Selection
-document.createRange = () => {
-  const range = new Range();
-  return range;
-};
+  // Mock document.elementFromPoint for ProseMirror
+  document.elementFromPoint = () => null;
 
-// Mock Selection methods
-if (!window.getSelection) {
-  window.getSelection = () =>
-    ({
-      rangeCount: 0,
-      addRange: () => {},
-      removeAllRanges: () => {},
-      getRangeAt: () => document.createRange(),
-      anchorNode: null,
-      anchorOffset: 0,
-      focusNode: null,
-      focusOffset: 0,
-      isCollapsed: true,
-      type: 'None',
-      extend: () => {},
-      collapse: () => {},
-      collapseToStart: () => {},
-      collapseToEnd: () => {},
-      selectAllChildren: () => {},
-      deleteFromDocument: () => {},
-      containsNode: () => false,
-      setBaseAndExtent: () => {},
-      setPosition: () => {},
-      empty: () => {},
-      modify: () => {},
-      toString: () => '',
-    }) as unknown as Selection;
+  // Mock createRange for Selection
+  document.createRange = () => {
+    const range = new Range();
+    return range;
+  };
+
+  // Mock Selection methods
+  if (!window.getSelection) {
+    window.getSelection = () =>
+      ({
+        rangeCount: 0,
+        addRange: () => {},
+        removeAllRanges: () => {},
+        getRangeAt: () => document.createRange(),
+        anchorNode: null,
+        anchorOffset: 0,
+        focusNode: null,
+        focusOffset: 0,
+        isCollapsed: true,
+        type: 'None',
+        extend: () => {},
+        collapse: () => {},
+        collapseToStart: () => {},
+        collapseToEnd: () => {},
+        selectAllChildren: () => {},
+        deleteFromDocument: () => {},
+        containsNode: () => false,
+        setBaseAndExtent: () => {},
+        setPosition: () => {},
+        empty: () => {},
+        modify: () => {},
+        toString: () => '',
+      }) as unknown as Selection;
+  }
 }
