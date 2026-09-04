@@ -19,6 +19,7 @@ export default defineConfig({
     react(),
     dts({
       insertTypesEntry: true,
+      tsconfigPath: resolve(__dirname, 'tsconfig.build.json'),
     }),
     copyStyles(),
   ],
