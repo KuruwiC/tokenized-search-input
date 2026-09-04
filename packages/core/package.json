@@ -92,6 +92,7 @@
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.7.0",
+    "@vitest/coverage-v8": "4.1.11",
     "jsdom": "^27.4.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

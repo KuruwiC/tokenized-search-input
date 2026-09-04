@@ -1,4 +1,57 @@
 import '@testing-library/jest-dom/vitest';
+import { format } from 'node:util';
+import { afterEach, beforeEach, vi } from 'vitest';
+
+// Keep this list intentionally narrow. A message belongs here only when it is
+// emitted by an unavoidable third-party dependency and cannot be fixed in our
+// test or production code. Unexpected warnings must fail the test that emits them.
+const allowedConsoleMessages: RegExp[] = [
+  // React 18 reports updates scheduled by Tiptap's asynchronous NodeViews;
+  // wrapping every internal update would couple these integration tests to
+  // Tiptap implementation details. Keep matching limited to this exact act
+  // warning and continue failing on every other React/runtime warning.
+  /^Warning: An update to (?:Portals|ForwardRef\(TokenizedSearchInput2\)|SuggestionOverlay|Token|TokenValue) inside a test was not wrapped in act\(\.\.\.\)/,
+];
+
+const formatConsoleCall = (args: unknown[]) => format(...args);
+
+const isAllowedConsoleCall = (args: unknown[]) =>
+  allowedConsoleMessages.some((pattern) => pattern.test(formatConsoleCall(args)));
+
+let consoleError: ReturnType<typeof vi.spyOn>;
+let consoleWarn: ReturnType<typeof vi.spyOn>;
+
+beforeEach(() => {
+  const originalError = console.error;
+  const originalWarn = console.warn;
+  consoleError = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+    if (!isAllowedConsoleCall(args)) originalError(...args);
+  });
+  consoleWarn = vi.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => {
+    if (!isAllowedConsoleCall(args)) originalWarn(...args);
+  });
+});
+
+afterEach(() => {
+  try {
+    const unexpected = [
+      ...consoleError.mock.calls.map((args: unknown[]) => ['console.error', args] as const),
+      ...consoleWarn.mock.calls.map((args: unknown[]) => ['console.warn', args] as const),
+    ].filter(([, args]) => {
+      return !isAllowedConsoleCall(args);
+    });
+
+    if (unexpected.length > 0) {
+      const details = unexpected
+        .map(([method, args]) => `${method}: ${formatConsoleCall(args)}`)
+        .join('\n');
+      throw new Error(`Unexpected console output detected:\n${details}`);
+    }
+  } finally {
+    consoleError.mockRestore();
+    consoleWarn.mockRestore();
+  }
+});
 
 // Mock window.matchMedia for tests
 Object.defineProperty(window, 'matchMedia', {

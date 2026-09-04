@@ -16,7 +16,8 @@
     "format": "biome format --write .",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm --filter @kuruwic/tokenized-search-input test",
-    "test:run": "pnpm --filter @kuruwic/tokenized-search-input test:run"
+    "test:run": "pnpm --filter @kuruwic/tokenized-search-input test:run",
+    "test:coverage": "pnpm --filter @kuruwic/tokenized-search-input test:coverage"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.10",

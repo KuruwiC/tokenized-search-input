@@ -5,7 +5,7 @@
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef, useEffect, useRef } from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
@@ -576,6 +576,7 @@ describe('Validation System Integration', () => {
     });
 
     it('handles rule that throws exception gracefully', async () => {
+      const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const throwingRule: ValidationRule = {
         id: 'throws',
         validate: () => {
@@ -583,17 +584,25 @@ describe('Validation System Integration', () => {
         },
       };
 
-      // Should not crash - render without crashing
-      render(
-        <TokenizedSearchInput
-          fields={testFields}
-          defaultValue="status:is:active"
-          validation={{ rules: [throwingRule] }}
-        />
-      );
+      try {
+        // Should not crash - render without crashing
+        render(
+          <TokenizedSearchInput
+            fields={testFields}
+            defaultValue="status:is:active"
+            validation={{ rules: [throwingRule] }}
+          />
+        );
 
-      // No invalid tokens since the rule threw
-      await expectTokenCounts(1, 0);
+        // No invalid tokens since the rule threw
+        await expectTokenCounts(1, 0);
+        expect(warning).toHaveBeenCalledWith(
+          'Validation rule "throws" threw an error and was skipped:',
+          expect.any(Error)
+        );
+      } finally {
+        warning.mockRestore();
+      }
     });
 
     it('clears invalid state when remaining token is no longer duplicate after delete-existing', async () => {
