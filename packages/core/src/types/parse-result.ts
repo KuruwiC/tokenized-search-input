@@ -1,7 +1,4 @@
-/**
- * ParseResult type for robust error handling in parsers.
- * Uses discriminated union pattern for type-safe result handling.
- */
+/** Discriminated result returned by parser helpers. */
 
 export type ParseOk<T> = { readonly ok: true; readonly value: T };
 export type ParseErr = { readonly ok: false; readonly error: string; readonly hint?: string };

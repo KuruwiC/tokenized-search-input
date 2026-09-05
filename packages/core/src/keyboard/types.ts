@@ -1,9 +1,4 @@
-/**
- * Keyboard handler infrastructure types.
- *
- * This module provides a declarative way to define keyboard handlers
- * using the Registry + Composable pattern (Option B + C).
- */
+/** Types and dispatcher for conditionally handling keyboard input. */
 
 /**
  * Predicate function that determines if a condition is met.

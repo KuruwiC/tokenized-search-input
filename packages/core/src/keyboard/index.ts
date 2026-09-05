@@ -1,19 +1,15 @@
 /**
- * Keyboard handler infrastructure.
- *
- * Provides a declarative way to define keyboard handlers using
- * the Registry + Composable pattern.
+ * Predicates and an ordered dispatcher for keyboard handlers.
  *
  * @example
  * ```typescript
  * import { KeySpec, runKeyHandlers, and, always } from './keyboard';
  *
  * const specs: KeySpec<MyContext>[] = [
- *   { key: 'Tab', when: always(), then: handleTab },
- *   { key: 'Backspace', when: and(atStart, noSelection), then: handleBackspace },
+ *   { key: 'Tab', when: always(), action: handleTab },
+ *   { key: 'Backspace', when: and(atStart, noSelection), action: handleBackspace },
  * ];
  *
- * // In event handler:
  * runKeyHandlers(specs, event.key, context);
  * ```
  */

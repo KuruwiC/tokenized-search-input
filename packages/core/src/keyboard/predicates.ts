@@ -1,9 +1,4 @@
-/**
- * Common predicate functions for keyboard handlers.
- *
- * These composable predicates can be combined using and(), or(), not()
- * to build complex conditions declaratively.
- */
+/** Boolean combinators for keyboard-handler predicates. */
 
 import type { Predicate } from './types';
 

@@ -147,9 +147,10 @@ const TAGS = [
 ];
 
 const BASIC_CODE = `import { TokenizedSearchInput } from '@kuruwic/tokenized-search-input';
+import type { FieldDefinition } from '@kuruwic/tokenized-search-input/utils';
 import '@kuruwic/tokenized-search-input/styles';
 
-const fields = [
+const fields: FieldDefinition[] = [
   {
     key: 'status',
     label: 'Status',
@@ -170,7 +171,7 @@ export function IssueSearch() {
   return (
     <TokenizedSearchInput
       fields={fields}
-      onSubmit={(query) => fetchIssues(query.text)}
+      onSubmit={({ text }) => console.log(text)}
       placeholder="Filter issues…"
       clearable
     />
@@ -216,11 +217,32 @@ const TAGS_CODE = `const tagField = {
 const CLASSIFIER_CODE = `const custom: CustomSuggestionConfig = {
   displayMode: 'prepend',
   suggest: ({ query }) => {
-    if (looksLikeEmail(query)) {
+    if (/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(query)) {
       return [{
         tokens: [{ key: 'email', operator: 'is', value: query }],
         label: \`email: \${query}\`,
       }];
+    }
+
+    const userIds = /^user#\\d+(?:[,\\s]+user#\\d+)*$/.test(query)
+      ? query.match(/user#\\d+/g) ?? []
+      : [];
+
+    if (userIds.length) {
+      return [
+        {
+          tokens: userIds.map(value => ({
+            key: 'assignee', operator: 'is', value,
+          })),
+          label: \`assignee: \${userIds.join(', ')}\`,
+        },
+        {
+          tokens: userIds.map(value => ({
+            key: 'requester', operator: 'is', value,
+          })),
+          label: \`requester: \${userIds.join(', ')}\`,
+        },
+      ];
     }
 
     return [{
@@ -230,24 +252,49 @@ const CLASSIFIER_CODE = `const custom: CustomSuggestionConfig = {
   },
 };`;
 
-const COUNTRY_CODE = `const custom: CustomSuggestionConfig = {
+const COUNTRY_CODE = `const toSuggestion = (country: Country) => ({
+  tokens: [{
+    key: 'country',
+    operator: 'is' as const,
+    value: country.value,
+    displayValue: country.label,
+    startContent: <span>{country.emoji}</span>,
+  }],
+  label: \`\${country.emoji} \${country.label}\`,
+});
+
+const custom: CustomSuggestionConfig = {
   displayMode: 'replace',
   debounceMs: 150,
-  suggest: ({ query }) => fetchCountries({ query, offset: 0, limit: 10 }),
-  loadMore: ({ query, offset, limit }) => fetchCountries({ query, offset, limit }),
+  suggest: async ({ query }) => {
+    const { countries, hasMore } = await fetchCountries({
+      query, offset: 0, limit: 10,
+    });
+    return { suggestions: countries.map(toSuggestion), hasMore };
+  },
+  loadMore: async ({ query, offset, limit }) => {
+    const { countries, hasMore } = await fetchCountries({ query, offset, limit });
+    return { suggestions: countries.map(toSuggestion), hasMore };
+  },
   onSelect: createToggleSelectHandler(),
 };
 
 const { resolveTokens } = useAsyncTokenResolver({
   inputRef,
   fieldKey: 'country',
-  resolve: fetchCountriesByCode,
+  resolve: async (values) =>
+    (await fetchCountries({ values, offset: 0, limit: values.length })).countries,
   getValue: (country) => country.value,
   getDisplayData: (country) => ({
     displayValue: country.label,
     startContent: <span>{country.emoji}</span>,
   }),
-});`;
+});
+
+const onChange = (snapshot: QuerySnapshot) => {
+  setSnapshot(snapshot);
+  void resolveTokens();
+};`;
 
 type CodeBlockProps = { code: string; label: string; language?: Language; collapsed?: boolean };
 
@@ -371,6 +418,43 @@ function Snapshot({ value, empty }: { value: QuerySnapshot | null; empty: string
   );
 }
 
+type DemoPreset = { label: string; value: string };
+
+function PresetButtons({
+  legend,
+  presets,
+  onSelect,
+}: {
+  legend: string;
+  presets: DemoPreset[];
+  onSelect: (value: string) => void;
+}) {
+  return (
+    <fieldset className="demo-presets">
+      <legend>{legend}</legend>
+      <div>
+        {presets.map((preset) => (
+          <button type="button" key={preset.label} onClick={() => onSelect(preset.value)}>
+            <span>{preset.label}</span>
+            <code>{preset.value}</code>
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+function setDemoValue(
+  inputRef: React.RefObject<TokenizedSearchInputRef>,
+  value: string,
+  setSnapshot: (snapshot: QuerySnapshot) => void
+) {
+  inputRef.current?.setValue(value);
+  const next = inputRef.current?.getSnapshot();
+  if (next) setSnapshot(next);
+  inputRef.current?.focus();
+}
+
 function SearchWorkbench() {
   const fields = useMemo(createSearchFields, []);
   const inputRef = useRef<TokenizedSearchInputRef>(null);
@@ -388,7 +472,7 @@ function SearchWorkbench() {
   return (
     <div className="workbench-grid">
       <div className="workbench-input">
-        <h2 id="playground-title">Build a query, one decision at a time.</h2>
+        <h2 id="playground-title">Build a filter and inspect its typed output.</h2>
         <p>Pick a field, choose its operator, then enter a value. Every token remains editable.</p>
         <div className="demo-surface focus-surface">
           <TokenizedSearchInput
@@ -420,18 +504,29 @@ function SearchWorkbench() {
 }
 
 function UnknownFieldsDemo() {
+  const inputRef = useRef<TokenizedSearchInputRef>(null);
   const [snapshot, setSnapshot] = useState<QuerySnapshot | null>(null);
   return (
     <div className="demo-stack">
       <div className="demo-surface">
         <TokenizedSearchInput
+          ref={inputRef}
           fields={createSearchFields().slice(0, 1)}
+          defaultValue="status:is:active customer_tier:is:gold"
           unknownFields={{ allow: true, operators: ['is', 'contains', 'gt', 'lt'] }}
           onChange={setSnapshot}
           placeholder="Try custom:value or age:gt:18…"
           clearable
         />
       </div>
+      <PresetButtons
+        legend="Load an example"
+        presets={[
+          { label: 'Known + custom', value: 'status:is:active customer_tier:is:gold' },
+          { label: 'Custom operator', value: 'age:gt:18' },
+        ]}
+        onSelect={(value) => setDemoValue(inputRef, value, setSnapshot)}
+      />
       <Snapshot value={snapshot} empty="Known and ad-hoc fields share the same query." />
     </div>
   );
@@ -462,6 +557,7 @@ function FreeTextDemo() {
         <TokenizedSearchInput
           key={mode}
           fields={TAG_FIELDS}
+          defaultValue="roadmap draft"
           freeTextMode={mode}
           onChange={setSnapshot}
           placeholder={
@@ -474,6 +570,13 @@ function FreeTextDemo() {
           clearable
         />
       </div>
+      <p className="mode-result">
+        {mode === 'none'
+          ? 'Unstructured words are ignored when the query is submitted.'
+          : mode === 'plain'
+            ? 'The phrase remains an editable plaintext segment.'
+            : 'Each word becomes a separately editable free-text token.'}
+      </p>
       <Snapshot
         value={snapshot}
         empty={`Mode “${mode}” is active. Type a phrase to compare the output.`}
@@ -483,6 +586,7 @@ function FreeTextDemo() {
 }
 
 function TagsDemo() {
+  const inputRef = useRef<TokenizedSearchInputRef>(null);
   const [snapshot, setSnapshot] = useState<QuerySnapshot | null>(null);
   const custom = useMemo<CustomSuggestionConfig>(
     () => ({
@@ -499,9 +603,19 @@ function TagsDemo() {
   );
   return (
     <div className="demo-stack">
+      <div className="rule-strip">
+        <span>
+          <b>UNIQUE</b> exact token
+        </span>
+        <span>
+          <b>MAX</b> 3 tokens
+        </span>
+      </div>
       <div className="demo-surface">
         <TokenizedSearchInput
+          ref={inputRef}
           fields={TAG_FIELDS}
+          defaultValue="tag:is:react tag:is:react"
           freeTextMode="none"
           suggestions={{ field: { disabled: true }, custom }}
           validation={{ rules: [Unique.rule('exact'), MaxCount.rule('*', 3)] }}
@@ -510,6 +624,15 @@ function TagsDemo() {
           clearable
         />
       </div>
+      <PresetButtons
+        legend="Compare validation states"
+        presets={[
+          { label: 'Valid', value: 'tag:is:react tag:is:typescript' },
+          { label: 'Duplicate', value: 'tag:is:react tag:is:react' },
+          { label: 'Over limit', value: 'tag:is:react tag:is:typescript tag:is:css tag:is:rust' },
+        ]}
+        onSelect={(value) => setDemoValue(inputRef, value, setSnapshot)}
+      />
       <Snapshot
         value={snapshot}
         empty="Validation prevents duplicates and limits the selection to three."
@@ -519,6 +642,7 @@ function TagsDemo() {
 }
 
 function ClassifierDemo() {
+  const inputRef = useRef<TokenizedSearchInputRef>(null);
   const [snapshot, setSnapshot] = useState<QuerySnapshot | null>(null);
   const custom = useMemo<CustomSuggestionConfig>(
     () => ({
@@ -563,8 +687,29 @@ function ClassifierDemo() {
   );
   return (
     <div className="demo-stack">
+      <dl className="classifier-map">
+        <div>
+          <dt>Email shape</dt>
+          <dd>
+            <code>email:is:dev@example.com</code>
+          </dd>
+        </div>
+        <div>
+          <dt>user# IDs</dt>
+          <dd>
+            <code>assignee:is:…</code> or <code>requester:is:…</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Anything else</dt>
+          <dd>
+            <code>title:contains:…</code>
+          </dd>
+        </div>
+      </dl>
       <div className="demo-surface">
         <TokenizedSearchInput
+          ref={inputRef}
           fields={CLASSIFIER_FIELDS}
           suggestions={{ custom }}
           onChange={setSnapshot}
@@ -572,6 +717,16 @@ function ClassifierDemo() {
           clearable
         />
       </div>
+      <PresetButtons
+        legend="Type a shape, then choose the suggested token"
+        presets={[
+          { label: 'Email', value: 'dev@example.com' },
+          { label: 'One user ID', value: 'user#123' },
+          { label: 'Multiple IDs', value: 'user#123, user#456' },
+          { label: 'Fallback title', value: 'quarterly plan' },
+        ]}
+        onSelect={(value) => setDemoValue(inputRef, value, setSnapshot)}
+      />
       <Snapshot
         value={snapshot}
         empty="The suggestion strategy can classify a value before choosing a field."
@@ -700,6 +855,7 @@ function CountryDemo() {
         <TokenizedSearchInput
           ref={inputRef}
           fields={COUNTRY_FIELDS}
+          defaultValue="country:is:jp"
           freeTextMode="none"
           suggestions={{ field: { disabled: true }, custom }}
           validation={{ rules: [Unique.rule('exact')] }}
@@ -725,7 +881,7 @@ const PATTERNS: Array<{
   {
     id: 'dynamic',
     label: 'Dynamic fields',
-    title: 'Accept filters you do not know at build time.',
+    title: 'Accept server-defined and user-defined filter keys.',
     description:
       'Keep a curated field list while allowing server-defined or user-defined keys with a controlled operator set.',
     code: UNKNOWN_FIELDS_CODE,
@@ -743,14 +899,15 @@ const PATTERNS: Array<{
     label: 'Tags + validation',
     title: 'Use the editor as a constrained tag picker.',
     description:
-      'Hide structural labels, replace field suggestions, and compose duplicate and count rules.',
+      'The duplicate starts invalid. Use the presets to compare a valid query, duplicate detection, and the three-token limit.',
     code: TAGS_CODE,
   },
   {
     id: 'classifier',
     label: 'Value classifier',
     title: 'Let typed values suggest their own field.',
-    description: 'Recognize an email or user ID and return one or more complete token suggestions.',
+    description:
+      'Email-shaped text maps to Email. user# IDs offer Assignee and Requester. Other text maps to Title.',
     code: CLASSIFIER_CODE,
   },
 ];
@@ -796,8 +953,8 @@ export default function App() {
           <div className="hero-copy">
             <h1 id="hero-title">Turn typed queries into editable, typed filters.</h1>
             <p>
-              Autocomplete, parsing, validation, async data, and clipboard behavior in one
-              composable input. Start with the query language your product already uses.
+              The editor handles autocomplete, parsing, validation, async values, and clipboard
+              conversion. Your application defines the fields and consumes text or typed segments.
             </p>
             <div className="hero-actions">
               <a className="primary-action" href="#playground">
@@ -871,7 +1028,7 @@ export default function App() {
           aria-labelledby="patterns-title"
         >
           <div className="section-intro">
-            <h2 id="patterns-title">One editor, four different product jobs.</h2>
+            <h2 id="patterns-title">Compare four configurations of the same editor.</h2>
             <p>
               Switch examples to compare configuration and interaction without scrolling through
               four isolated mini-sites.
@@ -928,7 +1085,7 @@ export default function App() {
 
         <section className="section async-section" aria-labelledby="async-title">
           <div className="async-copy">
-            <h2 id="async-title">Wire async suggestions from fetch to paste.</h2>
+            <h2 id="async-title">Combine async suggestions with paste resolution.</h2>
             <p>
               This country selector combines debounced search, pagination, toggle selection,
               pasted-value resolution, immutable tokens, and custom clipboard text.
@@ -949,7 +1106,7 @@ export default function App() {
           aria-labelledby="reference-title"
         >
           <div className="section-intro">
-            <h2 id="reference-title">Coverage, with a path to the full API.</h2>
+            <h2 id="reference-title">Configuration reference.</h2>
           </div>
           <table className="capability-table">
             <caption className="sr-only">Library capabilities</caption>

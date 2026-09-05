@@ -1,14 +1,4 @@
-/**
- * Country data module for Tags Input Demo.
- *
- * Provides ISO 3166-1 country data with:
- * - Alpha-2 codes (value)
- * - English names (label)
- * - Flag emojis
- * - Aliases (Japanese names, alternative names)
- *
- * Also provides a mock async API for fetching countries with pagination.
- */
+/** Country records and a paginated mock API for the async selector demo. */
 
 export interface Country {
   value: string;

@@ -1,9 +1,4 @@
-/**
- * Date and DateTime Navigation Parsers
- *
- * These parsers are used for keyboard navigation in date pickers.
- * They handle various date formats to allow flexible user input.
- */
+/** Parsers used when typing dates into picker navigation controls. */
 
 import { chainParsers, err, isOk, ok, type ParseResult } from '../types/parse-result';
 import type { TimeValue } from './time-picker';

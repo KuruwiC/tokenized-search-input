@@ -676,7 +676,7 @@ Apply dark mode by setting variables under a `.dark` class (or any selector):
 
 ### Tailwind CSS Integration
 
-Component styles use `:where()` for zero specificity and CSS layers, allowing Tailwind utilities to override defaults seamlessly.
+Component styles use `:where()` and CSS layers, so Tailwind utilities can override defaults without increasing selector specificity.
 
 **Tailwind v4:**
 
