@@ -5,14 +5,14 @@ import {
   DEFAULT_TOKEN_DELIMITER,
   type FieldDefinition,
   type FreeTextMode,
+  type UnknownFieldTemplate,
 } from '../../types';
 
 export interface KeyboardContext {
   editor: Editor;
   fields: FieldDefinition[];
   freeTextMode: FreeTextMode;
-  allowUnknownFields: boolean;
-  unknownFieldOperators: readonly string[] | undefined;
+  unknownFields: UnknownFieldTemplate | undefined;
   suggestionState: SuggestionState | null | undefined;
   delimiter: string;
 }
@@ -31,8 +31,7 @@ export function buildContext(
   editor: Editor,
   fields: FieldDefinition[],
   freeTextMode: FreeTextMode,
-  allowUnknownFields: boolean,
-  unknownFieldOperators: readonly string[] | undefined,
+  unknownFields: UnknownFieldTemplate | undefined,
   suggestionState: SuggestionState | null | undefined,
   delimiter: string = DEFAULT_TOKEN_DELIMITER
 ): KeyboardContext {
@@ -40,8 +39,7 @@ export function buildContext(
     editor,
     fields,
     freeTextMode,
-    allowUnknownFields,
-    unknownFieldOperators,
+    unknownFields,
     suggestionState,
     delimiter,
   };

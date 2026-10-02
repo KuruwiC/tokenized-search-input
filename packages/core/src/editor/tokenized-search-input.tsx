@@ -46,7 +46,12 @@ import { getDismissPolicy } from '../suggestions/dismiss-policy';
 import { SuggestionOverlay } from '../suggestions/suggestion-overlay';
 import { FilterTokenNode } from '../tokens/filter-token/filter-token-node';
 import { FreeTextTokenNode } from '../tokens/free-text-token/free-text-token-node';
-import { DEFAULT_TOKEN_DELIMITER, type FieldDefinition, type QuerySnapshot } from '../types';
+import {
+  DEFAULT_TOKEN_DELIMITER,
+  type FieldDefinition,
+  type QuerySnapshot,
+  type UnknownFieldTemplate,
+} from '../types';
 import { cn } from '../utils/cn';
 import { isWithinSuggestion } from '../utils/dom-focus';
 import { isDevelopment } from '../utils/env';
@@ -103,7 +108,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       // Grouped config props
       suggestions = {},
       validation: validationConfig,
-      unknownFields = {},
+      unknownFields,
       serialization = {},
       initialDelimiter,
       labels = {},
@@ -115,9 +120,34 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
     ref
   ) {
     // Extract config values with defaults
-    const allowUnknownFields = unknownFields.allow ?? false;
-    const unknownFieldOperators = unknownFields.operators;
-    const hideUnknownFieldSingleOperator = unknownFields.hideSingleOperator ?? false;
+    const hasUnknownFields = unknownFields !== undefined;
+    const unknownOperators = unknownFields?.operators;
+    const unknownHideSingleOperator = unknownFields?.hideSingleOperator;
+    const unknownAllowSpaces = unknownFields?.allowSpaces;
+    const unknownValidate = unknownFields?.validate;
+    const unknownSanitize = unknownFields?.sanitize;
+    // Rebuilt only when a member changes so an inline `unknownFields={{ ... }}`
+    // does not re-sync the editor context on every render.
+    const unknownFieldTemplate = useMemo<UnknownFieldTemplate | undefined>(
+      () =>
+        hasUnknownFields
+          ? {
+              operators: unknownOperators,
+              hideSingleOperator: unknownHideSingleOperator,
+              allowSpaces: unknownAllowSpaces,
+              validate: unknownValidate,
+              sanitize: unknownSanitize,
+            }
+          : undefined,
+      [
+        hasUnknownFields,
+        unknownOperators,
+        unknownHideSingleOperator,
+        unknownAllowSpaces,
+        unknownValidate,
+        unknownSanitize,
+      ]
+    );
     const operatorLabels = labels.operators;
     const fieldSuggestionsDisabled = suggestions.field?.disabled ?? false;
     const fieldSuggestionMatcher = suggestions.field?.matcher;
@@ -219,7 +249,6 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
         SpacerNode,
         FilterTokenNode.configure({
           fields,
-          unknownFieldOperators,
           delimiter: delimiterRef.current,
         }),
         FreeTextTokenNode.configure({ enabled: freeTextMode === 'tokenize' }),
@@ -231,9 +260,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
         EditorContextExtension.configure({
           fields,
           freeTextMode,
-          allowUnknownFields,
-          unknownFieldOperators,
-          hideUnknownFieldSingleOperator,
+          unknownFields: unknownFieldTemplate,
           operatorLabels,
           fieldSuggestionsDisabled,
           valueSuggestionsDisabled,
@@ -254,8 +281,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       content: defaultValue
         ? parseQueryToDoc(defaultValue, fields, {
             freeTextMode,
-            allowUnknownFields,
-            unknownFieldOperators,
+            unknownFields: unknownFieldTemplate,
             delimiter: delimiterRef.current,
           })
         : '',
@@ -419,9 +445,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       editor.commands.setEditorContext({
         fields,
         freeTextMode,
-        allowUnknownFields,
-        unknownFieldOperators,
-        hideUnknownFieldSingleOperator,
+        unknownFields: unknownFieldTemplate,
         operatorLabels,
         fieldSuggestionsDisabled,
         valueSuggestionsDisabled,
@@ -437,9 +461,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       editor,
       fields,
       freeTextMode,
-      allowUnknownFields,
-      unknownFieldOperators,
-      hideUnknownFieldSingleOperator,
+      unknownFieldTemplate,
       operatorLabels,
       fieldSuggestionsDisabled,
       valueSuggestionsDisabled,
@@ -513,12 +535,11 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
 
       const newDoc = parseQueryToDoc(currentQuery, fields, {
         freeTextMode,
-        allowUnknownFields,
-        unknownFieldOperators,
+        unknownFields: unknownFieldTemplate,
         delimiter: delimiterRef.current,
       });
       editor.commands.setContent(newDoc);
-    }, [editor, freeTextMode, fields, allowUnknownFields, unknownFieldOperators]);
+    }, [editor, freeTextMode, fields, unknownFieldTemplate]);
 
     // Field suggestions handling
     const { handleFieldSelect, updateSuggestions } = useFieldSuggestions(editor, fields, {
@@ -763,8 +784,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       const parseValue = (value: string) =>
         parseQueryToDoc(value, fields, {
           freeTextMode,
-          allowUnknownFields,
-          unknownFieldOperators,
+          unknownFields: unknownFieldTemplate,
           delimiter: delimiterRef.current,
         });
       const readDoc = (ed: Editor) => pendingHandleRef.current.doc ?? ed.getJSON();
@@ -811,8 +831,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       editor,
       fields,
       freeTextMode,
-      allowUnknownFields,
-      unknownFieldOperators,
+      unknownFieldTemplate,
       handleSubmit,
       // Note: delimiterRef.current is intentionally not in deps - it never changes after mount
     ]);

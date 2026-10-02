@@ -14,8 +14,11 @@ import {
   type FreeTextMode,
   type OperatorLabels,
   type ParsedToken,
+  type UnknownFieldTemplate,
   type ValidationConfig,
 } from '../types';
+
+export { type FieldResolutionSource, resolveField } from '../utils/resolve-field';
 
 /**
  * @example
@@ -40,9 +43,8 @@ export interface EditorCallbacks {
 export interface EditorContextStorage {
   fields: FieldDefinition[];
   freeTextMode: FreeTextMode;
-  allowUnknownFields: boolean;
-  unknownFieldOperators: readonly string[] | undefined;
-  hideUnknownFieldSingleOperator: boolean;
+  /** Presence allows unknown field keys; see `resolveField`. */
+  unknownFields: UnknownFieldTemplate | undefined;
   operatorLabels: OperatorLabels;
   callbacks: EditorCallbacks;
   fieldSuggestionsDisabled: boolean;
@@ -64,9 +66,7 @@ const defaultCallbacks: EditorCallbacks = {
 export interface EditorContextUpdate {
   fields?: FieldDefinition[] | undefined;
   freeTextMode?: FreeTextMode | undefined;
-  allowUnknownFields?: boolean | undefined;
-  unknownFieldOperators?: readonly string[] | undefined;
-  hideUnknownFieldSingleOperator?: boolean | undefined;
+  unknownFields?: UnknownFieldTemplate | undefined;
   operatorLabels?: OperatorLabels | undefined;
   callbacks?: Partial<EditorCallbacks>;
   fieldSuggestionsDisabled?: boolean | undefined;
@@ -102,9 +102,7 @@ declare module '@tiptap/core' {
 export interface EditorContextOptions {
   fields?: FieldDefinition[];
   freeTextMode?: FreeTextMode;
-  allowUnknownFields?: boolean;
-  unknownFieldOperators?: readonly string[];
-  hideUnknownFieldSingleOperator?: boolean;
+  unknownFields?: UnknownFieldTemplate;
   operatorLabels?: OperatorLabels;
   callbacks?: Partial<EditorCallbacks>;
   fieldSuggestionsDisabled?: boolean;
@@ -125,9 +123,7 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
     return {
       fields: [],
       freeTextMode: 'plain' as FreeTextMode,
-      allowUnknownFields: false,
-      unknownFieldOperators: undefined,
-      hideUnknownFieldSingleOperator: false,
+      unknownFields: undefined,
       operatorLabels: undefined,
       callbacks: defaultCallbacks,
       fieldSuggestionsDisabled: false,
@@ -144,9 +140,7 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
     return {
       fields: this.options.fields || [],
       freeTextMode: this.options.freeTextMode || 'plain',
-      allowUnknownFields: this.options.allowUnknownFields || false,
-      unknownFieldOperators: this.options.unknownFieldOperators,
-      hideUnknownFieldSingleOperator: this.options.hideUnknownFieldSingleOperator ?? false,
+      unknownFields: this.options.unknownFields,
       operatorLabels: this.options.operatorLabels ?? DEFAULT_OPERATOR_LABELS,
       callbacks: { ...defaultCallbacks, ...this.options.callbacks },
       fieldSuggestionsDisabled: this.options.fieldSuggestionsDisabled ?? false,
@@ -170,13 +164,7 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
           const storage = getStorage(editor);
           if ('fields' in context) storage.fields = context.fields ?? [];
           if ('freeTextMode' in context) storage.freeTextMode = context.freeTextMode ?? 'plain';
-          if ('allowUnknownFields' in context)
-            storage.allowUnknownFields = context.allowUnknownFields ?? false;
-          if ('unknownFieldOperators' in context)
-            storage.unknownFieldOperators = context.unknownFieldOperators;
-          if ('hideUnknownFieldSingleOperator' in context)
-            storage.hideUnknownFieldSingleOperator =
-              context.hideUnknownFieldSingleOperator ?? false;
+          if ('unknownFields' in context) storage.unknownFields = context.unknownFields;
           if ('operatorLabels' in context)
             storage.operatorLabels = context.operatorLabels ?? DEFAULT_OPERATOR_LABELS;
           if (context.callbacks !== undefined) {
@@ -279,8 +267,7 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
       createAutoTokenizePlugin(() => ({
         fields: this.storage.fields,
         freeTextMode: this.storage.freeTextMode,
-        allowUnknownFields: this.storage.allowUnknownFields,
-        unknownFieldOperators: this.storage.unknownFieldOperators,
+        unknownFields: this.storage.unknownFields,
         deserializeText: this.storage.deserializeText,
         delimiter: this.storage.delimiter,
       })),
@@ -299,9 +286,7 @@ export function getEditorContext(editor: {
     editor.storage.editorContext || {
       fields: [],
       freeTextMode: 'plain',
-      allowUnknownFields: false,
-      unknownFieldOperators: undefined,
-      hideUnknownFieldSingleOperator: false,
+      unknownFields: undefined,
       operatorLabels: DEFAULT_OPERATOR_LABELS,
       callbacks: defaultCallbacks,
       fieldSuggestionsDisabled: false,
@@ -322,9 +307,7 @@ export function getEditorContextFromEditor(editor: { storage: unknown }): Editor
     return {
       fields: [],
       freeTextMode: 'plain',
-      allowUnknownFields: false,
-      unknownFieldOperators: undefined,
-      hideUnknownFieldSingleOperator: false,
+      unknownFields: undefined,
       operatorLabels: DEFAULT_OPERATOR_LABELS,
       callbacks: defaultCallbacks,
       fieldSuggestionsDisabled: false,

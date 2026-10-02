@@ -7,7 +7,7 @@ import {
   setTokenFocus,
   tokenFocusKey,
 } from '../../plugins/token-focus-plugin';
-import { DEFAULT_TOKEN_DELIMITER, type DefaultOperator, type FieldDefinition } from '../../types';
+import { DEFAULT_TOKEN_DELIMITER, type FieldDefinition } from '../../types';
 import { isFilterToken } from '../../utils/node-predicates';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
 import { createFilterTokenAttrs } from './create-attrs';
@@ -15,7 +15,6 @@ import { FilterTokenView } from './filter-token-view';
 
 export interface FilterTokenOptions {
   fields: FieldDefinition[];
-  unknownFieldOperators?: readonly (DefaultOperator | (string & {}))[];
   /**
    * Delimiter character used to separate field, operator, and value in tokens.
    * @default ':'
@@ -60,7 +59,6 @@ export const FilterTokenNode = Node.create<FilterTokenOptions>({
   addOptions() {
     return {
       fields: [],
-      unknownFieldOperators: undefined,
       delimiter: DEFAULT_TOKEN_DELIMITER,
     };
   },

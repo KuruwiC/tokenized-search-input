@@ -1,13 +1,15 @@
-import type { FieldDefinition, FreeTextMode, QuerySnapshot } from '../types';
 import type {
   ClassNames,
+  FieldDefinition,
+  FreeTextMode,
   LabelsConfig,
   PickersConfig,
+  QuerySnapshot,
   SerializationConfig,
   SuggestionsConfig,
-  UnknownFieldsConfig,
+  UnknownFieldTemplate,
   ValidationConfig,
-} from '../types/config';
+} from '../types';
 
 export interface TokenizedSearchInputProps {
   /** Field definitions for tokenization */
@@ -84,8 +86,14 @@ export interface TokenizedSearchInputProps {
   suggestions?: SuggestionsConfig;
   /** Validation configuration */
   validation?: ValidationConfig;
-  /** Unknown fields configuration */
-  unknownFields?: UnknownFieldsConfig;
+  /**
+   * Allows field keys that are not defined in `fields` to be tokenized.
+   * Passing this prop is what turns the feature on; the template shapes the
+   * field resolved for every unknown key. `operators` defaults to all default
+   * operators and its first entry is the operator used for `field:value`.
+   * When omitted, unknown keys stay plain text.
+   */
+  unknownFields?: UnknownFieldTemplate;
   /** Serialization configuration (clipboard) */
   serialization?: SerializationConfig;
   /**

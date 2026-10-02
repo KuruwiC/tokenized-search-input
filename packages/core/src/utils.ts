@@ -69,6 +69,7 @@ export {
   // Config (grouped props)
   type LabelsConfig,
   type Matcher,
+  type Operator,
   type OperatorLabelConfig,
   type OperatorLabels,
   type PaginationLabels,
@@ -91,9 +92,8 @@ export {
   type SuggestionErrorContext,
   type SuggestionsConfig,
   type TokenLabelDisplay,
-  type TokenState,
   type TokenType,
-  type UnknownFieldsConfig,
+  type UnknownFieldTemplate,
   type ValidationAction,
   type ValidationConfig,
   type ValidationContext,

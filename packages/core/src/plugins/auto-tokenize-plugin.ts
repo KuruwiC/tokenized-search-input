@@ -11,7 +11,7 @@ import {
 import type { DeserializeTextFn } from '../extensions/editor-context';
 import { setTokenFocus } from '../plugins/token-focus-plugin';
 import { type ParseQueryStringResult, parseQueryStringWithInfo } from '../serializer';
-import type { FieldDefinition, FreeTextMode } from '../types';
+import type { FieldDefinition, FreeTextMode, UnknownFieldTemplate } from '../types';
 import { isFreeTextToken } from '../utils/node-predicates';
 import { FORCE_VALIDATION_CHECK } from './validation-plugin';
 
@@ -22,8 +22,7 @@ export const autoTokenizeKey = new PluginKey('autoTokenize');
 export interface AutoTokenizeContext {
   fields: FieldDefinition[];
   freeTextMode: FreeTextMode;
-  allowUnknownFields?: boolean;
-  unknownFieldOperators?: readonly string[];
+  unknownFields?: UnknownFieldTemplate;
   deserializeText?: DeserializeTextFn;
   delimiter?: string;
 }
@@ -67,21 +66,14 @@ function tokenizeAllTextNodes(
   context: AutoTokenizeContext,
   forceCursorText: boolean
 ): Transaction | null {
-  const {
-    fields,
-    freeTextMode,
-    allowUnknownFields,
-    unknownFieldOperators,
-    deserializeText,
-    delimiter,
-  } = context;
+  const { fields, freeTextMode, unknownFields, deserializeText, delimiter } = context;
   const { doc, selection, schema } = state;
   const cursorPos = selection.from;
 
   const textNodes = collectTokenizableTextNodes(doc, cursorPos, forceCursorText);
   if (textNodes.length === 0) return null;
 
-  const parseOptions = { allowUnknownFields, unknownFieldOperators, delimiter };
+  const parseOptions = { unknownFields, delimiter };
 
   const tr = state.tr;
   let didTokenize = false;

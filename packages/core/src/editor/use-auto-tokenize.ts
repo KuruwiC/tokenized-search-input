@@ -1,8 +1,9 @@
 import type { Editor } from '@tiptap/core';
 import { parseTokenText } from '../serializer';
-import { DEFAULT_TOKEN_DELIMITER, type FieldDefinition } from '../types';
+import { DEFAULT_TOKEN_DELIMITER, type FieldDefinition, type UnknownFieldTemplate } from '../types';
 import { isFilterToken } from '../utils/node-predicates';
 import { findLastWordBoundary, isInsideQuotes } from '../utils/quoted-string';
+import { resolveField } from '../utils/resolve-field';
 
 function focusEmptyFilterToken(editor: Editor, fieldKey: string, onFocused?: () => void): void {
   if (editor.isDestroyed) return;
@@ -87,8 +88,7 @@ export function tryAutoTokenize(
   editor: Editor,
   fields: FieldDefinition[],
   trigger: string,
-  allowUnknownFields: boolean = false,
-  unknownFieldOperators?: readonly string[],
+  unknownFields?: UnknownFieldTemplate,
   delimiter: string = DEFAULT_TOKEN_DELIMITER
 ): boolean {
   const textBefore = getTextBeforeCursor(editor);
@@ -99,25 +99,14 @@ export function tryAutoTokenize(
 
   // Delimiter trigger creates an empty filter token for the field
   if (trigger === delimiter) {
-    const field = fields.find((f) => f.key === word);
-    if (!field) {
-      if (allowUnknownFields) {
-        const defaultOp = unknownFieldOperators?.[0] ?? 'is';
-        insertFilterToken(editor, fields, from, to, word, defaultOp, '');
-        return true;
-      }
-      return false;
-    }
+    const field = resolveField({ fields, unknownFields }, word);
+    if (!field) return false;
 
     insertFilterToken(editor, fields, from, to, field.key, field.operators[0], '');
     return true;
   }
 
-  const parsed = parseTokenText(word, fields, {
-    allowUnknownFields,
-    unknownFieldOperators,
-    delimiter,
-  });
+  const parsed = parseTokenText(word, fields, { unknownFields, delimiter });
   if (!parsed) return false;
 
   insertFilterToken(editor, fields, from, to, parsed.key, parsed.operator, parsed.value);

@@ -115,6 +115,28 @@ describe('serializer', () => {
     });
   });
 
+  describe('parseQueryToDoc with unknownFields', () => {
+    function filterAttrs(doc: ReturnType<typeof parseQueryToDoc>) {
+      return (doc.content?.[0]?.content ?? [])
+        .filter((node) => node.type === 'filterToken')
+        .map((node) => node.attrs);
+    }
+
+    it('does not tokenize unknown fields when unknownFields is not provided', () => {
+      expect(filterAttrs(parseQueryToDoc('custom:value', testFields))).toEqual([]);
+    });
+
+    it('tokenizes unknown fields with the template operators', () => {
+      const doc = parseQueryToDoc('custom:value', testFields, {
+        unknownFields: { operators: ['contains'] },
+      });
+
+      expect(filterAttrs(doc)).toMatchObject([
+        { key: 'custom', operator: 'contains', value: 'value' },
+      ]);
+    });
+  });
+
   describe('serializeDocToQuery', () => {
     it('serializes empty document', () => {
       const doc = {
@@ -272,12 +294,52 @@ describe('serializer', () => {
       });
     });
 
-    it('returns null for unknown fields without allowUnknownFields', () => {
+    it('returns null for unknown fields when unknownFields is not provided', () => {
       expect(parseTokenText('unknown:value', testFields)).toBeNull();
     });
 
     it('returns null for text without delimiter', () => {
       expect(parseTokenText('freetext', testFields)).toBeNull();
+    });
+
+    it('parses unknown fields with the default operators when unknownFields is empty', () => {
+      const options = { unknownFields: {} };
+
+      expect(parseTokenText('custom:value', testFields, options)).toEqual({
+        key: 'custom',
+        operator: 'is',
+        value: 'value',
+      });
+      expect(parseTokenText('custom:gt:5', testFields, options)).toEqual({
+        key: 'custom',
+        operator: 'gt',
+        value: '5',
+      });
+    });
+
+    it('uses unknownFields.operators[0] for the shorthand format', () => {
+      const options = { unknownFields: { operators: ['contains', 'is'] as const } };
+
+      expect(parseTokenText('custom:value', testFields, options)).toEqual({
+        key: 'custom',
+        operator: 'contains',
+        value: 'value',
+      });
+      expect(parseTokenText('custom:is:value', testFields, options)).toEqual({
+        key: 'custom',
+        operator: 'is',
+        value: 'value',
+      });
+    });
+
+    it('keeps the delimiter inside the value when the operator is not allowed for unknown fields', () => {
+      const options = { unknownFields: { operators: ['contains'] as const } };
+
+      expect(parseTokenText('custom:gt:5', testFields, options)).toEqual({
+        key: 'custom',
+        operator: 'contains',
+        value: 'gt:5',
+      });
     });
   });
 });

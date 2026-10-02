@@ -8,7 +8,6 @@ export type {
   PickersConfig,
   SerializationConfig,
   SuggestionsConfig,
-  UnknownFieldsConfig,
 } from './config';
 // Fields
 export type {
@@ -33,6 +32,7 @@ export type {
   Matcher,
   SimpleFieldDefinition,
   TokenLabelDisplay,
+  UnknownFieldTemplate,
 } from './fields';
 export {
   ALL_OPERATORS,
@@ -41,6 +41,7 @@ export {
   type DefaultOperator,
   getOperatorDisplayLabel,
   getOperatorSelectLabel,
+  type Operator,
   type OperatorLabelConfig,
   type OperatorLabels,
 } from './operators';
@@ -73,7 +74,6 @@ export type {
   QuerySnapshotFreeTextToken,
   QuerySnapshotPlainText,
   QuerySnapshotSegment,
-  TokenState,
 } from './tokens';
 // Tokens
 export { DEFAULT_TOKEN_DELIMITER } from './tokens';

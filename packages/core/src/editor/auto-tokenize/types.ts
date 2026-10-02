@@ -10,8 +10,6 @@ export interface TextNodeInfo {
 export interface TokenizeOptions {
   forceCursorText?: boolean;
   freeTextMode?: FreeTextMode;
-  allowUnknownFields?: boolean;
-  unknownFieldOperators?: readonly string[];
 }
 
 export interface ContentItem {

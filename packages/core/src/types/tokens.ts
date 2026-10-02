@@ -8,8 +8,6 @@
  */
 export const DEFAULT_TOKEN_DELIMITER = ':';
 
-export type TokenState = 'editing' | 'confirmed';
-
 /**
  * Controls how free text (non-filter text) is handled.
  *

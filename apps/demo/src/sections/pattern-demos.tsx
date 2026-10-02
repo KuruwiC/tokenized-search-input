@@ -20,7 +20,7 @@ export function UnknownFieldsDemo() {
           ref={inputRef}
           fields={createSearchFields().slice(0, 1)}
           defaultValue="status:is:active customer_tier:is:gold"
-          unknownFields={{ allow: true, operators: ['is', 'contains', 'gt', 'lt'] }}
+          unknownFields={{ operators: ['is', 'contains', 'gt', 'lt'] }}
           onChange={setSnapshot}
           placeholder="Try custom:value or age:gt:18…"
           clearable

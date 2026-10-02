@@ -10,8 +10,12 @@
  */
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { type ComponentProps, createRef, type RefObject } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import {
+  TokenizedSearchInput,
+  type TokenizedSearchInputRef,
+} from '../../editor/tokenized-search-input';
 import { Unique } from '../../validation/presets';
 import { basicFields } from '../fixtures/fields';
 
@@ -143,46 +147,80 @@ describe('Config API', () => {
   });
 
   describe('unknownFields config', () => {
-    it('allows unknown fields when allow is true', async () => {
-      // Render with defaultValue containing unknown field
-      render(
-        <TokenizedSearchInput
-          fields={basicFields}
-          defaultValue="customField:is:value"
-          unknownFields={{ allow: true }}
-        />
-      );
+    function renderWithRef(props: Partial<ComponentProps<typeof TokenizedSearchInput>>) {
+      const ref = createRef<TokenizedSearchInputRef>();
+      render(<TokenizedSearchInput ref={ref} fields={basicFields} {...props} />);
+      return ref;
+    }
 
-      // Token should be created for unknown field
-      await waitFor(() => {
-        const tokens = document.querySelectorAll('.node-filterToken');
-        expect(tokens.length).toBe(1);
-      });
+    function filterSegments(ref: RefObject<TokenizedSearchInputRef>) {
+      return (ref.current?.getSnapshot().segments ?? []).filter((s) => s.type === 'filter');
+    }
+
+    it('does not tokenize unknown fields when unknownFields is omitted', async () => {
+      const ref = renderWithRef({ defaultValue: 'customField:is:value' });
+
+      await waitFor(() => expect(ref.current?.getValue()).toBe('customField:is:value'));
+      expect(document.querySelectorAll('.node-filterToken')).toHaveLength(0);
+      expect(filterSegments(ref)).toHaveLength(0);
     });
 
-    it('uses specified operators for unknown fields', async () => {
-      // Render with defaultValue containing unknown field using two-part format
-      render(
-        <TokenizedSearchInput
-          fields={basicFields}
-          defaultValue="custom:value"
-          unknownFields={{
-            allow: true,
-            operators: ['contains', 'not_contains'],
-          }}
-        />
-      );
+    it('tokenizes unknown fields when unknownFields is provided without options', async () => {
+      const ref = renderWithRef({ defaultValue: 'customField:value', unknownFields: {} });
 
-      // Token should be created with first operator (contains) as default
-      await waitFor(() => {
-        const tokens = document.querySelectorAll('.node-filterToken');
-        expect(tokens.length).toBe(1);
+      await waitFor(() => expect(document.querySelectorAll('.node-filterToken')).toHaveLength(1));
+      expect(filterSegments(ref)).toMatchObject([
+        { key: 'customField', operator: 'is', value: 'value' },
+      ]);
+    });
+
+    it('accepts every default operator for unknown fields when operators is omitted', async () => {
+      const ref = renderWithRef({
+        defaultValue: 'customField:starts_with:abc',
+        unknownFields: {},
       });
 
-      // Check the operator is 'contains'
+      await waitFor(() => expect(document.querySelectorAll('.node-filterToken')).toHaveLength(1));
+      expect(filterSegments(ref)).toMatchObject([
+        { key: 'customField', operator: 'starts_with', value: 'abc' },
+      ]);
+    });
+
+    it('uses unknownFields.operators[0] as the operator of unknown field tokens', async () => {
+      const ref = renderWithRef({
+        defaultValue: 'custom:value',
+        unknownFields: { operators: ['contains', 'not_contains'] },
+      });
+
+      await waitFor(() => expect(document.querySelectorAll('.node-filterToken')).toHaveLength(1));
+      expect(filterSegments(ref)).toMatchObject([
+        { key: 'custom', operator: 'contains', value: 'value' },
+      ]);
       await waitFor(() => {
         expect(screen.getByText('contains')).toBeInTheDocument();
       });
+    });
+
+    it('rejects operators outside unknownFields.operators', async () => {
+      const ref = renderWithRef({
+        defaultValue: 'custom:is:value',
+        unknownFields: { operators: ['contains'] },
+      });
+
+      await waitFor(() => expect(document.querySelectorAll('.node-filterToken')).toHaveLength(1));
+      expect(filterSegments(ref)).toMatchObject([
+        { key: 'custom', operator: 'contains', value: 'is:value' },
+      ]);
+    });
+
+    it('hides the operator of unknown fields when hideSingleOperator is set and one operator exists', async () => {
+      renderWithRef({
+        defaultValue: 'custom:value',
+        unknownFields: { operators: ['contains'], hideSingleOperator: true },
+      });
+
+      await waitFor(() => expect(document.querySelectorAll('.node-filterToken')).toHaveLength(1));
+      expect(screen.queryByText('contains')).not.toBeInTheDocument();
     });
   });
 

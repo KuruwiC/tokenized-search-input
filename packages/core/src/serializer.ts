@@ -5,36 +5,31 @@ import {
 } from './editor/auto-tokenize/free-text-strategy';
 import { createFilterTokenAttrs } from './tokens/filter-token/create-attrs';
 import {
-  ALL_OPERATORS,
   DEFAULT_TOKEN_DELIMITER,
   type FieldDefinition,
   type FilterToken,
   type FreeTextMode,
   type QuerySnapshot,
   type QuerySnapshotSegment,
+  type UnknownFieldTemplate,
 } from './types';
 import { resolveEnumValue } from './utils/enum-value';
 import { NODE_TYPE_NAMES } from './utils/node-predicates';
 import { type NodeVisitor, visitDocument } from './utils/node-visitor';
 import { escapeForQuotes, parseQuotedString, quoteIfNeeded } from './utils/quoted-string';
+import { resolveField } from './utils/resolve-field';
 import { ensureTokenId } from './utils/token-id';
 
 export interface ParseQueryOptions {
   freeTextMode?: FreeTextMode;
   /**
    * Allow tokenizing fields not defined in the fields array.
-   * When true, any text matching field:value or field:operator:value format
-   * will be tokenized. Unknown fields default to 'is' operator.
-   * @default false
+   * When provided, any text matching field:value or field:operator:value format
+   * is tokenized using this template. `operators` defaults to all default
+   * operators; its first entry is the operator for the field:value format.
+   * When omitted, unknown fields are not tokenized.
    */
-  allowUnknownFields?: boolean;
-  /**
-   * Operators allowed for unknown fields.
-   * Only used when allowUnknownFields is true.
-   * If not specified, all operators are allowed.
-   * The first operator in this list is used as the default for field:value format.
-   */
-  unknownFieldOperators?: readonly string[];
+  unknownFields?: UnknownFieldTemplate;
   /**
    * Delimiter character used to separate field, operator, and value in tokens.
    * @default ':'
@@ -50,8 +45,7 @@ export function parseQueryToDoc(
   const freeTextMode: FreeTextMode = options.freeTextMode ?? 'plain';
   const delimiter = options.delimiter ?? DEFAULT_TOKEN_DELIMITER;
   const tokens = parseQueryString(query, fields, {
-    allowUnknownFields: options.allowUnknownFields,
-    unknownFieldOperators: options.unknownFieldOperators,
+    unknownFields: options.unknownFields,
     delimiter,
   });
 
@@ -152,18 +146,12 @@ export function serializeDocToQuery(doc: JSONContent, options: SerializeDocOptio
 export interface ParseTokenTextOptions {
   /**
    * Allow tokenizing fields not defined in the fields array.
-   * When true, any text matching field:value or field:operator:value format
-   * will be tokenized. Unknown fields default to 'is' operator.
-   * @default false
+   * When provided, any text matching field:value or field:operator:value format
+   * is tokenized using this template. `operators` defaults to all default
+   * operators; its first entry is the operator for the field:value format.
+   * When omitted, unknown fields are not tokenized.
    */
-  allowUnknownFields?: boolean;
-  /**
-   * Operators allowed for unknown fields.
-   * Only used when allowUnknownFields is true.
-   * If not specified, all operators are allowed.
-   * The first operator in this list is used as the default for field:value format.
-   */
-  unknownFieldOperators?: readonly string[];
+  unknownFields?: UnknownFieldTemplate;
   /**
    * Delimiter character used to separate field, operator, and value in tokens.
    * @default ':'
@@ -184,64 +172,30 @@ export function parseTokenText(
   if (parts.length < 2) return null;
 
   const [fieldKey, ...rest] = parts;
-  const field = fields.find((f) => f.key === fieldKey);
+  const field = resolveField({ fields, unknownFields: options?.unknownFields }, fieldKey);
+  if (!field) return null;
 
-  if (field) {
-    const isEnumField = field.type === 'enum';
-
-    if (rest.length >= 2 && field.operators.includes(rest[0])) {
-      const rawValue = rest.slice(1).join(delimiter);
-      const parsedValue = parseQuotedString(rawValue);
-      const value = parsedValue.wasQuoted ? parsedValue.value : rawValue;
-      const normalizedValue =
-        isEnumField && field.enumValues
-          ? resolveEnumValue(field.enumValues, value, { resolver: field.valueResolver })
-          : value;
-      return {
-        key: fieldKey,
-        operator: rest[0],
-        value: normalizedValue,
-      };
-    }
-
-    const rawValue = rest.join(delimiter);
+  const normalizeValue = (rawValue: string): string => {
     const parsedValue = parseQuotedString(rawValue);
     const value = parsedValue.wasQuoted ? parsedValue.value : rawValue;
-    const normalizedValue =
-      isEnumField && field.enumValues
-        ? resolveEnumValue(field.enumValues, value, { resolver: field.valueResolver })
-        : value;
+    return field.type === 'enum' && field.enumValues
+      ? resolveEnumValue(field.enumValues, value, { resolver: field.valueResolver })
+      : value;
+  };
+
+  if (rest.length >= 2 && (field.operators as readonly string[]).includes(rest[0])) {
     return {
       key: fieldKey,
-      operator: field.operators[0],
-      value: normalizedValue,
+      operator: rest[0],
+      value: normalizeValue(rest.slice(1).join(delimiter)),
     };
   }
 
-  if (options?.allowUnknownFields) {
-    const allowedOps: readonly string[] = options.unknownFieldOperators ?? ALL_OPERATORS;
-    const defaultOp = allowedOps[0] ?? 'is';
-
-    if (rest.length >= 2 && allowedOps.includes(rest[0])) {
-      const rawValue = rest.slice(1).join(delimiter);
-      const parsedValue = parseQuotedString(rawValue);
-      return {
-        key: fieldKey,
-        operator: rest[0],
-        value: parsedValue.wasQuoted ? parsedValue.value : rawValue,
-      };
-    }
-
-    const rawValue = rest.join(delimiter);
-    const parsedValue = parseQuotedString(rawValue);
-    return {
-      key: fieldKey,
-      operator: defaultOp,
-      value: parsedValue.wasQuoted ? parsedValue.value : rawValue,
-    };
-  }
-
-  return null;
+  return {
+    key: fieldKey,
+    operator: field.operators[0],
+    value: normalizeValue(rest.join(delimiter)),
+  };
 }
 
 export type SerializedToken = FilterToken | ParsedFreeTextToken;
@@ -255,18 +209,12 @@ export interface ParseQueryStringResult {
 export interface ParseQueryStringOptions {
   /**
    * Allow tokenizing fields not defined in the fields array.
-   * When true, any text matching field:value or field:operator:value format
-   * will be tokenized. Unknown fields default to 'is' operator.
-   * @default false
+   * When provided, any text matching field:value or field:operator:value format
+   * is tokenized using this template. `operators` defaults to all default
+   * operators; its first entry is the operator for the field:value format.
+   * When omitted, unknown fields are not tokenized.
    */
-  allowUnknownFields?: boolean;
-  /**
-   * Operators allowed for unknown fields.
-   * Only used when allowUnknownFields is true.
-   * If not specified, all operators are allowed.
-   * The first operator in this list is used as the default for field:value format.
-   */
-  unknownFieldOperators?: readonly string[];
+  unknownFields?: UnknownFieldTemplate;
   /**
    * Delimiter character used to separate field, operator, and value in tokens.
    * @default ':'
@@ -365,8 +313,7 @@ export function parseQueryStringWithInfo(
       }
 
       const parsed = parseTokenText(tokenText, fields, {
-        allowUnknownFields: options?.allowUnknownFields,
-        unknownFieldOperators: options?.unknownFieldOperators,
+        unknownFields: options?.unknownFields,
         delimiter: options?.delimiter,
       });
 
@@ -400,7 +347,7 @@ export interface CreateQuerySnapshotOptions {
 
 /**
  * Creates a QuerySnapshot from a TipTap document JSON.
- * This is the recommended way to get a stable, versioned representation of the query.
+ * This is the recommended way to get a stable representation of the query.
  *
  * Token IDs are read from node attributes (persistent UUIDs).
  * If a node is missing an ID (e.g., legacy data), a new UUID is generated.

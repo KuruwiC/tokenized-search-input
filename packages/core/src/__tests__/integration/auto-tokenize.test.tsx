@@ -66,7 +66,7 @@ describe('Auto-tokenize - Integration Tests', () => {
       });
     });
 
-    it('returns false for unknown field without allowUnknownFields', async () => {
+    it('returns false for unknown field when unknownFields is not provided', async () => {
       const ref = createRef<TokenizedSearchInputRef>();
       const user = userEvent.setup();
 
@@ -92,13 +92,11 @@ describe('Auto-tokenize - Integration Tests', () => {
       expect(result).toBe(false);
     });
 
-    it('creates filter token for unknown field with allowUnknownFields', async () => {
+    it('creates filter token for unknown field when unknownFields is provided', async () => {
       const ref = createRef<TokenizedSearchInputRef>();
       const user = userEvent.setup();
 
-      render(
-        <TokenizedSearchInput ref={ref} fields={testFields} unknownFields={{ allow: true }} />
-      );
+      render(<TokenizedSearchInput ref={ref} fields={testFields} unknownFields={{}} />);
 
       await waitFor(() => {
         expect(ref.current).not.toBeNull();
@@ -114,7 +112,7 @@ describe('Auto-tokenize - Integration Tests', () => {
       // Insert unknown field name
       editor.commands.insertContent('customfield');
 
-      const result = tryAutoTokenize(editor, testFields, ':', true);
+      const result = tryAutoTokenize(editor, testFields, ':', {});
 
       // Should create token for unknown field
       expect(result).toBe(true);

@@ -5,13 +5,11 @@ import type {
   CustomSuggestionConfig,
   DatePickerRenderProps,
   DateTimePickerRenderProps,
-  DefaultOperator,
   Matcher,
   OperatorLabels,
   PaginationLabels,
 } from './index';
 import type { FilterTokenAttrs } from './tokens';
-import type { ValidationConfig } from './validation';
 
 /**
  * Configuration for field name suggestions.
@@ -41,21 +39,6 @@ export interface SuggestionsConfig {
   value?: ValueSuggestionsConfig;
   /** Custom suggestion configuration */
   custom?: CustomSuggestionConfig;
-}
-
-// Re-export ValidationConfig from validation.ts
-export type { ValidationConfig };
-
-/**
- * Configuration for unknown field handling.
- */
-export interface UnknownFieldsConfig {
-  /** Allow tokenizing undefined fields. @default false */
-  allow?: boolean;
-  /** Operators for unknown fields */
-  operators?: readonly (DefaultOperator | (string & {}))[];
-  /** Hide operator when single. @default false */
-  hideSingleOperator?: boolean;
 }
 
 /**

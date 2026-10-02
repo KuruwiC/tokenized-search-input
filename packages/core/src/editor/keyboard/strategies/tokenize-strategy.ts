@@ -46,11 +46,9 @@ export function handleDelimiter(ctx: KeyboardContext): boolean {
     return false;
   }
 
-  const { editor, fields, allowUnknownFields, unknownFieldOperators, delimiter } = ctx;
+  const { editor, fields, unknownFields, delimiter } = ctx;
 
-  if (
-    tryAutoTokenize(editor, fields, delimiter, allowUnknownFields, unknownFieldOperators, delimiter)
-  ) {
+  if (tryAutoTokenize(editor, fields, delimiter, unknownFields, delimiter)) {
     closeSuggestionIfOpen(ctx);
     return true;
   }
@@ -68,11 +66,10 @@ export function handleSpace(ctx: KeyboardContext): boolean {
     return false;
   }
 
-  const { editor, fields, freeTextMode, allowUnknownFields, unknownFieldOperators, delimiter } =
-    ctx;
+  const { editor, fields, freeTextMode, unknownFields, delimiter } = ctx;
 
   // Try filter token first
-  if (tryAutoTokenize(editor, fields, ' ', allowUnknownFields, unknownFieldOperators, delimiter)) {
+  if (tryAutoTokenize(editor, fields, ' ', unknownFields, delimiter)) {
     closeSuggestionIfOpen(ctx);
     return true;
   }
@@ -102,12 +99,9 @@ export function handleTab(ctx: KeyboardContext): boolean {
     return false;
   }
 
-  const { editor, fields, freeTextMode, allowUnknownFields, unknownFieldOperators, delimiter } =
-    ctx;
+  const { editor, fields, freeTextMode, unknownFields, delimiter } = ctx;
 
-  if (
-    tryAutoTokenize(editor, fields, 'Tab', allowUnknownFields, unknownFieldOperators, delimiter)
-  ) {
+  if (tryAutoTokenize(editor, fields, 'Tab', unknownFields, delimiter)) {
     return true;
   }
 
@@ -160,12 +154,10 @@ export function handleEnterTokenize(ctx: KeyboardContext): boolean {
     return false;
   }
 
-  const { editor, fields, allowUnknownFields, unknownFieldOperators, delimiter } = ctx;
+  const { editor, fields, unknownFields, delimiter } = ctx;
 
   // Try to create filter token
-  if (
-    tryAutoTokenize(editor, fields, 'Enter', allowUnknownFields, unknownFieldOperators, delimiter)
-  ) {
+  if (tryAutoTokenize(editor, fields, 'Enter', unknownFields, delimiter)) {
     return true;
   }
 

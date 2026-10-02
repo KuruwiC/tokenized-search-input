@@ -41,8 +41,7 @@ export const KeyboardShortcutsExtension = Extension.create({
         this.editor,
         ctx.fields,
         ctx.freeTextMode,
-        ctx.allowUnknownFields,
-        ctx.unknownFieldOperators,
+        ctx.unknownFields,
         suggestionState,
         ctx.delimiter
       );
@@ -95,8 +94,7 @@ export const KeyboardShortcutsExtension = Extension.create({
               editor,
               ctx.fields,
               ctx.freeTextMode,
-              ctx.allowUnknownFields,
-              ctx.unknownFieldOperators,
+              ctx.unknownFields,
               suggestionState,
               delimiter
             );

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { DefaultOperator, OperatorLabels } from './operators';
+import type { Operator, OperatorLabels } from './operators';
 import type { FieldRuleOverride } from './validation';
 
 /**
@@ -50,7 +50,7 @@ interface BaseFieldDefinition {
    * Use DefaultOperator for built-in operators with autocompletion.
    * Custom operators (string) are also supported.
    */
-  operators: AtLeastOne<DefaultOperator | (string & {})>;
+  operators: AtLeastOne<Operator>;
   allowSpaces?: boolean;
   validate?: (value: string) => boolean | string;
   sanitize?: (value: string) => string;
@@ -280,6 +280,19 @@ export interface DateTimeFieldDefinition extends BaseFieldDefinition {
 export interface SimpleFieldDefinition extends BaseFieldDefinition {
   type: 'string';
 }
+
+/**
+ * Template applied to every field key that is not defined in `fields`.
+ * Passing the template to `unknownFields` is what allows unknown keys to be
+ * tokenized; the library resolves each unknown key to a `SimpleFieldDefinition`
+ * built from this template.
+ */
+export type UnknownFieldTemplate = Partial<
+  Pick<
+    BaseFieldDefinition,
+    'operators' | 'hideSingleOperator' | 'allowSpaces' | 'validate' | 'sanitize'
+  >
+>;
 
 export type FieldDefinition =
   | EnumFieldDefinition

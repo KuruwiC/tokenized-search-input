@@ -33,7 +33,6 @@ export function IssueSearch() {
 export const UNKNOWN_FIELDS_CODE = `<TokenizedSearchInput
   fields={fields}
   unknownFields={{
-    allow: true,
     operators: ['is', 'contains', 'gt', 'lt'],
   }}
 />

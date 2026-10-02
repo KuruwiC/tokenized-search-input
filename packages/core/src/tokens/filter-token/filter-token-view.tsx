@@ -1,6 +1,6 @@
 import type { NodeViewProps } from '@tiptap/react';
 import { useMemo, useRef } from 'react';
-import { getEditorContextFromEditor } from '../../extensions/editor-context';
+import { getEditorContextFromEditor, resolveField } from '../../extensions/editor-context';
 import { useEditorContextUpdate } from '../../hooks/use-editor-context-update';
 import {
   getDateDisplayValue,
@@ -49,13 +49,11 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
     editorContext.fields.length > 0
       ? editorContext.fields
       : (extension.options.fields as FieldDefinition[]);
-  const unknownFieldOperators =
-    editorContext.unknownFieldOperators ??
-    (extension.options.unknownFieldOperators as string[] | undefined);
   const globalOperatorLabels = editorContext.operatorLabels;
   const valueSuggestionsDisabled = editorContext.valueSuggestionsDisabled;
   const classNames = editorContext.classNames;
-  const fieldDef = fields.find((f) => f.key === key);
+  const fieldSource = { fields, unknownFields: editorContext.unknownFields };
+  const fieldDef = resolveField(fieldSource, key) ?? undefined;
   const isEnumField = fieldDef?.type === 'enum';
   const isDateField = fieldDef?.type === 'date';
   const isDateTimeField = fieldDef?.type === 'datetime';
@@ -63,7 +61,9 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
     ? { ...globalOperatorLabels, ...fieldDef.operatorLabels }
     : globalOperatorLabels;
   const operatorSelectLabel = (op: string) => getOperatorSelectLabel(operatorLabels, op);
-  const operators = fieldDef?.operators || unknownFieldOperators || ['is'];
+  // A token whose field was removed from `fields` has no definition left; its own
+  // operator is the only one it can still offer.
+  const operators: readonly string[] = fieldDef?.operators ?? [operator];
   const rawValue = value || '';
 
   // Compute invalid state: combine stored value (from global ValidationRules) with field-level validate
@@ -77,18 +77,10 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
   // Display control options
   const tokenLabelDisplay = fieldDef?.tokenLabelDisplay ?? 'auto';
   const showLabel = tokenLabelDisplay !== 'hidden';
-  const isUnknownField = !fieldDef;
   const hasMultipleOperators = operators.length > 1;
   // Operator visibility: multiple operators always show (user needs to switch between them)
   // hideSingleOperator only applies when exactly one operator exists
-  const showOperator =
-    operators.length === 0
-      ? false
-      : hasMultipleOperators
-        ? true
-        : isUnknownField
-          ? !editorContext.hideUnknownFieldSingleOperator
-          : !fieldDef.hideSingleOperator;
+  const showOperator = hasMultipleOperators || !fieldDef?.hideSingleOperator;
   const isImmutable = node.attrs.immutable ?? false;
 
   const rangeSelected = isRangeSelected(decorations);
@@ -184,10 +176,9 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
           field={fieldDef}
           fallback={key}
           selectableFields={fields}
-          allowUnknownFields={editorContext.allowUnknownFields}
+          allowUnknownFields={editorContext.unknownFields !== undefined}
           onFieldChange={(newKey) => {
-            const newField = fields.find((f) => f.key === newKey);
-            const newOperator = newField?.operators[0] || unknownFieldOperators?.[0] || 'is';
+            const newOperator = resolveField(fieldSource, newKey)?.operators[0] ?? operator;
 
             const current = getCurrentAttrs();
             const next = tokenAttrReducer(current, {
