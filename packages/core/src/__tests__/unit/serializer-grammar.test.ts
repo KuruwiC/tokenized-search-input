@@ -53,3 +53,36 @@ describe('quoting on serialize', () => {
     expect(serializeDocToQuery(docOf(freeTextNode('plain')))).toBe('plain');
   });
 });
+
+describe('escapes inside quotes', () => {
+  const written = 'k:is:"a\\nb"';
+
+  it('keeps a backslash and an n as the two characters they are', () => {
+    const [node] = tokenNodes(parseQueryToDoc(written, fields));
+
+    expect(node?.attrs?.value).toBe('a\\nb');
+    expect(String(node?.attrs?.value)).toHaveLength(4);
+  });
+
+  it('keeps a backslash and a t as the two characters they are', () => {
+    const [node] = tokenNodes(parseQueryToDoc('k:is:"a\\tb"', fields));
+
+    expect(node?.attrs?.value).toBe('a\\tb');
+  });
+
+  it('writes the value back with its backslash escaped and reads it again as the same value', () => {
+    const doc = parseQueryToDoc(written, fields);
+    const serialized = serializeDocToQuery(doc);
+
+    expect(serialized).toBe('k:is:"a\\\\nb"');
+    expect(tokenNodes(parseQueryToDoc(serialized, fields))[0]?.attrs?.value).toBe('a\\nb');
+  });
+
+  it('reads a quoted value with a newline as it is and writes it back quoted', () => {
+    const query = 'k:is:"a\nb"';
+    const doc = parseQueryToDoc(query, fields);
+
+    expect(tokenNodes(doc)[0]?.attrs?.value).toBe('a\nb');
+    expect(serializeDocToQuery(doc)).toBe(query);
+  });
+});

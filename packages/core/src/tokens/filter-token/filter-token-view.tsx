@@ -11,10 +11,10 @@ import {
   navigateSuggestion,
 } from '../../plugins/suggestion-plugin';
 import { getDecorationValidation } from '../../plugins/token-meta-plugin';
+import { isInsideQuotes } from '../../serializer/quote-state';
 import { type EnumValue, type FieldDefinition, getOperatorSelectLabel } from '../../types';
 import { isRangeSelected } from '../../utils/decoration-helpers';
 import { getEnumValue } from '../../utils/enum-value';
-import { isInsideQuotes } from '../../utils/quoted-string';
 import { Token, TokenIconSlot, useTokenConfig, useTokenFocusContext } from '../composition';
 import { resolveDisplayValue } from './resolve-display-value';
 import { applyTokenAction, type FilterTokenAction } from './token-actions';

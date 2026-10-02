@@ -6,10 +6,10 @@ import {
   getSuggestionState,
   openFieldSuggestion,
 } from '../plugins/suggestion-plugin';
+import { isInsideQuotes } from '../serializer/quote-state';
 import { canShowFieldSuggestion, getCurrentSuggestionType } from '../suggestions/suggestion-guards';
 import type { FieldDefinition, Matcher } from '../types';
 import { filterItems } from '../utils/filter-items';
-import { isInsideQuotes } from '../utils/quoted-string';
 import { focusEmptyFilterToken, getQueryFromText, getTextBeforeCursor } from './use-auto-tokenize';
 
 export interface UseFieldSuggestionsOptions {

@@ -12,6 +12,7 @@ import {
   setCustomLoadingMore,
 } from '../plugins/suggestion-plugin';
 import { getFocusedToken } from '../plugins/token-focus-plugin';
+import { isInsideQuotes } from '../serializer/quote-state';
 import { canShowCustomSuggestion, isSuggestionDismissed } from '../suggestions/suggestion-guards';
 import type {
   CustomSuggestion,
@@ -25,7 +26,6 @@ import type {
   SuggestionErrorContext,
 } from '../types';
 import { isFilterToken } from '../utils/node-predicates';
-import { isInsideQuotes } from '../utils/quoted-string';
 import { getPlainTextSegment } from './use-auto-tokenize';
 
 function toDisplayContent(token: SuggestedFilterToken): TokenDisplayContent | undefined {

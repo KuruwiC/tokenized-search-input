@@ -6,6 +6,7 @@ import {
 } from './plugins/auto-tokenize/free-text-strategy';
 import { getTokenMeta } from './plugins/token-meta-plugin';
 import { filterSegment, freeTextSegment } from './serializer/segments';
+import { splitAtDelimiter, tokenizeQuery } from './serializer/tokenize';
 import { createFilterTokenAttrs } from './tokens/filter-token/create-attrs';
 import {
   DEFAULT_TOKEN_DELIMITER,
@@ -19,7 +20,7 @@ import {
 import { resolveStoredValue } from './utils/enum-value';
 import { NODE_TYPE_NAMES } from './utils/node-predicates';
 import { type NodeVisitor, visitDocument } from './utils/node-visitor';
-import { parseQuotedString } from './utils/quoted-string';
+import { unquote } from './utils/quoted-string';
 import { resolveField } from './utils/resolve-field';
 import { ensureTokenId } from './utils/token-id';
 
@@ -145,31 +146,26 @@ export function parseTokenText(
   if (text.startsWith('"') && text.endsWith('"')) return null;
 
   const delimiter = options?.delimiter ?? DEFAULT_TOKEN_DELIMITER;
-  const parts = text.split(delimiter);
-  if (parts.length < 2) return null;
+  const { key, rest } = splitAtDelimiter(text, delimiter);
+  if (key === null) return null;
 
-  const [fieldKey, ...rest] = parts;
-  const field = resolveField({ fields, unknownFields: options?.unknownFields }, fieldKey);
+  const field = resolveField({ fields, unknownFields: options?.unknownFields }, key);
   if (!field) return null;
 
-  const normalizeValue = (rawValue: string): string => {
-    const parsedValue = parseQuotedString(rawValue);
-    const value = parsedValue.wasQuoted ? parsedValue.value : rawValue;
-    return resolveStoredValue(field, value);
-  };
-
-  if (rest.length >= 2 && (field.operators as readonly string[]).includes(rest[0])) {
+  const separator = rest.indexOf(delimiter);
+  const operator = separator < 0 ? undefined : rest.slice(0, separator);
+  if (operator !== undefined && (field.operators as readonly string[]).includes(operator)) {
     return {
-      key: fieldKey,
-      operator: rest[0],
-      value: normalizeValue(rest.slice(1).join(delimiter)),
+      key,
+      operator,
+      value: resolveStoredValue(field, unquote(rest.slice(separator + 1)).value),
     };
   }
 
   return {
-    key: fieldKey,
+    key,
     operator: field.operators[0],
-    value: normalizeValue(rest.join(delimiter)),
+    value: resolveStoredValue(field, unquote(rest).value),
   };
 }
 
@@ -205,101 +201,38 @@ export function parseQueryStringWithInfo(
   options?: ParseQueryStringOptions
 ): ParseQueryStringResult {
   const tokens: Array<SerializedToken> = [];
-  let i = 0;
   let hasIncompleteQuote = false;
   let incompleteQuoteValue: string | undefined;
+  const delimiter = options?.delimiter ?? DEFAULT_TOKEN_DELIMITER;
 
-  while (i < query.length) {
-    while (i < query.length && query[i] === ' ') {
-      i++;
-    }
-    if (i >= query.length) break;
-
-    if (query[i] === '"') {
-      const startPos = i;
-      i++;
-      let value = '';
-      let escaped = false;
-      let foundClosingQuote = false;
-
-      while (i < query.length) {
-        const char = query[i];
-        if (escaped) {
-          if (char === '"' || char === '\\') {
-            value += char;
-          } else {
-            value += `\\${char}`;
-          }
-          escaped = false;
-        } else if (char === '\\') {
-          escaped = true;
-        } else if (char === '"') {
-          i++;
-          foundClosingQuote = true;
-          break;
-        } else {
-          value += char;
-        }
-        i++;
-      }
-
-      if (!foundClosingQuote) {
+  for (const segment of tokenizeQuery(query, delimiter)) {
+    if (segment.type === 'quoted') {
+      if (!segment.closed) {
         hasIncompleteQuote = true;
-        incompleteQuoteValue = value;
+        incompleteQuoteValue = segment.value;
       }
-
-      const rawText = query.slice(startPos, i);
-
       tokens.push({
         type: 'freeText',
-        value,
+        value: segment.value,
         quoted: true,
-        rawText,
+        rawText: segment.raw,
+      });
+      continue;
+    }
+
+    const parsed = parseTokenText(segment.raw, fields, {
+      unknownFields: options?.unknownFields,
+      delimiter: options?.delimiter,
+    });
+    if (parsed?.value) {
+      tokens.push({
+        type: 'filter',
+        key: parsed.key,
+        operator: parsed.operator,
+        value: parsed.value,
       });
     } else {
-      let tokenText = '';
-
-      while (i < query.length && query[i] !== ' ') {
-        const char = query[i];
-        tokenText += char;
-        i++;
-
-        if (char === '"') {
-          let escaped = false;
-          while (i < query.length) {
-            const innerChar = query[i];
-            tokenText += innerChar;
-            i++;
-            if (escaped) {
-              escaped = false;
-            } else if (innerChar === '\\') {
-              escaped = true;
-            } else if (innerChar === '"') {
-              break;
-            }
-          }
-        }
-      }
-
-      const parsed = parseTokenText(tokenText, fields, {
-        unknownFields: options?.unknownFields,
-        delimiter: options?.delimiter,
-      });
-
-      if (parsed?.value) {
-        tokens.push({
-          type: 'filter',
-          key: parsed.key,
-          operator: parsed.operator,
-          value: parsed.value,
-        });
-      } else {
-        tokens.push({
-          type: 'freeText',
-          value: tokenText,
-          quoted: false,
-        });
-      }
+      tokens.push({ type: 'freeText', value: segment.raw, quoted: false });
     }
   }
 

@@ -2,8 +2,8 @@ import type { Editor } from '@tiptap/core';
 import { getEditorContext, getFocusContext } from '../extensions/editor-context';
 import { autoTokenizeKey } from '../plugins/auto-tokenize/plugin';
 import { tokenizeRange } from '../plugins/auto-tokenize/tokenize-range';
+import { findLastWordBoundary, isInsideQuotes } from '../serializer/quote-state';
 import { isFilterToken } from '../utils/node-predicates';
-import { findLastWordBoundary, isInsideQuotes } from '../utils/quoted-string';
 import { resolveField } from '../utils/resolve-field';
 
 function focusEmptyFilterToken(editor: Editor, fieldKey: string, onFocused?: () => void): void {
