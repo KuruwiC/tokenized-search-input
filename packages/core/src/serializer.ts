@@ -5,6 +5,7 @@ import {
   type ParsedFreeTextToken,
 } from './plugins/auto-tokenize/free-text-strategy';
 import { getTokenMeta } from './plugins/token-meta-plugin';
+import { resolveTokenValue } from './serializer/resolve-token-value';
 import { filterSegment, freeTextSegment } from './serializer/segments';
 import { splitAtDelimiter, tokenizeQuery } from './serializer/tokenize';
 import { createFilterTokenAttrs } from './tokens/filter-token/create-attrs';
@@ -17,14 +18,13 @@ import {
   type QuerySnapshotSegment,
   type UnknownFieldTemplate,
 } from './types';
-import { resolveStoredValue } from './utils/enum-value';
 import { NODE_TYPE_NAMES } from './utils/node-predicates';
 import { type NodeVisitor, visitDocument } from './utils/node-visitor';
-import { unquote } from './utils/quoted-string';
 import { resolveField } from './utils/resolve-field';
 import { ensureTokenId } from './utils/token-id';
 
-export interface ParseQueryOptions {
+export interface ParseOptions {
+  /** What happens to free text; only `parseQueryToDoc` reads it. */
   freeTextMode?: FreeTextMode;
   /** Tokenizes keys not defined in `fields` using this template; when omitted they stay text. */
   unknownFields?: UnknownFieldTemplate;
@@ -38,7 +38,7 @@ export interface ParseQueryOptions {
 export function parseQueryToDoc(
   query: string,
   fields: FieldDefinition[],
-  options: ParseQueryOptions = {}
+  options: ParseOptions = {}
 ): JSONContent {
   const freeTextMode: FreeTextMode = options.freeTextMode ?? 'plain';
   const delimiter = options.delimiter ?? DEFAULT_TOKEN_DELIMITER;
@@ -127,20 +127,10 @@ export function serializeDocToQuery(doc: JSONContent, options: SerializeDocOptio
   return context.parts.join(' ').trim();
 }
 
-export interface ParseTokenTextOptions {
-  /** Tokenizes keys not defined in `fields` using this template; when omitted they stay text. */
-  unknownFields?: UnknownFieldTemplate;
-  /**
-   * Delimiter character used to separate field, operator, and value in tokens.
-   * @default ':'
-   */
-  delimiter?: string;
-}
-
 export function parseTokenText(
   text: string,
   fields: FieldDefinition[],
-  options?: ParseTokenTextOptions
+  options?: ParseOptions
 ): { key: string; operator: string; value: string } | null {
   if (!text) return null;
   if (text.startsWith('"') && text.endsWith('"')) return null;
@@ -158,14 +148,14 @@ export function parseTokenText(
     return {
       key,
       operator,
-      value: resolveStoredValue(field, unquote(rest.slice(separator + 1)).value),
+      value: resolveTokenValue(field, rest.slice(separator + 1)),
     };
   }
 
   return {
     key,
     operator: field.operators[0],
-    value: resolveStoredValue(field, unquote(rest).value),
+    value: resolveTokenValue(field, rest),
   };
 }
 
@@ -177,20 +167,10 @@ export interface ParseQueryStringResult {
   incompleteQuoteValue?: string;
 }
 
-export interface ParseQueryStringOptions {
-  /** Tokenizes keys not defined in `fields` using this template; when omitted they stay text. */
-  unknownFields?: UnknownFieldTemplate;
-  /**
-   * Delimiter character used to separate field, operator, and value in tokens.
-   * @default ':'
-   */
-  delimiter?: string;
-}
-
 export function parseQueryString(
   query: string,
   fields: FieldDefinition[],
-  options?: ParseQueryStringOptions
+  options?: ParseOptions
 ): Array<SerializedToken> {
   return parseQueryStringWithInfo(query, fields, options).tokens;
 }
@@ -198,7 +178,7 @@ export function parseQueryString(
 export function parseQueryStringWithInfo(
   query: string,
   fields: FieldDefinition[],
-  options?: ParseQueryStringOptions
+  options?: ParseOptions
 ): ParseQueryStringResult {
   const tokens: Array<SerializedToken> = [];
   let hasIncompleteQuote = false;

@@ -93,7 +93,7 @@ export {
 export {
   type CreateQuerySnapshotOptions,
   createQuerySnapshot,
-  type ParseQueryOptions,
+  type ParseOptions,
   parseQueryToDoc,
   type SerializeDocOptions,
   type SerializedToken,

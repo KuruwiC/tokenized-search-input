@@ -1,6 +1,6 @@
 import type { JSONContent } from '@tiptap/core';
 import { describe, expect, it } from 'vitest';
-import { type ParseQueryOptions, parseQueryToDoc, serializeDocToQuery } from '../../serializer';
+import { type ParseOptions, parseQueryToDoc, serializeDocToQuery } from '../../serializer';
 import {
   cases,
   fields,
@@ -8,10 +8,7 @@ import {
   type SerializedToken,
 } from '../fixtures/serialized-0.1.1';
 
-function parseOptions({
-  unknownFieldOperators,
-  ...options
-}: SerializedCaseOptions): ParseQueryOptions {
+function parseOptions({ unknownFieldOperators, ...options }: SerializedCaseOptions): ParseOptions {
   return unknownFieldOperators
     ? { ...options, unknownFields: { operators: unknownFieldOperators } }
     : options;
