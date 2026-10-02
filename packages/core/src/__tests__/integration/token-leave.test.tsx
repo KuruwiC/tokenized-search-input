@@ -145,6 +145,28 @@ describe('Leaving a token', () => {
 
       expect(getFocusedToken(editor.state)).toBeNull();
     });
+
+    it('leaves the focused token, committing it, when the editor becomes disabled', async () => {
+      const { ref, rerender } = renderInput({ defaultValue: 'created:gt:2024-1-6' });
+      const editor = await editorOf(ref);
+      const [created] = filterTokens(ref);
+      act(() => {
+        editor.commands.focusFilterToken(created.id, 'end');
+      });
+      expect(getFocusedToken(editor.state)?.id).toBe(created.id);
+
+      rerender(
+        <TokenizedSearchInput
+          ref={ref}
+          fields={[statusField, dateField]}
+          defaultValue="created:gt:2024-1-6"
+          disabled
+        />
+      );
+
+      await waitFor(() => expect(getFocusedToken(editor.state)).toBeNull());
+      expect(ref.current?.getValue()).toBe('created:gt:2024-01-06');
+    });
   });
 
   describe('when focus moves to another token without a press', () => {

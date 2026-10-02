@@ -10,6 +10,7 @@ import {
   type EditorConfig,
   EditorContextExtension,
   getEditorContext,
+  getFocusContext,
 } from '../../extensions/editor-context';
 import { KeyboardShortcutsExtension } from '../../extensions/keyboard-shortcuts';
 import { SingleParagraphDocument } from '../../extensions/single-paragraph-document';
@@ -20,7 +21,11 @@ import { useIsomorphicLayoutEffect } from '../../hooks/use-isomorphic-layout-eff
 import { DocumentRepairExtension } from '../../plugins/document-repair';
 import { SelectionInvariantExtension } from '../../plugins/selection-invariant-plugin';
 import { markContentEntered } from '../../plugins/shared/meta';
-import { getFocusedToken, getTokenFocusMeta } from '../../plugins/token-focus-plugin';
+import {
+  getFocusedToken,
+  getTokenFocusMeta,
+  leaveFocusedTokenIn,
+} from '../../plugins/token-focus-plugin';
 import { TokenGapExtension } from '../../plugins/token-gap-decorations';
 import { ValidationExtension } from '../../plugins/validation-plugin';
 import { createQuerySnapshot, parseQueryToDoc } from '../../serializer';
@@ -172,11 +177,14 @@ export function useEditorSetup({
     setIsEmpty(isEditorEmpty(editor));
   }, [editor]);
 
-  // aria-disabled follows from editorProps; this only toggles editability, which
-  // leaves the document as it is.
+  // aria-disabled follows from editorProps; this toggles editability, which leaves the
+  // document as it is. A disabled editor edits no token, so the one focused is left.
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
     editor.setEditable(!disabled, false);
+    if (!disabled) return;
+    const tr = editor.state.tr;
+    if (leaveFocusedTokenIn(tr, getFocusContext(editor))) editor.view.dispatch(tr);
   }, [editor, disabled]);
 
   return { editor, isEmpty };
