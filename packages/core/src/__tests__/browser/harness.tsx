@@ -17,6 +17,10 @@ export const fields: FieldDefinition[] = [
   { key: 'status', label: 'Status', type: 'string', operators: ['is'] },
   { key: 'owner', label: 'Owner', type: 'string', operators: ['is'] },
   { key: 'lock', label: 'Lock', type: 'string', operators: ['is'], immutable: true },
+  // Short labels keep three tokens on one row of a phone-width editor.
+  { key: 'p', label: 'P', type: 'string', operators: ['is'] },
+  { key: 'q', label: 'Q', type: 'string', operators: ['is'] },
+  { key: 'r', label: 'R', type: 'string', operators: ['is'] },
 ];
 
 export interface MountedEditor {
@@ -85,8 +89,13 @@ export function afterLastToken(m: MountedEditor): Point {
   const tokens = tokenElements(m);
   const last = tokens[tokens.length - 1]?.getBoundingClientRect();
   if (!last) throw new Error('no tokens');
-  const box = m.pm.getBoundingClientRect();
-  return relativeToEditor(m, Math.min(last.right + 40, box.right - 4), last.top + last.height / 2);
+  const paragraph =
+    m.pm.querySelector('p')?.getBoundingClientRect() ?? m.pm.getBoundingClientRect();
+  return relativeToEditor(
+    m,
+    Math.min(last.right + 40, paragraph.right - 4),
+    last.top + last.height / 2
+  );
 }
 
 /** A point just left of the first token. */
