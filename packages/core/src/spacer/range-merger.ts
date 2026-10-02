@@ -2,7 +2,7 @@
  * Range Merger
  *
  * Handles merging of overlapping deletion ranges.
- * Extracted from validation/run.ts for reuse.
+ * Used by validation/run.ts.
  */
 import type { MergeableRange } from './types';
 

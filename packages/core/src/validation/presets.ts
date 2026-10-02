@@ -7,7 +7,6 @@ import type {
 } from '../types';
 import { getEnumValue } from '../utils/enum-value';
 
-/** Which tokens a strategy deletes and which it only marks as invalid. */
 interface Outcome {
   delete: ValidationToken[];
   mark: ValidationToken[];

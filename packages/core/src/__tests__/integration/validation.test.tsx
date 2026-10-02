@@ -171,7 +171,6 @@ describe('Validation System Integration', () => {
   describe('Rule priority', () => {
     it('runs higher priority rules first', async () => {
       // In the new architecture, all rules run and their violations are collected.
-      // Rules run from the highest priority to the lowest. This test checks the execution order.
       const executionOrder: string[] = [];
 
       const highPriorityRule: ValidationRule = {

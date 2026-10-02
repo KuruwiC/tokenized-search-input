@@ -92,7 +92,6 @@ export interface ValidationChange {
 
 /** What to do to the document and to token meta after validating it. */
 export interface Plan {
-  /** Ids of the tokens to delete. */
   deletions: readonly string[];
   /** Whether the deletions are a user-visible change that undo should revert. */
   undoable: boolean;
@@ -144,7 +143,6 @@ export function recordEdits(edits: Edits, prev: ProseMirrorNode, next: ProseMirr
 interface EditedTokens {
   /** The tokens that the transactions being validated added. */
   added: Set<string>;
-  /** The tokens being edited. */
   editing: Set<string>;
   /** The edited tokens that existed before, as they were. */
   before: Map<string, ValidationToken>;
