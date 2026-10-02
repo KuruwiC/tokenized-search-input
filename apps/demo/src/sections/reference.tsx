@@ -1,4 +1,5 @@
 import { REPOSITORY_URL } from '../constants';
+import { ReferenceExamples } from './examples';
 
 export function ReferenceSection() {
   return (
@@ -60,6 +61,7 @@ export function ReferenceSection() {
           </tr>
         </tbody>
       </table>
+      <ReferenceExamples />
       <p className="reference-note">
         The README remains the source of truth for prop signatures and migration notes.{' '}
         <a href={`${REPOSITORY_URL}#readme`}>Open the full reference →</a>

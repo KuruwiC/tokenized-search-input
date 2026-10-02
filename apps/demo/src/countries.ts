@@ -1,4 +1,6 @@
-/** Country records and a paginated mock API for the async selector demo. */
+/** Country records, a paginated mock API, and clipboard conversion for the country selectors. */
+
+import type { ParsedToken } from '@kuruwic/tokenized-search-input/utils';
 
 export interface Country {
   value: string;
@@ -299,4 +301,47 @@ export function fetchCountries(params: FetchCountriesParams): Promise<FetchCount
       });
     }, 200);
   });
+}
+
+/** Copy format: the country label instead of `country:is:<code>`. */
+export function serializeCountryToken(token: { key: string; value: string }): string | null {
+  return token.key === 'country'
+    ? (ALL_COUNTRIES.find((country) => country.value === token.value)?.label ?? null)
+    : null;
+}
+
+/** Paste format: country labels or codes separated by whitespace, commas, or semicolons. */
+export function deserializeCountryText(text: string): ParsedToken[] | null {
+  const tokens: ParsedToken[] = [];
+  let remaining = text.trim();
+  const candidates = [...ALL_COUNTRIES].sort((a, b) => b.label.length - a.label.length);
+
+  while (remaining) {
+    const match = candidates.find((country) => {
+      const source = remaining.toLowerCase();
+      const label = country.label.toLowerCase();
+      const code = country.value.toLowerCase();
+      const boundaryAfter = (length: number) =>
+        !remaining[length] || /[\s,;]/.test(remaining[length]);
+      return (
+        (source.startsWith(label) && boundaryAfter(label.length)) ||
+        (source.startsWith(code) && boundaryAfter(code.length))
+      );
+    });
+
+    if (match) {
+      tokens.push({ type: 'filter', key: 'country', operator: 'is', value: match.value });
+      const consumed = remaining.toLowerCase().startsWith(match.label.toLowerCase())
+        ? match.label.length
+        : match.value.length;
+      remaining = remaining.slice(consumed).replace(/^[\s,;]+/, '');
+      continue;
+    }
+
+    const boundary = remaining.search(/[\s,;]/);
+    if (boundary === -1) break;
+    remaining = remaining.slice(boundary).replace(/^[\s,;]+/, '');
+  }
+
+  return tokens.length ? tokens : null;
 }
