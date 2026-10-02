@@ -61,7 +61,6 @@ function arrowDirection(ctx: SelectionGuardContext): Direction {
   return ctx.event.key === 'ArrowRight' ? 1 : -1;
 }
 
-/** The token the caret would cross by moving one step in `direction`, if any. */
 function tokenInDirection(ctx: SelectionGuardContext, head: number, direction: Direction) {
   const $head = safeResolve(ctx.doc, head);
   const node = direction > 0 ? $head?.nodeAfter : $head?.nodeBefore;

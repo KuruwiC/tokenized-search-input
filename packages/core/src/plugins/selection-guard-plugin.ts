@@ -94,7 +94,6 @@ function setPress(view: EditorView, pressPos: number | null): void {
   view.dispatch(tr);
 }
 
-/** Puts the caret where a press that did not become a drag started. */
 function placeCaretAtPress(view: EditorView): void {
   const pressPos = selectionGuardKey.getState(view.state)?.pressPos;
   if (pressPos == null) return;

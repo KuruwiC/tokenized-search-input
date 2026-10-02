@@ -35,10 +35,6 @@ export function joinIntoOneParagraph(slice: Slice, schema: Schema): Slice {
   }
 }
 
-/**
- * The document holds exactly one paragraph. The schema rejects a second one, and
- * pasted or dropped content is joined into one before it reaches the document.
- */
 export const SingleParagraphDocument = Document.extend({
   content: 'paragraph',
 
