@@ -1,4 +1,3 @@
-import { isValid, parse, parseISO } from 'date-fns';
 import type {
   DateFieldDefinition,
   DateFormatConfig,
@@ -20,25 +19,6 @@ export const DEFAULT_DATETIME_VALUE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssxxx";
 
 /** What the date functions need to know about a date or datetime field. */
 type DateLikeField = Pick<DateFieldDefinition | DateTimeFieldDefinition, 'type' | 'formatConfig'>;
-
-/**
- * Parses ISO 8601 string to Date object.
- * Internal helper for converting stored values to Date for calendar/picker use.
- * Accepts both strict ISO (2024-03-05) and loose formats (2024-3-5).
- */
-export function parseISOToDate(isoValue: string): Date | null {
-  if (!isoValue) return null;
-
-  // Try strict ISO first
-  let parsed = parseISO(isoValue);
-  if (isValid(parsed)) return parsed;
-
-  // Fallback: try parsing with default format (handles 2024-3-5)
-  parsed = parse(isoValue, DEFAULT_DATE_VALUE_FORMAT, new Date());
-  if (isValid(parsed)) return parsed;
-
-  return null;
-}
 
 /**
  * Reads `input` as a value of `field`: with the field's custom parse when it has one,

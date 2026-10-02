@@ -8,7 +8,6 @@ export {
   isDateField,
   isDateOrDateTimeField,
   isDateTimeField,
-  parseISOToDate,
   validateDateTimeValue,
   validateDateValue,
 } from './pickers/date-format';

@@ -5,7 +5,6 @@ export {
   isDateField,
   isDateOrDateTimeField,
   isDateTimeField,
-  parseISOToDate,
   validateDateTimeValue,
   validateDateValue,
 } from './date-format';
