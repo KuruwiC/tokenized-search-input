@@ -1,6 +1,6 @@
 import type { TokenizedSearchInputRef } from '@kuruwic/tokenized-search-input';
 import { TokenizedSearchInput } from '@kuruwic/tokenized-search-input';
-import type { CustomSuggestionConfig, QuerySnapshot } from '@kuruwic/tokenized-search-input/utils';
+import type { CustomSuggestionConfig } from '@kuruwic/tokenized-search-input/utils';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { CodeBlock } from '../../components';
 import {
@@ -45,7 +45,6 @@ const MODES: Array<{ id: ClipboardMode; label: string; description: string; code
 
 function ClipboardInput({ mode }: { mode: ClipboardMode }) {
   const inputRef = useRef<TokenizedSearchInputRef>(null);
-  const [, setSnapshot] = useState<QuerySnapshot | null>(null);
   const [clipboardText, setClipboardText] = useState<string | null>(null);
   const { resolveTokens } = useCountryResolver(inputRef);
   const custom = useMemo<CustomSuggestionConfig>(
@@ -64,13 +63,9 @@ function ClipboardInput({ mode }: { mode: ClipboardMode }) {
       ? { deserializeText: deserializeCountryText }
       : {}),
   };
-  const change = useCallback(
-    (next: QuerySnapshot) => {
-      setSnapshot(next);
-      void resolveTokens();
-    },
-    [resolveTokens]
-  );
+  const change = useCallback(() => {
+    void resolveTokens();
+  }, [resolveTokens]);
   const readClipboard = async () => {
     try {
       setClipboardText(await navigator.clipboard.readText());
@@ -82,7 +77,7 @@ function ClipboardInput({ mode }: { mode: ClipboardMode }) {
     try {
       await navigator.clipboard.writeText('Japan, France');
     } catch {
-      // Clipboard writes can be blocked; the sample is also typed in the note below.
+      // Clipboard writes can be blocked by the browser; the input still gets focus.
     }
     inputRef.current?.focus();
   };
