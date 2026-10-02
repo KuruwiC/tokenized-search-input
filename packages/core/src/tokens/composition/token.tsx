@@ -187,10 +187,16 @@ export function Token({
 
   const keyboardHandlersRegistry = useKeyboardHandlersRegistry();
 
-  // Focus entering the token moves DOM focus to the block it entered at.
+  // DOM focus follows the token focus: entering the token moves it to the block focus
+  // entered at, and leaving the token moves it, if it is still in the token, to the editor.
   useLayoutEffect(() => {
     setCurrentFocusId(null);
-    if (entry && editor.isEditable) focusEntryBlock(focusRegistry, entry);
+    if (entry === null) {
+      const container = containerRef.current;
+      if (container?.contains(container.ownerDocument.activeElement)) editor.view.focus();
+      return;
+    }
+    if (editor.isEditable) focusEntryBlock(focusRegistry, entry);
   }, [entry, editor, focusRegistry]);
 
   const handleActivate = useCallback(() => {

@@ -112,6 +112,25 @@ describe('Leaving a token', () => {
     });
   });
 
+  describe('when the focused token is replaced', () => {
+    it('moves DOM focus out of the token into the editor', async () => {
+      const user = userEvent.setup();
+      const { ref, container } = renderInput({ defaultValue: 'status:is:active' });
+      const editor = await editorOf(ref);
+      await user.click(screen.getByRole('group', { name: /status/i }));
+      await waitFor(() => expect(getFocusedToken(editor.state)).not.toBeNull());
+
+      act(() => {
+        ref.current?.setValue('status:is:pending');
+      });
+
+      expect(getFocusedToken(editor.state)).toBeNull();
+      await waitFor(() =>
+        expect(document.activeElement).toBe(container.querySelector('.ProseMirror'))
+      );
+    });
+  });
+
   describe('a disabled editor', () => {
     it('does not focus a token', async () => {
       const user = userEvent.setup();
