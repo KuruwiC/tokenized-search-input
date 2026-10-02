@@ -1,6 +1,6 @@
 import type { Transaction } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
-import { useEffect, useRef } from 'react';
+import { type RefObject, useEffect, useRef } from 'react';
 import { getTokenFocusMeta } from '../../plugins/token-focus-plugin';
 
 export interface UseSuggestionSchedulingOptions {
@@ -9,7 +9,7 @@ export interface UseSuggestionSchedulingOptions {
   updateCustomSuggestions: () => void;
   singleLine: boolean;
   expandOnFocus: boolean;
-  isInputFocused: boolean;
+  containerRef: RefObject<HTMLElement | null>;
 }
 
 /**
@@ -23,7 +23,7 @@ export function useSuggestionScheduling({
   updateCustomSuggestions,
   singleLine,
   expandOnFocus,
-  isInputFocused,
+  containerRef,
 }: UseSuggestionSchedulingOptions): void {
   // Store update functions in refs to avoid useEffect re-execution on function changes
   const updateSuggestionsRef = useRef(updateSuggestions);
@@ -52,7 +52,9 @@ export function useSuggestionScheduling({
     const handleSelectionUpdate = () => {
       debouncedUpdate();
 
-      if (singleLine || (expandOnFocus && !isInputFocused)) {
+      // Collapsed while focus is outside the container.
+      const collapsed = expandOnFocus && !containerRef.current?.matches(':focus-within');
+      if (singleLine || collapsed) {
         try {
           const domAtPos = editor.view.domAtPos(editor.state.selection.from);
           // domAtPos.node may be a text node, so get the parent element if needed
@@ -88,5 +90,5 @@ export function useSuggestionScheduling({
       editor.off('update', debouncedUpdate);
       editor.off('transaction', handleTransaction);
     };
-  }, [editor, singleLine, expandOnFocus, isInputFocused]);
+  }, [editor, singleLine, expandOnFocus, containerRef]);
 }

@@ -98,7 +98,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       onSubmit: handleSubmit,
     });
 
-    const isInputFocused = useFocusWiring({
+    useFocusWiring({
       editor,
       containerRef,
       onFocus,
@@ -112,7 +112,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       updateCustomSuggestions,
       singleLine,
       expandOnFocus,
-      isInputFocused,
+      containerRef,
     });
     // Last on purpose: see useApplyPendingHandleWrites.
     useApplyPendingHandleWrites(editor, pending);

@@ -2,7 +2,7 @@
  * Integration tests for focus-related callbacks.
  * Tests onBlur, onFocus, and onClear callback behaviors.
  */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
@@ -63,6 +63,30 @@ describe('Focus Callbacks', () => {
         const [snapshot] = onFocus.mock.calls[0];
         expect(snapshot.segments).toHaveLength(2);
       });
+    });
+    it('does not trigger onFocus again when focus moves into a token', async () => {
+      const onFocus = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <TokenizedSearchInput
+          fields={extendedFields}
+          defaultValue="status:is:active"
+          onFocus={onFocus}
+        />
+      );
+
+      await user.click(screen.getByRole('combobox'));
+      await waitFor(() => {
+        expect(onFocus).toHaveBeenCalledTimes(1);
+      });
+      await user.click(screen.getByRole('group', { name: /status/i }));
+      await waitFor(() => {
+        expect(screen.getByRole('group', { name: /status/i })).toContainElement(
+          document.activeElement as HTMLElement
+        );
+      });
+
+      expect(onFocus).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -174,6 +198,35 @@ describe('Focus Callbacks', () => {
         expect(onBlur).toHaveBeenCalled();
         const [snapshot] = onBlur.mock.calls[onBlur.mock.calls.length - 1];
         expect(snapshot.text).toContain('status:is:active');
+      });
+    });
+
+    it('triggers onBlur once when focus leaves while a value suggestion is open', async () => {
+      const onBlur = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <div>
+          <TokenizedSearchInput fields={extendedFields} onBlur={onBlur} />
+          <button type="button">Other Element</button>
+        </div>
+      );
+
+      await user.click(screen.getByRole('combobox'));
+      await user.keyboard('status');
+      await waitFor(() => {
+        expect(screen.getByText('Status')).toBeInTheDocument();
+      });
+      await user.click(screen.getByText('Status'));
+      await waitFor(() => {
+        expect(screen.getByText('active')).toBeInTheDocument();
+      });
+
+      act(() => {
+        screen.getByRole('button', { name: 'Other Element' }).focus();
+      });
+
+      await waitFor(() => {
+        expect(onBlur).toHaveBeenCalledTimes(1);
       });
     });
 

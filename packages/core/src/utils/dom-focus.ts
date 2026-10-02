@@ -8,14 +8,9 @@
 /** Data attribute selectors for focus detection */
 export const FOCUS_SELECTORS = {
   filterToken: '[data-filter-token]',
-  freeTextToken: '[data-free-text-token]',
-  anyToken: '[data-filter-token], [data-free-text-token]',
   suggestionRoot: '[data-suggestion-root]',
   focusedFilterToken: '[data-filter-token][data-focused="true"]',
 } as const;
-
-export const isWithinToken = (el: Element | null): boolean =>
-  el?.closest(FOCUS_SELECTORS.anyToken) != null;
 
 export const isWithinSuggestion = (el: Element | null): boolean =>
   el?.closest(FOCUS_SELECTORS.suggestionRoot) != null;

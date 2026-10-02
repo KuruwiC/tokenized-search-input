@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/react';
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef } from 'react';
 import { getEditorContext } from '../../extensions/editor-context';
 import {
   clearDismissed,
@@ -23,7 +23,8 @@ export interface UseFocusWiringOptions {
 /**
  * Wires focus entering and leaving the whole container (onFocus, onBlur and the
  * suggestion dismissal that goes with them) and dismisses suggestions on pointer
- * presses outside it. Returns whether focus is currently inside the container.
+ * presses outside it. Whether focus entered or left is decided only by where it moves:
+ * from or to an element outside the container and its suggestion overlay.
  */
 export function useFocusWiring({
   editor,
@@ -32,8 +33,7 @@ export function useFocusWiring({
   onBlur,
   updateSuggestions,
   updateCustomSuggestions,
-}: UseFocusWiringOptions): boolean {
-  const [isInputFocused, setIsInputFocused] = useState(false);
+}: UseFocusWiringOptions): void {
   const pointerDownInSuggestionRef = useRef(false);
 
   // Handle focus/blur at container level using focusout (bubbles from all children)
@@ -44,34 +44,18 @@ export function useFocusWiring({
     const container = containerRef.current;
     if (!container) return;
 
+    // The suggestion overlay may render outside the container; it is still part of it.
+    const isInside = (target: EventTarget | null): boolean =>
+      target instanceof Element && (container.contains(target) || isWithinSuggestion(target));
+
     const handleContainerFocusOut = (e: FocusEvent) => {
       // Skip if pointerdown was in suggestion (user is clicking a suggestion item)
       if (pointerDownInSuggestionRef.current) {
         pointerDownInSuggestionRef.current = false;
         return;
       }
+      if (isInside(e.relatedTarget)) return;
 
-      const relatedTarget = e.relatedTarget as Element | null;
-
-      // If focus is moving within the container, not a real blur
-      if (relatedTarget && container.contains(relatedTarget)) {
-        return;
-      }
-
-      // If focus is moving to suggestion overlay (outside container but part of UI)
-      if (isWithinSuggestion(relatedTarget)) {
-        return;
-      }
-
-      const suggestionState = getSuggestionState(editor.state);
-      if (suggestionState?.type) {
-        const policy = getDismissPolicy(suggestionState.type);
-        if (!policy.dismissOnBlur) {
-          return;
-        }
-      }
-
-      setIsInputFocused(false);
       editor.commands.finalizeInput();
 
       if (onBlur) {
@@ -81,16 +65,17 @@ export function useFocusWiring({
         onBlur(snapshot);
       }
 
+      // The suggestion's policy decides whether it closes when focus leaves.
+      const type = getSuggestionState(editor.state)?.type;
+      if (type && !getDismissPolicy(type).dismissOnBlur) return;
       const tr = editor.state.tr;
       dismissSuggestion(tr);
       tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
     };
 
-    const handleContainerFocusIn = () => {
-      if (isInputFocused) return;
-
-      setIsInputFocused(true);
+    const handleContainerFocusIn = (e: FocusEvent) => {
+      if (isInside(e.relatedTarget)) return;
 
       if (onFocus) {
         const snapshot = createQuerySnapshot(editor.state, {
@@ -114,15 +99,7 @@ export function useFocusWiring({
       container.removeEventListener('focusout', handleContainerFocusOut);
       container.removeEventListener('focusin', handleContainerFocusIn);
     };
-  }, [
-    editor,
-    containerRef,
-    updateSuggestions,
-    updateCustomSuggestions,
-    onBlur,
-    onFocus,
-    isInputFocused,
-  ]);
+  }, [editor, containerRef, updateSuggestions, updateCustomSuggestions, onBlur, onFocus]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
@@ -152,6 +129,4 @@ export function useFocusWiring({
       document.removeEventListener('pointerdown', handlePointerDown, true);
     };
   }, [editor, containerRef]);
-
-  return isInputFocused;
 }

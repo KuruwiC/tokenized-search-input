@@ -9,6 +9,7 @@ import {
   openFieldWithCustomSuggestion,
   resolveAnchorPos,
 } from '../plugins/suggestion-plugin';
+import { getFocusedToken } from '../plugins/token-focus-plugin';
 import { canShowCustomSuggestion, isSuggestionDismissed } from '../suggestions/suggestion-guards';
 import type {
   CustomSuggestion,
@@ -21,7 +22,6 @@ import type {
   SuggestFnReturn,
   SuggestionErrorContext,
 } from '../types';
-import { isWithinToken } from '../utils/dom-focus';
 import { isFilterToken } from '../utils/node-predicates';
 import { isInsideQuotes } from '../utils/quoted-string';
 import { getPlainTextSegment } from './use-auto-tokenize';
@@ -220,14 +220,9 @@ export function useCustomSuggestions(
       return;
     }
 
-    // Gate: not focused or dismissed
+    // Gate: not focused or dismissed. While a token is edited, DOM focus is in the
+    // token, not in the editor.
     if (!editor.isFocused || isSuggestionDismissed(currentState)) {
-      cancelPendingRequest();
-      return;
-    }
-
-    // Also check DOM focus for cases where plugin state hasn't updated yet
-    if (isWithinToken(document.activeElement)) {
       cancelPendingRequest();
       return;
     }
@@ -257,8 +252,8 @@ export function useCustomSuggestions(
       // Check if this request is still the latest
       if (requestId !== pendingRequestRef.current) return;
 
-      // Re-check if focus is within token (may have changed during debounce)
-      if (isWithinToken(document.activeElement)) return;
+      // Re-check whether a token is being edited (may have changed during debounce)
+      if (getFocusedToken(editor.state) !== null) return;
 
       const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
       const onError = config.onError ?? defaultErrorHandler;
