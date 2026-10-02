@@ -144,13 +144,15 @@ For `date` and `datetime` fields, you can provide a custom picker component:
 
 | Prop | Type | Description |
 |------|------|-------------|
-| `value` | `Date \| null` | Current date value (reflects keyboard input in realtime) |
-| `onChange` | `(date: Date \| null) => void` | Called when date is selected |
+| `value` | `DateTimeValue \| null` | Current value (reflects keyboard input in realtime) |
+| `onChange` | `(value: DateTimeValue \| null) => void` | Called when a date or time is selected |
 | `onClose` | `() => void` | Called when picker should close |
 | `fieldDef` | `DateFieldDefinition` | Field configuration (includes minDate, maxDate, etc.) |
 | `restoreFocus` | `() => void` | Restore focus to token input after selection |
 | `defaultMonth` | `Date` | Initial calendar month hint |
-| `confirmedValue` | `Date \| null` | Last committed value (before current input changes) |
+| `confirmedValue` | `DateTimeValue \| null` | Last committed value (before current input changes) |
+
+`DateTimeValue` is `{ date: 'yyyy-MM-dd'; time?: 'HH:mm[:ss[.SSS]]'; offset?: 'Z' | '±HH:MM' }`. `date` and `time` are the reading in the value's own `offset`, so a picker keeps the offset of `value` when it writes a changed value. `parseDateTimeValue`, `formatDateTimeValue`, `toInstant` and `fromInstant` are exported from `@kuruwic/tokenized-search-input/utils`.
 
 **DateTimePickerRenderProps** extends DatePickerRenderProps with:
 
@@ -162,10 +164,10 @@ For `date` and `datetime` fields, you can provide a custom picker component:
 
 | Prop | Type | Description |
 |------|------|-------------|
-| `isUTC` | `boolean` | Current UTC mode state |
-| `onUTCChange` | `(isUTC: boolean) => void` | Toggle UTC mode |
-| `includeTime` | `boolean` | Current include time state (only when `timeRequired` is false) |
-| `onIncludeTimeChange` | `(includeTime: boolean) => void` | Toggle include time |
+| `isUTC` | `boolean` | Whether the value is in UTC |
+| `onUTCChange` | `(isUTC: boolean) => void` | Toggle UTC mode: the same moment is written in UTC or in the local offset |
+| `includeTime` | `boolean` | Whether the value includes a time (only when `timeRequired` is false) |
+| `onIncludeTimeChange` | `(includeTime: boolean) => void` | Toggle include time: midnight is added to the date, or the time is removed |
 
 ### Date/DateTime Field Options
 
@@ -178,7 +180,7 @@ For `date` and `datetime` fields, additional configuration options are available
   type: 'date',
   operators: ['is', 'gt', 'lt'],
   // Date constraints
-  minDate: new Date('2024-01-01'),        // Date object or ISO string
+  minDate: new Date('2024-01-01'),        // Date object or ISO string; days are compared, not times
   maxDate: new Date('2024-12-31'),
   disabledDates: (date) => date.getDay() === 0, // Disable Sundays
   // Picker customization
@@ -194,13 +196,12 @@ For `datetime` fields, additional time options:
   label: 'Scheduled At',
   type: 'datetime',
   operators: ['gt', 'lt'],
-  timeOptions: {
-    hour24: false,  // Use 12-hour format with AM/PM (default: true)
-  },
   timeRequired: false,  // false (default): Show "Include time" checkbox, allow date-only values
                         // true: Time is always required, date-only values are normalized to datetime
 }
 ```
+
+Values are read in one format: `yyyy-MM-dd` for a date, and `yyyy-MM-dd` or `yyyy-MM-ddTHH:mm[:ss[.SSS]][Z|±HH:MM]` (a space may replace the `T`) for a datetime. Partial input such as `2024` and dates that do not exist such as `2024-02-31` are rejected, and every `date` and `datetime` field marks such a value as invalid; turn that off for a field with `validation: { 'date-value': false }`. A field can read other formats with `formatConfig.parse`, which returns a `DateTimeValue` or `null`, and show values with `formatConfig.format`, which receives one.
 
 ### Operators
 
