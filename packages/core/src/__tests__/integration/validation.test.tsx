@@ -139,7 +139,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           fields={testFields}
           defaultValue="status:is:active status:is:inactive"
-          validation={{ rules: [Unique.rule('key', Unique.mark)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'mark' })] }}
         />
       );
 
@@ -153,7 +153,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           fields={testFields}
           defaultValue="status:is:active status:is:inactive"
-          validation={{ rules: [Unique.rule('key', Unique.reject)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
         />
       );
 
@@ -171,8 +171,7 @@ describe('Validation System Integration', () => {
   describe('Rule priority', () => {
     it('runs higher priority rules first', async () => {
       // In the new architecture, all rules run and their violations are collected.
-      // Delete actions take precedence over mark actions in the action-planner.
-      // This test verifies that priority ordering works by checking execution order.
+      // Rules run from the highest priority to the lowest. This test checks the execution order.
       const executionOrder: string[] = [];
 
       const highPriorityRule: ValidationRule = {
@@ -187,7 +186,7 @@ describe('Validation System Integration', () => {
               ruleId: 'high-priority-rule',
               reason: 'duplicate',
               action: 'mark' as const,
-              targets: statusTokens.slice(1).map((t) => ({ tokenId: t.id, pos: t.pos })),
+              targets: statusTokens.slice(1).map((t) => ({ tokenId: t.id })),
             },
           ];
         },
@@ -229,7 +228,10 @@ describe('Validation System Integration', () => {
           fields={testFields}
           defaultValue="status:is:active status:is:active priority:is:high priority:is:low"
           validation={{
-            rules: [Unique.rule('exact', Unique.reject), Unique.rule('key', Unique.mark)],
+            rules: [
+              Unique.rule('exact', { onDuplicate: 'reject' }),
+              Unique.rule('key', { onDuplicate: 'mark' }),
+            ],
           }}
         />
       );
@@ -256,7 +258,7 @@ describe('Validation System Integration', () => {
               reason: 'max-exceeded',
               message: 'Maximum 2 status filters allowed',
               action: 'mark' as const,
-              targets: statusTokens.slice(2).map((t) => ({ tokenId: t.id, pos: t.pos })),
+              targets: statusTokens.slice(2).map((t) => ({ tokenId: t.id })),
             },
           ];
         },
@@ -326,7 +328,7 @@ describe('Validation System Integration', () => {
             ref={ref}
             fields={testFields}
             defaultValue=""
-            validation={{ rules: [Unique.rule('key', Unique.reject)] }}
+            validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
           />
         );
       }
@@ -350,7 +352,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           fields={testFields}
           defaultValue="status:is:active status:is:inactive"
-          validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         />
       );
 
@@ -371,7 +373,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           fields={testFields}
           defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         />
       );
 
@@ -396,7 +398,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           fields={fieldsWithOverride}
           defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', Unique.reject)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
         />
       );
 
@@ -410,7 +412,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           fields={testFields}
           defaultValue="status:is:active status:is:inactive status:is:pending"
-          validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         />
       );
 
@@ -507,7 +509,7 @@ describe('Validation System Integration', () => {
             reason: string;
             message: string;
             action: 'mark' | 'delete';
-            targets: { tokenId: string; pos: number }[];
+            targets: { tokenId: string }[];
           }[] = [];
           const validPattern = /^[a-z]+$/;
 
@@ -519,7 +521,7 @@ describe('Validation System Integration', () => {
                 reason: 'pattern',
                 message: 'Tag must be lowercase letters only',
                 action: 'mark',
-                targets: [{ tokenId: token.id, pos: token.pos }],
+                targets: [{ tokenId: token.id }],
               });
             }
           }
@@ -611,7 +613,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           fields={testFields}
           defaultValue="status:is:active status:is:inactive"
-          validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         />
       );
 
@@ -662,7 +664,7 @@ describe('Validation System Integration', () => {
           fields={testFields}
           defaultValue="status:is:active status:is:inactive status:is:pending status:is:active"
           validation={{
-            rules: [Unique.rule('key', Unique.reject)],
+            rules: [Unique.rule('key', { onDuplicate: 'reject' })],
           }}
         />
       );
@@ -763,7 +765,7 @@ describe('Validation System Integration', () => {
           <TokenizedSearchInput
             ref={ref}
             fields={testFields}
-            validation={{ rules: [Unique.rule('key', Unique.reject)] }}
+            validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
           />
         );
       };
@@ -802,7 +804,7 @@ describe('Validation System Integration', () => {
           <TokenizedSearchInput
             ref={ref}
             fields={testFields}
-            validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+            validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
           />
         );
       };
@@ -837,7 +839,7 @@ describe('Validation System Integration', () => {
           <TokenizedSearchInput
             ref={ref}
             fields={testFields}
-            validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+            validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
           />
         );
       };
@@ -890,7 +892,7 @@ describe('Validation System Integration', () => {
           <TokenizedSearchInput
             ref={ref}
             fields={testFields}
-            validation={{ rules: [Unique.rule('key', Unique.reject)] }}
+            validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
           />
         );
       };
@@ -930,7 +932,7 @@ describe('Validation System Integration', () => {
           <TokenizedSearchInput
             ref={ref}
             fields={testFields}
-            validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+            validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
           />
         );
       };
@@ -963,7 +965,7 @@ describe('Validation System Integration', () => {
           <TokenizedSearchInput
             ref={ref}
             fields={testFields}
-            validation={{ rules: [Unique.rule('key', Unique.reject)] }}
+            validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
           />
         );
       };
@@ -991,7 +993,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           fields={testFields}
           defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', Unique.reject)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
         />
       );
 
@@ -1053,7 +1055,7 @@ describe('Validation System Integration', () => {
           <TokenizedSearchInput
             ref={ref}
             fields={testFields}
-            validation={{ rules: [Unique.rule('key', Unique.reject)] }}
+            validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
           />
         );
       };
@@ -1111,7 +1113,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           fields={testFields}
           defaultValue="status:is:active status:is:inactive"
-          validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         />
       );
 
@@ -1148,7 +1150,7 @@ describe('Validation System Integration', () => {
           <TokenizedSearchInput
             ref={ref}
             fields={testFields}
-            validation={{ rules: [Unique.rule('key', Unique.mark)] }}
+            validation={{ rules: [Unique.rule('key', { onDuplicate: 'mark' })] }}
           />
         );
       };
@@ -1213,7 +1215,7 @@ describe('Validation System Integration', () => {
           fields={testFields}
           defaultValue='status:is:active "search term" priority:is:high'
           freeTextMode="plain"
-          validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         />
       );
 
@@ -1266,7 +1268,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           fields={testFields}
           defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         />
       );
 
@@ -1319,7 +1321,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           fields={testFields}
           defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         />
       );
 
@@ -1408,7 +1410,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           fields={testFields}
           defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         />
       );
 
@@ -1488,7 +1490,7 @@ describe('Validation System Integration', () => {
           fields={testFields}
           defaultValue="hello status:is:active priority:is:high world"
           freeTextMode="plain"
-          validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         />
       );
 
@@ -1579,7 +1581,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           ref={ref}
           fields={testFields}
-          validation={{ rules: [Unique.rule('exact', Unique.reject)] }}
+          validation={{ rules: [Unique.rule('exact', { onDuplicate: 'reject' })] }}
         />
       );
 
@@ -1614,7 +1616,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           ref={ref}
           fields={testFields}
-          validation={{ rules: [Unique.rule('exact', Unique.replace)] }}
+          validation={{ rules: [Unique.rule('exact', { onDuplicate: 'replace' })] }}
         />
       );
 
@@ -1653,7 +1655,7 @@ describe('Validation System Integration', () => {
           ref={ref}
           fields={testFields}
           defaultValue="tag:is:existing"
-          validation={{ rules: [Unique.rule('exact', Unique.mark)] }}
+          validation={{ rules: [Unique.rule('exact', { onDuplicate: 'mark' })] }}
         />
       );
 
@@ -1713,7 +1715,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           fields={testFields}
           defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', Unique.reject)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
         />
       );
 
@@ -1751,7 +1753,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           fields={testFields}
           defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         />
       );
 
@@ -1809,7 +1811,7 @@ describe('Validation System Integration', () => {
           ref={ref}
           fields={testFields}
           defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         />
       );
 
@@ -1869,7 +1871,7 @@ describe('Validation System Integration', () => {
           ref={ref}
           fields={testFields}
           defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', Unique.reject)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
         />
       );
 
@@ -1929,7 +1931,7 @@ describe('Validation System Integration', () => {
           ref={ref}
           fields={testFields}
           defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', Unique.mark)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'mark' })] }}
         />
       );
 
@@ -1988,7 +1990,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           ref={ref}
           fields={testFields}
-          validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         />
       );
 
@@ -2027,7 +2029,7 @@ describe('Validation System Integration', () => {
         <TokenizedSearchInput
           ref={ref}
           fields={testFields}
-          validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         />
       );
 
@@ -2085,7 +2087,7 @@ describe('Validation System Integration', () => {
           ref={ref}
           fields={testFields}
           defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         />
       );
 
@@ -2140,7 +2142,7 @@ describe('Validation System Integration', () => {
           ref={ref}
           fields={testFields}
           defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         />
       );
 
@@ -2209,7 +2211,7 @@ describe('Validation System Integration', () => {
               ruleId: 'min-length',
               reason: 'too-short',
               action: 'mark' as const,
-              targets: [{ tokenId: t.id, pos: t.pos }],
+              targets: [{ tokenId: t.id }],
             })),
       };
       render(

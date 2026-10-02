@@ -77,11 +77,11 @@ const RULES: Array<{
     fields: USER_FIELDS,
     placeholder: 'Enter alphanumeric user names…',
     rules: [
-      RequirePattern.rule('user', /^[a-z0-9]+$/i, undefined, {
+      RequirePattern.rule('user', /^[a-z0-9]+$/i, {
         message: 'Only alphanumeric characters allowed',
       }),
     ],
-    code: `RequirePattern.rule('user', /^[a-z0-9]+$/i, undefined, {
+    code: `RequirePattern.rule('user', /^[a-z0-9]+$/i, {
   message: 'Only alphanumeric characters allowed',
 })`,
   },
@@ -100,17 +100,31 @@ const RULES: Array<{
     id: 'custom',
     label: 'Custom rule',
     description:
-      'createRule receives each token and returns a message, or null when the token is valid.',
+      'createRule receives each token and returns the violation for it, or null when the token is valid.',
     fields: TAG_FIELDS,
     placeholder: 'Tags need at least three characters…',
     rules: [
-      createRule((token) =>
-        token.key === 'tag' && token.value.length < 3 ? 'Tag must be at least 3 characters' : null
+      createRule('tag-min-length', (token) =>
+        token.key === 'tag' && token.value.length < 3
+          ? {
+              ruleId: 'tag-min-length',
+              reason: 'too-short',
+              message: 'Tag must be at least 3 characters',
+              action: 'mark',
+              targets: [{ tokenId: token.id }],
+            }
+          : null
       ),
     ],
-    code: `createRule((token) =>
+    code: `createRule('tag-min-length', (token) =>
   token.key === 'tag' && token.value.length < 3
-    ? 'Tag must be at least 3 characters'
+    ? {
+        ruleId: 'tag-min-length',
+        reason: 'too-short',
+        message: 'Tag must be at least 3 characters',
+        action: 'mark',
+        targets: [{ tokenId: token.id }],
+      }
     : null
 )`,
   },

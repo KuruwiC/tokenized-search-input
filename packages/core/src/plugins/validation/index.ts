@@ -1,25 +1,64 @@
 import { Extension } from '@tiptap/core';
-import { Plugin, PluginKey } from '@tiptap/pm/state';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import { type EditorState, Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
 import { getEditorContext } from '../../extensions/editor-context';
-import { buildPlan } from './action-planner';
+import { isValidationCheckRequested, type TokenValidation } from '../shared/meta';
+import { getTokenFocusMeta, getTokenFocusState } from '../token-focus-plugin';
+import { tokenMetaKey } from '../token-meta-plugin';
 import { createFieldValidateRule } from './field-validate-rule';
-import { applyDeletions, hasUndoableDeletions, writeValidation } from './plan-executor';
-import { buildSnapshot, shouldRun } from './snapshot-builder';
+import { applyPlan, planValidation } from './run';
 
-export const validationKey = new PluginKey('validation');
+/**
+ * The focus session in progress: the token the user is in and the document from
+ * when they entered it.
+ */
+interface FocusSession {
+  tokenId: string | null;
+  editBase: ProseMirrorNode | null;
+}
 
-// Re-export helpers for testing
-export { buildDeletionContext, isNewToken, shouldDeleteNow } from './deletion-planner';
+export const validationKey = new PluginKey<FocusSession>('validation');
+
+const NO_SESSION: FocusSession = { tokenId: null, editBase: null };
+
 export { FIELD_VALIDATE_RULE_ID } from './field-validate-rule';
-// Re-export for external use
-export { collectTokens } from './snapshot-builder';
-export type { DeletionContext, ValidationPlan, ValidationSnapshot } from './types';
+export { collectTokens, type Plan, type ValidationInput } from './run';
+
+function isHistoryTransaction(tr: Transaction): boolean {
+  const historyMeta = tr.getMeta('history$') as { redo?: boolean } | undefined;
+  return !!historyMeta && historyMeta.redo !== undefined;
+}
+
+function tokenIdAt(doc: ProseMirrorNode, pos: number | null | undefined): string | null {
+  if (pos === null || pos === undefined) return null;
+  return doc.nodeAt(pos)?.attrs.id ?? null;
+}
+
+function focusedTokenId(state: EditorState): string | null {
+  return tokenIdAt(state.doc, getTokenFocusState(state)?.focusedPos);
+}
+
+/** The session the user was in before `state`, if the token is still the one focused there. */
+function sessionAt(state: EditorState): FocusSession {
+  const session = validationKey.getState(state) ?? NO_SESSION;
+  return session.tokenId !== null && session.tokenId === focusedTokenId(state)
+    ? session
+    : NO_SESSION;
+}
+
+function recordedValidations(state: EditorState): Map<string, TokenValidation> {
+  const recorded = new Map<string, TokenValidation>();
+  for (const [id, meta] of tokenMetaKey.getState(state)?.entries ?? []) {
+    if (meta.validation) recorded.set(id, meta.validation);
+  }
+  return recorded;
+}
 
 /**
  * The only writer of token validation. On every document change, focus change or
- * requested check it runs the configured rules and the implicit `field-validate`
- * rule, applies the deletions the configured rules call for, and records each
- * token's validation in token meta. Validation never changes node attributes.
+ * requested check it runs the configured rules and the implicit rules, applies the
+ * deletions the configured rules call for, and records each token's validation in
+ * token meta. Validation never changes node attributes.
  */
 export const ValidationExtension = Extension.create({
   name: 'validation',
@@ -28,42 +67,40 @@ export const ValidationExtension = Extension.create({
     const editor = this.editor;
 
     return [
-      new Plugin({
+      new Plugin<FocusSession>({
         key: validationKey,
 
+        state: {
+          init: () => NO_SESSION,
+          apply(tr, session, oldState) {
+            const focus = getTokenFocusMeta(tr);
+            if (!focus) return session;
+            const tokenId = tokenIdAt(tr.doc, focus.focusedPos);
+            if (tokenId === null) return NO_SESSION;
+            return tokenId === session.tokenId ? session : { tokenId, editBase: oldState.doc };
+          },
+        },
+
         appendTransaction(transactions, oldState, newState) {
-          const { run, forceCheck, isHistoryOperation } = shouldRun(transactions, validationKey);
-          if (!run) return null;
+          const forceCheck = transactions.some(isValidationCheckRequested);
+          const focusChanged = transactions.some((tr) => getTokenFocusMeta(tr) !== undefined);
+          const docChanged = transactions.some((tr) => tr.docChanged);
+          if (!forceCheck && !focusChanged && !docChanged) return null;
 
           const editorContext = getEditorContext(editor);
-          const configuredRules = editorContext.validation?.rules ?? [];
-          const rules = [...configuredRules, createFieldValidateRule(editorContext)];
-
-          const snap = buildSnapshot(
-            oldState,
-            newState,
-            editorContext.fields,
-            rules,
+          const plan = planValidation(oldState.doc, newState.doc, {
+            fields: editorContext.fields,
+            rules: editorContext.validation?.rules ?? [],
+            implicitRules: [createFieldValidateRule(editorContext)],
+            focusedTokenId: focusedTokenId(newState),
+            editBase: sessionAt(oldState).editBase,
             forceCheck,
-            isHistoryOperation
-          );
+            isHistoryOperation: transactions.some(isHistoryTransaction),
+            recorded: recordedValidations(newState),
+          });
 
           const tr = newState.tr;
-          let undoable = false;
-          let violations = snap?.violations ?? [];
-          // Deleting tokens is the configured rules' policy; without them validation only marks.
-          if (snap && configuredRules.length > 0) {
-            const plan = buildPlan(snap, newState.doc);
-            violations = applyDeletions(tr, newState, plan, snap);
-            undoable = hasUndoableDeletions(plan, snap);
-          }
-
-          const validationChanged = writeValidation(tr, newState, violations);
-          if (!tr.docChanged && !validationChanged) return null;
-
-          tr.setMeta(validationKey, true);
-          if (!undoable) tr.setMeta('addToHistory', false);
-          return tr;
+          return applyPlan(tr, plan) ? tr : null;
         },
       }),
     ];

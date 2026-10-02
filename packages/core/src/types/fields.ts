@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import type { Operator, OperatorLabels } from './operators';
-import type { FieldRuleOverride } from './validation';
 
 /**
  * An array type that requires at least one element.
@@ -90,7 +89,7 @@ interface BaseFieldDefinition {
    *   'unique-key': false,  // Disable uniqueness for this field
    * }
    */
-  validation?: Record<string, FieldRuleOverride>;
+  validation?: Record<string, false>;
 }
 
 /**

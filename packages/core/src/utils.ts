@@ -69,37 +69,17 @@ export { defaultMatcher, matchBest, matchers } from './utils/matcher';
 export {
   createFieldRule,
   createRule,
-  type DuplicateGroup,
-  type InvalidValueStrategy,
+  type DuplicateStrategy,
   MaxCount,
   type MaxCountOptions,
-  type MaxCountStrategy,
   RequireEnum,
   type RequireEnumOptions,
   RequirePattern,
   type RequirePatternOptions,
-  type StrategyResult,
   Unique,
   type UniqueConstraint,
   type UniqueOptions,
-  type UniqueStrategy,
-  ValidationRules,
 } from './validation/presets';
-
-// ============================================
-// Validation Strategy Helpers
-// ============================================
-
-export {
-  buildTargets,
-  createDeleteViolation,
-  createMarkViolation,
-  type EditStatePartition,
-  getNewOrEditingTokens,
-  getUntouchedTokens,
-  splitByEditState,
-  type ViolationOptions,
-} from './validation/strategy-helpers';
 
 // ============================================
 // Serialization (stable subset)

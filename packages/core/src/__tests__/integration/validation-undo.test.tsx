@@ -41,7 +41,7 @@ describe('Validation undo with Unique.replace', () => {
     render(
       <TokenizedSearchInput
         fields={testFields}
-        validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+        validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         ref={ref}
       />
     );
@@ -74,7 +74,7 @@ describe('Validation undo with Unique.replace', () => {
     render(
       <TokenizedSearchInput
         fields={testFields}
-        validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+        validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         ref={ref}
       />
     );
@@ -108,7 +108,7 @@ describe('Validation undo with Unique.replace', () => {
       <TokenizedSearchInput
         fields={testFields}
         defaultValue="status:is:active"
-        validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+        validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         ref={ref}
       />
     );
@@ -152,7 +152,7 @@ describe('Validation undo with Unique.replace', () => {
     render(
       <TokenizedSearchInput
         fields={testFields}
-        validation={{ rules: [Unique.rule('key', Unique.replace)] }}
+        validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
         ref={ref}
       />
     );

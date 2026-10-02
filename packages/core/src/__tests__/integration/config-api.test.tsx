@@ -127,7 +127,7 @@ describe('Config API', () => {
           defaultValue="status:is:active status:is:pending"
           onChange={handleChange}
           validation={{
-            rules: [Unique.rule('key', Unique.reject)],
+            rules: [Unique.rule('key', { onDuplicate: 'reject' })],
           }}
         />
       );

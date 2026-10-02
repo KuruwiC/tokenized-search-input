@@ -133,7 +133,7 @@ describe('Document model', () => {
               reason: 'too-short',
               message: 'Value is too short',
               action: 'mark' as const,
-              targets: [{ tokenId: t.id, pos: t.pos }],
+              targets: [{ tokenId: t.id }],
             })),
       };
       await renderWithRef(statusFields, {
@@ -183,7 +183,7 @@ describe('Document model', () => {
               ruleId: 'mark-first',
               reason: 'marked',
               action: 'mark' as const,
-              targets: [{ tokenId: t.id, pos: t.pos }],
+              targets: [{ tokenId: t.id }],
             })),
       };
       const { ref, editor } = await renderWithRef(statusFields, {
@@ -575,7 +575,7 @@ describe('Document model', () => {
               ruleId: 'no-free-text',
               reason: 'free-text-not-allowed',
               action: 'mark' as const,
-              targets: [{ tokenId: t.id, pos: t.pos }],
+              targets: [{ tokenId: t.id }],
             })),
       };
       const { ref } = await renderWithRef(statusFields, {
@@ -607,7 +607,7 @@ describe('Document model', () => {
                 ruleId: 'flagged',
                 reason: 'flagged',
                 action: 'mark' as const,
-                targets: [{ tokenId: t.id, pos: t.pos }],
+                targets: [{ tokenId: t.id }],
               }))
             : [],
       };

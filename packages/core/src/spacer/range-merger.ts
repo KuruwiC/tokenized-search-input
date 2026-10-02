@@ -2,7 +2,7 @@
  * Range Merger
  *
  * Handles merging of overlapping deletion ranges.
- * Extracted from validation/plan-executor.ts for reuse.
+ * Extracted from validation/run.ts for reuse.
  */
 import type { MergeableRange } from './types';
 

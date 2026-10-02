@@ -6,7 +6,7 @@
  * without creating circular dependencies.
  *
  * Consumers:
- * - validation/plan-executor.ts
+ * - validation/run.ts
  * - token-spacing/helpers
  * - selection-guard-plugin.ts
  */

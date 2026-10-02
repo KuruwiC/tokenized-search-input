@@ -5,7 +5,6 @@ export type TokenType = 'filter' | 'freeText';
 export interface ValidationToken {
   id: string;
   type: TokenType;
-  pos: number;
   key: string;
   operator: string;
   value: string;
@@ -16,40 +15,22 @@ export interface ValidationContext {
   tokens: ValidationToken[];
   fields: FieldDefinition[];
   /**
-   * IDs of tokens currently being edited.
-   * Includes: newly created tokens, modified tokens (key/operator/value),
-   * and tokens involved in focus transitions (focused or just-blurred).
+   * IDs of the tokens that were added, or whose key, operator or value changed,
+   * in the transactions being validated. Moving focus does not make a token
+   * edited. When the whole content is validated at once (initial value,
+   * `setValue`, changed rules) every token counts as edited.
    */
   editingTokenIds: Set<string>;
-  /** Helper to check if a token is being edited */
+  /** ID of the token the user is in right now, if any. */
+  focusedTokenId: string | null;
+  /** Whether the token was edited in the transactions being validated. */
   isEditing: (token: ValidationToken) => boolean;
 }
 
-/**
- * Target of a validation violation.
- */
+/** A token that a violation is about. */
 export interface ViolationTarget {
   tokenId: string;
-  pos: number;
 }
-
-/**
- * A validation violation returned by a validator.
- * Validators explicitly specify which tokens are invalid.
- */
-export interface Violation {
-  ruleId: string;
-  reason: string;
-  message?: string;
-  action: ValidationAction;
-  targets: ViolationTarget[];
-}
-
-/**
- * Result from a validation rule.
- * Returns Violation[] with explicit targets.
- */
-export type ValidationResult = Violation[];
 
 /**
  * Action when validation fails:
@@ -58,85 +39,37 @@ export type ValidationResult = Violation[];
  */
 export type ValidationAction = 'mark' | 'delete';
 
-/**
- * Validation rule function.
- * Returns Violation[] with explicit invalid targets.
- */
-export type ValidationRuleFn = (ctx: ValidationContext) => ValidationResult;
+/** A validation failure and the tokens it is about. */
+export interface Violation {
+  ruleId: string;
+  /** Machine-readable cause, such as `duplicate` or `pattern`. */
+  reason: string;
+  /** Text to show for the failure. */
+  message?: string;
+  action: ValidationAction;
+  targets: ViolationTarget[];
+}
 
 export interface ValidationRule {
   id: string;
-  validate: ValidationRuleFn;
+  /**
+   * Decides which failure a token shows when it has several: the violation of the
+   * rule with the highest priority wins, and rules of equal priority win in the
+   * order they are configured. Defaults to 0.
+   */
   priority?: number;
+  validate(ctx: ValidationContext): Violation[];
 }
 
-/**
- * Field-level rule override:
- * - false: Disable rule for this field
- */
-export type FieldRuleOverride = false;
-
 export interface ValidationConfig {
+  /** Rules to run in addition to the ones that always apply, such as `FieldDefinition.validate`. */
   rules?: ValidationRule[];
 }
 
-/** Simplified token for createRule() helper (without pos, rawValue). */
-export interface SimpleToken {
-  key: string;
-  operator: string;
-  value: string;
-}
-
 /**
- * Extended validation result with delete target support.
- * Use deleteTargetIndices to specify which tokens to delete.
- */
-export interface ExtendedValidationResult {
-  /** Error message to display */
-  message?: string;
-  /** Indices in allTokens array to delete */
-  deleteTargetIndices?: number[];
-}
-
-/**
- * Return value for simple validation functions.
- * - string: Error message (marks token as invalid)
- * - null/undefined: Valid (or skip validation)
- * - ExtendedValidationResult: For specifying delete targets
- */
-export type SimpleValidationReturn = string | ExtendedValidationResult | null | undefined;
-
-/**
- * Simple validation function for basic use cases.
- * Return an error message string if invalid, or null/undefined if valid.
- *
- * @example
- * // Return error message string
- * (token) => token.value === 'bad' ? 'Invalid value' : null
- *
- * // Return null or undefined for valid
- * (token) => { if (isValid(token)) return null; return 'Error'; }
- */
-export type SimpleValidationFn = (
-  token: SimpleToken,
-  allTokens: SimpleToken[]
-) => SimpleValidationReturn;
-
-/**
- * Extended validation function with currentIndex for specifying delete targets.
- */
-export type ExtendedValidationFn = (
-  token: SimpleToken,
-  allTokens: SimpleToken[],
-  currentIndex: number
-) => SimpleValidationReturn;
-
-/**
- * Options for createRule() helper.
+ * Options for `createRule()`.
  */
 export interface CreateRuleOptions {
-  /** Rule ID (default: 'custom-rule') */
-  id?: string;
-  /** Rule priority (higher values run first) */
+  /** Which failure a token shows when several rules fail it (see `ValidationRule.priority`). */
   priority?: number;
 }

@@ -1,21 +1,45 @@
 import type {
   CreateRuleOptions,
-  ExtendedValidationFn,
-  SimpleToken,
-  SimpleValidationFn,
-  SimpleValidationReturn,
   ValidationContext,
   ValidationRule,
   ValidationToken,
   Violation,
 } from '../types';
 import { enumResolvers, getEnumValue, resolveEnumValue } from '../utils/enum-value';
-import {
-  createDeleteViolation,
-  createMarkViolation,
-  getNewOrEditingTokens,
-  splitByEditState,
-} from './strategy-helpers';
+
+/** Which tokens a strategy deletes and which it only marks as invalid. */
+interface Outcome {
+  delete: ValidationToken[];
+  mark: ValidationToken[];
+}
+
+interface ViolationBase {
+  ruleId: string;
+  reason: string;
+  message: string;
+}
+
+function toViolations(outcome: Outcome, base: ViolationBase): Violation[] {
+  const violations: Violation[] = [];
+  for (const [action, tokens] of [
+    ['delete', outcome.delete],
+    ['mark', outcome.mark],
+  ] as const) {
+    if (tokens.length === 0) continue;
+    violations.push({ ...base, action, targets: tokens.map((t) => ({ tokenId: t.id })) });
+  }
+  return violations;
+}
+
+/** Whether the user has finished entering the token: it has a value and they are not in it. */
+function isEntered(token: ValidationToken, ctx: ValidationContext): boolean {
+  return token.value !== '' && token.id !== ctx.focusedTokenId;
+}
+
+/** Whether a reject strategy may delete the token: it was edited and is fully entered. */
+function isRejectable(token: ValidationToken, ctx: ValidationContext): boolean {
+  return ctx.isEditing(token) && isEntered(token, ctx);
+}
 
 // ============================================
 // Uniqueness Presets
@@ -24,172 +48,119 @@ import {
 export type UniqueConstraint = 'key' | 'key-operator' | 'exact';
 
 /**
- * Duplicate group for uniqueness validation.
+ * What to do with tokens that duplicate each other:
+ * - `'mark'`: mark every duplicate after the first
+ * - `'replace'`: the last edited token replaces the others
+ * - `'reject'`: delete the edited duplicates and keep the existing token
  */
-export interface DuplicateGroup {
-  signature: string;
-  key: string;
-  tokens: ValidationToken[];
+export type DuplicateStrategy = 'mark' | 'replace' | 'reject';
+
+export interface UniqueOptions {
+  /** @default 'mark' */
+  onDuplicate?: DuplicateStrategy;
+  /** Which failure a token shows when several rules fail it (see `ValidationRule.priority`). */
+  priority?: number;
 }
 
 /**
- * Strategy result specifying which tokens to delete/mark.
+ * The text that identifies a token under the constraint. Free text has no key or
+ * operator, so only the exact constraint compares it.
  */
-export interface StrategyResult {
-  delete: ValidationToken[];
-  mark: ValidationToken[];
+function signatureOf(token: ValidationToken, constraint: UniqueConstraint): string | null {
+  if (token.type === 'freeText') {
+    return constraint === 'exact' ? `freetext:${token.value}` : null;
+  }
+  switch (constraint) {
+    case 'key':
+      return `filter:${token.key}`;
+    case 'key-operator':
+      return `filter:${token.key}:${token.operator}`;
+    case 'exact':
+      return `filter:${token.key}:${token.operator}:${token.value}`;
+  }
 }
 
-/**
- * Strategy for handling duplicate tokens.
- */
-export type UniqueStrategy = (group: DuplicateGroup, ctx: ValidationContext) => StrategyResult;
-
-// Signature builders for different token types (functional approach)
-type SignatureBuilder = (token: ValidationToken) => string;
-
-const freeTextSignatureBuilders: Record<UniqueConstraint, SignatureBuilder> = {
-  key: () => 'freetext:',
-  'key-operator': () => 'freetext:',
-  exact: (token) => `freetext:${token.value}`,
-};
-
-const filterSignatureBuilders: Record<UniqueConstraint, SignatureBuilder> = {
-  key: (token) => `filter:${token.key}`,
-  'key-operator': (token) => `filter:${token.key}:${token.operator}`,
-  exact: (token) => `filter:${token.key}:${token.operator}:${token.value}`,
-};
-
-function createSignature(token: ValidationToken, constraint: UniqueConstraint): string {
-  const builders = token.type === 'freeText' ? freeTextSignatureBuilders : filterSignatureBuilders;
-  return builders[constraint](token);
-}
-
-function buildDuplicateGroups(
+function duplicateGroups(
   tokens: ValidationToken[],
   constraint: UniqueConstraint
-): Map<string, DuplicateGroup> {
-  return tokens.reduce((groups, token) => {
-    const sig = createSignature(token, constraint);
-    const existing = groups.get(sig);
-    const group = existing ?? { signature: sig, key: token.key, tokens: [] };
-    group.tokens.push(token);
-    return existing ? groups : groups.set(sig, group);
-  }, new Map<string, DuplicateGroup>());
+): ValidationToken[][] {
+  const groups = new Map<string, ValidationToken[]>();
+  for (const token of tokens) {
+    const signature = signatureOf(token, constraint);
+    if (signature === null) continue;
+    const group = groups.get(signature);
+    if (group) group.push(token);
+    else groups.set(signature, [token]);
+  }
+  return [...groups.values()].filter((group) => group.length > 1);
 }
 
-// Message builders for each constraint type (functional approach)
-const duplicateMessageBuilders: Record<UniqueConstraint, (key: string) => string> = {
+const duplicateMessages: Record<UniqueConstraint, (key: string) => string> = {
   key: (key) => `Only one "${key}" filter is allowed`,
   'key-operator': (key) => `Duplicate "${key}" filter with same operator`,
   exact: () => 'Duplicate filter',
 };
 
-const getDuplicateMessage = (constraint: UniqueConstraint, key: string): string =>
-  duplicateMessageBuilders[constraint](key);
+function resolveDuplicates(
+  group: ValidationToken[],
+  ctx: ValidationContext,
+  strategy: DuplicateStrategy
+): Outcome {
+  const edited = group.filter((t) => ctx.isEditing(t));
 
-export interface UniqueOptions {
-  priority?: number;
+  // Nothing was edited (undo, redo, focus moves): there is no newer token to favour.
+  if (strategy === 'mark' || edited.length === 0) {
+    return { delete: [], mark: strategy === 'replace' ? group.slice(0, -1) : group.slice(1) };
+  }
+
+  if (strategy === 'replace') {
+    const kept = edited[edited.length - 1];
+    const others = group.filter((t) => t !== kept);
+    // The token that replaces the others is still being filled in: wait until it is entered.
+    return isEntered(kept, ctx) ? { delete: others, mark: [] } : { delete: [], mark: others };
+  }
+
+  // reject: the existing token wins; when every token is new the first one does.
+  const existing = group.filter((t) => !ctx.isEditing(t));
+  const rejected = (existing.length > 0 ? edited : edited.slice(1)).filter((t) =>
+    isRejectable(t, ctx)
+  );
+  const survivors = group.filter((t) => !rejected.includes(t));
+  return { delete: rejected, mark: survivors.slice(1) };
 }
 
 /**
- * Strategies and rule factory for handling duplicate tokens.
- * Uses splitByEditState for consistent new/existing separation.
+ * Rule factory for tokens that duplicate each other.
  *
  * @example
  * import { Unique } from '@kuruwic/tokenized-search-input';
  *
- * Unique.rule('key')                    // Mark duplicates
- * Unique.rule('key', Unique.replace)    // Replace existing with new
- * Unique.rule('key', Unique.reject)     // Reject new duplicates
+ * Unique.rule('key')                                  // Mark duplicates
+ * Unique.rule('key', { onDuplicate: 'replace' })      // The newest token replaces the others
+ * Unique.rule('key', { onDuplicate: 'reject' })       // Delete new duplicates
  */
-const uniqueMark: UniqueStrategy = (group) => ({
-  delete: [],
-  mark: group.tokens.slice(1),
-});
-
-const uniqueReplace: UniqueStrategy = (group, ctx) => {
-  const { newOrEditing, untouched } = splitByEditState(group.tokens, ctx);
-
-  // All existing (e.g., undo/redo): keep last, delete rest
-  if (newOrEditing.length === 0) {
-    return { delete: group.tokens.slice(0, -1), mark: [] };
-  }
-
-  // Has editing tokens: delete existing + keep only last editing
-  const editingToDelete = newOrEditing.length > 1 ? newOrEditing.slice(0, -1) : [];
-  return {
-    delete: [...untouched, ...editingToDelete],
-    mark: [],
-  };
-};
-
-const uniqueReject: UniqueStrategy = (group, ctx) => {
-  const newOrEditing = getNewOrEditingTokens(group.tokens, ctx);
-  // All editing (e.g., paste): keep first, delete rest
-  if (newOrEditing.length === group.tokens.length) {
-    return { delete: newOrEditing.slice(1), mark: [] };
-  }
-  // No editing tokens (defensive): fall back to marking
-  if (newOrEditing.length === 0) {
-    return { delete: [], mark: group.tokens.slice(1) };
-  }
-  return { delete: newOrEditing, mark: [] };
-};
-
 export const Unique = {
-  /**
-   * Mark duplicates as invalid (first token survives).
-   */
-  mark: uniqueMark,
-
-  /**
-   * Replace existing tokens with new ones (delete existing, keep last editing).
-   */
-  replace: uniqueReplace,
-
-  /**
-   * Reject new duplicates (delete editing, keep existing).
-   */
-  reject: uniqueReject,
-
   /**
    * Creates a uniqueness validation rule.
    *
    * @param constraint - What to compare for uniqueness
-   * @param strategy - How to handle duplicates (default: Unique.mark)
-   * @param options - Additional options like priority
+   * @param options - How to handle duplicates, and the rule's priority
    */
-  rule(
-    constraint: UniqueConstraint,
-    strategy: UniqueStrategy = uniqueMark,
-    options?: UniqueOptions
-  ): ValidationRule {
+  rule(constraint: UniqueConstraint, options: UniqueOptions = {}): ValidationRule {
     const ruleId = `unique-${constraint}`;
+    const { onDuplicate = 'mark', priority } = options;
 
     return {
       id: ruleId,
-      validate: (ctx) => {
-        const groups = buildDuplicateGroups(ctx.tokens, constraint);
-        const violations: Violation[] = [];
-
-        for (const group of groups.values()) {
-          if (group.tokens.length <= 1) continue;
-
-          const result = strategy(group, ctx);
-          const message = getDuplicateMessage(constraint, group.key);
-          const opts = { ruleId, reason: 'duplicate', message };
-
-          const deleteViolation = createDeleteViolation(result.delete, opts);
-          if (deleteViolation) violations.push(deleteViolation);
-
-          const markViolation = createMarkViolation(result.mark, opts);
-          if (markViolation) violations.push(markViolation);
-        }
-
-        return violations;
-      },
-      priority: options?.priority,
+      priority,
+      validate: (ctx) =>
+        duplicateGroups(ctx.tokens, constraint).flatMap((group) =>
+          toViolations(resolveDuplicates(group, ctx, onDuplicate), {
+            ruleId,
+            reason: 'duplicate',
+            message: duplicateMessages[constraint](group[0].key),
+          })
+        ),
     };
   },
 };
@@ -198,110 +169,73 @@ export const Unique = {
 // Count Presets
 // ============================================
 
-/**
- * Strategy for handling tokens that exceed the limit.
- * Receives all relevant tokens and the excess count to determine what to delete/mark.
- */
-export type MaxCountStrategy = (
-  allTokens: ValidationToken[],
-  excessCount: number,
-  ctx: ValidationContext
-) => StrategyResult;
-
 export interface MaxCountOptions {
+  /**
+   * What to do with the tokens past the limit: mark the last ones, or delete edited ones.
+   * @default 'mark'
+   */
+  onExceed?: 'mark' | 'reject';
+  /** Which failure a token shows when several rules fail it (see `ValidationRule.priority`). */
   priority?: number;
   message?: string;
 }
 
+function resolveExcess(
+  tokens: ValidationToken[],
+  excess: number,
+  ctx: ValidationContext,
+  strategy: 'mark' | 'reject'
+): Outcome {
+  if (strategy === 'mark') return { delete: [], mark: tokens.slice(-excess) };
+
+  const rejected = tokens.filter((t) => isRejectable(t, ctx)).slice(0, excess);
+  const survivors = tokens.filter((t) => !rejected.includes(t));
+  const remaining = excess - rejected.length;
+  return { delete: rejected, mark: remaining > 0 ? survivors.slice(-remaining) : [] };
+}
+
 /**
- * Strategies and rule factory for handling tokens that exceed the count limit.
+ * Rule factory for tokens that exceed a count limit.
  *
  * @example
  * import { MaxCount } from '@kuruwic/tokenized-search-input';
  *
- * MaxCount.rule('tag', 3)                    // Mark exceeding tags
- * MaxCount.rule('tag', 3, MaxCount.reject)   // Reject new tags that exceed limit
+ * MaxCount.rule('tag', 3)                           // Mark tags past the third
+ * MaxCount.rule('tag', 3, { onExceed: 'reject' })   // Delete new tags past the third
  */
-const maxCountMark: MaxCountStrategy = (tokens, excessCount) => ({
-  delete: [],
-  mark: tokens.slice(-excessCount),
-});
-
-const maxCountReject: MaxCountStrategy = (tokens, excessCount, ctx) => {
-  const { newOrEditing, untouched } = splitByEditState(tokens, ctx);
-
-  // Prioritize deleting editing tokens
-  if (newOrEditing.length >= excessCount) {
-    return { delete: newOrEditing.slice(0, excessCount), mark: [] };
-  }
-
-  // Not enough editing tokens: delete all editing + some existing from the end
-  const remainingToDelete = excessCount - newOrEditing.length;
-  return {
-    delete: [...newOrEditing, ...untouched.slice(-remainingToDelete)],
-    mark: [],
-  };
-};
-
 export const MaxCount = {
-  /**
-   * Mark exceeding tokens as invalid (position-based, marks tokens at the end).
-   */
-  mark: maxCountMark,
-
-  /**
-   * Reject (delete) new tokens that would exceed the limit.
-   * Prioritizes deleting editing tokens regardless of their position.
-   */
-  reject: maxCountReject,
-
   /**
    * Creates a rule that enforces maximum count per field.
    *
    * @param fieldKey - Field key to count ('*' for total)
    * @param max - Maximum allowed count
-   * @param strategy - How to handle exceeding tokens (default: MaxCount.mark)
-   * @param options - Additional options like priority and message
+   * @param options - How to handle tokens past the limit, priority and message
    */
-  rule(
-    fieldKey: string,
-    max: number,
-    strategy: MaxCountStrategy = maxCountMark,
-    options?: MaxCountOptions
-  ): ValidationRule {
+  rule(fieldKey: string, max: number, options: MaxCountOptions = {}): ValidationRule {
     const ruleId = fieldKey === '*' ? 'max-count-total' : `max-count-${fieldKey}`;
     const effectiveMax = Math.max(0, max);
+    const { onExceed = 'mark', priority } = options;
+    const message =
+      options.message ??
+      (fieldKey === '*'
+        ? `Maximum ${effectiveMax} filters allowed`
+        : `Maximum ${effectiveMax} "${fieldKey}" filters allowed`);
 
     return {
       id: ruleId,
+      priority,
       validate: (ctx) => {
         const relevantTokens =
           fieldKey === '*' ? ctx.tokens : ctx.tokens.filter((t) => t.key === fieldKey);
+        if (relevantTokens.length <= effectiveMax) return [];
 
-        if (relevantTokens.length <= effectiveMax) {
-          return [];
-        }
-
-        const defaultMessage =
-          fieldKey === '*'
-            ? `Maximum ${effectiveMax} filters allowed`
-            : `Maximum ${effectiveMax} "${fieldKey}" filters allowed`;
-
-        const excessCount = relevantTokens.length - effectiveMax;
-        const result = strategy(relevantTokens, excessCount, ctx);
-        const message = options?.message ?? defaultMessage;
-        const opts = { ruleId, reason: 'max-exceeded', message };
-
-        const violations: Violation[] = [];
-        const deleteViolation = createDeleteViolation(result.delete, opts);
-        if (deleteViolation) violations.push(deleteViolation);
-
-        const markViolation = createMarkViolation(result.mark, opts);
-        if (markViolation) violations.push(markViolation);
-
-        return violations;
+        const excess = relevantTokens.length - effectiveMax;
+        return toViolations(resolveExcess(relevantTokens, excess, ctx, onExceed), {
+          ruleId,
+          reason: 'max-exceeded',
+          message,
+        });
       },
-      priority: options?.priority,
     };
   },
 };
@@ -310,61 +244,50 @@ export const MaxCount = {
 // Pattern Validation Presets
 // ============================================
 
-/**
- * Strategy for handling tokens with invalid values.
- */
-export type InvalidValueStrategy = (
-  token: ValidationToken,
-  ctx: ValidationContext
-) => 'delete' | 'mark';
-
 export interface RequirePatternOptions {
+  /**
+   * What to do with a token whose value does not match: mark it, or delete it if it was edited.
+   * @default 'mark'
+   */
+  onInvalid?: 'mark' | 'reject';
+  /** Which failure a token shows when several rules fail it (see `ValidationRule.priority`). */
   priority?: number;
   message?: string;
 }
 
-const invalidValueMark: InvalidValueStrategy = () => 'mark';
-const invalidValueReject: InvalidValueStrategy = (token, ctx) =>
-  ctx.isEditing(token) ? 'delete' : 'mark';
+function invalidAction(
+  token: ValidationToken,
+  ctx: ValidationContext,
+  strategy: 'mark' | 'reject'
+): 'mark' | 'delete' {
+  return strategy === 'reject' && isRejectable(token, ctx) ? 'delete' : 'mark';
+}
 
 /**
- * Strategies and rule factory for validating tokens against a regex pattern.
+ * Rule factory for validating tokens against a regex pattern.
  *
  * @example
  * import { RequirePattern } from '@kuruwic/tokenized-search-input';
  *
  * RequirePattern.rule('email', /^[^\s@]+@[^\s@]+\.[^\s@]+$/)
- * RequirePattern.rule('email', /.../, RequirePattern.reject, { message: 'Invalid email' })
+ * RequirePattern.rule('email', /.../, { onInvalid: 'reject', message: 'Invalid email' })
  */
 export const RequirePattern = {
-  /**
-   * Mark invalid tokens.
-   */
-  mark: invalidValueMark,
-
-  /**
-   * Reject (delete) editing tokens with invalid pattern.
-   */
-  reject: invalidValueReject,
-
   /**
    * Creates a rule that validates value against a pattern.
    *
    * @param fieldKey - Field key to validate
    * @param regex - Regular expression pattern
-   * @param strategy - How to handle invalid tokens (default: RequirePattern.mark)
-   * @param options - Additional options like priority and message
+   * @param options - How to handle invalid tokens, priority and message
    */
-  rule(
-    fieldKey: string,
-    regex: RegExp,
-    strategy: InvalidValueStrategy = invalidValueMark,
-    options?: RequirePatternOptions
-  ): ValidationRule {
+  rule(fieldKey: string, regex: RegExp, options: RequirePatternOptions = {}): ValidationRule {
     const ruleId = `pattern-${fieldKey}`;
+    const { onInvalid = 'mark', priority } = options;
+    const message = options.message ?? `Invalid format for "${fieldKey}"`;
 
     return {
       id: ruleId,
+      priority,
       validate: (ctx) => {
         const violations: Violation[] = [];
 
@@ -377,20 +300,18 @@ export const RequirePattern = {
           }
 
           if (!regex.test(token.value)) {
-            const action = strategy(token, ctx);
             violations.push({
               ruleId,
               reason: 'pattern',
-              message: options?.message ?? `Invalid format for "${fieldKey}"`,
-              action,
-              targets: [{ tokenId: token.id, pos: token.pos }],
+              message,
+              action: invalidAction(token, ctx, onInvalid),
+              targets: [{ tokenId: token.id }],
             });
           }
         }
 
         return violations;
       },
-      priority: options?.priority,
     };
   },
 };
@@ -400,44 +321,38 @@ export const RequirePattern = {
 // ============================================
 
 export interface RequireEnumOptions {
+  /**
+   * What to do with a token whose value is not an option: mark it, or delete it if it was edited.
+   * @default 'mark'
+   */
+  onInvalid?: 'mark' | 'reject';
+  /** Which failure a token shows when several rules fail it (see `ValidationRule.priority`). */
   priority?: number;
   message?: string;
 }
 
 /**
- * Strategies and rule factory for validating enum field values.
+ * Rule factory for validating enum field values.
  *
  * @example
  * import { RequireEnum } from '@kuruwic/tokenized-search-input';
  *
- * RequireEnum.rule()                      // Mark invalid enum values
- * RequireEnum.rule(RequireEnum.reject)    // Reject new tokens with invalid values
+ * RequireEnum.rule()                            // Mark invalid enum values
+ * RequireEnum.rule({ onInvalid: 'reject' })     // Delete edited tokens with invalid values
  */
 export const RequireEnum = {
   /**
-   * Mark invalid tokens.
-   */
-  mark: invalidValueMark,
-
-  /**
-   * Reject (delete) editing tokens with invalid enum value.
-   */
-  reject: invalidValueReject,
-
-  /**
    * Creates a rule that validates enum field values against defined options.
    *
-   * @param strategy - How to handle invalid tokens (default: RequireEnum.mark)
-   * @param options - Additional options like priority and message
+   * @param options - How to handle invalid tokens, priority and message
    */
-  rule(
-    strategy: InvalidValueStrategy = invalidValueMark,
-    options?: RequireEnumOptions
-  ): ValidationRule {
+  rule(options: RequireEnumOptions = {}): ValidationRule {
     const ruleId = 'enum-value';
+    const { onInvalid = 'mark', priority } = options;
 
     return {
       id: ruleId,
+      priority,
       validate: (ctx) => {
         const violations: Violation[] = [];
 
@@ -447,31 +362,22 @@ export const RequireEnum = {
           if (field?.type !== 'enum' || !field.enumValues) continue;
           if (!token.value) continue;
 
-          // Use the field's resolver (or default) to check validity
           const resolver = field.valueResolver ?? enumResolvers.caseInsensitive;
           const resolved = resolveEnumValue(field.enumValues, token.value, { resolver });
 
-          // If resolved equals input, check if it's actually a valid enum value
-          // (resolver returns original input when no match found)
-          const isValid =
-            resolved !== token.value ||
-            field.enumValues.some((ev) => getEnumValue(ev) === token.value);
-
-          if (!isValid) {
-            const action = strategy(token, ctx);
+          if (!field.enumValues.some((ev) => getEnumValue(ev) === resolved)) {
             violations.push({
               ruleId,
               reason: 'invalid-enum-value',
-              message: options?.message ?? `Invalid value for "${field.label}"`,
-              action,
-              targets: [{ tokenId: token.id, pos: token.pos }],
+              message: options.message ?? `Invalid value for "${field.label}"`,
+              action: invalidAction(token, ctx, onInvalid),
+              targets: [{ tokenId: token.id }],
             });
           }
         }
 
         return violations;
       },
-      priority: options?.priority,
     };
   },
 };
@@ -481,164 +387,83 @@ export const RequireEnum = {
 // ============================================
 
 /**
- * Creates a validation rule from a simple function.
- * Hides internal details like pos.
+ * Creates a validation rule from a function that checks one token at a time.
  *
- * Returns Violation[] for each token that fails validation.
- *
- * @example
- * // Basic usage - return error message string (marks token)
- * createRule((token, allTokens) => {
- *   const count = allTokens.filter((t) => t.key === token.key).length;
- *   if (count > 1) {
- *     return `"${token.key}" is already in use`;
- *   }
- * }, { id: 'no-duplicates' });
+ * The function returns the violation (or violations) for the token, or `null` when
+ * the token is valid. A violation names the tokens it is about, which need not
+ * include the token being checked.
  *
  * @example
- * // Delete specific tokens
- * createRule((token, allTokens, currentIndex) => {
- *   if (token.key !== 'status') return;
- *   const existingIndices = allTokens
- *     .map((t, i) => (t.key === 'status' && i !== currentIndex ? i : -1))
- *     .filter((i) => i !== -1);
- *   if (existingIndices.length > 0) {
- *     return { deleteTargetIndices: existingIndices };
- *   }
- * }, { id: 'status-replace' });
+ * // Mark a token
+ * createRule('no-deleted-status', (token) =>
+ *   token.key === 'status' && token.value === 'deleted'
+ *     ? {
+ *         ruleId: 'no-deleted-status',
+ *         reason: 'forbidden-value',
+ *         message: 'Cannot use "deleted" status',
+ *         action: 'mark',
+ *         targets: [{ tokenId: token.id }],
+ *       }
+ *     : null
+ * );
+ *
+ * @example
+ * // Delete the other status tokens when one was edited
+ * createRule('status-replace', (token, ctx) => {
+ *   if (token.key !== 'status' || !ctx.isEditing(token)) return null;
+ *   const others = ctx.tokens.filter((t) => t.key === 'status' && t.id !== token.id);
+ *   return others.length === 0
+ *     ? null
+ *     : {
+ *         ruleId: 'status-replace',
+ *         reason: 'replaced',
+ *         action: 'delete',
+ *         targets: others.map((t) => ({ tokenId: t.id })),
+ *       };
+ * });
  */
 export function createRule(
-  validate: SimpleValidationFn,
-  options?: CreateRuleOptions
-): ValidationRule;
-export function createRule(
-  validate: ExtendedValidationFn,
-  options?: CreateRuleOptions
-): ValidationRule;
-export function createRule(
-  validate: SimpleValidationFn | ExtendedValidationFn,
+  id: string,
+  validate: (token: ValidationToken, ctx: ValidationContext) => Violation | Violation[] | null,
   options: CreateRuleOptions = {}
 ): ValidationRule {
-  const { id: ruleId = 'custom-rule', priority } = options;
-
   return {
-    id: ruleId,
-    validate: (ctx) => {
-      const violations: Violation[] = [];
-      const allSimpleTokens: SimpleToken[] = ctx.tokens.map((t) => ({
-        key: t.key,
-        operator: t.operator,
-        value: t.value,
-      }));
-
-      for (let i = 0; i < ctx.tokens.length; i++) {
-        const token = ctx.tokens[i];
-        const simpleToken: SimpleToken = {
-          key: token.key,
-          operator: token.operator,
-          value: token.value,
-        };
-
-        const result = (validate as ExtendedValidationFn)(simpleToken, allSimpleTokens, i);
-
-        if (result == null) continue;
-
-        if (typeof result === 'string') {
-          // String result = mark the token
-          violations.push({
-            ruleId,
-            reason: 'custom',
-            message: result,
-            action: 'mark',
-            targets: [{ tokenId: token.id, pos: token.pos }],
-          });
-          continue;
-        }
-
-        // Handle deleteTargetIndices
-        if (result.deleteTargetIndices && result.deleteTargetIndices.length > 0) {
-          const targets = result.deleteTargetIndices
-            .filter((idx) => idx >= 0 && idx < ctx.tokens.length)
-            .map((idx) => ({ tokenId: ctx.tokens[idx].id, pos: ctx.tokens[idx].pos }));
-
-          if (targets.length > 0) {
-            violations.push({
-              ruleId,
-              reason: 'custom',
-              message: result.message,
-              action: 'delete',
-              targets,
-            });
-          }
-        } else if (result.message) {
-          // Has message but no deleteTargetIndices = mark
-          violations.push({
-            ruleId,
-            reason: 'custom',
-            message: result.message,
-            action: 'mark',
-            targets: [{ tokenId: token.id, pos: token.pos }],
-          });
-        }
-      }
-
-      return violations;
-    },
-    priority,
+    id,
+    priority: options.priority,
+    validate: (ctx) =>
+      ctx.tokens.flatMap((token) => {
+        const result = validate(token, ctx);
+        if (result === null || result === undefined) return [];
+        return Array.isArray(result) ? result : [result];
+      }),
   };
 }
 
 /**
- * Creates a validation rule that applies only to a specific field.
+ * Creates a validation rule that checks only the tokens of one field.
  *
  * @example
- * createFieldRule('email', (value, _allTokens, _operator) => {
- *   if (!value.includes('@')) {
- *     return 'Invalid email format';
- *   }
- * });
+ * createFieldRule('age', (token) =>
+ *   Number.isInteger(Number(token.value))
+ *     ? null
+ *     : {
+ *         ruleId: 'field-rule-age',
+ *         reason: 'not-an-integer',
+ *         message: 'Age must be a whole number',
+ *         action: 'mark',
+ *         targets: [{ tokenId: token.id }],
+ *       }
+ * );
  */
 export function createFieldRule(
   fieldKey: string,
-  validate: (value: string, allTokens: SimpleToken[], operator: string) => SimpleValidationReturn,
-  options?: CreateRuleOptions
+  validate: (token: ValidationToken, ctx: ValidationContext) => Violation | Violation[] | null,
+  options: CreateRuleOptions & { id?: string } = {}
 ): ValidationRule {
+  const { id = `field-rule-${fieldKey}`, ...ruleOptions } = options;
   return createRule(
-    (token, allTokens) => {
-      if (token.key !== fieldKey) return null;
-      return validate(token.value, allTokens, token.operator);
-    },
-    {
-      id: options?.id ?? `field-rule-${fieldKey}`,
-      ...options,
-    }
+    id,
+    (token, ctx) => (token.key === fieldKey ? validate(token, ctx) : null),
+    ruleOptions
   );
 }
-
-// ============================================
-// Namespace Export
-// ============================================
-
-/**
- * Preset validation rules.
- *
- * @example
- * import { Unique, MaxCount, createRule } from '@kuruwic/tokenized-search-input';
- *
- * <TokenizedSearchEditor
- *   validation={{
- *     rules: [
- *       Unique.rule('key', Unique.replace),
- *       MaxCount.rule('tag', 3, MaxCount.reject),
- *     ]
- *   }}
- * />
- */
-export const ValidationRules = {
-  unique: Unique.rule,
-  maxCount: MaxCount.rule,
-  pattern: RequirePattern.rule,
-  enumValue: RequireEnum.rule,
-  createRule,
-  createFieldRule,
-};

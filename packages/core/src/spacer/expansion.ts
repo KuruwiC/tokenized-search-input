@@ -2,7 +2,7 @@
  * Spacer Expansion Operations
  *
  * Pure functions for computing deletion ranges that include adjacent spacers.
- * Used by validation (plan-executor) and token-spacing (empty-token-cleanup).
+ * Used by validation (run.ts) and token-spacing (empty-token-cleanup).
  */
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { isSpacer, isText } from '../utils/node-predicates';

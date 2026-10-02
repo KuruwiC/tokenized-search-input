@@ -2,7 +2,7 @@
  * Unit tests for spacer deletion helper functions.
  *
  * Tests the pure functions used to compute deletion ranges with spacer expansion.
- * These functions are used by both validation (plan-executor) and token-spacing (empty-token-cleanup).
+ * These functions are used by both validation (run.ts) and token-spacing (empty-token-cleanup).
  */
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { EditorState } from '@tiptap/pm/state';

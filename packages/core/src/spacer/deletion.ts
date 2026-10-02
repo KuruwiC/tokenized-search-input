@@ -12,7 +12,7 @@ import type { SpacerExpandedRange } from './types';
  * Centralizes mutation logic: replaces with space if needed, otherwise deletes.
  *
  * This unifies the mutation logic from:
- * - validation/plan-executor.ts (validation deletions)
+ * - validation/run.ts (validation deletions)
  * - token-spacing/phases/empty-token-cleanup.ts (focus change cleanup)
  */
 export function applySpacerDeletion(

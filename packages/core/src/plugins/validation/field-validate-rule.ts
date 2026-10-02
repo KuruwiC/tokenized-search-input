@@ -25,7 +25,7 @@ export function createFieldValidateRule(source: FieldResolutionSource): Validati
           reason: 'invalid-value',
           message: typeof result === 'string' && result !== '' ? result : undefined,
           action: 'mark',
-          targets: [{ tokenId: token.id, pos: token.pos }],
+          targets: [{ tokenId: token.id }],
         });
       }
       return violations;

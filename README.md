@@ -230,7 +230,7 @@ import {
       MaxCount.rule("*", 5),
 
       // Auto-delete new duplicates instead of highlighting
-      Unique.rule("exact", Unique.reject),
+      Unique.rule("exact", { onDuplicate: "reject" }),
 
       // Validate value format
       RequirePattern.rule("email", /^[^\s@]+@[^\s@]+\.[^\s@]+$/),
@@ -239,42 +239,56 @@ import {
       RequireEnum.rule(),
 
       // Custom validation rule with full control
-      createRule(
-        (token, allTokens, currentIndex) => {
-          if (token.key === "status" && token.value === "deleted") {
-            return 'Cannot use "deleted" status';
-          }
-        },
-        { id: "no-deleted-status" },
+      createRule("no-deleted-status", (token, ctx) =>
+        token.key === "status" && token.value === "deleted"
+          ? {
+              ruleId: "no-deleted-status",
+              reason: "forbidden-value",
+              message: 'Cannot use "deleted" status',
+              action: "mark",
+              targets: [{ tokenId: token.id }],
+            }
+          : null,
       ),
 
-      // Field-specific validation (also receives allTokens and operator)
-      createFieldRule("age", (value, allTokens, operator) => {
-        const num = parseInt(value, 10);
+      // Field-specific validation
+      createFieldRule("age", (token) => {
+        const num = parseInt(token.value, 10);
         if (isNaN(num) || num < 0 || num > 150) {
-          return "Age must be between 0 and 150";
+          return {
+            ruleId: "field-rule-age",
+            reason: "out-of-range",
+            message: "Age must be between 0 and 150",
+            action: "mark",
+            targets: [{ tokenId: token.id }],
+          };
         }
+        return null;
       }),
     ],
   }}
 />;
 ```
 
-### Validation Strategies
+`createRule(id, check, options?)` calls `check(token, ctx)` for every token. `ctx.tokens` holds all tokens, `ctx.isEditing(token)` tells whether the token was just added or changed, and `ctx.focusedTokenId` is the token the user is in. The check returns a violation, an array of violations, or `null`. A violation names the tokens it is about in `targets`, which need not include the checked token.
 
-Each validation rule supports strategies that control how violations are handled:
+### Validation Options
 
-| Rule | Strategy | Description |
-|------|----------|-------------|
-| `Unique` | `Unique.mark` (default) | Highlight duplicates as invalid |
-| | `Unique.reject` | Auto-delete new duplicates |
-| | `Unique.replace` | Replace existing with new duplicate |
-| `MaxCount` | `MaxCount.mark` (default) | Highlight excess tokens as invalid |
-| | `MaxCount.reject` | Auto-delete tokens that exceed limit |
-| `RequirePattern` | `RequirePattern.mark` (default) | Highlight invalid format |
-| | `RequirePattern.reject` | Auto-delete invalid tokens |
-| `RequireEnum` | `RequireEnum.mark` (default) | Highlight invalid enum values |
-| | `RequireEnum.reject` | Auto-delete invalid enum values |
+Each preset rule takes an option that controls how violations are handled:
+
+| Rule | Option | Description |
+|------|--------|-------------|
+| `Unique` | `onDuplicate: 'mark'` (default) | Highlight duplicates as invalid |
+| | `onDuplicate: 'reject'` | Auto-delete new duplicates |
+| | `onDuplicate: 'replace'` | Replace existing with new duplicate |
+| `MaxCount` | `onExceed: 'mark'` (default) | Highlight excess tokens as invalid |
+| | `onExceed: 'reject'` | Auto-delete new tokens that exceed limit |
+| `RequirePattern` | `onInvalid: 'mark'` (default) | Highlight invalid format |
+| | `onInvalid: 'reject'` | Auto-delete new invalid tokens |
+| `RequireEnum` | `onInvalid: 'mark'` (default) | Highlight invalid enum values |
+| | `onInvalid: 'reject'` | Auto-delete new invalid enum values |
+
+Rules reject only tokens that were just added or changed, never one that is only focused. When a token has several violations, the one from the rule with the highest `priority` is shown.
 
 ### Unique Constraints
 
