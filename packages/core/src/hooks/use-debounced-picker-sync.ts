@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toCalendarDay } from '../pickers/calendar-days';
-import type { DateTimeValue } from '../pickers/date-time-value';
+import { type DateTimeValue, pad } from '../pickers/date-time-value';
 import { parseDateForNavigation, parseDateTimeForNavigation } from '../pickers/navigation-parsers';
 
 /**
@@ -28,8 +28,6 @@ export interface UseDebouncedPickerSyncOptions {
   /** Debounce delay in ms for following partial input (default: 200) */
   delay?: number;
 }
-
-const pad = (n: number): string => String(n).padStart(2, '0');
 
 /**
  * Where the picker should move for partial input such as `2024-03` or `2024-03-05T11:3`.

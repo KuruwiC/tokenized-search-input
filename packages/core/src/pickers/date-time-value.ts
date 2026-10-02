@@ -21,7 +21,7 @@ const VALUE_PATTERN =
 const OFFSET_PATTERN = /^([+-])(\d{2}):?(\d{2})$/;
 const MS_PER_MINUTE = 60_000;
 
-function pad(n: number, length = 2): string {
+export function pad(n: number, length = 2): string {
   return String(n).padStart(length, '0');
 }
 
@@ -159,7 +159,6 @@ export function atLocalTime(date: string, time: string): DateTimeValue {
   return fromInstant(instant, localOffsetAt(instant)) ?? { date, time };
 }
 
-/** Midnight at the start of `date` in the local time zone. */
 export function localMidnight(date: string): DateTimeValue {
   return atLocalTime(date, '00:00:00');
 }

@@ -1,11 +1,7 @@
 import { isDevelopment } from '../utils/env';
-import { fromInstant, parseDateTimeValue, toInstant } from './date-time-value';
+import { fromInstant, pad, parseDateTimeValue, toInstant } from './date-time-value';
 
 /** The calendar cells of a picker are days; a day is `yyyy-MM-dd`, with no time zone. */
-
-function pad(n: number, length = 2): string {
-  return String(n).padStart(length, '0');
-}
 
 /** The day a calendar cell shows, which is its local date. */
 export function toCalendarDay(cell: Date): string {
@@ -31,7 +27,6 @@ export function resolveBoundDay(bound: Date | string | undefined, utc: boolean):
   if (typeof bound === 'string') {
     const parsed = parseDateTimeValue(bound, 'datetime');
     if (!parsed.ok) return null;
-    // A moment is on the day it falls on in UTC, as it is for a Date
     if (utc && parsed.value.time !== undefined) {
       return fromInstant(toInstant(parsed.value), 'Z')?.date ?? parsed.value.date;
     }
