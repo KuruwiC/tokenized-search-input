@@ -5,7 +5,7 @@ import { getEditorContext } from '../../extensions/editor-context';
 import { isValidationCheckRequested, type TokenValidation } from '../shared/meta';
 import { getTokenFocusMeta, getTokenFocusState } from '../token-focus-plugin';
 import { tokenMetaKey } from '../token-meta-plugin';
-import { createFieldValidateRule } from './field-validate-rule';
+import { createImplicitRules } from './implicit-rules';
 import { applyPlan, planValidation } from './run';
 
 /**
@@ -91,7 +91,7 @@ export const ValidationExtension = Extension.create({
           const plan = planValidation(oldState.doc, newState.doc, {
             fields: editorContext.fields,
             rules: editorContext.validation?.rules ?? [],
-            implicitRules: [createFieldValidateRule(editorContext)],
+            implicitRules: createImplicitRules(editorContext),
             focusedTokenId: focusedTokenId(newState),
             editBase: sessionAt(oldState).editBase,
             forceCheck,
