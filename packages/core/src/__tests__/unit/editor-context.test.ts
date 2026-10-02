@@ -257,11 +257,12 @@ describe('EditorContextExtension', () => {
 
       storage.callbacks.onFieldSelect(testField);
       storage.callbacks.onValueSelect('value');
-      storage.callbacks.onSubmit();
+      const snapshot = { segments: [], text: '' };
+      storage.callbacks.onSubmit(snapshot);
 
       expect(onFieldSelect).toHaveBeenCalledWith(testField);
       expect(onValueSelect).toHaveBeenCalledWith('value');
-      expect(onSubmit).toHaveBeenCalled();
+      expect(onSubmit).toHaveBeenCalledWith(snapshot);
 
       editor.destroy();
     });

@@ -3,6 +3,7 @@ import { getFreeTextStrategy } from '../plugins/auto-tokenize/free-text-strategy
 import { autoTokenizeKey, createAutoTokenizePlugin } from '../plugins/auto-tokenize/plugin';
 import { tokenizeRange } from '../plugins/auto-tokenize/tokenize-range';
 import { createFreeTextSanitizerPlugin } from '../plugins/free-text-sanitizer-plugin';
+import { createQuerySnapshot } from '../serializer';
 import {
   type ClassNames,
   type CustomSuggestion,
@@ -16,6 +17,7 @@ import {
   type OperatorLabels,
   type PaginationLabels,
   type ParsedToken,
+  type QuerySnapshot,
   type UnknownFieldTemplate,
   type ValidationConfig,
 } from '../types';
@@ -35,11 +37,14 @@ export type DeserializeTextFn = (text: string) => ParsedToken[] | null;
 /** Transaction metadata used to notify node views that context-backed UI changed. */
 export const EDITOR_CONTEXT_UPDATED = 'editorContextUpdated';
 
+/** Marks the transaction of the `submit` command; `onSubmit` reads the state it leaves. */
+const SUBMITTED = 'querySubmitted';
+
 export interface EditorCallbacks {
   onFieldSelect: (field: FieldDefinition) => void;
   onValueSelect: (value: string) => void;
   onCustomSelect: (suggestion: CustomSuggestion) => void;
-  onSubmit: () => void;
+  onSubmit: (snapshot: QuerySnapshot) => void;
 }
 
 /** The single owner of editor configuration; readers go through `getEditorContext`. */
@@ -117,6 +122,11 @@ declare module '@tiptap/core' {
        * - 'none': Removes all text nodes from document
        */
       finalizeInput: () => ReturnType;
+      /**
+       * Finalizes the input and calls `onSubmit` with the query it leaves. Every way of
+       * submitting goes through this command.
+       */
+      submit: () => ReturnType;
     };
   }
 }
@@ -277,7 +287,22 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
 
           return true;
         },
+
+      submit:
+        () =>
+        ({ tr, commands, dispatch }) => {
+          if (!dispatch) return true;
+          commands.finalizeInput();
+          tr.setMeta(SUBMITTED, true);
+          return true;
+        },
     };
+  },
+
+  onTransaction({ transaction }) {
+    if (!transaction.getMeta(SUBMITTED)) return;
+    const { callbacks, delimiter } = getEditorContext(this.editor);
+    callbacks.onSubmit(createQuerySnapshot(this.editor.state, { delimiter }));
   },
 
   addProseMirrorPlugins() {

@@ -56,7 +56,7 @@ export const KeyboardShortcutsExtension = Extension.create({
         const callbacks = getCallbacks();
         if (handleEnterOnSuggestion(ctx, callbacks)) return true;
         if (handleEnterTokenize(ctx)) return true;
-        if (handleEnterSubmit(ctx, callbacks)) return true;
+        if (handleEnterSubmit(ctx)) return true;
         return false;
       }),
       Escape: ifEditable(() => handleEscape(getContext())),

@@ -2,10 +2,15 @@
  * Integration tests for search execution behavior.
  * Tests the onSubmit callback and query serialization when search is triggered.
  */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import {
+  TokenizedSearchInput,
+  type TokenizedSearchInputRef,
+} from '../../editor/tokenized-search-input';
+import type { QuerySnapshot } from '../../types';
 import { extendedFields } from '../fixtures';
 
 afterEach(() => {
@@ -52,6 +57,52 @@ describe('Search Execution', () => {
         operator: 'is',
         value: 'active',
       });
+    });
+  });
+
+  it('passes the same snapshot for Enter and ref.submit() in tokenize mode', async () => {
+    const user = userEvent.setup();
+    const withoutIds = (snapshot: QuerySnapshot | undefined) => ({
+      text: snapshot?.text,
+      segments: snapshot?.segments.map((segment) => ({ ...segment, id: undefined })),
+    });
+
+    const onEnterSubmit = vi.fn<(snapshot: QuerySnapshot) => void>();
+    const first = render(
+      <TokenizedSearchInput
+        fields={extendedFields}
+        freeTextMode="tokenize"
+        onSubmit={onEnterSubmit}
+      />
+    );
+    await user.click(screen.getByRole('combobox'));
+    await user.keyboard('hello{Enter}');
+    await waitFor(() => expect(onEnterSubmit).toHaveBeenCalledTimes(1));
+    first.unmount();
+
+    const ref = createRef<TokenizedSearchInputRef>();
+    const onRefSubmit = vi.fn<(snapshot: QuerySnapshot) => void>();
+    render(
+      <TokenizedSearchInput
+        ref={ref}
+        fields={extendedFields}
+        freeTextMode="tokenize"
+        onSubmit={onRefSubmit}
+      />
+    );
+    await user.click(screen.getByRole('combobox'));
+    await user.keyboard('hello');
+    act(() => {
+      ref.current?.submit();
+    });
+
+    expect(onRefSubmit).toHaveBeenCalledTimes(1);
+    expect(withoutIds(onRefSubmit.mock.calls[0]?.[0])).toEqual(
+      withoutIds(onEnterSubmit.mock.calls[0]?.[0])
+    );
+    expect(onRefSubmit.mock.calls[0]?.[0].segments[0]).toMatchObject({
+      type: 'freeText',
+      value: 'hello',
     });
   });
 });

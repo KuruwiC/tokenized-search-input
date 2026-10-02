@@ -4,7 +4,6 @@ import type { Editor } from '@tiptap/react';
 import {
   type ForwardedRef,
   type MutableRefObject,
-  useCallback,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -18,7 +17,6 @@ import {
 } from '../../extensions/token-commands';
 import { requestValidationCheck } from '../../plugins/shared/meta';
 import { createQuerySnapshot, parseQueryToDoc, serializeDocToQuery } from '../../serializer';
-import type { QuerySnapshot } from '../../types';
 import { findTokenById } from '../../utils/find-token';
 import { isFilterToken } from '../../utils/node-predicates';
 import type {
@@ -51,11 +49,6 @@ function transformDoc(
   return tr.doc.toJSON() as JSONContent;
 }
 
-export interface UseTokenizedSearchInputRefOptions {
-  editor: Editor | null;
-  onSubmit: ((snapshot: QuerySnapshot) => void) | undefined;
-}
-
 interface PendingHandleWrites {
   doc: JSONContent | null;
   /**
@@ -64,22 +57,24 @@ interface PendingHandleWrites {
    */
   displays: { id: string; display: TokenDisplay; binding: DisplayBinding }[];
   focus: boolean;
+  /** `submit` was called; it submits the query once the writes before it are applied. */
+  submit: boolean;
 }
 
-const NO_PENDING_WRITES: PendingHandleWrites = { doc: null, displays: [], focus: false };
-
-export interface TokenizedSearchInputHandle {
-  submit: () => void;
-  pending: MutableRefObject<PendingHandleWrites>;
-}
+const NO_PENDING_WRITES: PendingHandleWrites = {
+  doc: null,
+  displays: [],
+  focus: false,
+  submit: false,
+};
 
 /**
  * Builds the imperative handle.
  *
  * An ancestor's effect in the same commit can call the handle while `editor` is
  * still a destroyed instance. Writes made then are held as a pending document, read
- * back by `getValue`, `getSnapshot` and `submit`, and applied by
- * `useApplyPendingHandleWrites` once the live editor renders. Display data has no
+ * back by `getValue` and `getSnapshot`, and applied by `useApplyPendingHandleWrites`
+ * once the live editor renders, which then runs a held `submit` as well. Display data has no
  * place in the document, so `setTokenDisplay` calls are held next to it and applied
  * after it; replacing the content with `setValue` or `clear` discards them, as it
  * discards token meta in a live editor. Validation runs once the document is
@@ -87,17 +82,9 @@ export interface TokenizedSearchInputHandle {
  */
 export function useTokenizedSearchInputRef(
   ref: ForwardedRef<TokenizedSearchInputRef>,
-  { editor, onSubmit }: UseTokenizedSearchInputRefOptions
-): TokenizedSearchInputHandle {
+  editor: Editor | null
+): MutableRefObject<PendingHandleWrites> {
   const pendingHandleRef = useRef<PendingHandleWrites>(NO_PENDING_WRITES);
-
-  const submit = useCallback(() => {
-    if (!editor) return;
-    const { doc } = pendingHandleRef.current;
-    const state = doc ? stateFromDoc(editor, doc) : editor.state;
-    const snapshot = createQuerySnapshot(state, { delimiter: getEditorContext(editor).delimiter });
-    onSubmit?.(snapshot);
-  }, [editor, onSubmit]);
 
   useImperativeHandle(ref, () => {
     const parseValue = (ed: Editor, value: string) => {
@@ -161,7 +148,14 @@ export function useTokenizedSearchInputRef(
         }
         editor.commands.replaceContent('');
       },
-      submit,
+      submit: () => {
+        if (!editor) return;
+        if (editor.isDestroyed) {
+          pendingHandleRef.current = { ...pendingHandleRef.current, submit: true };
+          return;
+        }
+        editor.commands.submit();
+      },
       updateToken: (id: string, patch: TokenPatch) => {
         if (!editor) return;
         if (editor.isDestroyed) {
@@ -199,16 +193,15 @@ export function useTokenizedSearchInputRef(
       },
       getEditor: () => editor,
     };
-  }, [editor, submit]);
+  }, [editor]);
 
-  return { submit, pending: pendingHandleRef };
+  return pendingHandleRef;
 }
 
 /**
  * Applies the writes held while the editor was destroyed. Call it after every other
  * hook that attaches to the editor: the write sets content, validates, sets token
- * display and focuses,
- * so it has to see the configuration synced from the current props, the focus
+ * display, focuses and submits, so it has to see the configuration synced from the current props, the focus
  * listeners and the suggestion scheduling already in place.
  */
 export function useApplyPendingHandleWrites(
@@ -217,7 +210,7 @@ export function useApplyPendingHandleWrites(
 ): void {
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
-    const { doc, displays, focus } = pending.current;
+    const { doc, displays, focus, submit } = pending.current;
     pending.current = NO_PENDING_WRITES;
     if (doc) setContentAndValidate(editor, doc);
     for (const { id, display, binding } of displays) {
@@ -225,5 +218,6 @@ export function useApplyPendingHandleWrites(
       if (setTokenDisplayById(editor.state, tr, id, display, binding)) editor.view.dispatch(tr);
     }
     if (focus) editor.commands.focus();
+    if (submit) editor.commands.submit();
   }, [editor, pending]);
 }

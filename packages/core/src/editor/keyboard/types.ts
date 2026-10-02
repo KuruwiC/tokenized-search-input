@@ -20,7 +20,6 @@ export interface KeyboardCallbacks {
   onFieldSelect: (field: FieldDefinition) => void;
   onValueSelect: (value: string) => void;
   onCustomSelect: (suggestion: CustomSuggestion) => void;
-  onSubmit: () => void;
 }
 
 // Returns true if the event was handled and should stop propagation.

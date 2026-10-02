@@ -1,7 +1,8 @@
 import { EditorContent } from '@tiptap/react';
-import { forwardRef, useId, useRef } from 'react';
+import { forwardRef, useCallback, useId, useRef } from 'react';
 import { useDevWarnings } from '../hooks/use-dev-warnings';
 import { SuggestionOverlay } from '../suggestions/suggestion-overlay';
+import type { QuerySnapshot } from '../types';
 import { cn } from '../utils/cn';
 import { ClearButton } from './clear-button';
 import { useEditorConfig } from './hooks/use-editor-config';
@@ -87,10 +88,8 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       updateSuggestions,
     });
 
-    const { submit: handleSubmit, pending } = useTokenizedSearchInputRef(ref, {
-      editor,
-      onSubmit,
-    });
+    const handleSubmit = useCallback((snapshot: QuerySnapshot) => onSubmit?.(snapshot), [onSubmit]);
+    const pending = useTokenizedSearchInputRef(ref, editor);
     useEditorConfigSync(editor, config, {
       onFieldSelect: handleFieldSelect,
       onValueSelect: handleValueSelect,
