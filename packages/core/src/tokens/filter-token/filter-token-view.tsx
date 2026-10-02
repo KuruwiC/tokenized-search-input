@@ -12,13 +12,14 @@ import {
 import { getApplicableDisplay } from '../../plugins/shared/meta';
 import {
   closeSuggestion,
+  getEditableValueText,
   getSuggestionState,
   navigateSuggestion,
 } from '../../plugins/suggestion-plugin';
 import { getDecorationValidation } from '../../plugins/token-meta-plugin';
 import { type EnumValue, type FieldDefinition, getOperatorSelectLabel } from '../../types';
 import { isRangeSelected } from '../../utils/decoration-helpers';
-import { getEnumLabel, getEnumValue, resolveEnumValue } from '../../utils/enum-value';
+import { getEnumValue, resolveEnumValue } from '../../utils/enum-value';
 import { isInsideQuotes } from '../../utils/quoted-string';
 import {
   HandlerPriority,
@@ -31,13 +32,6 @@ import {
 import { resolveDisplayValue } from './resolve-display-value';
 import { applyTokenAction, commitFilterToken, type FilterTokenAction } from './token-actions';
 import { useValueSuggestions } from './use-value-suggestions';
-
-/** The text the user edits: a static enum value's label, otherwise the value itself. */
-function getEditableText(fieldDef: FieldDefinition | undefined, rawValue: string): string {
-  if (fieldDef?.type !== 'enum' || !fieldDef.enumValues) return rawValue;
-  const matched = fieldDef.enumValues.find((ev: EnumValue) => getEnumValue(ev) === rawValue);
-  return matched ? getEnumLabel(matched) : rawValue;
-}
 
 export const FilterTokenView: React.FC<NodeViewProps> = ({
   node,
@@ -176,7 +170,7 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
           fieldDef={fieldDef}
           fieldKey={key}
           rawValue={rawValue}
-          editableText={getEditableText(fieldDef, rawValue)}
+          editableText={getEditableValueText(fieldDef, rawValue)}
           valueDisplayString={valueDisplayString}
           valueSuggestionsDisabled={valueSuggestionsDisabled}
           baseAllowSpaces={fieldDef?.allowSpaces || isDateField || isDateTimeField}
@@ -290,12 +284,12 @@ function FilterTokenValue({
     enabled: !valueSuggestionsDisabled,
   });
 
-  // The transaction that writes a typed value also updates the value suggestions for it
+  // The transaction that writes a typed value also shows the value suggestions for it
   const handleInputChange = (inputText: string) => {
     const value = toValue(inputText);
     const tr = editor.state.tr;
     if (!applyTokenAction(tr, tokenId, { type: 'setValue', value })) return;
-    addSuggestionQuery(tr, inputText, value);
+    addSuggestionQuery(tr);
     editor.view.dispatch(tr);
   };
 

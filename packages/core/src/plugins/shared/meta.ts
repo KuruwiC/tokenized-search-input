@@ -7,7 +7,6 @@
 
 import type { Transaction } from '@tiptap/pm/state';
 import type { ReactNode } from 'react';
-import type { EnumValue } from '../../types';
 
 /** The validation outcome of one token: the rule that failed, its reason code, and an optional message. */
 export interface TokenValidation {
@@ -101,22 +100,16 @@ export function isValidationCheckRequested(tr: Transaction): boolean {
   return tr.getMeta(FORCE_VALIDATION_CHECK) === true;
 }
 
-/** The value the user typed into a token, and the value suggestions that match it. */
-export interface SuggestionQueryUpdate {
-  tokenId: string;
-  fieldKey: string;
-  query: string;
-  items: readonly EnumValue[];
-}
-
 /**
- * Carries the typed value to the suggestion plugin on the transaction that writes
- * it, which then shows the matching value suggestions for that token.
+ * Marks the transaction as the user typing into the token with the given id. The
+ * suggestion plugin then shows that token's value suggestions, even if they were
+ * dismissed; their query always follows the token's value.
  */
-export function updateSuggestionQuery(tr: Transaction, update: SuggestionQueryUpdate): Transaction {
-  return tr.setMeta(SUGGESTION_QUERY, update);
+export function updateSuggestionQuery(tr: Transaction, tokenId: string): Transaction {
+  return tr.setMeta(SUGGESTION_QUERY, tokenId);
 }
 
-export function getSuggestionQueryUpdate(tr: Transaction): SuggestionQueryUpdate | undefined {
+/** The id of the token the user typed into on this transaction, if any. */
+export function getSuggestionQueryUpdate(tr: Transaction): string | undefined {
   return tr.getMeta(SUGGESTION_QUERY);
 }

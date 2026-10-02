@@ -4,10 +4,12 @@
  * ProseMirror plugin for managing suggestion state in the editor.
  */
 
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
+import type { EnumValue, FieldDefinition } from '../../types';
 import { findTokenById } from '../../utils/find-token';
-import { isToken } from '../../utils/node-predicates';
+import { isFilterToken, isToken } from '../../utils/node-predicates';
 import { getTokenFocusEvent } from '../shared/editor-events';
 import { getSuggestionQueryUpdate } from '../shared/meta';
 import { getTokenFocusMeta } from '../token-focus-plugin';
@@ -20,6 +22,7 @@ import type {
   SuggestionState,
 } from './types';
 import { initialSuggestionState } from './types';
+import { matchValueSuggestions } from './value-items';
 
 export const suggestionKey = new PluginKey<SuggestionState>('suggestion');
 
@@ -51,18 +54,48 @@ function followAnchor(
   return mapResult.pos === anchor.pos ? anchor : { pos: mapResult.pos };
 }
 
-/** The value suggestions for a value typed into a token, as a suggestion meta. */
-function queryUpdateMeta(tr: Transaction): SetSuggestionMeta | undefined {
-  const update = getSuggestionQueryUpdate(tr);
-  if (!update) return undefined;
+export interface SuggestionPluginOptions {
+  /**
+   * The definition of a field. The query of value suggestions is the value of the
+   * token they are anchored to, and their items are derived from it through this.
+   */
+  resolveField?: (key: string) => FieldDefinition | undefined;
+}
+
+interface DerivedValueSuggestion {
+  fieldKey: string;
+  query: string;
+  items: EnumValue[];
+}
+
+/** The value suggestions of a filter token, derived from its key and current value. */
+function deriveValueSuggestion(
+  doc: ProseMirrorNode,
+  tokenId: string,
+  resolveField: SuggestionPluginOptions['resolveField']
+): DerivedValueSuggestion | undefined {
+  const found = findTokenById(doc, tokenId);
+  if (!found || !isFilterToken(found.node)) return undefined;
+  const fieldKey = String(found.node.attrs.key ?? '');
+  const query = String(found.node.attrs.value ?? '');
+  return { fieldKey, query, items: matchValueSuggestions(resolveField?.(fieldKey), query) };
+}
+
+/** Shows the value suggestions of the token the user typed into. */
+function typedValueSuggestionMeta(
+  tr: Transaction,
+  resolveField: SuggestionPluginOptions['resolveField']
+): SetSuggestionMeta | undefined {
+  const tokenId = getSuggestionQueryUpdate(tr);
+  if (tokenId === undefined) return undefined;
+  const derived = deriveValueSuggestion(tr.doc, tokenId, resolveField);
+  if (!derived) return undefined;
   return {
     type: 'value',
-    fieldKey: update.fieldKey,
-    query: update.query,
-    items: update.items,
+    ...derived,
     activeIndex: -1,
     isLoading: false,
-    anchor: { tokenId: update.tokenId },
+    anchor: { tokenId },
     dismissed: false,
   };
 }
@@ -71,7 +104,10 @@ export function getSuggestionState(state: EditorState): SuggestionState | undefi
   return suggestionKey.getState(state);
 }
 
-export function createSuggestionPlugin(): Plugin<SuggestionState> {
+export function createSuggestionPlugin(
+  options: SuggestionPluginOptions = {}
+): Plugin<SuggestionState> {
+  const { resolveField } = options;
   return new Plugin<SuggestionState>({
     key: suggestionKey,
     state: {
@@ -113,8 +149,23 @@ export function createSuggestionPlugin(): Plugin<SuggestionState> {
           }
         }
 
+        // Rule: The query of value suggestions is the value of their token, whichever
+        // transaction changed it (typing, undo/redo, a ref call, normalization).
+        if (
+          tr.docChanged &&
+          value.type === 'value' &&
+          value.anchor !== null &&
+          'tokenId' in value.anchor
+        ) {
+          const derived = deriveValueSuggestion(tr.doc, value.anchor.tokenId, resolveField);
+          if (derived && derived.query !== value.query) {
+            value = { ...value, query: derived.query, items: derived.items, activeIndex: -1 };
+          }
+        }
+
         const meta =
-          (tr.getMeta(suggestionKey) as SuggestionMeta | undefined) ?? queryUpdateMeta(tr);
+          (tr.getMeta(suggestionKey) as SuggestionMeta | undefined) ??
+          typedValueSuggestionMeta(tr, resolveField);
         if (!meta) {
           return value;
         }

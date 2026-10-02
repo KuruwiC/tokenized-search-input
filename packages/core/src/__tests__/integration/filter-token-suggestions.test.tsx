@@ -3,10 +3,16 @@
  * These tests verify that suggestion panel updates work correctly
  * after moving side effects from render to useEffect.
  */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { closeHistory } from '@tiptap/pm/history';
+import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import {
+  TokenizedSearchInput,
+  type TokenizedSearchInputRef,
+} from '../../editor/tokenized-search-input';
+import { getSuggestionState } from '../../plugins/suggestion-plugin';
 import type { FieldDefinition } from '../../types';
 
 const enumFields: FieldDefinition[] = [
@@ -145,6 +151,66 @@ describe('FilterTokenView - Suggestion Updates', () => {
       await waitFor(() => {
         expect(screen.getAllByPlaceholderText('...').length).toBeGreaterThan(0);
       });
+    });
+  });
+  describe('Value suggestions follow the token value', () => {
+    const statusFields: FieldDefinition[] = [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'enum',
+        operators: ['is'],
+        enumValues: ['active', 'archived', 'pending', 'paused'],
+      },
+    ];
+
+    async function openStatusSuggestions(defaultValue: string) {
+      const user = userEvent.setup();
+      const ref = createRef<TokenizedSearchInputRef>();
+      render(<TokenizedSearchInput ref={ref} fields={statusFields} defaultValue={defaultValue} />);
+      await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+      const editor = ref.current?.getEditor();
+      if (!editor) throw new Error('editor not created');
+      await user.click(screen.getByRole('group', { name: /Filter: status/i }));
+      await screen.findByRole('listbox');
+      return { user, ref, editor };
+    }
+
+    const optionNames = () =>
+      screen
+        .getAllByRole('option')
+        .map((option) => option.textContent)
+        .sort();
+
+    it('shows the suggestions for the value that undo restores', async () => {
+      const { user, ref, editor } = await openStatusSuggestions('status:is:p');
+
+      await user.keyboard('a');
+      expect(ref.current?.getValue()).toBe('status:is:pa');
+      expect(optionNames()).toEqual(['paused']);
+      act(() => {
+        editor.view.dispatch(closeHistory(editor.state.tr));
+      });
+
+      await user.keyboard('{Control>}z{/Control}');
+      expect(ref.current?.getValue()).toBe('status:is:p');
+      expect(getSuggestionState(editor.state)?.query).toBe('p');
+      await waitFor(() => expect(optionNames()).toEqual(['paused', 'pending']));
+    });
+
+    it('shows the suggestions for a value set through the ref', async () => {
+      const { ref, editor } = await openStatusSuggestions('status:is:p');
+      const [token] = (ref.current?.getSnapshot().segments ?? []).filter(
+        (segment) => segment.type === 'filter'
+      );
+      if (token?.type !== 'filter') throw new Error('filter token not found');
+
+      act(() => {
+        ref.current?.updateToken(token.id, { value: 'ar' });
+      });
+
+      expect(getSuggestionState(editor.state)?.query).toBe('ar');
+      await waitFor(() => expect(optionNames()).toEqual(['archived']));
     });
   });
 });

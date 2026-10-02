@@ -14,7 +14,6 @@ import {
 import { getDismissPolicy } from '../../suggestions/dismiss-policy';
 import { canShowValueSuggestion } from '../../suggestions/suggestion-guards';
 import type { FieldDefinition } from '../../types';
-import { filterEnumValues } from '../../utils/enum-value';
 
 export interface UseValueSuggestionsOptions {
   editor: Editor;
@@ -29,10 +28,10 @@ export interface UseValueSuggestionsReturn {
   handleValueInputFocus: () => void;
   handleValueInputBlur: (e: React.FocusEvent) => void;
   /**
-   * Adds the value suggestions for typed text to the transaction that writes the
-   * value it stands for.
+   * Marks the transaction that writes a typed value, so the value suggestions are
+   * shown for it even after the user dismissed them.
    */
-  addSuggestionQuery: (tr: Transaction, inputText: string, value: string) => void;
+  addSuggestionQuery: (tr: Transaction) => void;
 }
 
 /**
@@ -45,7 +44,8 @@ export interface UseValueSuggestionsReturn {
  * Trigger points:
  * - Open: value input receives focus (focus event)
  * - Close: value input loses focus (blur event), unless focus moved to suggestion list
- * - Update: the transaction that writes a typed value carries its suggestion query
+ * - Update: the suggestion plugin derives the query from the token's value; typing
+ *   also shows suggestions the user dismissed
  */
 export function useValueSuggestions({
   editor,
@@ -130,14 +130,9 @@ export function useValueSuggestions({
     editor.view.dispatch(tr);
   };
 
-  const addSuggestionQuery = (tr: Transaction, inputText: string, value: string) => {
-    if (!enabled) return;
-    if (!isEnumField || !fieldDef?.enumValues) return;
-    // Filter by the text the user is typing, which may be a label rather than the value
-    const items = filterEnumValues(fieldDef.enumValues, inputText, {
-      matcher: fieldDef.suggestionMatcher,
-    });
-    updateSuggestionQuery(tr, { tokenId, fieldKey, query: value, items });
+  const addSuggestionQuery = (tr: Transaction) => {
+    if (!enabled || !isEnumField) return;
+    updateSuggestionQuery(tr, tokenId);
   };
 
   return { handleValueInputFocus, handleValueInputBlur, addSuggestionQuery };

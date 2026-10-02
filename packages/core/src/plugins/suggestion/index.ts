@@ -25,7 +25,12 @@ export {
 // Anchors
 export { isAnchoredToToken, resolveAnchorPos } from './anchor';
 // Plugin
-export { createSuggestionPlugin, getSuggestionState, suggestionKey } from './plugin';
+export {
+  createSuggestionPlugin,
+  getSuggestionState,
+  type SuggestionPluginOptions,
+  suggestionKey,
+} from './plugin';
 // State helpers
 export { createResetState, type ResetStateOptions } from './state-helpers';
 // Types
@@ -39,3 +44,5 @@ export type {
   SuggestionType,
 } from './types';
 export { initialSuggestionState } from './types';
+// Value suggestions
+export { getEditableValueText, matchValueSuggestions } from './value-items';

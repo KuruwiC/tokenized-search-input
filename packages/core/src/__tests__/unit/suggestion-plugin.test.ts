@@ -1,3 +1,4 @@
+import { Schema } from '@tiptap/pm/model';
 import { EditorState } from '@tiptap/pm/state';
 import { describe, expect, it } from 'vitest';
 import { updateSuggestionQuery } from '../../plugins/shared/meta';
@@ -13,6 +14,7 @@ import {
   setSuggestionLoading,
   updateSuggestionActiveIndex,
 } from '../../plugins/suggestion-plugin';
+import type { FieldDefinition } from '../../types';
 import { basicFields, basicBlockSchema as schema } from '../fixtures';
 
 const testFields = basicFields;
@@ -103,45 +105,78 @@ describe('SuggestionPlugin', () => {
     });
   });
 
-  describe('updateSuggestionQuery', () => {
-    it('shows the value suggestions for the value typed into a token', () => {
-      const state = createEditorState();
+  describe('value suggestions of a token', () => {
+    const tokenSchema = new Schema({
+      nodes: {
+        doc: { content: 'paragraph' },
+        paragraph: { content: 'inline*' },
+        text: { group: 'inline' },
+        filterToken: {
+          group: 'inline',
+          inline: true,
+          atom: true,
+          attrs: { id: {}, key: {}, operator: { default: 'is' }, value: { default: '' } },
+        },
+      },
+    });
+    const statusField: FieldDefinition = {
+      key: 'status',
+      label: 'Status',
+      type: 'enum',
+      operators: ['is'],
+      enumValues: ['active', 'inactive', 'pending'],
+    };
 
-      const tr1 = openValueSuggestion(state.tr, 'status', ['active', 'inactive'], '', 'token-1');
-      const state1 = state.apply(tr1);
-
-      const tr2 = updateSuggestionQuery(state1.tr, {
-        tokenId: 'token-1',
-        fieldKey: 'status',
-        query: 'in',
-        items: ['inactive'],
+    function createTokenState(value: string) {
+      const token = tokenSchema.nodes.filterToken.create({ id: 'token-1', key: 'status', value });
+      return EditorState.create({
+        doc: tokenSchema.node('doc', null, [tokenSchema.node('paragraph', null, [token])]),
+        plugins: [
+          createSuggestionPlugin({
+            resolveField: (key) => (key === statusField.key ? statusField : undefined),
+          }),
+        ],
       });
-      const suggestionState = getSuggestionState(state1.apply(tr2));
+    }
+
+    function setTokenValue(state: EditorState, value: string) {
+      return state.tr.setNodeMarkup(1, undefined, { ...state.doc.nodeAt(1)?.attrs, value });
+    }
+
+    it('takes the query and items from the token value whatever changed it', () => {
+      const state = createTokenState('');
+      const state1 = state.apply(
+        openValueSuggestion(state.tr, 'status', ['active', 'inactive', 'pending'], '', 'token-1')
+      );
+
+      const suggestionState = getSuggestionState(state1.apply(setTokenValue(state1, 'ina')));
 
       expect(suggestionState?.type).toBe('value');
-      expect(suggestionState?.query).toBe('in');
+      expect(suggestionState?.query).toBe('ina');
       expect(suggestionState?.items).toEqual(['inactive']);
       expect(suggestionState?.activeIndex).toBe(-1);
       expect(suggestionState?.anchor).toEqual({ tokenId: 'token-1' });
     });
 
     it('shows dismissed value suggestions again when the user types', () => {
-      const state = createEditorState();
+      const state = createTokenState('');
       const state1 = state.apply(
-        openValueSuggestion(state.tr, 'status', ['active'], '', 'token-1')
+        openValueSuggestion(state.tr, 'status', ['active', 'inactive', 'pending'], '', 'token-1')
       );
       const state2 = state1.apply(dismissSuggestion(state1.tr));
 
-      const tr = updateSuggestionQuery(state2.tr, {
-        tokenId: 'token-1',
-        fieldKey: 'status',
-        query: 'a',
-        items: ['active'],
-      });
-      const suggestionState = getSuggestionState(state2.apply(tr));
+      const untyped = getSuggestionState(state2.apply(setTokenValue(state2, 'p')));
+      const typed = getSuggestionState(
+        state2.apply(updateSuggestionQuery(setTokenValue(state2, 'p'), 'token-1'))
+      );
 
-      expect(suggestionState?.type).toBe('value');
-      expect(suggestionState?.dismissed).toBe(false);
+      expect(untyped?.dismissed).toBe(true);
+      expect(typed).toMatchObject({
+        type: 'value',
+        query: 'p',
+        items: ['pending'],
+        dismissed: false,
+      });
     });
   });
 
