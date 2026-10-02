@@ -408,7 +408,7 @@ describe('useFocusableBlock', () => {
     const { result } = renderBlock(() => false);
     expect(result.current.tabIndex).toBe(-1);
 
-    act(() => result.current.handleFocus());
+    act(() => result.current.blockProps.onFocus());
 
     expect(result.current.tabIndex).toBe(0);
   });

@@ -262,8 +262,8 @@ describe('Immutable Token - Integration Tests', () => {
         expect(screen.getByPlaceholderText('...')).toBeInTheDocument();
       });
 
-      const labelButton = screen.getByRole('button', { name: 'Select field' });
-      await user.click(labelButton);
+      const labelCombobox = screen.getByRole('combobox', { name: 'Select field' });
+      await user.click(labelCombobox);
 
       await waitFor(() => {
         expect(screen.getByRole('option', { name: /country/i })).toBeInTheDocument();

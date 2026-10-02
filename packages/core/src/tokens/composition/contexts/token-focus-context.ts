@@ -13,6 +13,8 @@ export interface FocusableBlock {
    * @returns whether the key was handled; an unhandled one falls to the token's own keys
    */
   handleKey: (e: React.KeyboardEvent) => boolean;
+  /** Called when the block is pressed with the pointer: opens a dropdown, removes the token. */
+  activate?: () => void;
   /** Whether this block can receive focus when entering the token via Backspace/Delete. Default: true */
   entryFocusable?: boolean;
 }
@@ -26,8 +28,6 @@ export interface FocusNavigationOptions {
 export interface FocusRegistry {
   register: (block: FocusableBlock) => () => void;
   get: (id: string) => FocusableBlock | undefined;
-  /** The registered blocks in DOM order. */
-  getBlocks: () => FocusableBlock[];
   /** Focuses the first or last block. Leaves the focus alone when no block is registered. */
   focusEdge: (edge: 'first' | 'last', options?: FocusNavigationOptions) => void;
   /** Focuses the block next to `fromId`, or leaves the token past the last or first one. */

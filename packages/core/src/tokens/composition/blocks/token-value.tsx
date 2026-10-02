@@ -135,7 +135,7 @@ export function TokenValue({
     navigateLeftEntry,
     navigateRightEntry,
     tabIndex,
-    handleFocus: handleBlockFocus,
+    blockProps,
   } = useFocusableBlock({
     id: 'value',
     ref: inputRef,
@@ -150,7 +150,7 @@ export function TokenValue({
   };
 
   const handleFocus = () => {
-    handleBlockFocus();
+    blockProps.onFocus();
     onFocus?.();
   };
 
@@ -169,6 +169,7 @@ export function TokenValue({
       <input
         ref={inputRef}
         type="text"
+        data-token-block={blockProps['data-token-block']}
         value={value}
         onChange={handleChange}
         onFocus={handleFocus}

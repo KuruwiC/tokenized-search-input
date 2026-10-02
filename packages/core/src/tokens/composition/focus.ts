@@ -35,8 +35,6 @@ function createFocusRegistry({ onExitLeft, onExitRight }: FocusExits): FocusRegi
 
     get: (id) => blocks.get(id),
 
-    getBlocks: inDomOrder,
-
     focusEdge: (edge, { entryOnly = false, position } = {}) => {
       const all = inDomOrder();
       const entry = entryOnly ? all.filter((block) => block.entryFocusable !== false) : all;
@@ -91,6 +89,8 @@ export interface UseFocusableBlockOptions {
   ref: RefObject<HTMLElement | null>;
   /** Handles a key pressed while the block holds focus; true when it was handled. */
   handleKey: (e: React.KeyboardEvent) => boolean;
+  /** Called when the block is pressed with the pointer. */
+  activate?: () => void;
   focus?: (position?: CursorPosition) => void;
   /** Whether this block is available for focus navigation. Default: true */
   available?: boolean;
@@ -107,9 +107,16 @@ export interface UseFocusableBlockResult {
   navigateLeftEntry: () => void;
   /** Moves focus to the next entry-focusable block (for Delete navigation) */
   navigateRightEntry: () => void;
+  /** The block is the tab stop while it holds focus. */
   tabIndex: 0 | -1;
-  /** Records that the block holds DOM focus, however focus got there. */
-  handleFocus: () => void;
+  /**
+   * What the block's element needs to take part: the id by which a press on it is
+   * recognised, and the record that it holds DOM focus, however focus got there.
+   */
+  blockProps: {
+    'data-token-block': string;
+    onFocus: () => void;
+  };
 }
 
 function focusElement(element: HTMLElement, position?: CursorPosition): void {
@@ -126,13 +133,13 @@ function focusElement(element: HTMLElement, position?: CursorPosition): void {
  * means to move focus to its neighbours.
  */
 export function useFocusableBlock(options: UseFocusableBlockOptions): UseFocusableBlockResult {
-  const { id, ref, handleKey, focus, available = true, entryFocusable } = options;
+  const { id, ref, handleKey, activate, focus, available = true, entryFocusable } = options;
   const { focusRegistry, currentFocusId, setCurrentFocusId } = useTokenFocusContext();
 
-  // The registered block calls the latest `handleKey`, so a new one needs no re-registration
-  const handleKeyRef = useRef(handleKey);
+  // The registered block calls the latest handlers, so new ones need no re-registration
+  const handlersRef = useRef({ handleKey, activate });
   useLayoutEffect(() => {
-    handleKeyRef.current = handleKey;
+    handlersRef.current = { handleKey, activate };
   });
 
   useLayoutEffect(() => {
@@ -146,7 +153,8 @@ export function useFocusableBlock(options: UseFocusableBlockOptions): UseFocusab
         else if (ref.current) focusElement(ref.current, position);
         setCurrentFocusId(id);
       },
-      handleKey: (e) => handleKeyRef.current(e),
+      handleKey: (e) => handlersRef.current.handleKey(e),
+      activate: () => handlersRef.current.activate?.(),
       entryFocusable,
     });
   }, [id, ref, focus, available, entryFocusable, focusRegistry, setCurrentFocusId]);
@@ -157,6 +165,9 @@ export function useFocusableBlock(options: UseFocusableBlockOptions): UseFocusab
     navigateLeftEntry: () => focusRegistry.focusAdjacent(id, 'prev', { entryOnly: true }),
     navigateRightEntry: () => focusRegistry.focusAdjacent(id, 'next', { entryOnly: true }),
     tabIndex: currentFocusId === id ? 0 : -1,
-    handleFocus: () => setCurrentFocusId(id),
+    blockProps: {
+      'data-token-block': id,
+      onFocus: () => setCurrentFocusId(id),
+    },
   };
 }

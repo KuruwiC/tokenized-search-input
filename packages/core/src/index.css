@@ -740,6 +740,8 @@
 
   :where(.tsi-token-operator__option) {
     display: flex;
+    width: 100%;
+    text-align: left;
     align-items: center;
     gap: 0.5rem;
     padding: 0.375rem 0.75rem;
@@ -840,6 +842,8 @@
 
   :where(.tsi-token-label-combobox__option) {
     display: flex;
+    width: 100%;
+    text-align: left;
     align-items: center;
     gap: 0.5rem;
     padding: 0.375rem 0.75rem;

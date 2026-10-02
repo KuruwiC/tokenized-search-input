@@ -1,5 +1,5 @@
-import type { FieldDefinition, Matcher } from '../../../../types';
-import { defaultMatcher } from '../../../../utils/matcher';
+import type { FieldDefinition, Matcher } from '../../../types';
+import { defaultMatcher } from '../../../utils/matcher';
 
 export interface SortOptions {
   /** Input query for filtering */

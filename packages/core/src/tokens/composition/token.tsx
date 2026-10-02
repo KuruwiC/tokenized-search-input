@@ -23,107 +23,42 @@ import { cn } from '../../utils/cn';
 import { isHistoryShortcut } from '../history-shortcut';
 import { enterToken } from '../token-focus';
 import { TokenDeleteButton } from './blocks/token-delete-button';
-import { TokenLabelCombobox } from './blocks/token-label/token-label-combobox';
+import { TokenLabelCombobox } from './blocks/token-label-combobox';
 import { TokenOperator } from './blocks/token-operator';
 import { TokenValue } from './blocks/token-value';
 import { TokenConfigContext, type TokenConfigContextValue } from './contexts/token-config-context';
-import {
-  type FocusRegistry,
-  TokenFocusContext,
-  type TokenFocusContextValue,
-} from './contexts/token-focus-context';
+import { TokenFocusContext, type TokenFocusContextValue } from './contexts/token-focus-context';
 import { focusEntryBlock, useFocusRegistry } from './focus';
 
 /** A press on a token edits it as a whole. */
 const CLICK_ENTRY: TokenFocusEntry = { source: 'click', position: 'end', target: 'all' };
 
-interface ClickContext {
-  event: React.MouseEvent;
-  editor: Editor;
-  getPos: () => number | undefined;
-  isFocused: boolean;
-  immutable: boolean;
-  focusRegistry: FocusRegistry;
-  handleActivate: () => void;
-}
+/** What a press on a token lands on. */
+export type ClickTarget =
+  | 'label'
+  | 'operator'
+  | 'value'
+  | 'delete'
+  /** A press the browser or ProseMirror resolves: Shift extending a range, a caret in an input. */
+  | 'text-selection'
+  /** A press on a token that cannot be edited, which selects the token whole. */
+  | 'token-selection';
 
-interface ClickStrategy {
-  canHandle: (ctx: ClickContext) => boolean;
-  execute: (ctx: ClickContext) => void;
-}
-
-const shiftClickStrategy: ClickStrategy = {
-  canHandle: (ctx) => ctx.event.shiftKey,
-  execute: () => {},
-};
-
-const immutableTokenStrategy: ClickStrategy = {
-  canHandle: (ctx) => ctx.immutable,
-  execute: (ctx) => {
-    ctx.event.preventDefault();
-
-    const target = ctx.event.target as Element;
-    if (target.closest('[data-token-delete-button]')) return;
-
-    const pos = ctx.getPos();
-    if (typeof pos !== 'number') return;
-
-    const tokenNode = ctx.editor.state.doc.nodeAt(pos);
-    if (!tokenNode) return;
-
-    ctx.editor.view.focus();
-    const tr = ctx.editor.state.tr;
-    const tokenEnd = pos + tokenNode.nodeSize;
-    tr.setSelection(TextSelection.create(tr.doc, pos, tokenEnd));
-    tr.setMeta('addToHistory', false);
-    ctx.editor.view.dispatch(tr);
-  },
-};
-
-const inputElementStrategy: ClickStrategy = {
-  canHandle: (ctx) => ctx.event.target instanceof HTMLInputElement,
-  execute: (ctx) => {
-    if (!ctx.isFocused) {
-      ctx.handleActivate();
-    }
-  },
-};
-
-const focusedTokenStrategy: ClickStrategy = {
-  canHandle: (ctx) => ctx.isFocused,
-  execute: (ctx) => {
-    const target = ctx.event.target as Element;
-    const clickedBlock = ctx.focusRegistry
-      .getBlocks()
-      .find((block) => block.element.current?.contains(target));
-
-    if (clickedBlock) {
-      clickedBlock.focus('end');
-      return;
-    }
-
-    ctx.focusRegistry.focusEdge('first', { entryOnly: true, position: 'end' });
-  },
-};
-
-const defaultActivateStrategy: ClickStrategy = {
-  canHandle: () => true,
-  execute: (ctx) => {
-    ctx.handleActivate();
-  },
-};
-
-const clickStrategies: ClickStrategy[] = [
-  shiftClickStrategy,
-  immutableTokenStrategy,
-  inputElementStrategy,
-  focusedTokenStrategy,
-  defaultActivateStrategy,
-];
-
-function executeClickStrategy(ctx: ClickContext): void {
-  const strategy = clickStrategies.find((s) => s.canHandle(ctx));
-  strategy?.execute(ctx);
+/**
+ * Which part of the token a press lands on, `node` being what was pressed. A press on the
+ * delete button always deletes. Otherwise a press on a block acts on that block, and
+ * anywhere else, token padding or a value that is not being edited, it acts on the value.
+ */
+export function resolveClickTarget(
+  event: Pick<React.MouseEvent, 'shiftKey'>,
+  node: Element,
+  immutable: boolean
+): ClickTarget {
+  const block = node.closest<HTMLElement>('[data-token-block]')?.dataset.tokenBlock;
+  if (block === 'delete') return block;
+  if (event.shiftKey || node instanceof HTMLInputElement) return 'text-selection';
+  if (immutable) return 'token-selection';
+  return block === 'label' || block === 'operator' ? block : 'value';
 }
 
 /** What a token is called when its view gives no name: its field's label and its value. */
@@ -227,20 +162,51 @@ export function Token({
     enterToken(editor, id, CLICK_ENTRY);
   }, [editor, id, focusRegistry]);
 
+  // The press of a token that cannot be edited selects it whole, so that it can be deleted
+  const selectToken = useCallback(() => {
+    const pos = getPos();
+    if (typeof pos !== 'number') return;
+    const tokenNode = editor.state.doc.nodeAt(pos);
+    if (!tokenNode) return;
+
+    editor.view.focus();
+    const tr = editor.state.tr;
+    tr.setSelection(TextSelection.create(tr.doc, pos, pos + tokenNode.nodeSize));
+    tr.setMeta('addToHistory', false);
+    editor.view.dispatch(tr);
+  }, [editor, getPos]);
+
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      executeClickStrategy({
-        event: e,
-        editor,
-        getPos,
-        isFocused,
-        immutable,
-        focusRegistry,
-        handleActivate,
-      });
+      const target = resolveClickTarget(e, e.target as Element, immutable);
+      switch (target) {
+        case 'text-selection':
+          return;
+        case 'token-selection':
+          e.preventDefault();
+          selectToken();
+          return;
+        case 'value':
+          handleActivate();
+          return;
+        case 'delete':
+          focusRegistry.get(target)?.activate?.();
+          return;
+        case 'label':
+        case 'operator': {
+          const block = focusRegistry.get(target);
+          block?.focus('end');
+          block?.activate?.();
+          return;
+        }
+        default: {
+          const exhaustive: never = target;
+          return exhaustive;
+        }
+      }
     },
-    [editor, handleActivate, isFocused, focusRegistry, immutable, getPos]
+    [handleActivate, focusRegistry, immutable, selectToken]
   );
 
   const handleContainerFocus = useCallback(

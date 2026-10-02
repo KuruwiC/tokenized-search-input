@@ -12,7 +12,8 @@ export interface TokenDeleteButtonProps {
 
 /**
  * Token delete button block (focusable).
- * Removes the token when clicked or activated.
+ * Removes the token when pressed or activated from the keyboard. A press is recognised
+ * by the token, which calls the block's `activate`.
  */
 export function TokenDeleteButton({
   ariaLabel = 'Remove token',
@@ -53,31 +54,24 @@ export function TokenDeleteButton({
     navigateLeftEntry,
     navigateRightEntry,
     tabIndex,
-    handleFocus,
+    blockProps,
   } = useFocusableBlock({
     id: 'delete',
     ref: buttonRef,
     entryFocusable: false,
     handleKey,
+    activate: deleteToken,
   });
-
-  // Click handler (works for both desktop and mobile)
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    deleteToken();
-  };
 
   return (
     <button
       ref={buttonRef}
       type="button"
-      onClick={handleClick}
-      onFocus={handleFocus}
+      {...blockProps}
+      tabIndex={tabIndex}
       onMouseDown={(e) => e.preventDefault()}
       className={cn('tsi-token-delete', className)}
       aria-label={ariaLabel}
-      tabIndex={tabIndex}
       data-editable={isEditable}
     >
       <X className="tsi-token-delete__icon" />

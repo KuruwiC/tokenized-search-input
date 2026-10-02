@@ -1,12 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useRef } from 'react';
 import { Check } from '../../../icons/check';
 import { ChevronDown } from '../../../icons/chevron-down';
 import { cn } from '../../../utils/cn';
-import { scrollIntoViewNearest } from '../../../utils/scroll-into-view';
 import { useTokenFocusContext } from '../contexts/token-focus-context';
 import { useFocusableBlock } from '../focus';
-import { handleClosedKeyDown, handleOpenKeyDown } from './token-operator-keyboard-handlers';
+import { handleClosedKey, TokenDropdown, useTokenDropdown } from './token-dropdown';
 
 export interface TokenOperatorProps {
   value: string;
@@ -34,97 +32,43 @@ export function TokenOperator({
   itemClassName,
 }: TokenOperatorProps): React.ReactElement | null {
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-  const [isOpen, setIsOpen] = useState(false);
-  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
-  const [activeIndex, setActiveIndex] = useState(() => operators.indexOf(value));
-  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(
-    null
-  );
-
+  const dropdown = useTokenDropdown(triggerRef, onOpen);
   const { isFocused: tokenFocused, isEditable, immutable } = useTokenFocusContext();
+  const interactive = tokenFocused && operators.length > 1 && !immutable;
 
-  useEffect(() => {
-    if (!isOpen || !triggerRef.current) return;
+  const openDropdown = () => dropdown.open(operators.indexOf(value));
 
-    const updatePosition = () => {
-      const trigger = triggerRef.current;
-      if (!trigger) return;
-
-      const rect = trigger.getBoundingClientRect();
-      setDropdownPosition({
-        top: rect.bottom + 4,
-        left: rect.left,
-      });
-    };
-
-    updatePosition();
-    window.addEventListener('scroll', updatePosition, true);
-    window.addEventListener('resize', updatePosition);
-
-    return () => {
-      window.removeEventListener('scroll', updatePosition, true);
-      window.removeEventListener('resize', updatePosition);
-    };
-  }, [isOpen]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: activeIndex intentionally triggers scroll
-  useEffect(() => {
-    if (isOpen && listRef.current) {
-      const activeItem = listRef.current.querySelector(
-        '[data-active="true"]'
-      ) as HTMLElement | null;
-      scrollIntoViewNearest(activeItem);
+  const handleOpenKey = ({ key, shiftKey }: React.KeyboardEvent): boolean => {
+    if (dropdown.handleListKey(key, { min: 0, max: operators.length - 1 })) return true;
+    switch (key) {
+      case 'Enter':
+      case ' ': {
+        const operator = operators[dropdown.activeIndex];
+        if (operator !== undefined) {
+          onChange(operator);
+          dropdown.close();
+        }
+        return true;
+      }
+      case 'Tab':
+        dropdown.close();
+        if (shiftKey) navigateLeft();
+        else navigateRight();
+        return true;
+      default:
+        return false;
     }
-  }, [isOpen, activeIndex]);
-
-  const openDropdown = () => {
-    if (triggerRef.current) {
-      const container = triggerRef.current.closest('.tsi-container');
-      setPortalContainer(container as HTMLElement | null);
-    }
-    setIsOpen(true);
-    setActiveIndex(operators.indexOf(value));
-    onOpen?.();
-  };
-
-  const closeDropdown = () => {
-    setIsOpen(false);
-  };
-
-  const moveActiveUp = () => {
-    setActiveIndex((prev) => Math.max(prev - 1, 0));
-  };
-
-  const moveActiveDown = () => {
-    setActiveIndex((prev) => Math.min(prev + 1, operators.length - 1));
-  };
-
-  const selectOperator = (op: string) => {
-    onChange(op);
   };
 
   const handleKey = (e: React.KeyboardEvent): boolean => {
-    const handled = isOpen
-      ? handleOpenKeyDown(
-          e.key,
-          { isOpen, activeIndex, operators },
-          {
-            closeDropdown,
-            navigateRight,
-            selectOperator,
-            moveActiveUp,
-            moveActiveDown,
-          }
-        )
-      : handleClosedKeyDown(e.key, {
-          openDropdown,
-          navigateLeft,
-          navigateRight,
-          navigateLeftEntry,
-          navigateRightEntry,
+    const handled = dropdown.isOpen
+      ? handleOpenKey(e)
+      : handleClosedKey(e, openDropdown, {
+          left: navigateLeft,
+          right: navigateRight,
+          leftEntry: navigateLeftEntry,
+          rightEntry: navigateRightEntry,
         });
-
     if (handled) e.preventDefault();
     return handled;
   };
@@ -135,28 +79,23 @@ export function TokenOperator({
     navigateLeftEntry,
     navigateRightEntry,
     tabIndex,
-    handleFocus,
+    blockProps,
   } = useFocusableBlock({
     id: 'operator',
     ref: triggerRef,
-    available: operators.length > 1 && !immutable,
+    available: interactive,
     entryFocusable: false,
     handleKey,
+    activate: () => (dropdown.isOpen ? dropdown.close() : openDropdown()),
   });
 
-  const handleSelect = (op: string) => {
-    onChange(op);
-    setIsOpen(false);
+  const handleSelect = (operator: string) => {
+    onChange(operator);
+    dropdown.close();
     navigateRight('end');
   };
 
-  const handleBlur = (e: React.FocusEvent) => {
-    if (!listRef.current?.contains(e.relatedTarget as Node)) {
-      setIsOpen(false);
-    }
-  };
-
-  if (!tokenFocused || operators.length <= 1 || immutable) {
+  if (!interactive) {
     return <span className={cn('tsi-token-operator', className)}>{getLabel(value)}</span>;
   }
 
@@ -164,71 +103,42 @@ export function TokenOperator({
     <button
       ref={triggerRef}
       type="button"
-      onClick={() => (isOpen ? setIsOpen(false) : openDropdown())}
       onMouseDown={(e) => e.preventDefault()}
-      onFocus={handleFocus}
-      onBlur={handleBlur}
+      {...blockProps}
+      tabIndex={tabIndex}
+      onBlur={(e) => {
+        if (!dropdown.holdsFocus(e.relatedTarget)) dropdown.close();
+      }}
       className={cn('tsi-token-operator--interactive', className)}
       aria-haspopup="listbox"
-      aria-expanded={isOpen}
+      aria-expanded={dropdown.isOpen}
+      aria-controls={dropdown.isOpen ? dropdown.listId : undefined}
       aria-label="Select operator"
-      data-state={isOpen ? 'open' : 'closed'}
+      data-state={dropdown.isOpen ? 'open' : 'closed'}
       data-editable={isEditable}
-      tabIndex={tabIndex}
     >
       <span className="tsi-token-operator__label">{getLabel(value)}</span>
       <ChevronDown className="tsi-token-operator__chevron" />
 
-      {isOpen &&
-        dropdownPosition &&
-        portalContainer &&
-        createPortal(
-          <div
-            ref={listRef}
-            role="listbox"
-            aria-label="Operators"
-            style={{
-              position: 'fixed',
-              top: dropdownPosition.top,
-              left: dropdownPosition.left,
-            }}
-            className={cn('tsi-token-operator__dropdown', dropdownClassName)}
-          >
-            {operators.map((op, index) => {
-              const isActive = index === activeIndex;
-              const isSelected = op === value;
-
-              return (
-                <div
-                  key={op}
-                  role="option"
-                  tabIndex={-1}
-                  aria-selected={isSelected}
-                  data-active={isActive}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleSelect(op);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handleSelect(op);
-                    }
-                  }}
-                  onMouseEnter={() => setActiveIndex(index)}
-                  className={cn('tsi-token-operator__option', itemClassName)}
-                >
-                  <span className="tsi-token-operator__check">
-                    {isSelected && <Check className="tsi-token-operator__check-icon" />}
-                  </span>
-                  <span>{getLabel(op)}</span>
-                </div>
-              );
-            })}
-          </div>,
-          portalContainer
-        )}
+      <TokenDropdown
+        dropdown={dropdown}
+        label="Operators"
+        options={operators.map((operator) => ({
+          key: operator,
+          selected: operator === value,
+          content: (
+            <>
+              <span className="tsi-token-operator__check">
+                {operator === value && <Check className="tsi-token-operator__check-icon" />}
+              </span>
+              <span>{getLabel(operator)}</span>
+            </>
+          ),
+        }))}
+        onSelect={handleSelect}
+        className={cn('tsi-token-operator__dropdown', dropdownClassName)}
+        optionClassName={cn('tsi-token-operator__option', itemClassName)}
+      />
     </button>
   );
 }
