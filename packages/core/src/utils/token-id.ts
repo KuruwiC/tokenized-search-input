@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import { isDevelopment } from './env';
 
 const TOKEN_ID_LENGTH = 21;
 
@@ -12,7 +13,7 @@ export function ensureTokenId(id: string | undefined | null): string {
   }
 
   // Log warning in development for debugging
-  if (process.env.NODE_ENV !== 'production' && id === undefined) {
+  if (isDevelopment() && id === undefined) {
     console.warn(
       '[TokenizedSearchInput] Token missing ID, regenerating. This may indicate a schema migration issue.'
     );

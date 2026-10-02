@@ -49,6 +49,7 @@ import { FreeTextTokenNode } from '../tokens/free-text-token/free-text-token-nod
 import { DEFAULT_TOKEN_DELIMITER, type FieldDefinition, type QuerySnapshot } from '../types';
 import { cn } from '../utils/cn';
 import { isWithinSuggestion } from '../utils/dom-focus';
+import { isDevelopment } from '../utils/env';
 import { isToken } from '../utils/node-predicates';
 import { EMPTY_SNAPSHOT, getAllTokens } from '../utils/query-snapshot';
 import {
@@ -158,7 +159,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
 
     // Warn in development if delimiter prop changes after initialization
     useEffect(() => {
-      if (process.env.NODE_ENV !== 'production') {
+      if (isDevelopment()) {
         const initial = delimiterRef.current;
         const current = initialDelimiter ?? DEFAULT_TOKEN_DELIMITER;
         if (current !== initial) {
@@ -172,7 +173,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
 
     // Warn in development if any field has no operators
     useEffect(() => {
-      if (process.env.NODE_ENV !== 'production') {
+      if (isDevelopment()) {
         fields.forEach((field) => {
           if (!field.operators || field.operators.length === 0) {
             console.warn(
@@ -188,7 +189,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
     const prevFieldsRef = useRef(fields);
     const fieldsRerenderCountRef = useRef(0);
     useEffect(() => {
-      if (process.env.NODE_ENV !== 'production') {
+      if (isDevelopment()) {
         const keysEqual = (a: FieldDefinition[], b: FieldDefinition[]) =>
           a.map((f) => f.key).join(',') === b.map((f) => f.key).join(',');
 
