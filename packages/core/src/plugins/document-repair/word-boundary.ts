@@ -13,10 +13,30 @@ function containsToken(doc: ProseMirrorNode, from: number, to: number): boolean 
   return found;
 }
 
+function isBoundary(
+  node: ProseMirrorNode | null | undefined,
+  char: (text: string) => string
+): boolean {
+  return !node?.isText || /\s/.test(char(node.text ?? ''));
+}
+
+/**
+ * Whether the content from `from` to `to` begins and ends at a word boundary: with a
+ * token or whitespace just inside each end. A range that cuts into a word on either
+ * side joins what the user cut, and no space belongs there.
+ */
+function removesWholeWords(doc: ProseMirrorNode, from: number, to: number): boolean {
+  return (
+    isBoundary(doc.resolve(from).nodeAfter, (text) => text[0] ?? '') &&
+    isBoundary(doc.resolve(to).nodeBefore, (text) => text[text.length - 1] ?? '')
+  );
+}
+
 /**
  * Where, in the document `transactions` end with, an edit removed or replaced content
- * that held a token: both ends of each such replacement. Undo and redo are not edits:
- * the document they restore already kept its words apart.
+ * that held a token and began and ended at a word boundary: both ends of each such
+ * replacement. Undo and redo are not edits: the document they restore already kept
+ * its words apart.
  */
 export function findTokenRemovalEdges(transactions: readonly Transaction[]): number[] {
   const steps = transactions.flatMap((tr) =>
@@ -33,6 +53,7 @@ export function findTokenRemovalEdges(transactions: readonly Transaction[]): num
     const later = mapping.slice(index + 1);
     map.forEach((oldStart, oldEnd, newStart, newEnd) => {
       if (!containsToken(docBefore, oldStart, oldEnd)) return;
+      if (!removesWholeWords(docBefore, oldStart, oldEnd)) return;
       edges.push(later.map(newStart, -1), later.map(newEnd, 1));
     });
   });

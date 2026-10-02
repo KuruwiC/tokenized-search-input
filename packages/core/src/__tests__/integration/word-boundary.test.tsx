@@ -80,6 +80,29 @@ describe('word boundary left by a removed token', () => {
     expect(paragraphText(editor)).toBe('foo x bar');
   });
 
+  it('joins the words when the deleted range starts and ends inside them', async () => {
+    const { editor } = await mount('foo status:is:active bar');
+    const token = firstToken(editor);
+
+    editor.commands.deleteRange({ from: token.pos - 1, to: token.pos + token.size + 1 });
+
+    expect(paragraphText(editor)).toBe('foar');
+  });
+
+  it('puts typed text inside the words when the replaced range starts and ends inside them', async () => {
+    const { editor } = await mount('foo status:is:active bar');
+    const token = firstToken(editor);
+    editor.view.dispatch(
+      editor.state.tr.setSelection(
+        TextSelection.create(editor.state.doc, token.pos - 1, token.pos + token.size + 1)
+      )
+    );
+
+    editor.view.dispatch(editor.state.tr.insertText('X'));
+
+    expect(paragraphText(editor)).toBe('foXar');
+  });
+
   it('adds no space where a side already ends in whitespace', async () => {
     const { editor } = await mount('');
     const content: JSONContent = {
