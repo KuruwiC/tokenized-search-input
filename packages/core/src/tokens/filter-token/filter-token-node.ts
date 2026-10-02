@@ -139,8 +139,8 @@ export const FilterTokenNode = Node.create({
 
         const target = event.target as HTMLElement;
 
-        // Always stop events on form elements to allow interaction
-        if (target.closest('input, select, button')) {
+        // Always stop events on form elements and token blocks to allow interaction
+        if (target.closest('input, select, button, [data-token-block]')) {
           return true;
         }
 

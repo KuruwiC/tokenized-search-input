@@ -116,8 +116,8 @@ export const FreeTextTokenNode = Node.create({
 
         const target = event.target as HTMLElement;
 
-        // Always stop events on form elements to allow interaction
-        if (target.closest('input, button')) {
+        // Always stop events on form elements and token blocks to allow interaction
+        if (target.closest('input, button, [data-token-block]')) {
           return true;
         }
 

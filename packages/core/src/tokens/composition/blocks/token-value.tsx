@@ -75,8 +75,6 @@ export function TokenValue({
   }, []);
 
   const handleKey = (e: React.KeyboardEvent): boolean => {
-    // Keys pressed during composition belong to the input method
-    if (e.nativeEvent.isComposing) return false;
     if (handleViewKey?.(e)) return true;
 
     const input = inputRef.current;

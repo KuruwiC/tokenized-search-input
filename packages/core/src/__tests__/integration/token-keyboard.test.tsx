@@ -3,19 +3,12 @@
  * the one block that holds focus, and a block's dropdown owns the keys it uses.
  */
 
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Editor } from '@tiptap/core';
-import { createRef, type RefObject } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
-import { getFocusedToken } from '../../plugins/token-focus-plugin';
 import type { applyTokenAction } from '../../tokens/filter-token/token-actions';
-import type { FieldDefinition } from '../../types';
-import { extendedFields, statusField } from '../fixtures';
+import { statusField } from '../fixtures';
+import { focusBlock, focusedTokenId, renderInput, tokenOf } from '../helpers/token-blocks';
 
 const actions = vi.hoisted(() => ({ setKeyCalls: 0 }));
 
@@ -32,50 +25,6 @@ afterEach(() => {
   cleanup();
   actions.setKeyCalls = 0;
 });
-
-async function renderInput(
-  defaultValue: string,
-  props: { fields?: FieldDefinition[]; unknownFields?: Record<string, never> } = {}
-) {
-  const ref = createRef<TokenizedSearchInputRef>();
-  render(
-    <TokenizedSearchInput
-      ref={ref}
-      fields={props.fields ?? extendedFields}
-      unknownFields={props.unknownFields}
-      defaultValue={defaultValue}
-    />
-  );
-  await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-  const editor = ref.current?.getEditor();
-  if (!editor) throw new Error('editor not ready');
-  return { ref: ref as RefObject<TokenizedSearchInputRef>, editor };
-}
-
-function tokenOf(ref: RefObject<TokenizedSearchInputRef>) {
-  return ref.current?.getSnapshot().segments[0];
-}
-
-function focusedTokenId(editor: Editor): string | undefined {
-  return getFocusedToken(editor.state)?.id;
-}
-
-/**
- * Edits the token and walks left from its value to the block labelled `blockLabel`:
- * one step to the operator, two to the label.
- */
-async function focusBlock(
-  user: ReturnType<typeof userEvent.setup>,
-  group: HTMLElement,
-  blockLabel: 'Select operator' | 'Select field'
-): Promise<HTMLElement> {
-  await user.click(group);
-  const block = await within(group).findByLabelText(blockLabel);
-  await user.keyboard('{Home}');
-  await user.keyboard(blockLabel === 'Select operator' ? '{ArrowLeft}' : '{ArrowLeft}{ArrowLeft}');
-  expect(block).toHaveFocus();
-  return block;
-}
 
 describe('Token keyboard handling', () => {
   describe('operator dropdown', () => {

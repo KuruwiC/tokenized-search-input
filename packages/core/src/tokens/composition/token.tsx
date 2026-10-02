@@ -30,6 +30,9 @@ import { TokenConfigContext, type TokenConfigContextValue } from './contexts/tok
 import { TokenFocusContext, type TokenFocusContextValue } from './contexts/token-focus-context';
 import { focusEntryBlock, useFocusRegistry } from './focus';
 
+/** The key code of every key event an input method that is composing text reports. */
+const COMPOSING_KEY_CODE = 229;
+
 /** A press on a token edits it as a whole. */
 const CLICK_ENTRY: TokenFocusEntry = { source: 'click', position: 'end', target: 'all' };
 
@@ -263,17 +266,28 @@ export function Token({
     [editor, handleExitLeft, handleExitRight]
   );
 
-  // A key reaches the one block that holds focus. Undo and redo are left to the editor,
+  // A key reaches the one block it was pressed in; a key pressed anywhere else in the
+  // token, such as in a control a view adds, is left to that control. Keys of an input
+  // method that is composing text reach nobody. Undo and redo are left to the editor,
   // which owns the history of token edits; everything else stops here.
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (!editor.isEditable || isHistoryShortcut(e.nativeEvent)) return;
+      if (!editor.isEditable) return;
+      if (e.nativeEvent.isComposing || e.keyCode === COMPOSING_KEY_CODE) {
+        e.stopPropagation();
+        return;
+      }
+      if (isHistoryShortcut(e.nativeEvent)) return;
 
-      const block = currentFocusId === null ? undefined : focusRegistry.get(currentFocusId);
+      const blockId =
+        e.target instanceof Element
+          ? e.target.closest<HTMLElement>('[data-token-block]')?.dataset.tokenBlock
+          : undefined;
+      const block = blockId === undefined ? undefined : focusRegistry.get(blockId);
       if (!block?.handleKey(e)) handleTokenKey(e);
       e.stopPropagation();
     },
-    [editor, currentFocusId, focusRegistry, handleTokenKey]
+    [editor, focusRegistry, handleTokenKey]
   );
 
   const handleDelete = useCallback(() => {
