@@ -126,6 +126,15 @@ export function isProgrammaticEdit(tr: Transaction): boolean {
   return tr.getMeta(PROGRAMMATIC_EDIT) === true;
 }
 
+/**
+ * Whether the transaction is an undo or redo. It restores a document that existed
+ * before, rather than editing one.
+ */
+export function isHistoryTransaction(tr: Transaction): boolean {
+  const meta: unknown = tr.getMeta('history$');
+  return meta !== null && typeof meta === 'object' && 'redo' in meta;
+}
+
 export function isValidationCheckRequested(tr: Transaction): boolean {
   return tr.getMeta(FORCE_VALIDATION_CHECK) === true;
 }

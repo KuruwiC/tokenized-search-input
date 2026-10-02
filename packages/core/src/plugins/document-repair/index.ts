@@ -1,17 +1,13 @@
 import { Extension } from '@tiptap/core';
 import { type EditorState, Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
 import { isToken } from '../../utils/node-predicates';
+import { isHistoryTransaction } from '../shared/meta';
 import { tokenFocusKey } from '../token-focus-plugin';
 import { removeEmptyToken } from './empty-token-cleanup';
 import { focusRestoredEmptyToken } from './history-empty-token-focus';
 import { keepWordsApart } from './word-boundary';
 
 export const documentRepairKey = new PluginKey('documentRepair');
-
-function isHistoryTransaction(tr: Transaction): boolean {
-  const meta: unknown = tr.getMeta('history$');
-  return meta !== null && typeof meta === 'object' && 'redo' in meta;
-}
 
 /** A document change that undo reverts. */
 function isRecorded(tr: Transaction): boolean {
@@ -29,8 +25,12 @@ function focusedTokenId(state: EditorState): string | null {
  * Repairs the document after the edits that made it inconsistent with the rules for
  * tokens:
  * 1. An empty token is removed when the user leaves it
- * 2. Words a removed token separated are kept apart by a space
+ * 2. Words that an edit removed a token from between are kept apart by a space
  * 3. An empty token that undo or redo restored is focused
+ *
+ * Undo and redo restore a document that already existed, so the space between words
+ * is not put in after them; leaving a token and focusing a restored one follow the
+ * user's focus, not the document, and still apply.
  *
  * A repair belongs to the undo step of the edits it follows, so undo reverts both
  * together; after undo or redo, the history keeps it on the other stack. A repair that

@@ -1,7 +1,8 @@
 /**
  * A repair made after an edit belongs to the same undo step as that edit, so undo
  * returns the document the edit started from. A repair that follows no recorded
- * edit, such as removing an empty token the user left, is not recorded.
+ * edit, such as removing an empty token the user left, is not recorded. Undo and redo
+ * restore a document that already existed, which no repair changes.
  */
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import type { Editor, JSONContent } from '@tiptap/core';
@@ -126,9 +127,13 @@ describe('repairs and the undo history', () => {
       editor.commands.deleteRange({ from: token.pos, to: token.pos + token.size });
     });
     expect(value()).toBe('foo bar');
+    const deleted = json(editor);
 
     undo(editor);
     expect(json(editor)).toEqual(before);
+
+    redo(editor);
+    expect(json(editor)).toEqual(deleted);
   });
 
   it('records a paste and the repairs after it as one undo step', async () => {
@@ -189,8 +194,9 @@ describe('repairs and the undo history', () => {
     expect(undoDepth(editor.state)).toBe(depth);
   });
 
-  it('keeps the repair made after an undo on the redo stack', async () => {
+  it('undoes a token inserted inside a word back to the exact word, and redoes it', async () => {
     const { editor } = await mount('foobar');
+    const before = json(editor);
     act(() => {
       editor.commands.insertContentAt(4, {
         type: 'filterToken',
@@ -200,7 +206,7 @@ describe('repairs and the undo history', () => {
     const withToken = json(editor);
 
     undo(editor);
-    expect(editor.state.doc.firstChild?.textContent).toBe('foo bar');
+    expect(json(editor)).toEqual(before);
     expect(redoDepth(editor.state)).toBe(1);
 
     redo(editor);

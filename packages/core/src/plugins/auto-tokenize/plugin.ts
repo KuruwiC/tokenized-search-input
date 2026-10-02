@@ -1,16 +1,11 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
 import { Mapping } from '@tiptap/pm/transform';
-import { requestValidationCheck } from '../shared/meta';
+import { isHistoryTransaction, requestValidationCheck } from '../shared/meta';
 import { type TokenizeContext, tokenizeRange } from './tokenize-range';
 
 /** Marks a transaction whose text was already read as a query. */
 export const autoTokenizeKey = new PluginKey('autoTokenize');
-
-function isHistoryTransaction(tr: Transaction): boolean {
-  const meta: unknown = tr.getMeta('history$');
-  return meta !== null && typeof meta === 'object' && 'redo' in meta;
-}
 
 /**
  * The span of the document after `transactions` covering every place where more than

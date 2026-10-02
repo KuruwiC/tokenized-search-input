@@ -1,10 +1,11 @@
 import { Extension } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
-import { type EditorState, Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
+import { type EditorState, Plugin, PluginKey } from '@tiptap/pm/state';
 import { getEditorContext } from '../../extensions/editor-context';
 import {
   isContentEntered,
   isContentReset,
+  isHistoryTransaction,
   isProgrammaticEdit,
   isValidationCheckRequested,
   type TokenValidation,
@@ -29,11 +30,6 @@ const NO_SESSION: FocusSession = { tokenId: null, edits: new Map() };
 
 export { FIELD_VALIDATE_RULE_ID } from './field-validate-rule';
 export { collectTokens, type Plan, type ValidationInput } from './run';
-
-function isHistoryTransaction(tr: Transaction): boolean {
-  const historyMeta = tr.getMeta('history$') as { redo?: boolean } | undefined;
-  return !!historyMeta && historyMeta.redo !== undefined;
-}
 
 function tokenIdAt(doc: ProseMirrorNode, pos: number | null | undefined): string | null {
   if (pos === null || pos === undefined) return null;

@@ -2,6 +2,7 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Transaction } from '@tiptap/pm/state';
 import { Mapping } from '@tiptap/pm/transform';
 import { isToken } from '../../utils/node-predicates';
+import { isHistoryTransaction } from '../shared/meta';
 
 function containsToken(doc: ProseMirrorNode, from: number, to: number): boolean {
   let found = false;
@@ -13,17 +14,22 @@ function containsToken(doc: ProseMirrorNode, from: number, to: number): boolean 
 }
 
 /**
- * Where, in the document `transactions` end with, content that held a token was
- * removed or replaced: both ends of each such replacement.
+ * Where, in the document `transactions` end with, an edit removed or replaced content
+ * that held a token: both ends of each such replacement. Undo and redo are not edits:
+ * the document they restore already kept its words apart.
  */
 export function findTokenRemovalEdges(transactions: readonly Transaction[]): number[] {
   const steps = transactions.flatMap((tr) =>
-    tr.steps.map((step, index) => ({ map: step.getMap(), docBefore: tr.docs[index] }))
+    tr.steps.map((step, index) => ({
+      map: step.getMap(),
+      docBefore: tr.docs[index],
+      restores: isHistoryTransaction(tr),
+    }))
   );
   const mapping = new Mapping(steps.map(({ map }) => map));
   const edges: number[] = [];
-  steps.forEach(({ map, docBefore }, index) => {
-    if (!docBefore) return;
+  steps.forEach(({ map, docBefore, restores }, index) => {
+    if (!docBefore || restores) return;
     const later = mapping.slice(index + 1);
     map.forEach((oldStart, oldEnd, newStart, newEnd) => {
       if (!containsToken(docBefore, oldStart, oldEnd)) return;
