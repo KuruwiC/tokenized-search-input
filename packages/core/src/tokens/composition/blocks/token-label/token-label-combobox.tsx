@@ -7,7 +7,8 @@ import type { FieldDefinition, LabelResolver, Matcher } from '../../../../types'
 import { cn } from '../../../../utils/cn';
 import { resolveLabel } from '../../../../utils/label-resolve';
 import { scrollIntoViewNearest } from '../../../../utils/scroll-into-view';
-import { useTokenConfig, useTokenFocusContext } from '../../contexts';
+import { useTokenConfig } from '../../contexts/token-config-context';
+import { useTokenFocusContext } from '../../contexts/token-focus-context';
 import { useFocusableBlock } from '../../focus';
 import { getSortedFields } from './field-compatibility';
 import {
@@ -88,13 +89,6 @@ export function TokenLabelCombobox({
 
   const { editor } = useTokenConfig();
   const { isFocused: tokenFocused, isEditable, focusRegistry, immutable } = useTokenFocusContext();
-  const { navigateLeft, navigateRight, navigateLeftEntry, navigateRightEntry, tabIndex } =
-    useFocusableBlock({
-      id: 'label',
-      ref: triggerRef,
-      available: displayMode !== 'static' && !immutable,
-      entryFocusable: false,
-    });
 
   const filteredFields = useMemo(() => {
     return getSortedFields(field, selectableFields, {
@@ -206,7 +200,7 @@ export function TokenLabelCombobox({
   useEffect(() => {
     if (!pendingFocusNextRef.current) return;
     pendingFocusNextRef.current = false;
-    focusRegistry.focusNext('label', 'end');
+    focusRegistry.focusAdjacent('label', 'next', { position: 'end' });
   }, [isOpen, focusRegistry]);
 
   const moveActiveUp = useCallback(() => {
@@ -217,94 +211,88 @@ export function TokenLabelCombobox({
     setActiveIndex((prev) => Math.min(prev + 1, totalOptions - 1));
   }, [totalOptions]);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (hasTextInput && isOpen && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        return;
-      }
+  const handleKey = (e: React.KeyboardEvent): boolean => {
+    if (hasTextInput && isOpen && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      return false;
+    }
 
-      if (isOpen && e.key === 'Escape') {
-        setIsOpen(false);
-        setInputValue('');
-        triggerRef.current?.focus();
-        e.preventDefault();
-        return;
-      }
+    if (isOpen && e.key === 'Escape') {
+      setIsOpen(false);
+      setInputValue('');
+      triggerRef.current?.focus();
+      e.preventDefault();
+      return true;
+    }
 
-      let handled: boolean;
+    let handled: boolean;
 
-      if (isOpen) {
-        if (displayMode === 'input-only') {
-          handled = handleInputOnlyOpenKeyDown(
-            e.key,
-            {
-              inputValue,
-              selectionStart: inputRef.current?.selectionStart ?? null,
-              selectionEnd: inputRef.current?.selectionEnd ?? null,
+    if (isOpen) {
+      if (displayMode === 'input-only') {
+        handled = handleInputOnlyOpenKeyDown(
+          e.key,
+          {
+            inputValue,
+            selectionStart: inputRef.current?.selectionStart ?? null,
+            selectionEnd: inputRef.current?.selectionEnd ?? null,
+          },
+          {
+            selectFieldAndClose: (value) => {
+              selectField(value);
+              closeDropdown();
             },
-            {
-              selectFieldAndClose: (value) => {
-                selectField(value);
-                closeDropdown();
-              },
-              closeAndNavigateLeft: () => {
-                closeDropdown();
-                navigateLeft();
-              },
-              closeAndNavigateRight: (position) => {
-                closeDropdown();
-                navigateRight(position);
-              },
-            }
-          );
-        } else {
-          handled = handleOpenKeyDown(
-            e.key,
-            { isOpen, activeIndex, filteredFields },
-            {
-              closeDropdown,
-              navigateLeft,
-              navigateRight,
-              selectField,
-              selectFieldAndNavigate,
-              moveActiveUp,
-              moveActiveDown,
-            }
-          );
-        }
+            closeAndNavigateLeft: () => {
+              closeDropdown();
+              navigateLeft();
+            },
+            closeAndNavigateRight: (position) => {
+              closeDropdown();
+              navigateRight(position);
+            },
+          }
+        );
       } else {
-        handled = handleClosedKeyDown(e.key, {
-          openDropdown,
-          navigateLeft,
-          navigateRight,
-          navigateLeftEntry,
-          navigateRightEntry,
-        });
+        handled = handleOpenKeyDown(
+          e.key,
+          { isOpen, activeIndex, filteredFields },
+          {
+            closeDropdown,
+            navigateLeft,
+            navigateRight,
+            selectField,
+            selectFieldAndNavigate,
+            moveActiveUp,
+            moveActiveDown,
+          }
+        );
       }
+    } else {
+      handled = handleClosedKeyDown(e.key, {
+        openDropdown,
+        navigateLeft,
+        navigateRight,
+        navigateLeftEntry,
+        navigateRightEntry,
+      });
+    }
 
-      if (handled) {
-        e.preventDefault();
-      }
-    },
-    [
-      hasTextInput,
-      isOpen,
-      displayMode,
-      inputValue,
-      activeIndex,
-      filteredFields,
-      closeDropdown,
-      navigateLeft,
-      navigateRight,
-      selectField,
-      selectFieldAndNavigate,
-      moveActiveUp,
-      moveActiveDown,
-      openDropdown,
-      navigateLeftEntry,
-      navigateRightEntry,
-    ]
-  );
+    if (handled) e.preventDefault();
+    return handled;
+  };
+
+  const {
+    navigateLeft,
+    navigateRight,
+    navigateLeftEntry,
+    navigateRightEntry,
+    tabIndex,
+    handleFocus,
+  } = useFocusableBlock({
+    id: 'label',
+    ref: triggerRef,
+    available: displayMode !== 'static' && !immutable,
+    entryFocusable: false,
+    handleKey,
+  });
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -354,7 +342,7 @@ export function TokenLabelCombobox({
       onMouseDown={(e) => {
         if (!isOpen) e.preventDefault();
       }}
-      onKeyDown={handleKeyDown}
+      onFocus={handleFocus}
       onBlur={handleBlur}
       className={cn('tsi-token-label-combobox', className)}
       aria-haspopup="listbox"
@@ -371,12 +359,6 @@ export function TokenLabelCombobox({
           type="text"
           value={hasUserEdited ? inputValue : inputValue || label}
           onChange={handleInputChange}
-          onKeyDown={(e) => {
-            handleKeyDown(e);
-            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-              e.stopPropagation();
-            }
-          }}
           onClick={(e) => e.stopPropagation()}
           className="tsi-token-label-combobox__input"
           style={{ width: inputWidth }}

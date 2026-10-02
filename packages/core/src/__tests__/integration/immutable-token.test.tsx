@@ -276,7 +276,8 @@ describe('Immutable Token - Integration Tests', () => {
         expect(screen.getByPlaceholderText('...')).toBeInTheDocument();
       });
 
-      await user.keyboard('{Tab}');
+      // Choosing a field moves focus to the operator; Tab goes on to the value, then leaves
+      await user.keyboard('{Tab}{Tab}');
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       // After blur, token becomes immutable

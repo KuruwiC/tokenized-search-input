@@ -13,8 +13,8 @@ import {
 import { findTokenById } from '../../utils/find-token';
 import { isFilterToken } from '../../utils/node-predicates';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
-import { isHistoryShortcut } from '../composition/keyboard';
 import { TOKEN_NODE_CLASS, updateTokenNodeView } from '../composition/node-view-update';
+import { isHistoryShortcut } from '../history-shortcut';
 import { createFilterTokenAttrs } from './create-attrs';
 import { FilterTokenView } from './filter-token-view';
 

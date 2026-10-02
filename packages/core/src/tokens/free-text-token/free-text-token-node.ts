@@ -12,8 +12,8 @@ import { findTokenById } from '../../utils/find-token';
 import { isFreeTextToken } from '../../utils/node-predicates';
 import { escapeForQuotes } from '../../utils/quoted-string';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
-import { isHistoryShortcut } from '../composition/keyboard';
 import { TOKEN_NODE_CLASS, updateTokenNodeView } from '../composition/node-view-update';
+import { isHistoryShortcut } from '../history-shortcut';
 import { enterToken } from '../token-focus';
 import { FreeTextTokenView } from './free-text-token-view';
 

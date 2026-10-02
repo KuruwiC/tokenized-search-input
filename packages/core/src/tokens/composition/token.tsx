@@ -20,24 +20,19 @@ import {
 import { getValidationDescriptionId } from '../../plugins/token-meta-plugin';
 import { getDismissPolicy } from '../../suggestions/dismiss-policy';
 import { cn } from '../../utils/cn';
+import { isHistoryShortcut } from '../history-shortcut';
 import { enterToken } from '../token-focus';
 import { TokenDeleteButton } from './blocks/token-delete-button';
-import { TokenLabelCombobox } from './blocks/token-label';
+import { TokenLabelCombobox } from './blocks/token-label/token-label-combobox';
 import { TokenOperator } from './blocks/token-operator';
 import { TokenValue } from './blocks/token-value';
+import { TokenConfigContext, type TokenConfigContextValue } from './contexts/token-config-context';
 import {
   type FocusRegistry,
-  TokenConfigContext,
-  type TokenConfigContextValue,
   TokenFocusContext,
   type TokenFocusContextValue,
-} from './contexts';
+} from './contexts/token-focus-context';
 import { focusEntryBlock, useFocusRegistry } from './focus';
-import {
-  isHistoryShortcut,
-  KeyboardHandlersContext,
-  useKeyboardHandlersRegistry,
-} from './keyboard';
 
 /** A press on a token edits it as a whole. */
 const CLICK_ENTRY: TokenFocusEntry = { source: 'click', position: 'end', target: 'all' };
@@ -98,15 +93,16 @@ const focusedTokenStrategy: ClickStrategy = {
   canHandle: (ctx) => ctx.isFocused,
   execute: (ctx) => {
     const target = ctx.event.target as Element;
-    const elements = ctx.focusRegistry.getElements();
-    const clickedElement = elements.find((el) => el.ref.current?.contains(target));
+    const clickedBlock = ctx.focusRegistry
+      .getBlocks()
+      .find((block) => block.element.current?.contains(target));
 
-    if (clickedElement) {
-      clickedElement.focus('end');
+    if (clickedBlock) {
+      clickedBlock.focus('end');
       return;
     }
 
-    ctx.focusRegistry.focusFirstEntryFocusable('end');
+    ctx.focusRegistry.focusEdge('first', { entryOnly: true, position: 'end' });
   },
 };
 
@@ -211,8 +207,6 @@ export function Token({
     onExitRight: handleExitRight,
   });
 
-  const keyboardHandlersRegistry = useKeyboardHandlersRegistry();
-
   // DOM focus follows the token focus: entering the token moves it to the block focus
   // entered at, and leaving the token moves it, if it is still in the token, to the editor.
   useLayoutEffect(() => {
@@ -227,7 +221,7 @@ export function Token({
 
   const handleActivate = useCallback(() => {
     if (getFocusedToken(editor.state)?.id === id) {
-      focusRegistry.focusFirstEntryFocusable('end');
+      focusRegistry.focusEdge('first', { entryOnly: true, position: 'end' });
       return;
     }
     enterToken(editor, id, CLICK_ENTRY);
@@ -276,19 +270,12 @@ export function Token({
     [editor, id]
   );
 
-  const handleKeyDown = useCallback(
+  // Keys no block handles: Escape closes the open suggestions and then leaves the token,
+  // Tab leaves it to either side.
+  const handleTokenKey = useCallback(
     (e: React.KeyboardEvent) => {
-      if (!editor.isEditable) return;
-
-      const sortedHandlers = keyboardHandlersRegistry.getHandlersForKey(e.key);
-      for (const { handler } of sortedHandlers) {
-        const result = handler(e);
-        if (result === true) return;
-      }
-
       if (e.key === 'Escape') {
         e.preventDefault();
-
         const suggestionState = getSuggestionState(editor.state);
         if (isSuggestionOpen(suggestionState)) {
           const tr = editor.state.tr;
@@ -297,24 +284,30 @@ export function Token({
           editor.view.dispatch(tr);
           return;
         }
-
         handleExitRight();
         return;
       }
 
-      if (e.key === 'Tab' && !e.shiftKey) {
+      if (e.key === 'Tab') {
         e.preventDefault();
-        handleExitRight();
-        return;
-      }
-
-      if (e.key === 'Tab' && e.shiftKey) {
-        e.preventDefault();
-        handleExitLeft();
-        return;
+        if (e.shiftKey) handleExitLeft();
+        else handleExitRight();
       }
     },
-    [editor, keyboardHandlersRegistry, handleExitLeft, handleExitRight]
+    [editor, handleExitLeft, handleExitRight]
+  );
+
+  // A key reaches the one block that holds focus. Undo and redo are left to the editor,
+  // which owns the history of token edits; everything else stops here.
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!editor.isEditable || isHistoryShortcut(e.nativeEvent)) return;
+
+      const block = currentFocusId === null ? undefined : focusRegistry.get(currentFocusId);
+      if (!block?.handleKey(e)) handleTokenKey(e);
+      e.stopPropagation();
+    },
+    [editor, currentFocusId, focusRegistry, handleTokenKey]
   );
 
   const handleDelete = useCallback(() => {
@@ -322,16 +315,6 @@ export function Token({
     editor.view.focus();
     deleteNode();
   }, [deleteNode, editor]);
-
-  const dispatchKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      // Undo and redo propagate to the editor, which owns the history of token edits
-      if (isHistoryShortcut(e.nativeEvent)) return;
-      handleKeyDown(e);
-      e.stopPropagation();
-    },
-    [handleKeyDown]
-  );
 
   const configContextValue: TokenConfigContextValue = useMemo(
     () => ({
@@ -350,19 +333,10 @@ export function Token({
       currentFocusId,
       setCurrentFocusId,
       exitToken: handleExitRight,
-      dispatchKeyDown,
       isEditable: editor.isEditable,
       immutable,
     }),
-    [
-      isFocused,
-      focusRegistry,
-      currentFocusId,
-      handleExitRight,
-      dispatchKeyDown,
-      editor.isEditable,
-      immutable,
-    ]
+    [isFocused, focusRegistry, currentFocusId, handleExitRight, editor.isEditable, immutable]
   );
 
   const wrapperClasses = 'tsi-token-wrapper';
@@ -413,9 +387,7 @@ export function Token({
       >
         <TokenConfigContext.Provider value={configContextValue}>
           <TokenFocusContext.Provider value={focusContextValue}>
-            <KeyboardHandlersContext.Provider value={keyboardHandlersRegistry}>
-              {children}
-            </KeyboardHandlersContext.Provider>
+            {children}
           </TokenFocusContext.Provider>
         </TokenConfigContext.Provider>
       </span>

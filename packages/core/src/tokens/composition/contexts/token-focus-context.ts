@@ -3,42 +3,39 @@ import { createContext, useContext } from 'react';
 
 export type CursorPosition = 'start' | 'end';
 
-export interface FocusableElement {
+/** A block of a token that can hold DOM focus and handles the keys pressed while it does. */
+export interface FocusableBlock {
   id: string;
-  ref: RefObject<HTMLElement | null>;
+  element: RefObject<HTMLElement | null>;
   focus: (position?: CursorPosition) => void;
-  /** Whether this element can receive focus when entering the token via Backspace/Delete. Default: true */
+  /**
+   * Handles a key pressed while the block holds focus.
+   * @returns whether the key was handled; an unhandled one falls to the token's own keys
+   */
+  handleKey: (e: React.KeyboardEvent) => boolean;
+  /** Whether this block can receive focus when entering the token via Backspace/Delete. Default: true */
   entryFocusable?: boolean;
 }
 
-export type FocusTarget = 'first' | 'last';
-export type FocusDirection = 'next' | 'prev';
-export type FocusFilter = 'all' | 'entryFocusable';
-
-export interface NavigateOptions {
-  filter?: FocusFilter;
+export interface FocusNavigationOptions {
+  /** Only blocks that can receive focus when entering the token via Backspace/Delete. */
+  entryOnly?: boolean;
   position?: CursorPosition;
 }
 
 export interface FocusRegistry {
-  register: (element: FocusableElement) => () => void;
-
-  // New parameterized navigation primitives
-  navigateAbsolute: (target: FocusTarget, options?: NavigateOptions) => void;
-  navigateRelative: (fromId: string, direction: FocusDirection, options?: NavigateOptions) => void;
-
-  // Convenience wrappers for common navigation patterns
-  focusFirst: (position?: CursorPosition) => void;
-  focusLast: (position?: CursorPosition) => void;
-  focusFirstEntryFocusable: (position?: CursorPosition) => void;
-  focusLastEntryFocusable: (position?: CursorPosition) => void;
-  focusNext: (fromId: string, position?: CursorPosition) => void;
-  focusPrev: (fromId: string) => void;
-  focusNextEntryFocusable: (fromId: string) => void;
-  focusPrevEntryFocusable: (fromId: string) => void;
-
-  focusById: (id: string, position?: CursorPosition) => boolean;
-  getElements: () => FocusableElement[];
+  register: (block: FocusableBlock) => () => void;
+  get: (id: string) => FocusableBlock | undefined;
+  /** The registered blocks in DOM order. */
+  getBlocks: () => FocusableBlock[];
+  /** Focuses the first or last block. Leaves the focus alone when no block is registered. */
+  focusEdge: (edge: 'first' | 'last', options?: FocusNavigationOptions) => void;
+  /** Focuses the block next to `fromId`, or leaves the token past the last or first one. */
+  focusAdjacent: (
+    fromId: string,
+    direction: 'next' | 'prev',
+    options?: FocusNavigationOptions
+  ) => void;
 }
 
 /**
@@ -53,11 +50,6 @@ export interface TokenFocusContextValue {
   setCurrentFocusId: (id: string | null) => void;
   /** Leaves the token to the right, committing it with `value` when one is given. */
   exitToken: (value?: string) => void;
-  /**
-   * Dispatch a keyboard event to Token-level handler.
-   * Blocks should call this in their onKeyDown to ensure proper event flow.
-   */
-  dispatchKeyDown: (e: React.KeyboardEvent) => void;
   /** Whether the editor is editable (not disabled) */
   isEditable: boolean;
   /** Whether the token is immutable (confirmed and cannot be edited) */

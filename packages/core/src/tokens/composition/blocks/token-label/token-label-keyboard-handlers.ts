@@ -1,5 +1,5 @@
 import type { FieldDefinition } from '../../../../types';
-import type { CursorPosition } from '../../contexts';
+import type { CursorPosition } from '../../contexts/token-focus-context';
 
 interface OpenState {
   isOpen: boolean;

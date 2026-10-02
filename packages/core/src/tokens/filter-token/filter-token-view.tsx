@@ -15,14 +15,7 @@ import { type EnumValue, type FieldDefinition, getOperatorSelectLabel } from '..
 import { isRangeSelected } from '../../utils/decoration-helpers';
 import { getEnumValue } from '../../utils/enum-value';
 import { isInsideQuotes } from '../../utils/quoted-string';
-import {
-  HandlerPriority,
-  Token,
-  TokenIconSlot,
-  useBlockKeyboardContribution,
-  useTokenConfig,
-  useTokenFocusContext,
-} from '../composition';
+import { Token, TokenIconSlot, useTokenConfig, useTokenFocusContext } from '../composition';
 import { resolveDisplayValue } from './resolve-display-value';
 import { applyTokenAction, type FilterTokenAction } from './token-actions';
 import { useValueSuggestions } from './use-value-suggestions';
@@ -204,7 +197,7 @@ function FilterTokenValue({
   endContent,
   valueClassName,
 }: FilterTokenValueProps): React.ReactElement {
-  const { exitToken, currentFocusId, isFocused: tokenFocused } = useTokenFocusContext();
+  const { exitToken, isFocused: tokenFocused } = useTokenFocusContext();
   const { deleteToken } = useTokenConfig();
   const fieldSource = getEditorContext(editor);
 
@@ -242,50 +235,26 @@ function FilterTokenValue({
     );
   };
 
-  const keyboardHandlers = {
-    Backspace: {
-      handler: (e: React.KeyboardEvent) => {
-        if (currentFocusId !== 'value') return false;
-        if (e.nativeEvent.isComposing) return false;
+  // Keys that act on the value suggestions or on an empty value, before the value block's own
+  const handleKey = (e: React.KeyboardEvent): boolean => {
+    switch (e.key) {
+      case 'Backspace':
         if (rawValue !== '') return false;
-
         e.preventDefault();
         deleteToken();
         return true;
-      },
-      priority: HandlerPriority.VIEW,
-    },
-    ArrowDown: {
-      handler: (e: React.KeyboardEvent) => {
-        if (currentFocusId !== 'value') return false;
+      case 'ArrowDown':
+      case 'ArrowUp': {
         const suggestionState = getSuggestionState(editor.state);
         if (!isValueSuggestionOpen() || !suggestionState) return false;
         e.preventDefault();
         const tr = editor.state.tr;
-        navigateSuggestion(tr, suggestionState, 'down');
+        navigateSuggestion(tr, suggestionState, e.key === 'ArrowDown' ? 'down' : 'up');
         tr.setMeta('addToHistory', false);
         editor.view.dispatch(tr);
         return true;
-      },
-      priority: HandlerPriority.VIEW,
-    },
-    ArrowUp: {
-      handler: (e: React.KeyboardEvent) => {
-        if (currentFocusId !== 'value') return false;
-        const suggestionState = getSuggestionState(editor.state);
-        if (!isValueSuggestionOpen() || !suggestionState) return false;
-        e.preventDefault();
-        const tr = editor.state.tr;
-        navigateSuggestion(tr, suggestionState, 'up');
-        tr.setMeta('addToHistory', false);
-        editor.view.dispatch(tr);
-        return true;
-      },
-      priority: HandlerPriority.VIEW,
-    },
-    Enter: {
-      handler: (e: React.KeyboardEvent) => {
-        if (currentFocusId !== 'value') return false;
+      }
+      case 'Enter': {
         const suggestionState = getSuggestionState(editor.state);
         if (!isValueSuggestionOpen() || !suggestionState) return false;
         e.preventDefault();
@@ -293,13 +262,11 @@ function FilterTokenValue({
         const selectedItem = (suggestionState.items as EnumValue[])[suggestionState.activeIndex];
         exitToken(selectedItem ? getEnumValue(selectedItem) : undefined);
         return true;
-      },
-      priority: HandlerPriority.VIEW,
-    },
+      }
+      default:
+        return false;
+    }
   };
-
-  // Register with block ID 'filter-value' to distinguish from base 'value' handlers
-  useBlockKeyboardContribution('filter-value', keyboardHandlers);
 
   return (
     <Token.Value
@@ -309,6 +276,7 @@ function FilterTokenValue({
       containerClassName={valueClassName}
       ariaLabel={`Value for ${fieldKey} filter`}
       onFocus={handleValueInputFocus}
+      handleKey={handleKey}
       startContent={startContent}
       endContent={endContent}
     />

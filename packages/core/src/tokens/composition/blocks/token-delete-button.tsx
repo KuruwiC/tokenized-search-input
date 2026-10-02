@@ -1,9 +1,9 @@
 import { useRef } from 'react';
 import { X } from '../../../icons/x';
 import { cn } from '../../../utils/cn';
-import { useTokenConfig, useTokenFocusContext } from '../contexts';
+import { useTokenConfig } from '../contexts/token-config-context';
+import { useTokenFocusContext } from '../contexts/token-focus-context';
 import { useFocusableBlock } from '../focus';
-import { HandlerPriority, useBlockKeyboardContribution } from '../keyboard';
 
 export interface TokenDeleteButtonProps {
   ariaLabel?: string;
@@ -13,8 +13,6 @@ export interface TokenDeleteButtonProps {
 /**
  * Token delete button block (focusable).
  * Removes the token when clicked or activated.
- *
- * Keyboard handling is registered via useBlockKeyboardContribution.
  */
 export function TokenDeleteButton({
   ariaLabel = 'Remove token',
@@ -22,75 +20,46 @@ export function TokenDeleteButton({
 }: TokenDeleteButtonProps): React.ReactElement {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { deleteToken } = useTokenConfig();
-  const { currentFocusId, dispatchKeyDown, isEditable } = useTokenFocusContext();
+  const { isEditable } = useTokenFocusContext();
 
-  const { navigateLeft, navigateRight, navigateLeftEntry, navigateRightEntry, tabIndex } =
-    useFocusableBlock({
-      id: 'delete',
-      ref: buttonRef,
-      entryFocusable: false,
-    });
-
-  const keyboardHandlers = {
-    ArrowLeft: {
-      handler: (e: React.KeyboardEvent) => {
-        if (currentFocusId !== 'delete') return false;
-        e.preventDefault();
+  const handleKey = (e: React.KeyboardEvent): boolean => {
+    switch (e.key) {
+      case 'ArrowLeft':
         navigateLeft();
-        return true;
-      },
-      priority: HandlerPriority.DEFAULT,
-    },
-    ArrowRight: {
-      handler: (e: React.KeyboardEvent) => {
-        if (currentFocusId !== 'delete') return false;
-        e.preventDefault();
+        break;
+      case 'ArrowRight':
         navigateRight();
-        return true;
-      },
-      priority: HandlerPriority.DEFAULT,
-    },
-    Enter: {
-      handler: (e: React.KeyboardEvent) => {
-        if (currentFocusId !== 'delete') return false;
-        e.preventDefault();
-        e.stopPropagation();
+        break;
+      case 'Enter':
+      case ' ':
         deleteToken();
-        return true;
-      },
-      priority: HandlerPriority.DEFAULT,
-    },
-    ' ': {
-      handler: (e: React.KeyboardEvent) => {
-        if (currentFocusId !== 'delete') return false;
-        e.preventDefault();
-        e.stopPropagation();
-        deleteToken();
-        return true;
-      },
-      priority: HandlerPriority.DEFAULT,
-    },
-    Backspace: {
-      handler: (e: React.KeyboardEvent) => {
-        if (currentFocusId !== 'delete') return false;
-        e.preventDefault();
+        break;
+      case 'Backspace':
         navigateLeftEntry();
-        return true;
-      },
-      priority: HandlerPriority.DEFAULT,
-    },
-    Delete: {
-      handler: (e: React.KeyboardEvent) => {
-        if (currentFocusId !== 'delete') return false;
-        e.preventDefault();
+        break;
+      case 'Delete':
         navigateRightEntry();
-        return true;
-      },
-      priority: HandlerPriority.DEFAULT,
-    },
+        break;
+      default:
+        return false;
+    }
+    e.preventDefault();
+    return true;
   };
 
-  useBlockKeyboardContribution('delete', keyboardHandlers);
+  const {
+    navigateLeft,
+    navigateRight,
+    navigateLeftEntry,
+    navigateRightEntry,
+    tabIndex,
+    handleFocus,
+  } = useFocusableBlock({
+    id: 'delete',
+    ref: buttonRef,
+    entryFocusable: false,
+    handleKey,
+  });
 
   // Click handler (works for both desktop and mobile)
   const handleClick = (e: React.MouseEvent) => {
@@ -104,7 +73,7 @@ export function TokenDeleteButton({
       ref={buttonRef}
       type="button"
       onClick={handleClick}
-      onKeyDown={dispatchKeyDown}
+      onFocus={handleFocus}
       onMouseDown={(e) => e.preventDefault()}
       className={cn('tsi-token-delete', className)}
       aria-label={ariaLabel}

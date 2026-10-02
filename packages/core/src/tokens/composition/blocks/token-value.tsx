@@ -1,9 +1,8 @@
 import { useCallback, useRef } from 'react';
 import { useTextWidth } from '../../../hooks/use-text-width';
 import { cn } from '../../../utils/cn';
-import { type CursorPosition, useTokenFocusContext } from '../contexts';
+import { type CursorPosition, useTokenFocusContext } from '../contexts/token-focus-context';
 import { useFocusableBlock } from '../focus';
-import { HandlerPriority, useBlockKeyboardContribution } from '../keyboard';
 
 /** Renders an icon slot with consistent styling */
 export function TokenIconSlot({
@@ -36,15 +35,16 @@ export interface TokenValueProps {
    * @param cursorState.atStart - true if cursor is at the beginning of the value
    */
   onSpaceNotAtEnd?: (cursorState: { atStart: boolean }) => boolean;
+  /** Handles a key before the block does, for instance to navigate suggestions; true when handled. */
+  handleKey?: (e: React.KeyboardEvent) => boolean;
 }
 
 /**
  * Token value input block (focusable).
  * Auto-sizing text input for token values.
  *
- * Keyboard handling is registered via useBlockKeyboardContribution.
- * View-level handlers (e.g., suggestion navigation) should also use
- * useBlockKeyboardContribution with a different block ID.
+ * It handles the keys pressed in its input; a view can handle keys of its own first
+ * through `handleKey`.
  */
 export function TokenValue({
   value,
@@ -58,14 +58,10 @@ export function TokenValue({
   startContent,
   endContent,
   onSpaceNotAtEnd,
+  handleKey: handleViewKey,
 }: TokenValueProps): React.ReactElement {
   const inputRef = useRef<HTMLInputElement>(null);
-  const {
-    isFocused: tokenFocused,
-    exitToken,
-    currentFocusId,
-    dispatchKeyDown,
-  } = useTokenFocusContext();
+  const { isFocused: tokenFocused, exitToken, currentFocusId } = useTokenFocusContext();
 
   const focusInput = useCallback((position?: CursorPosition) => {
     const input = inputRef.current;
@@ -78,6 +74,61 @@ export function TokenValue({
     }
   }, []);
 
+  const handleKey = (e: React.KeyboardEvent): boolean => {
+    // Keys pressed during composition belong to the input method
+    if (e.nativeEvent.isComposing) return false;
+    if (handleViewKey?.(e)) return true;
+
+    const input = inputRef.current;
+    if (!input) return false;
+    const caret = input.selectionStart ?? 0;
+    const collapsed = caret === (input.selectionEnd ?? 0);
+    const atStart = caret === 0;
+    const atEnd = caret === value.length;
+
+    switch (e.key) {
+      case 'ArrowLeft':
+        if (!atStart || !collapsed) return false;
+        e.preventDefault();
+        navigateLeft();
+        return true;
+      case 'ArrowRight':
+        if (!atEnd || !collapsed) return false;
+        e.preventDefault();
+        navigateRight();
+        return true;
+      case 'Backspace':
+        // Backspace at the start moves to the previous entry-focusable block or leaves the token
+        if (!atStart || !collapsed) return false;
+        e.preventDefault();
+        navigateLeftEntry();
+        return true;
+      case 'Delete':
+        // Delete at the end moves to the next entry-focusable block or leaves the token
+        if (!atEnd || !collapsed) return false;
+        e.preventDefault();
+        navigateRightEntry();
+        return true;
+      case ' ':
+        if (allowSpaces) return false;
+        if (atEnd) {
+          e.preventDefault();
+          exitToken();
+          return true;
+        }
+        // Elsewhere the view may let the space in, for instance to quote the value
+        if (onSpaceNotAtEnd?.({ atStart })) return false;
+        e.preventDefault();
+        return true;
+      case 'Enter':
+        e.preventDefault();
+        exitToken();
+        return true;
+      default:
+        return false;
+    }
+  };
+
   const {
     navigateLeft,
     navigateRight,
@@ -89,115 +140,8 @@ export function TokenValue({
     id: 'value',
     ref: inputRef,
     focus: focusInput,
+    handleKey,
   });
-
-  // Helper to get cursor state
-  const getCursorState = () => {
-    const input = inputRef.current;
-    if (!input) return { atStart: false, atEnd: false, hasSelection: false };
-
-    const cursorPos = input.selectionStart ?? 0;
-    const cursorEnd = input.selectionEnd ?? 0;
-    return {
-      atStart: cursorPos === 0,
-      atEnd: cursorPos === value.length,
-      hasSelection: cursorPos !== cursorEnd,
-    };
-  };
-
-  const keyboardHandlers = {
-    ArrowLeft: {
-      handler: (e: React.KeyboardEvent) => {
-        if (currentFocusId !== 'value') return false;
-        const { atStart, hasSelection } = getCursorState();
-        if (atStart && !hasSelection) {
-          e.preventDefault();
-          navigateLeft();
-          return true;
-        }
-        return false;
-      },
-      priority: HandlerPriority.DEFAULT,
-    },
-    ArrowRight: {
-      handler: (e: React.KeyboardEvent) => {
-        if (currentFocusId !== 'value') return false;
-        const { atEnd, hasSelection } = getCursorState();
-        if (atEnd && !hasSelection) {
-          e.preventDefault();
-          navigateRight();
-          return true;
-        }
-        return false;
-      },
-      priority: HandlerPriority.DEFAULT,
-    },
-    Backspace: {
-      handler: (e: React.KeyboardEvent) => {
-        if (currentFocusId !== 'value') return false;
-        if (e.nativeEvent.isComposing) return false;
-        const { atStart, hasSelection } = getCursorState();
-        // When at start with no selection, navigate to previous entryFocusable element or exit token
-        if (atStart && !hasSelection) {
-          e.preventDefault();
-          navigateLeftEntry();
-          return true;
-        }
-        return false;
-      },
-      priority: HandlerPriority.DEFAULT,
-    },
-    Delete: {
-      handler: (e: React.KeyboardEvent) => {
-        if (currentFocusId !== 'value') return false;
-        if (e.nativeEvent.isComposing) return false;
-        const { atEnd, hasSelection } = getCursorState();
-        // When at end with no selection, navigate to next entryFocusable element or exit token
-        if (atEnd && !hasSelection) {
-          e.preventDefault();
-          navigateRightEntry();
-          return true;
-        }
-        return false;
-      },
-      priority: HandlerPriority.DEFAULT,
-    },
-    ' ': {
-      handler: (e: React.KeyboardEvent) => {
-        if (currentFocusId !== 'value') return false;
-        if (e.nativeEvent.isComposing) return false;
-        if (!allowSpaces) {
-          const { atStart, atEnd } = getCursorState();
-          if (atEnd) {
-            e.preventDefault();
-            exitToken();
-            return true;
-          }
-          // Non-end position: check if custom handler allows the space
-          if (onSpaceNotAtEnd?.({ atStart })) {
-            // Allow space insertion for custom handling (e.g., auto-quote conversion)
-            return false;
-          }
-          e.preventDefault();
-          return true;
-        }
-        return false;
-      },
-      priority: HandlerPriority.DEFAULT,
-    },
-    Enter: {
-      handler: (e: React.KeyboardEvent) => {
-        if (currentFocusId !== 'value') return false;
-        if (e.nativeEvent.isComposing) return false;
-        e.preventDefault();
-        exitToken();
-        return true;
-      },
-      priority: HandlerPriority.DEFAULT,
-    },
-  };
-
-  useBlockKeyboardContribution('value', keyboardHandlers);
 
   const inputWidth = useTextWidth(inputRef, value || placeholder, tokenFocused);
 
@@ -227,7 +171,6 @@ export function TokenValue({
         type="text"
         value={value}
         onChange={handleChange}
-        onKeyDown={dispatchKeyDown}
         onFocus={handleFocus}
         className={cn('tsi-token-value__input', className)}
         style={{

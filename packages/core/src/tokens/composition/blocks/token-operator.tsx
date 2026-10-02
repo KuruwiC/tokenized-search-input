@@ -4,7 +4,7 @@ import { Check } from '../../../icons/check';
 import { ChevronDown } from '../../../icons/chevron-down';
 import { cn } from '../../../utils/cn';
 import { scrollIntoViewNearest } from '../../../utils/scroll-into-view';
-import { useTokenFocusContext } from '../contexts';
+import { useTokenFocusContext } from '../contexts/token-focus-context';
 import { useFocusableBlock } from '../focus';
 import { handleClosedKeyDown, handleOpenKeyDown } from './token-operator-keyboard-handlers';
 
@@ -43,13 +43,6 @@ export function TokenOperator({
   );
 
   const { isFocused: tokenFocused, isEditable, immutable } = useTokenFocusContext();
-  const { navigateLeft, navigateRight, navigateLeftEntry, navigateRightEntry, tabIndex } =
-    useFocusableBlock({
-      id: 'operator',
-      ref: triggerRef,
-      available: operators.length > 1 && !immutable,
-      entryFocusable: false,
-    });
 
   useEffect(() => {
     if (!isOpen || !triggerRef.current) return;
@@ -111,7 +104,7 @@ export function TokenOperator({
     onChange(op);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKey = (e: React.KeyboardEvent): boolean => {
     const handled = isOpen
       ? handleOpenKeyDown(
           e.key,
@@ -132,10 +125,24 @@ export function TokenOperator({
           navigateRightEntry,
         });
 
-    if (handled) {
-      e.preventDefault();
-    }
+    if (handled) e.preventDefault();
+    return handled;
   };
+
+  const {
+    navigateLeft,
+    navigateRight,
+    navigateLeftEntry,
+    navigateRightEntry,
+    tabIndex,
+    handleFocus,
+  } = useFocusableBlock({
+    id: 'operator',
+    ref: triggerRef,
+    available: operators.length > 1 && !immutable,
+    entryFocusable: false,
+    handleKey,
+  });
 
   const handleSelect = (op: string) => {
     onChange(op);
@@ -159,7 +166,7 @@ export function TokenOperator({
       type="button"
       onClick={() => (isOpen ? setIsOpen(false) : openDropdown())}
       onMouseDown={(e) => e.preventDefault()}
-      onKeyDown={handleKeyDown}
+      onFocus={handleFocus}
       onBlur={handleBlur}
       className={cn('tsi-token-operator--interactive', className)}
       aria-haspopup="listbox"
