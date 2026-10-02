@@ -10,6 +10,7 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
+import { getFocusedToken } from '../../plugins/token-focus-plugin';
 import type { QuerySnapshot } from '../../types';
 import { extendedFields } from '../fixtures';
 
@@ -104,5 +105,31 @@ describe('Search Execution', () => {
       type: 'freeText',
       value: 'hello',
     });
+  });
+
+  it('leaves and confirms the token being edited before ref.submit() reports', async () => {
+    const user = userEvent.setup();
+    const ref = createRef<TokenizedSearchInputRef>();
+    const onSubmit = vi.fn<(snapshot: QuerySnapshot) => void>();
+    render(
+      <TokenizedSearchInput
+        ref={ref}
+        fields={extendedFields}
+        defaultValue="assignee:is:john"
+        onSubmit={onSubmit}
+      />
+    );
+    await screen.findByText('john');
+    await user.click(screen.getByRole('group', { name: /Filter: assignee/i }));
+    await user.type(await screen.findByPlaceholderText('...'), 'X');
+
+    act(() => {
+      ref.current?.submit();
+    });
+
+    const editor = ref.current?.getEditor();
+    expect(editor && getFocusedToken(editor.state)).toBeNull();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit.mock.calls[0]?.[0].text).toBe('assignee:is:johnX');
   });
 });

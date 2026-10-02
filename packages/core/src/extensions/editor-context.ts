@@ -4,7 +4,7 @@ import { getFreeTextStrategy } from '../plugins/auto-tokenize/free-text-strategy
 import { autoTokenizeKey, createAutoTokenizePlugin } from '../plugins/auto-tokenize/plugin';
 import { tokenizeRange } from '../plugins/auto-tokenize/tokenize-range';
 import { createFreeTextSanitizerPlugin } from '../plugins/free-text-sanitizer-plugin';
-import type { FocusTransitionContext } from '../plugins/token-focus-plugin';
+import { type FocusTransitionContext, leaveFocusedTokenIn } from '../plugins/token-focus-plugin';
 import { createQuerySnapshot } from '../serializer';
 import {
   type ClassNames,
@@ -129,8 +129,8 @@ declare module '@tiptap/core' {
        */
       finalizeInput: () => ReturnType;
       /**
-       * Finalizes the input and calls `onSubmit` with the query it leaves. Every way of
-       * submitting goes through this command.
+       * Leaves the token being edited, finalizes the input and calls `onSubmit` with the
+       * query that leaves. Every way of submitting goes through this command.
        */
       submit: () => ReturnType;
       /**
@@ -312,8 +312,9 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
 
       submit:
         () =>
-        ({ tr, commands, dispatch }) => {
+        ({ editor, state, tr, commands, dispatch }) => {
           if (!dispatch) return true;
+          leaveFocusedTokenIn(tr, getFocusContext(editor, state));
           commands.finalizeInput();
           tr.setMeta(SUBMITTED, true);
           return true;
