@@ -28,7 +28,7 @@ function stateOf(doc: ProseMirrorNode): EditorState {
 }
 
 function decorationsOf(state: EditorState): DecorationSet {
-  const set = tokenGapKey.getState(state);
+  const set = tokenGapKey.getState(state)?.set;
   if (!set) throw new Error('no decoration set');
   return set;
 }
@@ -97,5 +97,34 @@ describe('token gap decorations', () => {
     const next = state.apply(state.tr.setSelection(TextSelection.create(state.doc, 2)));
 
     expect(decorationsOf(next)).toBe(decorationsOf(state));
+  });
+
+  it('maps the widgets instead of rebuilding them while a composition is in progress', () => {
+    const state = stateOf(paragraph(token('a'), token('b')));
+    const next = state.apply(state.tr.insertText('x', 2).setMeta('composition', 1));
+
+    // Rebuilt, the gap between the tokens would be gone; mapped, the same widgets stay,
+    // the one beside the text being composed included.
+    expect(gapsOf(next)).toEqual([
+      { pos: 1, key: 'gap:1' },
+      { pos: 2, key: 'gap:2' },
+      { pos: 4, key: 'gap:3' },
+    ]);
+  });
+
+  it('rebuilds the widgets once the view is no longer composing', () => {
+    const view = new EditorView(document.createElement('div'), {
+      state: stateOf(paragraph(token('a'), token('b'))),
+    });
+    try {
+      view.dispatch(view.state.tr.insertText('x', 2).setMeta('composition', 1));
+
+      expect(gapsOf(view.state)).toEqual([
+        { pos: 1, key: 'gap:1' },
+        { pos: 4, key: 'gap:4' },
+      ]);
+    } finally {
+      view.destroy();
+    }
   });
 });

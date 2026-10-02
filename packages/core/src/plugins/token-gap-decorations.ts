@@ -5,17 +5,29 @@
  * sit in, and browsers do not draw a caret at such a position on their own. Each of these
  * positions gets a zero-width widget that gives the caret something to stand beside. The
  * widgets have no document positions; the visual spacing between tokens comes from CSS.
+ *
+ * While an input method is composing, the widgets are only mapped: rebuilding them could
+ * remove the one beside the text being composed and disturb the composition. They are
+ * rebuilt once the view has finished composing.
  */
 
 import { Extension } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
-import { Decoration, DecorationSet } from '@tiptap/pm/view';
+import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view';
 
 const ZERO_WIDTH_SPACE = '​';
 const GAP_CLASS = '_tsi-token-gap';
 
-export const tokenGapKey = new PluginKey<DecorationSet>('tokenGap');
+interface TokenGapState {
+  set: DecorationSet;
+  /** The set was mapped through a composition and has not been rebuilt since. */
+  stale: boolean;
+}
+
+const REBUILD = 'rebuild';
+
+export const tokenGapKey = new PluginKey<TokenGapState>('tokenGap');
 
 function isInlineAtom(node: ProseMirrorNode | null): boolean {
   return node?.isInline === true && !node.isText;
@@ -60,15 +72,32 @@ function buildGapDecorations(doc: ProseMirrorNode): DecorationSet {
   );
 }
 
-export function createTokenGapPlugin(): Plugin<DecorationSet> {
-  return new Plugin<DecorationSet>({
+function rebuildAfterComposition(view: EditorView): void {
+  if (view.composing || !tokenGapKey.getState(view.state)?.stale) return;
+  view.dispatch(view.state.tr.setMeta(tokenGapKey, REBUILD).setMeta('addToHistory', false));
+}
+
+export function createTokenGapPlugin(): Plugin<TokenGapState> {
+  return new Plugin<TokenGapState>({
     key: tokenGapKey,
     state: {
-      init: (_, state) => buildGapDecorations(state.doc),
-      apply: (tr, set) => (tr.docChanged ? buildGapDecorations(tr.doc) : set),
+      init: (_, state) => ({ set: buildGapDecorations(state.doc), stale: false }),
+      apply: (tr, value) => {
+        if (tr.getMeta('composition') !== undefined) {
+          return tr.docChanged ? { set: value.set.map(tr.mapping, tr.doc), stale: true } : value;
+        }
+        if (tr.docChanged || tr.getMeta(tokenGapKey) === REBUILD) {
+          return { set: buildGapDecorations(tr.doc), stale: false };
+        }
+        return value;
+      },
+    },
+    view: (view) => {
+      rebuildAfterComposition(view);
+      return { update: rebuildAfterComposition };
     },
     props: {
-      decorations: (state) => tokenGapKey.getState(state),
+      decorations: (state) => tokenGapKey.getState(state)?.set,
     },
   });
 }
