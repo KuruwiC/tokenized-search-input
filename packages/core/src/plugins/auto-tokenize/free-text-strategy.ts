@@ -1,6 +1,6 @@
 import type { JSONContent } from '@tiptap/core';
 import type { FreeTextMode } from '../../types';
-import { escapeForQuotes } from '../../utils/quoted-string';
+import { quote } from '../../utils/quoted-string';
 import { generateTokenId } from '../../utils/token-id';
 
 /**
@@ -59,7 +59,7 @@ const tokenizeStrategy: FreeTextStrategy = {
 const plainStrategy: FreeTextStrategy = {
   toDocContent: (token) => ({
     type: 'text',
-    text: token.quoted ? `"${escapeForQuotes(token.value)}"` : token.value,
+    text: token.quoted ? quote(token.value, { always: true }) : token.value,
   }),
   finalizeAction: 'none',
 };

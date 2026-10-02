@@ -222,33 +222,38 @@ export function findLastWordBoundary(text: string): number {
   return lastBoundaryIdx;
 }
 
-/**
- * Quote a string value if it contains spaces or special characters.
- * Escapes internal quotes and backslashes.
- *
- * @example
- * quoteIfNeeded('hello') // 'hello'
- * quoteIfNeeded('hello world') // '"hello world"'
- * quoteIfNeeded('say "hi"') // '"say \\"hi\\""'
- */
-export function quoteIfNeeded(value: string): string {
-  if (!value.includes(' ') && !value.includes('"') && !value.includes('\\')) {
-    return value;
-  }
+/** The characters that end a segment of a query when they are outside quotes. */
+export function isWhitespace(char: string): boolean {
+  return ' \t\n\r'.includes(char);
+}
 
-  const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  return `"${escaped}"`;
+export interface QuoteOptions {
+  /** Quote the text even when it would stand as written. */
+  always?: boolean;
+  /**
+   * Set for text that stands as a segment of its own, such as free text. Text that starts
+   * as a key followed by this delimiter would read as a filter, so it is quoted.
+   */
+  segmentDelimiter?: string;
 }
 
 /**
- * Escape a string value for use inside quotes.
- * Escapes quotes and backslashes.
+ * Writes `text` as a value or as free text of a query. Quotes are added when the text
+ * contains whitespace, a quote or a backslash, or when `segmentDelimiter` is given and the
+ * text starts as a key followed by that delimiter. Inside quotes, `"` and `\` are written
+ * as `\"` and `\\`; every other character stays as it is.
  *
  * @example
- * escapeForQuotes('hello') // 'hello'
- * escapeForQuotes('say "hi"') // 'say \\"hi\\"'
- * escapeForQuotes('path\\to') // 'path\\\\to'
+ * quote('hello') // 'hello'
+ * quote('hello world') // '"hello world"'
+ * quote('say "hi"') // '"say \\"hi\\""'
+ * quote('a:b', { segmentDelimiter: ':' }) // '"a:b"'
  */
-export function escapeForQuotes(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+export function quote(text: string, options: QuoteOptions = {}): string {
+  const needed =
+    options.always ||
+    Array.from(text).some((char) => isWhitespace(char) || char === '"' || char === '\\') ||
+    (options.segmentDelimiter !== undefined && text.indexOf(options.segmentDelimiter) > 0);
+  if (!needed) return text;
+  return `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }

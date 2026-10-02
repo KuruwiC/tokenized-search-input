@@ -5,6 +5,7 @@ import {
   type ParsedFreeTextToken,
 } from './plugins/auto-tokenize/free-text-strategy';
 import { getTokenMeta } from './plugins/token-meta-plugin';
+import { filterSegment, freeTextSegment } from './serializer/segments';
 import { createFilterTokenAttrs } from './tokens/filter-token/create-attrs';
 import {
   DEFAULT_TOKEN_DELIMITER,
@@ -18,7 +19,7 @@ import {
 import { resolveStoredValue } from './utils/enum-value';
 import { NODE_TYPE_NAMES } from './utils/node-predicates';
 import { type NodeVisitor, visitDocument } from './utils/node-visitor';
-import { escapeForQuotes, parseQuotedString, quoteIfNeeded } from './utils/quoted-string';
+import { parseQuotedString } from './utils/quoted-string';
 import { resolveField } from './utils/resolve-field';
 import { ensureTokenId } from './utils/token-id';
 
@@ -102,18 +103,12 @@ export function serializeDocToQuery(doc: JSONContent, options: SerializeDocOptio
 
   const visitor: NodeVisitor<typeof context> = {
     filterToken: (node, ctx) => {
-      const { key, operator, value } = node.attrs || {};
-      const valueStr = String(value || '');
-      if (valueStr) {
-        const quotedValue = quoteIfNeeded(valueStr);
-        ctx.parts.push(`${key}${delimiter}${operator}${delimiter}${quotedValue}`);
-      }
+      const segment = filterSegment(node.attrs ?? {}, delimiter);
+      if (segment) ctx.parts.push(segment);
     },
     freeTextToken: (node, ctx) => {
-      const { value, quoted } = node.attrs || {};
-      if (value) {
-        ctx.parts.push(quoted ? `"${escapeForQuotes(value)}"` : value);
-      }
+      const segment = freeTextSegment(node.attrs ?? {}, delimiter);
+      if (segment) ctx.parts.push(segment);
     },
     text: (node, ctx) => {
       const text = node.text?.trim();

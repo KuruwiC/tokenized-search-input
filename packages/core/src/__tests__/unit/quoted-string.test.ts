@@ -3,7 +3,7 @@ import {
   findLastWordBoundary,
   isInsideQuotes,
   parseQuotedString,
-  quoteIfNeeded,
+  quote,
   scanQuotedString,
 } from '../../utils/quoted-string';
 
@@ -167,25 +167,48 @@ describe('isInsideQuotes', () => {
   });
 });
 
-describe('quoteIfNeeded', () => {
-  it('returns simple string as-is', () => {
-    expect(quoteIfNeeded('hello')).toBe('hello');
+describe('quote', () => {
+  it('returns simple strings unchanged', () => {
+    expect(quote('hello')).toBe('hello');
   });
 
   it('quotes strings with spaces', () => {
-    expect(quoteIfNeeded('hello world')).toBe('"hello world"');
+    expect(quote('hello world')).toBe('"hello world"');
   });
 
   it('escapes internal quotes', () => {
-    expect(quoteIfNeeded('say "hi"')).toBe('"say \\"hi\\""');
+    expect(quote('say "hi"')).toBe('"say \\"hi\\""');
   });
 
-  it('escapes internal backslashes', () => {
-    expect(quoteIfNeeded('path\\to')).toBe('"path\\\\to"');
+  it('quotes and escapes backslashes', () => {
+    expect(quote('path\\to')).toBe('"path\\\\to"');
   });
 
-  it('escapes both quotes and backslashes', () => {
-    expect(quoteIfNeeded('say \\"hi\\"')).toBe('"say \\\\\\"hi\\\\\\""');
+  it('escapes backslashes before quotes', () => {
+    expect(quote('say \\"hi\\"')).toBe('"say \\\\\\"hi\\\\\\""');
+  });
+
+  it.each([
+    ['a newline', 'a\nb'],
+    ['a tab', 'a\tb'],
+    ['a carriage return', 'a\rb'],
+  ])('quotes strings with %s and keeps the character', (_label, value) => {
+    expect(quote(value)).toBe(`"${value}"`);
+  });
+
+  it('keeps a non-breaking space unquoted', () => {
+    expect(quote('a\u00a0b')).toBe('a\u00a0b');
+  });
+
+  it('quotes text that starts as a key and a delimiter only for a segment of its own', () => {
+    expect(quote('a:b')).toBe('a:b');
+    expect(quote('a:b', { segmentDelimiter: ':' })).toBe('"a:b"');
+    expect(quote('a=b', { segmentDelimiter: ':' })).toBe('a=b');
+    expect(quote(':b', { segmentDelimiter: ':' })).toBe(':b');
+  });
+
+  it('quotes on request', () => {
+    expect(quote('hello', { always: true })).toBe('"hello"');
   });
 });
 

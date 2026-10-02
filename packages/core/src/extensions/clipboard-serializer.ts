@@ -1,9 +1,9 @@
 import { Extension } from '@tiptap/core';
 import type { Fragment, Slice } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { filterSegment, freeTextSegment } from '../serializer/segments';
 import type { FilterTokenAttrs } from '../types';
 import { NODE_TYPE_NAMES } from '../utils/node-predicates';
-import { escapeForQuotes, quoteIfNeeded } from '../utils/quoted-string';
 import { getEditorContext } from './editor-context';
 
 /** Return null to use default serialization for that token. */
@@ -26,23 +26,18 @@ interface SerializeOptions {
 }
 
 function defaultSerializeFilterToken(node: FragmentNode, parts: string[], delimiter: string): void {
-  const { key, operator, value } = node.attrs || {};
-  const valueStr = String(value || '');
-  if (valueStr) {
-    const quotedValue = quoteIfNeeded(valueStr);
-    parts.push(`${key}${delimiter}${operator}${delimiter}${quotedValue}`);
-  }
+  const segment = filterSegment(node.attrs ?? {}, delimiter);
+  if (segment) parts.push(segment);
 }
 
-function serializeFreeTextToken(node: FragmentNode, parts: string[]): void {
-  const { value, quoted } = node.attrs || {};
-  if (value) {
-    parts.push(quoted ? `"${escapeForQuotes(String(value))}"` : String(value));
-  }
+function serializeFreeTextToken(node: FragmentNode, parts: string[], delimiter: string): void {
+  const segment = freeTextSegment(node.attrs ?? {}, delimiter);
+  if (segment) parts.push(segment);
 }
 
 function serializeText(node: FragmentNode, parts: string[]): void {
-  parts.push(node.text || '');
+  const text = (node.text || '').replace(/\s+/g, ' ').trim();
+  if (text) parts.push(text);
 }
 
 function visitFragment(fragment: FragmentLike, parts: string[], options: SerializeOptions): void {
@@ -65,7 +60,7 @@ function visitFragment(fragment: FragmentLike, parts: string[], options: Seriali
         break;
       }
       case NODE_TYPE_NAMES.freeTextToken:
-        serializeFreeTextToken(node, parts);
+        serializeFreeTextToken(node, parts, options.delimiter);
         break;
       case 'text':
         serializeText(node, parts);
@@ -87,7 +82,7 @@ function visitFragment(fragment: FragmentLike, parts: string[], options: Seriali
 function serializeFragment(fragment: FragmentLike, options: SerializeOptions): string {
   const parts: string[] = [];
   visitFragment(fragment, parts, options);
-  return parts.join(' ').replace(/\s+/g, ' ').trim();
+  return parts.join(' ');
 }
 
 function containsTokenNodes(fragment: Fragment): boolean {

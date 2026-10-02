@@ -10,7 +10,7 @@ import {
 } from '../../plugins/token-focus-plugin';
 import { findTokenById } from '../../utils/find-token';
 import { isFreeTextToken } from '../../utils/node-predicates';
-import { escapeForQuotes } from '../../utils/quoted-string';
+import { quote } from '../../utils/quoted-string';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
 import { TOKEN_NODE_CLASS, updateTokenNodeView } from '../composition/node-view-update';
 import { isHistoryShortcut } from '../history-shortcut';
@@ -94,7 +94,7 @@ export const FreeTextTokenNode = Node.create({
   renderText({ node }) {
     const { value, quoted } = node.attrs;
     if (!value) return '';
-    return quoted ? `"${escapeForQuotes(value)}"` : value;
+    return quoted ? quote(value, { always: true }) : value;
   },
 
   addNodeView() {
