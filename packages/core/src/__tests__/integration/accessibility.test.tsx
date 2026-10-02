@@ -47,15 +47,14 @@ describe('search input accessibility relationships', () => {
     await user.click(comboboxes[0]);
     await waitFor(() => expect(comboboxes[0]).toHaveAttribute('aria-expanded', 'true'));
 
-    const roots = document.querySelectorAll('[data-suggestion-root]');
-    expect(roots).toHaveLength(1);
-    const firstRoot = roots[0];
-    expect(comboboxes[0].getAttribute('aria-controls')).toBe(firstRoot.id);
-    expect(comboboxes[1].getAttribute('aria-controls')).not.toBe(firstRoot.id);
-    const optionIds = [...firstRoot.querySelectorAll('[role="option"]')].map((el) => el.id);
+    expect(document.querySelectorAll('[data-suggestion-root]')).toHaveLength(1);
+    const listbox = screen.getByRole('listbox');
+    expect(comboboxes[0].getAttribute('aria-controls')).toBe(listbox.id);
+    expect(comboboxes[1].getAttribute('aria-controls')).not.toBe(listbox.id);
+    const optionIds = [...listbox.querySelectorAll('[role="option"]')].map((el) => el.id);
     expect(new Set(optionIds).size).toBe(optionIds.length);
     expect(optionIds).not.toContain('');
-    expect(within(firstRoot as HTMLElement).getAllByRole('option').length).toBeGreaterThan(0);
+    expect(within(listbox).getAllByRole('option').length).toBeGreaterThan(0);
   });
 
   it('exposes a date picker as one controlled dialog', async () => {

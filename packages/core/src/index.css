@@ -1189,6 +1189,8 @@
   :where(.tsi-suggestion-item),
   :where(.tsi-custom-suggestion-item) {
     display: flex;
+    width: 100%;
+    text-align: left;
     padding: 0.625rem 0.75rem;
     cursor: pointer;
     font-size: var(--tsi-font-size-sm);

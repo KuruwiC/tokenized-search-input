@@ -1,24 +1,5 @@
 import type { FieldDefinition } from '../types';
 import { cn } from '../utils/cn';
-import { useScrollActiveIntoView } from '../utils/scroll-into-view';
-
-interface FieldSuggestionListProps {
-  fields: FieldDefinition[];
-  onSelect: (field: FieldDefinition) => void;
-  activeIndex: number;
-  onActiveChange: (index: number) => void;
-  className?: string;
-  /** Custom class for suggestion items */
-  itemClassName?: string;
-  /** Custom class for hint/key text (secondary info) */
-  hintClassName?: string;
-  /** Custom class for field icon */
-  iconClassName?: string;
-  /** Custom class for category headers */
-  categoryClassName?: string;
-  optionIdPrefix?: string;
-  optionIndexOffset?: number;
-}
 
 interface FieldGroup {
   category: string;
@@ -68,98 +49,31 @@ export function getFieldsInDisplayOrder(fields: FieldDefinition[]): FieldDefinit
   return groups.flatMap((group) => group.fields);
 }
 
-export const FieldSuggestionList: React.FC<FieldSuggestionListProps> = ({
-  fields,
-  onSelect,
-  activeIndex,
-  onActiveChange,
-  className,
-  itemClassName,
-  hintClassName,
+/** Whether the categories of the fields are worth naming: more than the default one. */
+export function hasCategoryHeaders(groups: FieldGroup[]): boolean {
+  return groups.length > 1 || (groups.length === 1 && groups[0].category !== DEFAULT_CATEGORY);
+}
+
+interface FieldSuggestionItemProps {
+  field: FieldDefinition;
+  iconClassName?: string;
+  hintClassName?: string;
+}
+
+/** What an option of a field suggestion shows. */
+export const FieldSuggestionItem: React.FC<FieldSuggestionItemProps> = ({
+  field,
   iconClassName,
-  categoryClassName,
-  optionIdPrefix,
-  optionIndexOffset = 0,
-}) => {
-  const groups = groupFieldsByCategory(fields);
-  const hasMultipleCategories =
-    groups.length > 1 || (groups.length === 1 && groups[0].category !== DEFAULT_CATEGORY);
-  const itemRefs = useScrollActiveIntoView<HTMLDivElement>(activeIndex);
-
-  if (fields.length === 0) {
-    return null;
-  }
-
-  // Track flat index across groups for keyboard navigation
-  let flatIndex = 0;
-
-  return (
-    <div className={cn('tsi-suggestion-list', className)}>
-      {groups.map((group, groupIndex) => (
-        <fieldset key={group.category}>
-          {hasMultipleCategories && (
-            <div
-              className={cn(
-                'tsi-field-category',
-                groupIndex > 0 && 'tsi-field-category--separated',
-                categoryClassName
-              )}
-              aria-hidden="true"
-            >
-              {group.category}
-            </div>
-          )}
-          {group.fields.map((field, fieldIndex) => {
-            const currentIndex = flatIndex;
-            flatIndex++;
-            const isActive = currentIndex === activeIndex;
-            const isFirstInGroup = fieldIndex === 0 && hasMultipleCategories;
-
-            return (
-              <div
-                key={field.key}
-                ref={(el) => {
-                  if (el) itemRefs.current.set(currentIndex, el);
-                  else itemRefs.current.delete(currentIndex);
-                }}
-                role="option"
-                id={
-                  optionIdPrefix
-                    ? `${optionIdPrefix}-${optionIndexOffset + currentIndex}`
-                    : undefined
-                }
-                tabIndex={-1}
-                aria-selected={isActive}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => onSelect(field)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onSelect(field);
-                  }
-                }}
-                onMouseEnter={() => onActiveChange(currentIndex)}
-                data-active={isActive}
-                style={isFirstInGroup ? { scrollMarginTop: '2rem' } : undefined}
-                className={cn('tsi-suggestion-item', itemClassName)}
-              >
-                {field.icon && (
-                  <span className={cn('tsi-field-icon', iconClassName)}>{field.icon}</span>
-                )}
-                <span className="tsi-field-label" title={field.label}>
-                  {field.label}
-                </span>
-                {field.hint && (
-                  <span className={cn('tsi-field-hint', hintClassName)}>{field.hint}</span>
-                )}
-                <span className={cn('tsi-field-key', hintClassName)} title={field.key}>
-                  {field.key}
-                </span>
-              </div>
-            );
-          })}
-        </fieldset>
-      ))}
-    </div>
-  );
-};
+  hintClassName,
+}) => (
+  <>
+    {field.icon && <span className={cn('tsi-field-icon', iconClassName)}>{field.icon}</span>}
+    <span className="tsi-field-label" title={field.label}>
+      {field.label}
+    </span>
+    {field.hint && <span className={cn('tsi-field-hint', hintClassName)}>{field.hint}</span>}
+    <span className={cn('tsi-field-key', hintClassName)} title={field.key}>
+      {field.key}
+    </span>
+  </>
+);

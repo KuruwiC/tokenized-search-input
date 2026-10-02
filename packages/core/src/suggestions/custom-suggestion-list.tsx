@@ -1,132 +1,85 @@
 import { useEffect, useRef } from 'react';
 import type { CustomSuggestion, PaginationLabels } from '../types';
 import { cn } from '../utils/cn';
-import { useScrollActiveIntoView } from '../utils/scroll-into-view';
 
 const DEFAULT_PAGINATION_LABELS: Required<PaginationLabels> = {
   loading: 'Loading...',
   scrollForMore: 'Scroll for more',
 };
 
-interface CustomSuggestionListProps {
-  items: readonly CustomSuggestion[];
-  onSelect: (suggestion: CustomSuggestion) => void;
-  activeIndex: number;
-  onActiveChange: (index: number) => void;
-  className?: string;
-  /** Custom class name for each suggestion item */
-  itemClassName?: string;
-  /** Custom class name for suggestion description */
+interface CustomSuggestionItemProps {
+  suggestion: CustomSuggestion;
   descriptionClassName?: string;
-  /** Whether more items can be loaded */
-  hasMore?: boolean;
-  /** Whether loadMore is currently in progress */
-  isLoadingMore?: boolean;
-  /** Callback to load more items */
-  onLoadMore?: () => void;
-  /** Labels for pagination UI */
-  paginationLabels?: PaginationLabels;
-  optionIdPrefix?: string;
-  optionIndexOffset?: number;
 }
 
-export const CustomSuggestionList: React.FC<CustomSuggestionListProps> = ({
-  items,
-  onSelect,
-  activeIndex,
-  onActiveChange,
-  className,
-  itemClassName,
+/** What an option of a custom suggestion shows. */
+export const CustomSuggestionItem: React.FC<CustomSuggestionItemProps> = ({
+  suggestion,
   descriptionClassName,
-  hasMore = false,
-  isLoadingMore = false,
+}) => (
+  <>
+    <span className="tsi-custom-suggestion-item__label" title={suggestion.label}>
+      {suggestion.startContent && <span className="tsi-icon-slot">{suggestion.startContent}</span>}
+      {suggestion.label}
+      {suggestion.endContent && <span className="tsi-icon-slot">{suggestion.endContent}</span>}
+    </span>
+    {suggestion.description && (
+      <span
+        className={cn('tsi-custom-suggestion-item__description', descriptionClassName)}
+        title={suggestion.description}
+      >
+        {suggestion.description}
+      </span>
+    )}
+  </>
+);
+
+/** The key of a custom suggestion, which has no id: its label and the tokens it inserts. */
+export function customSuggestionKey(suggestion: CustomSuggestion): string {
+  const tokens = suggestion.tokens.map((t) => `${t.key}\u0000${t.operator}\u0000${t.value}`);
+  return [suggestion.label, ...tokens].join('\u0001');
+}
+
+interface CustomSuggestionLoadMoreProps {
+  isLoadingMore: boolean;
+  onLoadMore: () => void;
+  labels?: PaginationLabels;
+}
+
+/** The row below the custom suggestions that asks for the next page once it scrolls into view. */
+export const CustomSuggestionLoadMore: React.FC<CustomSuggestionLoadMoreProps> = ({
+  isLoadingMore,
   onLoadMore,
-  paginationLabels,
-  optionIdPrefix,
-  optionIndexOffset = 0,
+  labels,
 }) => {
-  const labels = { ...DEFAULT_PAGINATION_LABELS, ...paginationLabels };
-  const itemRefs = useScrollActiveIntoView<HTMLDivElement>(activeIndex);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-  const loadMoreTriggeredRef = useRef(false);
+  const text = { ...DEFAULT_PAGINATION_LABELS, ...labels };
+  const rowRef = useRef<HTMLDivElement>(null);
+  const triggeredRef = useRef(false);
 
   useEffect(() => {
-    if (!isLoadingMore) {
-      loadMoreTriggeredRef.current = false;
-    }
+    if (!isLoadingMore) triggeredRef.current = false;
   }, [isLoadingMore]);
 
   useEffect(() => {
-    if (!hasMore || isLoadingMore || !onLoadMore || !loadMoreRef.current) return;
+    const row = rowRef.current;
+    if (isLoadingMore || !row) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && !loadMoreTriggeredRef.current) {
-          loadMoreTriggeredRef.current = true;
+        if (entries[0]?.isIntersecting && !triggeredRef.current) {
+          triggeredRef.current = true;
           onLoadMore();
         }
       },
       { threshold: 0.1 }
     );
-
-    observer.observe(loadMoreRef.current);
+    observer.observe(row);
     return () => observer.disconnect();
-  }, [hasMore, isLoadingMore, onLoadMore]);
-
-  // Render nothing only when no items AND no more to load
-  if (items.length === 0 && !hasMore) {
-    return null;
-  }
+  }, [isLoadingMore, onLoadMore]);
 
   return (
-    <div className={cn('tsi-suggestion-list', className)}>
-      {items.map((item, index) => {
-        const isActive = index === activeIndex;
-
-        return (
-          <div
-            key={`${item.label}-${index}`}
-            ref={(el) => {
-              if (el) itemRefs.current.set(index, el);
-              else itemRefs.current.delete(index);
-            }}
-            role="option"
-            id={optionIdPrefix ? `${optionIdPrefix}-${optionIndexOffset + index}` : undefined}
-            tabIndex={-1}
-            aria-selected={isActive}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onSelect(item)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onSelect(item);
-              }
-            }}
-            onMouseEnter={() => onActiveChange(index)}
-            data-active={isActive}
-            className={cn('tsi-custom-suggestion-item', itemClassName)}
-          >
-            <span className="tsi-custom-suggestion-item__label" title={item.label}>
-              {item.startContent && <span className="tsi-icon-slot">{item.startContent}</span>}
-              {item.label}
-              {item.endContent && <span className="tsi-icon-slot">{item.endContent}</span>}
-            </span>
-            {item.description && (
-              <span
-                className={cn('tsi-custom-suggestion-item__description', descriptionClassName)}
-                title={item.description}
-              >
-                {item.description}
-              </span>
-            )}
-          </div>
-        );
-      })}
-      {hasMore && (
-        <div ref={loadMoreRef} className="tsi-load-more">
-          {isLoadingMore ? labels.loading : labels.scrollForMore}
-        </div>
-      )}
+    <div ref={rowRef} className="tsi-load-more">
+      {isLoadingMore ? text.loading : text.scrollForMore}
     </div>
   );
 };

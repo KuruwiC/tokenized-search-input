@@ -396,6 +396,7 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     customIsLoadingMore,
     onCustomLoadMore,
     paginationLabels,
+    listboxId,
     optionIdPrefix,
     syncedValue,
     renderDatePicker,
@@ -409,11 +410,6 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     onIncludeTimeChange: handleIncludeTimeChangeInternal,
   });
   if (!content) return null;
-
-  const role =
-    type === 'field' || type === 'value' || type === 'custom' || type === 'fieldWithCustom'
-      ? 'listbox'
-      : 'dialog';
 
   const maxDropdownHeight = Math.min(300, viewportHeight * 0.4);
 
@@ -444,8 +440,9 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
         expandedTop === undefined && 'tsi-dropdown--top-full',
         classNames?.dropdown
       )}
-      role={role}
-      id={listboxId}
+      // A list names its own listbox; a picker is a dialog the combobox points at
+      role={isDatePicker ? 'dialog' : undefined}
+      id={isDatePicker ? listboxId : undefined}
     >
       {content}
     </div>

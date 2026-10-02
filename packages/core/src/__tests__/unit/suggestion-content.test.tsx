@@ -26,6 +26,7 @@ const baseProps: SuggestionContentProps = {
   onFieldSelect: () => {},
   onValueSelect: () => {},
   onActiveChange: () => {},
+  listboxId: 'test-listbox',
   optionIdPrefix: 'test-option',
   syncedValue: undefined,
   onDateChange: () => {},
