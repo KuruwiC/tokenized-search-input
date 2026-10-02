@@ -829,9 +829,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
           clearable && (singleLine || expandOnFocus) && 'tsi-container--clearable',
           (singleLine || expandOnFocus) && 'tsi-container--flex',
           startAdornment && 'tsi-container--has-start-adornment',
-          endAdornment && 'tsi-container--has-end-adornment',
-          !expandOnFocus && classNames?.root,
-          !expandOnFocus && className
+          endAdornment && 'tsi-container--has-end-adornment'
         )}
       >
         {startAdornment && (
@@ -911,18 +909,21 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       </div>
     );
 
-    // Wrap in relative container for expandOnFocus mode
-    // This ensures the absolute-positioned container stays within bounds
-    // Also maintains min-height to prevent layout shift when container becomes absolute
-    if (expandOnFocus) {
-      return (
-        <div className={cn('tsi-wrapper--expand-on-focus', classNames?.root, className)}>
-          {containerElement}
-        </div>
-      );
-    }
-
-    return containerElement;
+    // The root element is the same in every mode and carries className and
+    // classNames.root. With expandOnFocus the container leaves the flow on focus, so
+    // the root also reserves its collapsed height to keep the layout from shifting.
+    return (
+      <div
+        className={cn(
+          'tsi-root',
+          expandOnFocus && 'tsi-root--expand-on-focus',
+          classNames?.root,
+          className
+        )}
+      >
+        {containerElement}
+      </div>
+    );
   }
 );
 

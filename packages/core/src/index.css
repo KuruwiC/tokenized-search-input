@@ -412,7 +412,7 @@
 
   /* Expand on Focus */
 
-  :where(.tsi-wrapper--expand-on-focus) {
+  :where(.tsi-root--expand-on-focus) {
     position: relative;
     min-height: calc(var(--tsi-single-line-height) + var(--tsi-border-width) * 2);
   }
