@@ -1,10 +1,7 @@
-import { nanoid } from 'nanoid';
 import { isDevelopment } from './env';
 
-const TOKEN_ID_LENGTH = 21;
-
 export function generateTokenId(): string {
-  return nanoid(TOKEN_ID_LENGTH);
+  return crypto.randomUUID();
 }
 
 export function ensureTokenId(id: string | undefined | null): string {

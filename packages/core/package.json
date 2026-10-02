@@ -4,7 +4,7 @@
   "description": "A reusable tokenized search input component with rich tag input",
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -76,7 +76,6 @@
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "lucide-react": "^0.468.0",
-    "nanoid": "^5.1.16",
     "react-day-picker": "^9.4.4"
   },
   "peerDependencies": {
