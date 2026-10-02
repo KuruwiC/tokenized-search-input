@@ -5,10 +5,8 @@
   "packageManager": "pnpm@10.0.0",
   "scripts": {
     "dev": "pnpm --filter @kuruwic/demo dev",
-    "dev:stories": "pnpm --filter @kuruwic/stories dev",
     "build": "pnpm --filter @kuruwic/tokenized-search-input build",
     "build:demo": "DEMO_BASE=/tokenized-search-input/ pnpm --filter @kuruwic/demo build",
-    "build:stories": "pnpm --filter @kuruwic/stories build",
     "preview": "pnpm --filter @kuruwic/demo preview",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
