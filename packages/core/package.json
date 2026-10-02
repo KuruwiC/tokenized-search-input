@@ -70,7 +70,6 @@
     "@tiptap/extension-history": "3.31.2",
     "@tiptap/extension-paragraph": "3.31.2",
     "@tiptap/extension-text": "3.31.2",
-    "@tiptap/extensions": "3.31.2",
     "@tiptap/pm": "3.31.2",
     "@tiptap/react": "3.31.2",
     "clsx": "^2.1.1",

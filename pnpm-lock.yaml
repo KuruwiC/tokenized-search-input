@@ -126,9 +126,6 @@ importers:
       '@tiptap/extension-text':
         specifier: 3.31.2
         version: 3.31.2(@tiptap/core@3.31.2(@tiptap/pm@3.31.2))
-      '@tiptap/extensions':
-        specifier: 3.31.2
-        version: 3.31.2(@tiptap/core@3.31.2(@tiptap/pm@3.31.2))(@tiptap/pm@3.31.2)
       '@tiptap/pm':
         specifier: 3.31.2
         version: 3.31.2
