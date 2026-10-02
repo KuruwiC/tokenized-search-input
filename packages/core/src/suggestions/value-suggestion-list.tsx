@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react';
+import { Check } from '../icons/check';
 import type { EnumValue } from '../types';
 import { cn } from '../utils/cn';
 import { getEnumIcon, getEnumLabel, getEnumValue } from '../utils/enum-value';

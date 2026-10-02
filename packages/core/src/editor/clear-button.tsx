@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { X } from '../icons/x';
 import { cn } from '../utils/cn';
 
 export interface ClearButtonProps {
@@ -42,7 +42,7 @@ export function ClearButton({
       tabIndex={isInteractive ? 0 : -1}
       aria-hidden={!visible}
     >
-      <X className="tsi-clear-button__icon" strokeWidth={2} />
+      <X className="tsi-clear-button__icon" />
     </button>
   );
 }

@@ -1,6 +1,6 @@
-import { Check } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Check } from '../../../../icons/check';
 import {
   DEFAULT_TOKEN_DELIMITER,
   type FieldDefinition,

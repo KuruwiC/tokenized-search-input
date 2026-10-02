@@ -1,6 +1,7 @@
-import { Check, ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Check } from '../../../icons/check';
+import { ChevronDown } from '../../../icons/chevron-down';
 import { cn } from '../../../utils/cn';
 import { scrollIntoViewNearest } from '../../../utils/scroll-into-view';
 import { useTokenFocusContext } from '../contexts';

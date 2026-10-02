@@ -1,6 +1,8 @@
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { type FC, useEffect, useMemo, useRef, useState } from 'react';
 import { DayPicker } from 'react-day-picker';
+import { Check } from '../icons/check';
+import { ChevronLeft } from '../icons/chevron-left';
+import { ChevronRight } from '../icons/chevron-right';
 import type { DatePickerRenderProps } from '../types';
 import { calendarClassNames, closeButtonClassName } from './calendar-styles';
 import { isSameMonth, parseISOToDate } from './date-format';

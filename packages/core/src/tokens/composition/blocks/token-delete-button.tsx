@@ -1,5 +1,5 @@
-import { X } from 'lucide-react';
 import { useRef } from 'react';
+import { X } from '../../../icons/x';
 import { cn } from '../../../utils/cn';
 import { useTokenConfig, useTokenFocusContext } from '../contexts';
 import { useFocusableBlock } from '../focus';
