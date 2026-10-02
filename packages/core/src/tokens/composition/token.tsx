@@ -3,6 +3,7 @@ import { TextSelection } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
 import { NodeViewWrapper } from '@tiptap/react';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { getEditorContext, resolveField } from '../../extensions/editor-context';
 import { useTokenFocus } from '../../hooks/use-editor-store';
 import type { TokenValidation } from '../../plugins/shared/meta';
 import {
@@ -127,6 +128,31 @@ const clickStrategies: ClickStrategy[] = [
 function executeClickStrategy(ctx: ClickContext): void {
   const strategy = clickStrategies.find((s) => s.canHandle(ctx));
   strategy?.execute(ctx);
+}
+
+/** What a token is called when its view gives no name: its field's label and its value. */
+function describeToken(editor: Editor, node: ProseMirrorNode): string {
+  const { key, value } = node.attrs;
+  const field = typeof key === 'string' ? resolveField(getEditorContext(editor), key) : null;
+  const name = field?.label ?? (typeof key === 'string' ? key : '');
+  const text = typeof value === 'string' ? value : '';
+  if (name && text) return `${name}: ${text}`;
+  return name || text || 'Token';
+}
+
+interface TokenAriaLabelState {
+  name: string;
+  focused: boolean;
+  editable: boolean;
+  immutable: boolean;
+}
+
+/** The accessible name of a token: what it is, then what can be done with it. */
+function tokenAriaLabel({ name, focused, editable, immutable }: TokenAriaLabelState): string {
+  if (focused) return `${name}. Editing.`;
+  if (!editable) return `${name}. Disabled.`;
+  if (immutable) return `${name}. Immutable. Click X to delete.`;
+  return `${name}. Click to edit.`;
 }
 
 export interface TokenProps {
@@ -343,18 +369,12 @@ export function Token({
 
   const tokenClasses = cn('tsi-token', className);
 
-  const computedAriaLabel = (() => {
-    if (isFocused) {
-      return `${ariaLabel}. Editing.`;
-    }
-    if (immutable && editor.isEditable) {
-      return `${ariaLabel}. Immutable. Click X to delete.`;
-    }
-    if (editor.isEditable) {
-      return `${ariaLabel}. Click to edit.`;
-    }
-    return `${ariaLabel}. Disabled.`;
-  })();
+  const computedAriaLabel = tokenAriaLabel({
+    name: ariaLabel ?? describeToken(editor, node),
+    focused: isFocused,
+    editable: editor.isEditable,
+    immutable,
+  });
 
   const dataState = isFocused ? 'editing' : 'idle';
 
