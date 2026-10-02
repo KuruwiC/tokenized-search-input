@@ -38,13 +38,18 @@ const esmCheckSource = `import {
   type TokenizedSearchInputRef,
   useAsyncTokenResolver,
 } from '${packageName}';
-import { createDateValidator } from '${packageName}/utils';
+import { type DateTimeValue, parseDateTimeValue } from '${packageName}/utils';
 import '${packageName}/styles';
 import { useRef } from 'react';
 
+const readDate = (input: string): DateTimeValue | null => {
+  const parsed = parseDateTimeValue(input, 'date');
+  return parsed.ok ? parsed.value : null;
+};
+
 const fields: FieldDefinition[] = [
   { key: 'status', label: 'Status', type: 'enum', operators: ['is'], enumValues: ['open', 'closed'] },
-  { key: 'due', label: 'Due', type: 'date', operators: ['gt'], validate: createDateValidator() },
+  { key: 'due', label: 'Due', type: 'date', operators: ['gt'], formatConfig: { parse: readDate } },
 ];
 
 export function Search({ onSearch }: { onSearch: (snapshot: QuerySnapshot) => void }) {
@@ -70,16 +75,16 @@ export function Search({ onSearch }: { onSearch: (snapshot: QuerySnapshot) => vo
 
 const esmRuntimeScript = `
 import { TokenizedSearchInput } from '${packageName}';
-import { createDateValidator } from '${packageName}/utils';
+import { parseDateTimeValue } from '${packageName}/utils';
 if (!TokenizedSearchInput) throw new Error('TokenizedSearchInput export is missing');
-if (createDateValidator()('2024-01-31') !== true) throw new Error('createDateValidator rejected a valid date');
+if (!parseDateTimeValue('2024-01-31', 'date').ok) throw new Error('parseDateTimeValue rejected a valid date');
 `;
 
 const cjsRuntimeScript = `
 const { TokenizedSearchInput } = require('${packageName}');
-const { createDateValidator } = require('${packageName}/utils');
+const { parseDateTimeValue } = require('${packageName}/utils');
 if (!TokenizedSearchInput) throw new Error('TokenizedSearchInput export is missing');
-if (createDateValidator()('2024-01-31') !== true) throw new Error('createDateValidator rejected a valid date');
+if (!parseDateTimeValue('2024-01-31', 'date').ok) throw new Error('parseDateTimeValue rejected a valid date');
 `;
 
 function run(command, args, options = {}) {
