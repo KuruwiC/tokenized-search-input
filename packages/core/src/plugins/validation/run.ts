@@ -1,13 +1,6 @@
 import { closeHistory } from '@tiptap/pm/history';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Transaction } from '@tiptap/pm/state';
-import {
-  applySpacerDeletion,
-  checkBoundaryNeedsSpace,
-  expandWithSpacers,
-  mergeOverlappingRanges,
-  type SpacerExpandedRange,
-} from '../../spacer';
 import type {
   FieldDefinition,
   ValidationContext,
@@ -308,22 +301,9 @@ export function planValidation(
 }
 
 function deleteTokens(tr: Transaction, ids: readonly string[]): void {
-  const ranges: SpacerExpandedRange[] = [];
   for (const id of ids) {
     const found = findTokenById(tr.doc, id);
-    if (found) ranges.push(expandWithSpacers(tr.doc, found.pos, found.node.nodeSize));
-  }
-  if (ranges.length === 0) return;
-
-  const merged = mergeOverlappingRanges(ranges);
-  for (const range of merged) {
-    range.needsSpaceSeparator = checkBoundaryNeedsSpace(tr.doc, range.from, range.to);
-  }
-
-  // From the end of the document, so deleting one range does not move the next.
-  merged.sort((a, b) => b.from - a.from);
-  for (const range of merged) {
-    applySpacerDeletion(tr, tr.doc.type.schema, range);
+    if (found) tr.delete(found.pos, found.pos + found.node.nodeSize);
   }
 }
 

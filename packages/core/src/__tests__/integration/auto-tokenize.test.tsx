@@ -264,8 +264,8 @@ describe('Auto-tokenize - Integration Tests', () => {
     });
   });
 
-  describe('Spacer wrapping', () => {
-    it('wraps tokens with spacers correctly', async () => {
+  describe('Document structure', () => {
+    it('puts only the token in the paragraph, with no separator nodes around it', async () => {
       const ref = createRef<TokenizedSearchInputRef>();
 
       render(
@@ -287,13 +287,7 @@ describe('Auto-tokenize - Integration Tests', () => {
         return true;
       });
 
-      // Should have spacer-token-spacer structure
-      const filterTokenIndex = nodeTypes.indexOf('filterToken');
-      expect(filterTokenIndex).toBeGreaterThan(-1);
-
-      // There should be spacers around the token
-      const spacerCount = nodeTypes.filter((t) => t === 'spacer').length;
-      expect(spacerCount).toBeGreaterThanOrEqual(2);
+      expect(nodeTypes).toEqual(['paragraph', 'filterToken']);
     });
   });
 });

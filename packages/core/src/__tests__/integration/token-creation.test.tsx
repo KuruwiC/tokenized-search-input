@@ -230,7 +230,7 @@ describe('Token Creation - User Journeys', () => {
 
   describe('FreeText token spacing', () => {
     // Note: These tests use editor.commands.insertFreeTextToken directly instead of
-    // user.type because JSDOM has issues with contentEditable + spacer nodes.
+    // user.type because JSDOM has issues with contentEditable next to non-editable tokens.
     // The actual browser behavior works correctly.
 
     it.each([

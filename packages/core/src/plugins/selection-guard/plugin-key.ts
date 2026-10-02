@@ -9,7 +9,11 @@ import type { DecorationSet } from '@tiptap/pm/view';
 export interface SelectionGuardState {
   decorations: DecorationSet;
   editorHasFocus: boolean;
-  isDragging: boolean;
+  /**
+   * Document position where the primary button went down next to a token, while the
+   * press lasts. A click there puts the caret at it; a drag selects from it.
+   */
+  pressPos: number | null;
   /**
    * Document position captured at mousedown before focus.
    * Used to restore cursor position after layout changes (e.g., :focus-within reflow).

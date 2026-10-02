@@ -42,9 +42,12 @@ export function buildContentFromTokens(
 
   for (const token of tokens) {
     const item = buildTokenContent(token, source, freeTextMode);
-    if (item) {
-      content.push(item);
+    if (!item) continue;
+    // Two plain-text words would otherwise merge into one text node.
+    if (item.type === 'text' && content[content.length - 1]?.type === 'text') {
+      content.push({ type: 'text', text: ' ' });
     }
+    content.push(item);
   }
 
   return content;

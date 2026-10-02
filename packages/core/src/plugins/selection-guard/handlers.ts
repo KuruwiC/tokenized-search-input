@@ -8,10 +8,10 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { TextSelection } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import type { KeyHandlerFn } from '../../keyboard';
-import { isSpacer, isToken } from '../../utils/node-predicates';
+import { nearestValidCaret } from '../../utils/caret';
+import { isToken } from '../../utils/node-predicates';
 import { safeResolve } from '../../utils/safe-resolve';
 import { setTokenFocus } from '../token-focus-plugin';
-import { enforceSelectionInvariant, type SelectionAction } from '../token-spacing-plugin';
 import type { SelectionGuardContext } from './types';
 import { markAsGuarded } from './utils';
 
@@ -55,134 +55,54 @@ function handleTokenEntry(
   return true;
 }
 
-/**
- * Find the next selectable position, skipping over ALL consecutive Spacers.
- */
-function findNextSelectablePosition(
-  doc: ProseMirrorNode,
-  currentPos: number,
-  direction: number
-): number {
-  let pos = currentPos;
+type Direction = -1 | 1;
 
-  if (direction > 0) {
-    let $pos = safeResolve(doc, pos);
-    if (!$pos) return currentPos;
-    let nodeAfter = $pos.nodeAfter;
+function arrowDirection(ctx: SelectionGuardContext): Direction {
+  return ctx.event.key === 'ArrowRight' ? 1 : -1;
+}
 
-    // Skip all consecutive spacers
-    while (nodeAfter && isSpacer(nodeAfter)) {
-      pos = pos + nodeAfter.nodeSize;
-      $pos = safeResolve(doc, pos);
-      if (!$pos) return currentPos;
-      nodeAfter = $pos.nodeAfter;
-    }
-
-    // Include the token if found
-    if (nodeAfter && isToken(nodeAfter)) {
-      return pos + nodeAfter.nodeSize;
-    }
-
-    return pos !== currentPos ? pos : currentPos;
-  } else {
-    let $pos = safeResolve(doc, pos);
-    if (!$pos) return currentPos;
-    let nodeBefore = $pos.nodeBefore;
-
-    // Skip all consecutive spacers
-    while (nodeBefore && isSpacer(nodeBefore)) {
-      pos = pos - nodeBefore.nodeSize;
-      $pos = safeResolve(doc, pos);
-      if (!$pos) return currentPos;
-      nodeBefore = $pos.nodeBefore;
-    }
-
-    // Include the token if found
-    if (nodeBefore && isToken(nodeBefore)) {
-      return pos - nodeBefore.nodeSize;
-    }
-
-    return pos !== currentPos ? pos : currentPos;
-  }
+/** The token the caret would cross by moving one step in `direction`, if any. */
+function tokenInDirection(ctx: SelectionGuardContext, head: number, direction: Direction) {
+  const $head = safeResolve(ctx.doc, head);
+  const node = direction > 0 ? $head?.nodeAfter : $head?.nodeBefore;
+  return node && isToken(node) ? node : null;
 }
 
 /**
- * Apply a selection action to the view.
- */
-function applyAction(ctx: SelectionGuardContext, action: SelectionAction): void {
-  const tr = ctx.view.state.tr;
-
-  if (action.type === 'move') {
-    tr.setSelection(TextSelection.create(tr.doc, action.pos));
-  } else {
-    setTokenFocus(tr, {
-      focusedPos: action.tokenPos,
-      cursorPosition: action.cursor,
-    });
-  }
-
-  ctx.view.dispatch(markAsGuarded(tr));
-}
-
-/**
- * Handle Shift+Arrow for range selection (skipping spacers).
+ * Handle Shift+Arrow over a token: the selection grows by the whole token. Within text
+ * the browser extends the selection itself.
  */
 export const handleShiftArrowSelection: KeyHandlerFn<SelectionGuardContext> = (ctx) => {
   const sel = ctx.selection as TextSelection;
-  const direction = ctx.event.key === 'ArrowRight' ? 1 : -1;
-  const newHead = findNextSelectablePosition(ctx.doc, sel.head, direction);
+  const direction = arrowDirection(ctx);
+  const token = tokenInDirection(ctx, sel.head, direction);
+  if (!token) return false;
 
-  if (newHead !== sel.head) {
-    ctx.event.preventDefault();
-    const tr = ctx.view.state.tr;
-    tr.setSelection(TextSelection.create(tr.doc, sel.anchor, newHead));
-    ctx.view.dispatch(markAsGuarded(tr));
-    return true;
-  }
-  return false;
+  ctx.event.preventDefault();
+  const head = nearestValidCaret(ctx.doc, sel.head + direction * token.nodeSize, direction);
+  const tr = ctx.view.state.tr;
+  tr.setSelection(TextSelection.create(tr.doc, sel.anchor, head));
+  ctx.view.dispatch(markAsGuarded(tr));
+  return true;
 };
 
 /**
- * Handle Arrow keys for single cursor movement.
+ * Handle Arrow keys for single cursor movement: moving onto a token enters it from that
+ * side. Within text the browser moves the caret itself.
  */
 export const handleArrowMove: KeyHandlerFn<SelectionGuardContext> = (ctx) => {
-  const direction = ctx.event.key === 'ArrowRight' ? 1 : -1;
-  const nextPos = ctx.selection.from + direction;
+  const direction = arrowDirection(ctx);
+  const token = tokenInDirection(ctx, ctx.selection.from, direction);
+  if (!token) return false;
 
-  // Check bounds
-  if (nextPos < 0 || nextPos > ctx.doc.content.size) {
-    return false;
-  }
-
-  // Check if next position would be at a boundary
-  const action = enforceSelectionInvariant(ctx.doc, nextPos, direction);
-  if (action) {
-    ctx.event.preventDefault();
-    applyAction(ctx, action);
-    return true;
-  }
-
-  return false;
-};
-
-/**
- * Handle Delete from spacer boundary - enter token from left.
- * Uses 'entry' policy to skip non-entry-focusable elements.
- * For immutable tokens, creates a TextSelection (same as drag selection).
- */
-export const handleDeleteFromSpacer: KeyHandlerFn<SelectionGuardContext> = (ctx) => {
-  if (!ctx.nodeAfter || !isSpacer(ctx.nodeAfter)) return false;
-
-  const afterSpacer = ctx.selection.from + ctx.nodeAfter.nodeSize;
-  const $afterSpacer = safeResolve(ctx.doc, afterSpacer);
-  if (!$afterSpacer) return false;
-
-  const tokenNode = $afterSpacer.nodeAfter;
-  if (tokenNode && isToken(tokenNode)) {
-    ctx.event.preventDefault();
-    return handleTokenEntry(ctx.view, tokenNode, afterSpacer, 'from-left');
-  }
-  return false;
+  ctx.event.preventDefault();
+  const tr = ctx.view.state.tr;
+  setTokenFocus(tr, {
+    focusedPos: direction > 0 ? ctx.selection.from : ctx.selection.from - token.nodeSize,
+    cursorPosition: { direction: direction > 0 ? 'from-left' : 'from-right', policy: 'all' },
+  });
+  ctx.view.dispatch(markAsGuarded(tr));
+  return true;
 };
 
 /**
@@ -195,27 +115,6 @@ export const handleDeleteFromToken: KeyHandlerFn<SelectionGuardContext> = (ctx) 
 
   ctx.event.preventDefault();
   return handleTokenEntry(ctx.view, ctx.nodeAfter, ctx.selection.from, 'from-left');
-};
-
-/**
- * Handle Backspace from spacer boundary - enter token from right.
- * Uses 'entry' policy to skip non-entry-focusable elements (like delete button).
- * For immutable tokens, creates a TextSelection (same as drag selection).
- */
-export const handleBackspaceFromSpacer: KeyHandlerFn<SelectionGuardContext> = (ctx) => {
-  if (!ctx.nodeBefore || !isSpacer(ctx.nodeBefore)) return false;
-
-  const beforeSpacer = ctx.selection.from - ctx.nodeBefore.nodeSize;
-  const $beforeSpacer = safeResolve(ctx.doc, beforeSpacer);
-  if (!$beforeSpacer) return false;
-
-  const tokenNode = $beforeSpacer.nodeBefore;
-  if (tokenNode && isToken(tokenNode)) {
-    ctx.event.preventDefault();
-    const tokenPos = beforeSpacer - tokenNode.nodeSize;
-    return handleTokenEntry(ctx.view, tokenNode, tokenPos, 'from-right');
-  }
-  return false;
 };
 
 /**

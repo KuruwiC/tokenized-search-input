@@ -26,6 +26,7 @@ function createMockContext(overrides: Partial<RepairContext> = {}): RepairContex
     docChanged: false,
     focusChanged: true,
     isHistoryOperation: false,
+    transactions: [],
     ...overrides,
   };
 }

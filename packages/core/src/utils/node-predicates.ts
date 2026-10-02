@@ -6,7 +6,6 @@ export const NODE_TYPE_NAMES = {
   text: 'text',
   filterToken: 'filterToken',
   freeTextToken: 'freeTextToken',
-  spacer: 'spacer',
 } as const;
 
 export const TOKEN_TYPES = [NODE_TYPE_NAMES.filterToken, NODE_TYPE_NAMES.freeTextToken] as const;
@@ -24,15 +23,6 @@ export function isFreeTextToken(node: ProseMirrorNode): boolean {
   return node.type.name === NODE_TYPE_NAMES.freeTextToken;
 }
 
-export function isSpacer(node: ProseMirrorNode): boolean {
-  return node.type.name === NODE_TYPE_NAMES.spacer;
-}
-
 export function isText(node: ProseMirrorNode): boolean {
   return node.type.name === NODE_TYPE_NAMES.text;
-}
-
-// Includes plain text and any future inline widgets
-export function isGenericInlineContent(node: ProseMirrorNode): boolean {
-  return !isToken(node) && !isSpacer(node) && node.isInline;
 }

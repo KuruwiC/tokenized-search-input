@@ -1,8 +1,10 @@
 /**
  * Selection Guard Plugin
  *
- * Prevents cursor from being positioned at token boundaries by handling
- * keyboard and click events at the entry point.
+ * Handles the pointer and keyboard input around tokens that the browser would get
+ * wrong on its own: a press next to a token puts the caret where it landed or starts a
+ * drag selection from there, Shift+click and Shift+Arrow select whole tokens, and the
+ * arrow keys and Backspace/Delete enter the token beside the caret.
  */
 
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
@@ -10,9 +12,8 @@ import { Plugin, TextSelection } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { runKeyHandlers } from '../keyboard';
-import { isSpacer, isToken } from '../utils/node-predicates';
-import { normalizeCursorPosition } from '../utils/normalize-cursor-position';
-import { resolveSpacerClickTarget } from './selection-guard/click-resolver';
+import { nearestValidCaret } from '../utils/caret';
+import { isToken } from '../utils/node-predicates';
 import { createDragTracker } from './selection-guard/drag-tracker';
 import { type SelectionGuardState, selectionGuardKey } from './selection-guard/plugin-key';
 import { handleShiftClickSelection } from './selection-guard/shift-click-handler';
@@ -20,7 +21,6 @@ import { selectionGuardKeySpecs } from './selection-guard/specs';
 import { buildSelectionGuardContext } from './selection-guard/types';
 import { markAsGuarded } from './selection-guard/utils';
 import { setTokenFocus, tokenFocusKey } from './token-focus-plugin';
-import { expandSelectionForDeletion } from './token-spacing/helpers';
 
 export type { SelectionGuardState } from './selection-guard/plugin-key';
 export { selectionGuardKey } from './selection-guard/plugin-key';
@@ -83,38 +83,24 @@ function buildSelectionDecorationsForRanges(
   return DecorationSet.create(doc, decorations);
 }
 
-/**
- * Execute spacer click from mouseup handler.
- * Does not allow spacer insertion (mousedown path).
- */
-function executeSpacerClick(view: import('@tiptap/pm/view').EditorView, pos: number): void {
-  const { doc } = view.state;
+function isTokenNode(node: ProseMirrorNode | null | undefined): boolean {
+  return node != null && isToken(node);
+}
 
-  const resolution = resolveSpacerClickTarget(doc, pos, null, { allowSpacerInsertion: false });
-  if (!resolution) {
-    return;
-  }
+function setPress(view: EditorView, pressPos: number | null): void {
+  const tr = view.state.tr;
+  tr.setMeta(selectionGuardKey, { pressPos });
+  tr.setMeta('addToHistory', false);
+  view.dispatch(tr);
+}
 
-  const { targetPos } = resolution;
-
-  const { selection } = view.state;
-  const focusState = tokenFocusKey.getState(view.state);
-  const alreadyAtTarget =
-    selection instanceof TextSelection &&
-    selection.from === targetPos &&
-    selection.to === targetPos;
-  const tokenCurrentlyFocused = focusState?.focusedPos !== null;
-
-  if (alreadyAtTarget && !tokenCurrentlyFocused) {
-    if (!view.hasFocus()) {
-      view.focus();
-    }
-    return;
-  }
-
+/** Puts the caret where a press that did not become a drag started. */
+function placeCaretAtPress(view: EditorView): void {
+  const pressPos = selectionGuardKey.getState(view.state)?.pressPos;
+  if (pressPos == null) return;
   const tr = view.state.tr;
   setTokenFocus(tr, { focusedPos: null });
-  tr.setSelection(TextSelection.create(doc, targetPos));
+  tr.setSelection(TextSelection.create(tr.doc, nearestValidCaret(tr.doc, pressPos, 1)));
   view.dispatch(markAsGuarded(tr));
   view.focus();
 }
@@ -128,7 +114,7 @@ export function createSelectionGuardPlugin(): Plugin<SelectionGuardState> {
         return {
           decorations: DecorationSet.empty,
           editorHasFocus: true,
-          isDragging: false,
+          pressPos: null,
           prefocusClickPos: null,
         };
       },
@@ -136,42 +122,34 @@ export function createSelectionGuardPlugin(): Plugin<SelectionGuardState> {
         const meta = tr.getMeta(selectionGuardKey) as
           | {
               editorHasFocus?: boolean;
-              isDragging?: boolean;
+              pressPos?: number | null;
               prefocusClickPos?: number | null;
             }
           | undefined;
         const editorHasFocus = meta?.editorHasFocus ?? pluginState.editorHasFocus;
-        const isDragging = meta?.isDragging ?? pluginState.isDragging;
+        // Positions captured at a press follow the edits made while the press lasts.
+        const mapped = (pos: number | null) => (pos === null ? null : tr.mapping.map(pos));
+        const pressPos = !editorHasFocus
+          ? null
+          : meta?.pressPos !== undefined
+            ? meta.pressPos
+            : mapped(pluginState.pressPos);
         const prefocusClickPos =
           meta?.prefocusClickPos !== undefined
             ? meta.prefocusClickPos
-            : pluginState.prefocusClickPos;
+            : mapped(pluginState.prefocusClickPos);
+        const next = { editorHasFocus, pressPos, prefocusClickPos };
 
-        if (!editorHasFocus) {
-          return {
-            decorations: DecorationSet.empty,
-            editorHasFocus,
-            isDragging: false,
-            prefocusClickPos,
-          };
-        }
-
-        const focusState = tokenFocusKey.getState(newState);
-        if (focusState?.focusedPos !== null) {
-          return { decorations: DecorationSet.empty, editorHasFocus, isDragging, prefocusClickPos };
+        if (!editorHasFocus || tokenFocusKey.getState(newState)?.focusedPos !== null) {
+          return { decorations: DecorationSet.empty, ...next };
         }
 
         const sel = tr.selection;
         if (sel.empty) {
-          return { decorations: DecorationSet.empty, editorHasFocus, isDragging, prefocusClickPos };
+          return { decorations: DecorationSet.empty, ...next };
         }
 
-        return {
-          decorations: buildSelectionDecorationsForRanges(tr.doc, sel.ranges),
-          editorHasFocus,
-          isDragging,
-          prefocusClickPos,
-        };
+        return { decorations: buildSelectionDecorationsForRanges(tr.doc, sel.ranges), ...next };
       },
     },
 
@@ -197,7 +175,7 @@ export function createSelectionGuardPlugin(): Plugin<SelectionGuardState> {
             try {
               const maxPos = view.state.doc.content.size;
               const clampedPos = Math.max(1, Math.min(prefocusClickPos, maxPos));
-              const targetPos = normalizeCursorPosition(view.state.doc, clampedPos);
+              const targetPos = nearestValidCaret(view.state.doc, clampedPos, 1);
 
               const newTr = view.state.tr;
               newTr.setSelection(TextSelection.create(view.state.doc, targetPos));
@@ -250,110 +228,55 @@ export function createSelectionGuardPlugin(): Plugin<SelectionGuardState> {
             view.dispatch(tr);
           }
 
-          const pos = posInfo.pos;
-          const { doc } = view.state;
-
-          try {
-            const $pos = doc.resolve(pos);
-            const nodeBefore = $pos.nodeBefore;
-            const nodeAfter = $pos.nodeAfter;
-
-            if (handleShiftClickSelection(view, event, posInfo)) {
-              return true;
-            }
-
-            const beforeIsSpacer = nodeBefore && isSpacer(nodeBefore);
-            const afterIsSpacer = nodeAfter && isSpacer(nodeAfter);
-            const beforeIsToken = nodeBefore && isToken(nodeBefore);
-            const afterIsToken = nodeAfter && isToken(nodeAfter);
-
-            const isAtTokenBoundary =
-              beforeIsSpacer || afterIsSpacer || beforeIsToken || afterIsToken;
-            const isAtParagraphStart =
-              !nodeBefore && $pos.parentOffset === 0 && (afterIsSpacer || afterIsToken);
-
-            if (isAtTokenBoundary || isAtParagraphStart) {
-              event.preventDefault();
-
-              const setDraggingMeta = (isDragging: boolean) => {
-                const tr = view.state.tr;
-                tr.setMeta(selectionGuardKey, { isDragging });
-                tr.setMeta('addToHistory', false);
-                view.dispatch(tr);
-              };
-
-              setDraggingMeta(true);
-
-              const isOnSpacer = beforeIsSpacer || afterIsSpacer;
-
-              createDragTracker(
-                {
-                  startX: event.clientX,
-                  startY: event.clientY,
-                  posAtCoords: (coords) => view.posAtCoords(coords),
-                },
-                {
-                  onDragStart: () => {},
-                  onDragMove: (movePos) => {
-                    const tr = view.state.tr;
-                    tr.setSelection(TextSelection.create(view.state.doc, pos, movePos));
-                    tr.setMeta(selectionGuardKey, { isDragging: true });
-                    view.dispatch(tr);
-                  },
-                  onDragEnd: (wasDrag) => {
-                    if (!wasDrag && isOnSpacer) {
-                      executeSpacerClick(view, pos);
-                    }
-                  },
-                  onCleanup: () => {
-                    setDraggingMeta(false);
-                  },
-                }
-              );
-
-              if (!view.hasFocus()) {
-                view.focus();
-              }
-
-              return true;
-            }
-          } catch {
-            // Position resolution failed
+          if (handleShiftClickSelection(view, event, posInfo)) {
+            return true;
           }
 
-          return false;
-        },
-      },
+          const pos = posInfo.pos;
+          const $pos = view.state.doc.resolve(pos);
+          if (!isTokenNode($pos.nodeBefore) && !isTokenNode($pos.nodeAfter)) {
+            // Within text the browser places the caret and selects by itself.
+            return false;
+          }
 
-      handleClick(view, pos) {
-        const { doc } = view.state;
-        const tr = view.state.tr;
+          // The browser does not reliably place a caret next to a non-editable token, so
+          // the press is resolved here. A press on a token itself is left to the token,
+          // which enters editing on click.
+          event.preventDefault();
+          const pressedNode = posInfo.inside >= 0 ? view.state.doc.nodeAt(posInfo.inside) : null;
+          const onToken = isTokenNode(pressedNode);
+          setPress(view, pos);
 
-        const resolution = resolveSpacerClickTarget(doc, pos, tr, { allowSpacerInsertion: true });
-        if (!resolution) {
-          return false;
-        }
+          createDragTracker(
+            {
+              startX: event.clientX,
+              startY: event.clientY,
+              posAtCoords: (coords) => view.posAtCoords(coords),
+            },
+            {
+              onDragStart: () => {},
+              onDragMove: (movePos) => {
+                const anchor = selectionGuardKey.getState(view.state)?.pressPos;
+                if (anchor == null) return;
+                const tr = view.state.tr;
+                tr.setSelection(TextSelection.create(tr.doc, anchor, movePos));
+                view.dispatch(tr);
+              },
+              onDragEnd: (wasDrag) => {
+                if (!wasDrag && !onToken) placeCaretAtPress(view);
+              },
+              onCleanup: () => {
+                setPress(view, null);
+              },
+            }
+          );
 
-        const { targetPos, spacerInserted } = resolution;
+          if (!view.hasFocus()) {
+            view.focus();
+          }
 
-        const { selection } = view.state;
-        const focusState = tokenFocusKey.getState(view.state);
-        const alreadyAtTarget =
-          selection instanceof TextSelection &&
-          selection.from === targetPos &&
-          selection.to === targetPos;
-        const tokenCurrentlyFocused = focusState?.focusedPos !== null;
-
-        if (alreadyAtTarget && !tokenCurrentlyFocused && !spacerInserted) {
           return true;
-        }
-
-        setTokenFocus(tr, { focusedPos: null });
-        tr.setSelection(TextSelection.create(tr.doc, targetPos));
-        view.dispatch(markAsGuarded(tr));
-        view.focus();
-
-        return true;
+        },
       },
 
       handleKeyDown(view, event) {
@@ -362,25 +285,6 @@ export function createSelectionGuardPlugin(): Plugin<SelectionGuardState> {
         const focusState = tokenFocusKey.getState(view.state);
         if (focusState?.focusedPos !== null) {
           return false;
-        }
-
-        const { selection } = view.state;
-
-        if (selection instanceof TextSelection && !selection.empty) {
-          if (event.key === 'Backspace' || event.key === 'Delete') {
-            const expanded = expandSelectionForDeletion(
-              view.state.doc,
-              selection.from,
-              selection.to
-            );
-            if (expanded) {
-              event.preventDefault();
-              const tr = view.state.tr;
-              tr.delete(expanded.from, expanded.to);
-              view.dispatch(markAsGuarded(tr));
-              return true;
-            }
-          }
         }
 
         const ctx = buildSelectionGuardContext(view, event);

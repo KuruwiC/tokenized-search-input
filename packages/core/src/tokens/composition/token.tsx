@@ -20,7 +20,6 @@ import {
 import { getValidationDescriptionId } from '../../plugins/token-meta-plugin';
 import { getDismissPolicy } from '../../suggestions/dismiss-policy';
 import { cn } from '../../utils/cn';
-import { isSpacer } from '../../utils/node-predicates';
 import { TokenDeleteButton } from './blocks/token-delete-button';
 import { TokenLabel, TokenLabelCombobox } from './blocks/token-label';
 import { TokenOperator } from './blocks/token-operator';
@@ -169,8 +168,6 @@ export function exitTokenRight(
   existingTr?: Transaction
 ): void {
   const tr = existingTr ?? editor.state.tr;
-  const $pos = tr.doc.resolve(afterTokenPos);
-  const nodeAfter = $pos.nodeAfter;
 
   setTokenFocus(tr, { focusedPos: null });
   closeSuggestion(tr);
@@ -180,31 +177,20 @@ export function exitTokenRight(
     tr.setMeta('addToHistory', false);
   }
 
-  const hasSpacer = nodeAfter != null && isSpacer(nodeAfter);
-  const cursorPos = hasSpacer ? afterTokenPos + nodeAfter.nodeSize : afterTokenPos;
-  tr.setSelection(TextSelection.create(tr.doc, cursorPos));
+  tr.setSelection(TextSelection.create(tr.doc, afterTokenPos));
 
   editor.view.dispatch(tr);
   editor.view.focus();
 }
 
 function exitTokenLeft(editor: Editor, beforeTokenPos: number): void {
-  const { state } = editor;
-  const $pos = state.doc.resolve(beforeTokenPos);
-  const nodeBefore = $pos.nodeBefore;
-
-  const tr = state.tr;
+  const tr = editor.state.tr;
   setTokenFocus(tr, { focusedPos: null });
   closeSuggestion(tr);
   tr.setMeta('exitingToken', true);
   tr.setMeta('addToHistory', false);
 
-  let cursorPos = beforeTokenPos;
-  if (nodeBefore != null && isSpacer(nodeBefore)) {
-    cursorPos = beforeTokenPos - nodeBefore.nodeSize;
-  }
-
-  tr.setSelection(TextSelection.create(tr.doc, cursorPos));
+  tr.setSelection(TextSelection.create(tr.doc, beforeTokenPos));
   editor.view.dispatch(tr);
   editor.view.focus();
 }
@@ -400,15 +386,11 @@ export function Token({
 
         if (tokenNode) {
           const afterTokenPos = pos + tokenNode.nodeSize;
-          const $pos = tr.doc.resolve(afterTokenPos);
-          const nodeAfter = $pos.nodeAfter;
-          const hasSpacer = nodeAfter != null && isSpacer(nodeAfter);
-          const cursorPos = hasSpacer ? afterTokenPos + nodeAfter.nodeSize : afterTokenPos;
 
           setTokenFocus(tr, { focusedPos: null });
           closeSuggestion(tr);
           tr.setMeta('exitingToken', true);
-          tr.setSelection(TextSelection.create(tr.doc, cursorPos));
+          tr.setSelection(TextSelection.create(tr.doc, afterTokenPos));
           tr.setMeta('addToHistory', false);
           editor.view.dispatch(tr);
           onBlurCallback?.();

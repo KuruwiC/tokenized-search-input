@@ -26,7 +26,7 @@
   --tsi-token-size: 1.5rem;
   --tsi-token-font-size: 1rem;
   --tsi-token-icon-size: 0.875rem;
-  --tsi-token-spacer-width: 0.25rem;
+  --tsi-token-gap: 0.25rem;
   --tsi-token-gap-y: 0.25rem;
   --tsi-radius: 0.5rem;
   --tsi-radius-inner: 0.25rem;
@@ -499,19 +499,11 @@
     outline: none;
   }
 
-  /* Spacer Node */
+  /* Space around tokens. Tokens flow inline with text, where flex and grid gap do not
+     apply, so the space is the margin of each token's node element. */
 
-  :where(._tsi-spacer) {
-    display: inline-block;
-    width: var(--tsi-token-spacer-width);
-    height: calc(var(--tsi-token-size) + var(--tsi-token-gap-y));
-    vertical-align: bottom;
-    user-select: text;
-    cursor: text;
-  }
-
-  :where(._tsi-spacer)::selection {
-    background-color: transparent;
+  :where(.tsi-token-node) {
+    margin-inline: var(--tsi-token-gap);
   }
 
   /* Range Selection - Default styling via parent class from Decoration */
@@ -557,7 +549,7 @@
     display: inline-flex;
     vertical-align: bottom;
     padding: calc(var(--tsi-token-gap-y) / 2) 0;
-    max-width: calc(100% - calc(var(--tsi-token-spacer-width) * 2));
+    max-width: calc(100% - calc(var(--tsi-token-gap) * 2));
     min-width: 0;
     user-select: text;
     cursor: default;

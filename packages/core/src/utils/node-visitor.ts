@@ -10,8 +10,6 @@ import { NODE_TYPE_NAMES } from './node-predicates';
 export interface NodeVisitor<TContext> {
   filterToken?: (node: JSONContent, ctx: TContext) => void;
   freeTextToken?: (node: JSONContent, ctx: TContext) => void;
-  /** Visual separators, not serialized */
-  spacer?: (node: JSONContent, ctx: TContext) => void;
   text?: (node: JSONContent, ctx: TContext) => void;
   /** Call visitChildren() to process child nodes. */
   paragraph?: (node: JSONContent, ctx: TContext, visitChildren: () => void) => void;
@@ -62,10 +60,6 @@ export function visitDocument<TContext>(
 
       case NODE_TYPE_NAMES.freeTextToken:
         visitor.freeTextToken?.(node, context);
-        break;
-
-      case NODE_TYPE_NAMES.spacer:
-        visitor.spacer?.(node, context);
         break;
 
       case NODE_TYPE_NAMES.text:

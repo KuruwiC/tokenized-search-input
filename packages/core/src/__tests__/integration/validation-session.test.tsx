@@ -82,12 +82,9 @@ function setValue(editor: Editor, id: string, value: string) {
 }
 
 function insertToken(editor: Editor, pos: number, key: string, value: string) {
-  const { filterToken, spacer } = editor.state.schema.nodes;
+  const { filterToken } = editor.state.schema.nodes;
   const tr = editor.state.tr;
-  tr.insert(pos, [
-    filterToken.create({ id: generateTokenId(), key, operator: 'is', value }),
-    spacer.create(),
-  ]);
+  tr.insert(pos, filterToken.create({ id: generateTokenId(), key, operator: 'is', value }));
   return tr;
 }
 

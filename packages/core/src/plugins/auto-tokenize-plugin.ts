@@ -3,11 +3,7 @@ import type { Node as ProseMirrorNode, Schema } from '@tiptap/pm/model';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
-import {
-  buildContentFromTokens,
-  collectTokenizableTextNodes,
-  wrapWithSpacers,
-} from '../editor/auto-tokenize';
+import { buildContentFromTokens, collectTokenizableTextNodes } from '../editor/auto-tokenize';
 import type { DeserializeTextFn } from '../extensions/editor-context';
 import { setTokenFocus } from '../plugins/token-focus-plugin';
 import { type ParseQueryStringResult, parseQueryStringWithInfo } from '../serializer';
@@ -107,9 +103,7 @@ function tokenizeAllTextNodes(
 
     if (content.length === 0) continue;
 
-    const finalContent = wrapWithSpacers(content);
-
-    const nodes = jsonToNodes(schema, finalContent);
+    const nodes = jsonToNodes(schema, content);
     if (nodes.length === 0) continue;
 
     // Delete existing content and insert new nodes

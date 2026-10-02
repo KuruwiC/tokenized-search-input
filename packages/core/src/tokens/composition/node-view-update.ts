@@ -1,6 +1,12 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Decoration } from '@tiptap/pm/view';
 
+/**
+ * Class of the element a token node view puts in the paragraph. The space around a token
+ * is its margin, so a pointer in that space hits the paragraph rather than the token.
+ */
+export const TOKEN_NODE_CLASS = 'tsi-token-node';
+
 interface NodeViewUpdate {
   oldNode: ProseMirrorNode;
   oldDecorations: readonly Decoration[];

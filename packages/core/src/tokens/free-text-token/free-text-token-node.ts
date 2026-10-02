@@ -10,7 +10,7 @@ import { isFreeTextToken } from '../../utils/node-predicates';
 import { escapeForQuotes } from '../../utils/quoted-string';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
 import { isHistoryShortcut } from '../composition/keyboard';
-import { updateTokenNodeView } from '../composition/node-view-update';
+import { TOKEN_NODE_CLASS, updateTokenNodeView } from '../composition/node-view-update';
 import { FreeTextTokenView } from './free-text-token-view';
 
 export interface InsertFreeTextTokenAttrs {
@@ -95,6 +95,7 @@ export const FreeTextTokenNode = Node.create({
     const editor = this.editor;
 
     return ReactNodeViewRenderer(FreeTextTokenView, {
+      className: TOKEN_NODE_CLASS,
       update: updateTokenNodeView,
       stopEvent: ({ event }) => {
         // When disabled, let all events flow to ProseMirror (don't handle in NodeView)
@@ -146,20 +147,13 @@ export const FreeTextTokenNode = Node.create({
           editor: Editor;
         }) => {
           const { schema, selection } = state;
-
-          // Create nodes: spacer + freeTextToken + spacer
-          const spacerNode = schema.nodes.spacer.create();
           const tokenNode = schema.nodes.freeTextToken.create({
             id: generateTokenId(),
             value: attrs.value ?? '',
             quoted: attrs.quoted ?? false,
           });
-          const nodes = [spacerNode, tokenNode, spacerNode.copy()];
-
-          // Insert nodes (doc-invariant-plugin handles paragraph normalization)
-          for (let i = nodes.length - 1; i >= 0; i--) {
-            tr.insert(selection.from, nodes[i]);
-          }
+          // doc-invariant-plugin handles paragraph normalization
+          tr.insert(selection.from, tokenNode);
 
           if (dispatch) {
             dispatch(tr);

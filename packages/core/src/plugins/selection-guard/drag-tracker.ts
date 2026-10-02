@@ -70,7 +70,7 @@ export function createDragTracker(
     cleanupListeners();
 
     // Call onDragEnd if cleanup triggered by non-mouseup event (blur, button release)
-    // This ensures spacer clicks are handled even when mouse released off-window
+    // so a click next to a token is still handled when the mouse is released off-window
     if (!fromMouseUp) {
       callbacks.onDragEnd(isDragging);
     }

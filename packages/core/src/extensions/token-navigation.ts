@@ -2,11 +2,11 @@ import { Extension } from '@tiptap/core';
 
 /**
  * Extension for token navigation keyboard shortcuts.
- * ArrowLeft/Right/Backspace/Delete are handled by token-spacing-plugin's rule engine.
+ * ArrowLeft/Right/Backspace/Delete are handled by the selection guard plugin.
  *
- * Note: This extension explicitly handles Mod-a to ensure selectAll works correctly
- * with the Spacer-based document structure. Without this, the default browser behavior
- * may not properly select all content including tokens.
+ * Note: This extension explicitly handles Mod-a so that selectAll covers the tokens as
+ * well. Without this, the default browser behavior may not select the non-editable
+ * token elements.
  */
 export const TokenNavigation = Extension.create({
   name: 'tokenNavigation',

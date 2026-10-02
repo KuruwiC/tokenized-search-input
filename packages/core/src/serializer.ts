@@ -47,12 +47,8 @@ export function parseQueryToDoc(
 
   const content: JSONContent[] = [];
 
-  // INVARIANT: Every token node must have a spacer on both sides.
-  // Structure: [spacer][token1][spacer][spacer][token2][spacer]
-  // This ensures natural cursor positioning between tokens.
   tokens.forEach((token) => {
     if (token.type === 'filter') {
-      content.push({ type: 'spacer' });
       content.push({
         type: 'filterToken',
         attrs: createFilterTokenAttrs({
@@ -62,15 +58,12 @@ export function parseQueryToDoc(
           source: { fields, unknownFields: options.unknownFields },
         }),
       });
-      content.push({ type: 'spacer' });
     } else if (token.type === 'freeText' && token.value.trim()) {
       const strategy = getFreeTextStrategy(freeTextMode);
       const docContent = strategy.toDocContent(token);
       if (docContent) {
         if (docContent.type === NODE_TYPE_NAMES.freeTextToken) {
-          content.push({ type: 'spacer' });
           content.push(docContent);
-          content.push({ type: 'spacer' });
         } else {
           if (content.length > 0) {
             const lastItem = content[content.length - 1];
@@ -122,7 +115,6 @@ export function serializeDocToQuery(doc: JSONContent, options: SerializeDocOptio
         ctx.parts.push(quoted ? `"${escapeForQuotes(value)}"` : value);
       }
     },
-    spacer: () => {},
     text: (node, ctx) => {
       const text = node.text?.trim();
       if (text) {

@@ -1,5 +1,4 @@
 export { buildContentFromTokens, buildTokenContent } from './content-builder';
-export { wrapWithSpacers } from './spacer-wrapper';
 export { collectTokenizableTextNodes } from './text-node-collector';
 export {
   bulkInsertStrategy,

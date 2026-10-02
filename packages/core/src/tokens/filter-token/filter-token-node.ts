@@ -11,7 +11,7 @@ import {
 import { isFilterToken } from '../../utils/node-predicates';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
 import { isHistoryShortcut } from '../composition/keyboard';
-import { updateTokenNodeView } from '../composition/node-view-update';
+import { TOKEN_NODE_CLASS, updateTokenNodeView } from '../composition/node-view-update';
 import { createFilterTokenAttrs } from './create-attrs';
 import { FilterTokenView } from './filter-token-view';
 
@@ -116,6 +116,7 @@ export const FilterTokenNode = Node.create({
     const editor = this.editor;
 
     return ReactNodeViewRenderer(FilterTokenView, {
+      className: TOKEN_NODE_CLASS,
       update: updateTokenNodeView,
       stopEvent: ({ event }) => {
         // When disabled, let all events flow to ProseMirror (don't handle in NodeView)
@@ -157,7 +158,6 @@ export const FilterTokenNode = Node.create({
         (attrs: InsertFilterTokenAttrs) =>
         ({ tr, state, dispatch }) => {
           const { schema, selection } = state;
-          const spacerNode = schema.nodes.spacer.create();
           const tokenAttrs = createFilterTokenAttrs({
             key: attrs.key,
             operator: attrs.operator,
@@ -171,13 +171,8 @@ export const FilterTokenNode = Node.create({
             });
           }
 
-          // Create nodes: spacer + token + spacer
-          const nodes = [spacerNode, tokenNode, spacerNode.copy()];
-
-          // Insert nodes (doc-invariant-plugin handles paragraph normalization)
-          for (let i = nodes.length - 1; i >= 0; i--) {
-            tr.insert(selection.from, nodes[i]);
-          }
+          // doc-invariant-plugin handles paragraph normalization
+          tr.insert(selection.from, tokenNode);
 
           if (dispatch) {
             dispatch(tr);

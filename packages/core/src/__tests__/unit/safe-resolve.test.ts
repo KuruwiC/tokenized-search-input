@@ -10,12 +10,12 @@ import { inlineSchema as schema } from '../fixtures';
 
 describe('safeResolve', () => {
   it('returns ResolvedPos for valid positions', () => {
-    // Document: [spacer][token][spacer]
-    // Positions: 0 | spacer | 1 | token | 2 | spacer | 3
+    // Document: [free text][filter][free text]
+    // Positions: 0 | free text | 1 | filter | 2 | free text | 3
     const doc = schema.node('doc', null, [
-      schema.node('spacer'),
+      schema.node('freeTextToken', { value: 'x' }),
       schema.node('filterToken', { key: 'status', operator: 'is', value: 'active' }),
-      schema.node('spacer'),
+      schema.node('freeTextToken', { value: 'x' }),
     ]);
 
     const result = safeResolve(doc, 1);
@@ -24,7 +24,7 @@ describe('safeResolve', () => {
   });
 
   it('returns ResolvedPos for position 0', () => {
-    const doc = schema.node('doc', null, [schema.node('spacer')]);
+    const doc = schema.node('doc', null, [schema.node('freeTextToken', { value: 'x' })]);
 
     const result = safeResolve(doc, 0);
     expect(result).not.toBeNull();
@@ -32,7 +32,7 @@ describe('safeResolve', () => {
   });
 
   it('returns ResolvedPos for end position', () => {
-    const doc = schema.node('doc', null, [schema.node('spacer')]);
+    const doc = schema.node('doc', null, [schema.node('freeTextToken', { value: 'x' })]);
 
     // Position at end of doc
     const result = safeResolve(doc, 1);
@@ -41,23 +41,23 @@ describe('safeResolve', () => {
   });
 
   it('returns null for negative positions', () => {
-    const doc = schema.node('doc', null, [schema.node('spacer')]);
+    const doc = schema.node('doc', null, [schema.node('freeTextToken', { value: 'x' })]);
 
     const result = safeResolve(doc, -1);
     expect(result).toBeNull();
   });
 
   it('returns null for out-of-bounds positions', () => {
-    const doc = schema.node('doc', null, [schema.node('spacer')]);
+    const doc = schema.node('doc', null, [schema.node('freeTextToken', { value: 'x' })]);
 
     const result = safeResolve(doc, 9999);
     expect(result).toBeNull();
   });
 
   it('returns null for positions just past document end', () => {
-    // Document: [spacer]
+    // Document: [free text]
     // Valid positions: 0, 1
-    const doc = schema.node('doc', null, [schema.node('spacer')]);
+    const doc = schema.node('doc', null, [schema.node('freeTextToken', { value: 'x' })]);
 
     const result = safeResolve(doc, 2);
     expect(result).toBeNull();
@@ -66,47 +66,47 @@ describe('safeResolve', () => {
 
 describe('getAdjacentNodes', () => {
   it('returns adjacent nodes correctly at token boundary', () => {
-    // Document: [spacer][token][spacer]
-    // Positions: 0 | spacer | 1 | token | 2 | spacer | 3
+    // Document: [free text][filter][free text]
+    // Positions: 0 | free text | 1 | filter | 2 | free text | 3
     const doc = schema.node('doc', null, [
-      schema.node('spacer'),
+      schema.node('freeTextToken', { value: 'x' }),
       schema.node('filterToken', { key: 'status', operator: 'is', value: 'active' }),
-      schema.node('spacer'),
+      schema.node('freeTextToken', { value: 'x' }),
     ]);
 
-    // Position 1: after spacer, before token
+    // Position 1: after the free text token, before the filter token
     const result1 = getAdjacentNodes(doc, 1);
     expect(result1).not.toBeNull();
-    expect(result1?.nodeBefore?.type.name).toBe('spacer');
+    expect(result1?.nodeBefore?.type.name).toBe('freeTextToken');
     expect(result1?.nodeAfter?.type.name).toBe('filterToken');
 
-    // Position 2: after token, before spacer
+    // Position 2: after the filter token, before the free text token
     const result2 = getAdjacentNodes(doc, 2);
     expect(result2).not.toBeNull();
     expect(result2?.nodeBefore?.type.name).toBe('filterToken');
-    expect(result2?.nodeAfter?.type.name).toBe('spacer');
+    expect(result2?.nodeAfter?.type.name).toBe('freeTextToken');
   });
 
   it('returns null for nodeBefore at document start', () => {
-    const doc = schema.node('doc', null, [schema.node('spacer')]);
+    const doc = schema.node('doc', null, [schema.node('freeTextToken', { value: 'x' })]);
 
     const result = getAdjacentNodes(doc, 0);
     expect(result).not.toBeNull();
     expect(result?.nodeBefore).toBeNull();
-    expect(result?.nodeAfter?.type.name).toBe('spacer');
+    expect(result?.nodeAfter?.type.name).toBe('freeTextToken');
   });
 
   it('returns null for nodeAfter at document end', () => {
-    const doc = schema.node('doc', null, [schema.node('spacer')]);
+    const doc = schema.node('doc', null, [schema.node('freeTextToken', { value: 'x' })]);
 
     const result = getAdjacentNodes(doc, 1);
     expect(result).not.toBeNull();
-    expect(result?.nodeBefore?.type.name).toBe('spacer');
+    expect(result?.nodeBefore?.type.name).toBe('freeTextToken');
     expect(result?.nodeAfter).toBeNull();
   });
 
   it('returns null for invalid positions', () => {
-    const doc = schema.node('doc', null, [schema.node('spacer')]);
+    const doc = schema.node('doc', null, [schema.node('freeTextToken', { value: 'x' })]);
 
     expect(getAdjacentNodes(doc, -1)).toBeNull();
     expect(getAdjacentNodes(doc, 9999)).toBeNull();

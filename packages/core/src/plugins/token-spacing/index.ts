@@ -12,24 +12,15 @@ function isHistoryMeta(meta: unknown): meta is { redo: boolean } {
   return meta !== null && typeof meta === 'object' && 'redo' in meta;
 }
 
-// Re-export for external use
-export type { InsideTokenInfo, SelectionAction } from './selection-invariant';
-export { enforceSelectionInvariant, getCursorInsideToken } from './selection-invariant';
-export { findSpacerAfter, findSpacerBefore } from './spacer-helpers';
 export type { DocumentRepairPhase, RepairContext } from './types';
 
 /**
- * Extension that maintains spacer invariant and handles token cleanup.
- *
- * INVARIANT: Every token must have a spacer on both sides.
- * Document structure: [spacer][token1][spacer][spacer][token2][spacer]
+ * Extension that keeps the document consistent after edits.
  *
  * Responsibilities:
- * 1. Delete empty tokens when focus moves away (with adjacent spacers)
- * 2. Remove orphaned spacers (spacers with no adjacent tokens)
- * 3. Insert missing spacers (when range deletion removes them)
- *
- * Note: Selection Invariant enforcement is handled by SelectionInvariantExtension.
+ * 1. Focus an empty token that undo or redo restored
+ * 2. Delete empty tokens when focus moves away
+ * 3. Keep the words on either side of a removed token apart
  */
 export const TokenSpacingExtension = Extension.create({
   name: 'tokenSpacing',
@@ -70,6 +61,7 @@ export const TokenSpacingExtension = Extension.create({
             docChanged,
             focusChanged,
             isHistoryOperation,
+            transactions,
           };
 
           const docModified = runDocumentRepairPipeline(tr, context);

@@ -67,13 +67,13 @@ function focusToken(editor: Editor, pos: number | null) {
 }
 
 /** A transaction that inserts a status token (with an id, as the editor creates them) at `pos`. */
-function insertStatus(editor: Editor, pos: number, value: string, spacers = 1) {
-  const { filterToken, spacer } = editor.state.schema.nodes;
+function insertStatus(editor: Editor, pos: number, value: string) {
+  const { filterToken } = editor.state.schema.nodes;
   const tr = editor.state.tr;
-  tr.insert(pos, [
-    filterToken.create({ id: generateTokenId(), key: 'status', operator: 'is', value }),
-    ...Array.from({ length: spacers }, () => spacer.create()),
-  ]);
+  tr.insert(
+    pos,
+    filterToken.create({ id: generateTokenId(), key: 'status', operator: 'is', value })
+  );
   return tr;
 }
 
@@ -160,7 +160,7 @@ describe('Unique with onDuplicate reject', () => {
     // One transaction inserts a duplicate before the status token, which moves it onto
     // the position the focused priority token had, and blurs the priority token.
     act(() => {
-      const tr = insertStatus(editor, tokenPos(editor, status.id), 'inactive', 2);
+      const tr = insertStatus(editor, tokenPos(editor, status.id), 'inactive');
       setTokenFocus(tr, { focusedPos: null });
       editor.view.dispatch(tr);
     });

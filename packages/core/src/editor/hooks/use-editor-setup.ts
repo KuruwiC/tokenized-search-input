@@ -13,7 +13,6 @@ import {
   getEditorContext,
 } from '../../extensions/editor-context';
 import { KeyboardShortcutsExtension } from '../../extensions/keyboard-shortcuts';
-import { SpacerNode } from '../../extensions/spacer-node';
 import { TokenCommandsExtension } from '../../extensions/token-commands';
 import { TokenMetaExtension } from '../../extensions/token-meta';
 import { TokenNavigation } from '../../extensions/token-navigation';
@@ -82,7 +81,6 @@ export function useEditorSetup({
     Paragraph,
     Text,
     History,
-    SpacerNode,
     FilterTokenNode,
     FreeTextTokenNode,
     TokenNavigation,

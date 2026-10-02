@@ -17,9 +17,8 @@ describe('serializer', () => {
     it('parses simple filter query', () => {
       const doc = parseQueryToDoc('status:is:active', testFields);
       const content = doc.content?.[0]?.content;
-      // Spacer architecture: [spacer][token][spacer]
-      expect(content?.[0]?.type).toBe('spacer');
-      expect(content?.[1]).toMatchObject({
+      expect(content).toHaveLength(1);
+      expect(content?.[0]).toMatchObject({
         type: 'filterToken',
         attrs: {
           key: 'status',
@@ -27,14 +26,18 @@ describe('serializer', () => {
           value: 'active',
         },
       });
-      expect(content?.[2]?.type).toBe('spacer');
+    });
+
+    it('puts adjacent tokens next to each other with nothing between them', () => {
+      const doc = parseQueryToDoc('status:is:active status:is:inactive', testFields);
+      const content = doc.content?.[0]?.content;
+      expect(content?.map((node) => node.type)).toEqual(['filterToken', 'filterToken']);
     });
 
     it('parses filter with shorthand format', () => {
       const doc = parseQueryToDoc('status:active', testFields);
       const content = doc.content?.[0]?.content;
-      // Spacer architecture: [spacer][token][spacer]
-      expect(content?.[1]).toMatchObject({
+      expect(content?.[0]).toMatchObject({
         type: 'filterToken',
         attrs: {
           key: 'status',
@@ -47,8 +50,7 @@ describe('serializer', () => {
     it('parses filter with dot notation key', () => {
       const doc = parseQueryToDoc('user.email:contains:test', testFields);
       const content = doc.content?.[0]?.content;
-      // Spacer architecture: [spacer][token][spacer]
-      expect(content?.[1]).toMatchObject({
+      expect(content?.[0]).toMatchObject({
         type: 'filterToken',
         attrs: {
           key: 'user.email',
@@ -61,7 +63,7 @@ describe('serializer', () => {
     it('parses free text', () => {
       const doc = parseQueryToDoc('hello world', testFields);
       const content = doc.content?.[0]?.content;
-      // Free text in plain mode: [text][space][text] (no spacers for plain text)
+      // Free text in plain mode: [text][space][text]
       expect(content?.[0]).toMatchObject({
         type: 'text',
         text: 'hello',
@@ -79,20 +81,16 @@ describe('serializer', () => {
     it('parses mixed filter and free text', () => {
       const doc = parseQueryToDoc('status:is:active search term', testFields);
       const content = doc.content?.[0]?.content;
-      // Structure: [spacer][filterToken][spacer][text][space][text]
-      // Filter tokens get spacers on both sides, plain text does not
-      expect(content?.[0]?.type).toBe('spacer');
-      expect(content?.[1]?.type).toBe('filterToken');
-      expect(content?.[2]?.type).toBe('spacer');
-      expect(content?.[3]?.type).toBe('text');
-      expect(content?.[3]?.text).toBe('search');
+      // Structure: [filterToken][text][space][text]
+      expect(content?.[0]?.type).toBe('filterToken');
+      expect(content?.[1]?.type).toBe('text');
+      expect(content?.[1]?.text).toBe('search');
     });
 
     it('parses quoted text with escaped quotes', () => {
       const doc = parseQueryToDoc('"say \\"hello\\""', testFields, { freeTextMode: 'tokenize' });
       const content = doc.content?.[0]?.content;
-      // Spacer architecture: [spacer][freeTextToken][spacer]
-      expect(content?.[1]).toMatchObject({
+      expect(content?.[0]).toMatchObject({
         type: 'freeTextToken',
         attrs: {
           value: 'say "hello"',
@@ -104,8 +102,7 @@ describe('serializer', () => {
     it('parses quoted text with escaped backslash', () => {
       const doc = parseQueryToDoc('"path\\\\to\\\\file"', testFields, { freeTextMode: 'tokenize' });
       const content = doc.content?.[0]?.content;
-      // Spacer architecture: [spacer][freeTextToken][spacer]
-      expect(content?.[1]).toMatchObject({
+      expect(content?.[0]).toMatchObject({
         type: 'freeTextToken',
         attrs: {
           value: 'path\\to\\file',

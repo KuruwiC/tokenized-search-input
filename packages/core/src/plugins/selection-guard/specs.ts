@@ -9,21 +9,15 @@ import type { KeySpec } from '../../keyboard';
 import { and } from '../../keyboard';
 import {
   handleArrowMove,
-  handleBackspaceFromSpacer,
   handleBackspaceFromToken,
-  handleDeleteFromSpacer,
   handleDeleteFromToken,
   handleShiftArrowSelection,
 } from './handlers';
 import {
   hasShiftKey,
-  hasTokenAfterSpacer,
-  hasTokenBeforeSpacer,
   isEmptySelection,
   isTextSelection,
-  nodeAfterIsSpacer,
   nodeAfterIsToken,
-  nodeBeforeIsSpacer,
   nodeBeforeIsToken,
   tokenNotFocused,
 } from './predicates';
@@ -35,7 +29,7 @@ import type { SelectionGuardContext } from './types';
  * Order matters - more specific specs should come before general ones.
  */
 export const selectionGuardKeySpecs: readonly KeySpec<SelectionGuardContext>[] = [
-  // --- Shift+Arrow: Range selection (Spacer skip) ---
+  // --- Shift+Arrow: Range selection over whole tokens ---
   // Must come before regular arrow handling
   {
     key: 'ArrowLeft',
@@ -48,28 +42,14 @@ export const selectionGuardKeySpecs: readonly KeySpec<SelectionGuardContext>[] =
     action: handleShiftArrowSelection,
   },
 
-  // --- Backspace: Enter token from boundary ---
-  // Case 1: Cursor after spacer with token before it
-  {
-    key: 'Backspace',
-    when: and(isEmptySelection, nodeBeforeIsSpacer, hasTokenBeforeSpacer, tokenNotFocused),
-    action: handleBackspaceFromSpacer,
-  },
-  // Case 2: Cursor directly after token (exitTokenLeft skipped spacer)
+  // --- Backspace: Enter the token before the caret ---
   {
     key: 'Backspace',
     when: and(isEmptySelection, nodeBeforeIsToken, tokenNotFocused),
     action: handleBackspaceFromToken,
   },
 
-  // --- Delete: Enter token from boundary ---
-  // Case 1: Cursor before spacer with token after it
-  {
-    key: 'Delete',
-    when: and(isEmptySelection, nodeAfterIsSpacer, hasTokenAfterSpacer, tokenNotFocused),
-    action: handleDeleteFromSpacer,
-  },
-  // Case 2: Cursor directly before token (exitTokenRight skipped spacer)
+  // --- Delete: Enter the token after the caret ---
   {
     key: 'Delete',
     when: and(isEmptySelection, nodeAfterIsToken, tokenNotFocused),

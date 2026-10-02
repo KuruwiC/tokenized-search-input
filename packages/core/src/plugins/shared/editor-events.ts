@@ -12,7 +12,6 @@ import type { Transaction } from '@tiptap/pm/state';
  */
 export const EDITOR_EVENTS = {
   TOKEN_FOCUS_CHANGED: 'tokenFocusChanged',
-  DRAG_STATE_CHANGED: 'dragStateChanged',
 } as const;
 
 /**
@@ -20,13 +19,6 @@ export const EDITOR_EVENTS = {
  */
 export interface TokenFocusChangedEvent {
   focusedPos: number | null;
-}
-
-/**
- * Payload for drag state change events.
- */
-export interface DragStateChangedEvent {
-  isDragging: boolean;
 }
 
 /**
@@ -41,18 +33,4 @@ export function setTokenFocusEvent(tr: Transaction, focusedPos: number | null): 
  */
 export function getTokenFocusEvent(tr: Transaction): TokenFocusChangedEvent | undefined {
   return tr.getMeta(EDITOR_EVENTS.TOKEN_FOCUS_CHANGED);
-}
-
-/**
- * Set drag state changed event on a transaction.
- */
-export function setDragStateEvent(tr: Transaction, isDragging: boolean): void {
-  tr.setMeta(EDITOR_EVENTS.DRAG_STATE_CHANGED, { isDragging } satisfies DragStateChangedEvent);
-}
-
-/**
- * Get drag state changed event from a transaction.
- */
-export function getDragStateEvent(tr: Transaction): DragStateChangedEvent | undefined {
-  return tr.getMeta(EDITOR_EVENTS.DRAG_STATE_CHANGED);
 }

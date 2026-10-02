@@ -6,8 +6,6 @@ import type { KeyboardContext } from '../types';
 /**
  * Convert current word to freeTextToken.
  * Only applicable in tokenize mode.
- *
- * Note: insertFreeTextToken already adds spacer nodes: [spacer][token][spacer].
  */
 function tokenizeCurrentWordAsFreeText(ctx: KeyboardContext): boolean {
   const { editor } = ctx;

@@ -13,6 +13,8 @@ export interface RepairContext {
   readonly docChanged: boolean;
   readonly focusChanged: boolean;
   readonly isHistoryOperation: boolean;
+  /** The transactions being repaired, in the order they were applied. */
+  readonly transactions: readonly Transaction[];
 }
 
 /**

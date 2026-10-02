@@ -1,7 +1,7 @@
 /**
  * Integration tests for token-spacing-plugin.ts
  *
- * Tests spacer behavior and token cleanup with full editor context.
+ * Tests token cleanup and the word boundary a removed token leaves, with full editor context.
  * Note: enforceSelectionInvariant algorithm is tested in unit/selection-invariant.test.ts
  */
 import { cleanup, render, waitFor } from '@testing-library/react';
@@ -147,7 +147,7 @@ describe('TokenSpacingExtension - Integration Tests', () => {
       });
     });
 
-    it('replaces empty token with space when text exists on both sides', async () => {
+    it('leaves a space where a token between two words is removed', async () => {
       const ref = createRef<TokenizedSearchInputRef>();
 
       // Start with text on both sides of token
@@ -181,11 +181,8 @@ describe('TokenSpacingExtension - Integration Tests', () => {
       expect(tokenPos).not.toBeNull();
       if (tokenPos === null) return;
 
-      // Delete only the token (not spacers) - this simulates token removal
-      // The spacer cleanup should replace orphaned spacers with space when between text
       editor.commands.deleteRange({ from: tokenPos, to: tokenPos + tokenSize });
 
-      // Wait for cleanup - spacers between text should be replaced with space
       await waitFor(() => {
         const value = ref.current?.getValue();
         // After token removal, text should be preserved with space separator

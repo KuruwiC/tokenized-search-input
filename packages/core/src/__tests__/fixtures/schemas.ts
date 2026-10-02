@@ -7,21 +7,15 @@
 import { Schema } from '@tiptap/pm/model';
 
 /**
- * Minimal inline schema with spacer and token support.
+ * Minimal inline schema with token support.
  * Use for tests that work with flat document structure (no paragraphs).
  *
- * Document structure: doc > inline* (spacer, filterToken, freeTextToken, text)
+ * Document structure: doc > inline* (filterToken, freeTextToken, text)
  */
 export const inlineSchema = new Schema({
   nodes: {
     doc: { content: 'inline*' },
     text: { group: 'inline' },
-    spacer: {
-      group: 'inline',
-      inline: true,
-      atom: true,
-      selectable: false,
-    },
     filterToken: {
       group: 'inline',
       inline: true,
@@ -60,6 +54,7 @@ export const blockSchema = new Schema({
       inline: true,
       atom: true,
       attrs: {
+        id: { default: '' },
         key: { default: '' },
         operator: { default: 'is' },
         value: { default: '' },

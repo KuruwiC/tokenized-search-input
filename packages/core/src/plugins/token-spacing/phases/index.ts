@@ -1,9 +1,7 @@
 import type { DocumentRepairPhase } from '../types';
-import { adjacentTextRepairPhase } from './adjacent-text-repair';
 import { emptyTokenCleanupPhase } from './empty-token-cleanup';
 import { historyEmptyTokenFocusPhase } from './history-empty-token-focus';
-import { missingSpacerRepairPhase } from './missing-spacer-repair';
-import { orphanedSpacerCleanupPhase } from './orphaned-spacer-cleanup';
+import { wordBoundaryPhase } from './word-boundary';
 
 /**
  * Document repair phases in execution order.
@@ -12,22 +10,13 @@ import { orphanedSpacerCleanupPhase } from './orphaned-spacer-cleanup';
  * 0. History empty token focus - must run FIRST to focus restored empty tokens
  *    (before cleanup phases try to process them)
  * 1. Empty token cleanup - removes empty tokens when focus moves away
- * 2. Orphaned spacer cleanup - cleans up spacers left behind
- * 3. Missing spacer repair - ensures all tokens have spacers
- * 4. Adjacent text repair - ensures proper text separation
+ * 2. Word boundary - keeps apart the words a removed token separated, including
+ *    the ones the cleanup above just brought together
  */
 export const documentRepairPhases: DocumentRepairPhase[] = [
   historyEmptyTokenFocusPhase,
   emptyTokenCleanupPhase,
-  orphanedSpacerCleanupPhase,
-  missingSpacerRepairPhase,
-  adjacentTextRepairPhase,
+  wordBoundaryPhase,
 ];
 
-export {
-  historyEmptyTokenFocusPhase,
-  emptyTokenCleanupPhase,
-  orphanedSpacerCleanupPhase,
-  missingSpacerRepairPhase,
-  adjacentTextRepairPhase,
-};
+export { historyEmptyTokenFocusPhase, emptyTokenCleanupPhase, wordBoundaryPhase };

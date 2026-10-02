@@ -8,9 +8,7 @@
 export { SelectionInvariantExtension, selectionInvariantKey } from './selection-invariant-plugin';
 export {
   type DocumentRepairPhase,
-  enforceSelectionInvariant,
   type RepairContext,
-  type SelectionAction,
   TokenSpacingExtension,
   tokenSpacingKey,
 } from './token-spacing';
