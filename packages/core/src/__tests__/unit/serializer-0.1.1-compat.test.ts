@@ -34,7 +34,7 @@ describe('serializer output compared with 0.1.1', () => {
   });
 
   it.each(cases)('$name: $input', ({ input, options, tokens, serialized }) => {
-    const doc = parseQueryToDoc(input, fields, parseOptions(options));
+    const doc = parseQueryToDoc(input, fields, parseOptions(options)).doc;
 
     expect(tokenSequence(doc)).toEqual(tokens);
     expect(serializeDocToQuery(doc, { delimiter: options.delimiter })).toBe(serialized);

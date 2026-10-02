@@ -115,7 +115,7 @@ export function useEditorSetup({
           freeTextMode: initialContext.freeTextMode,
           unknownFields: initialContext.unknownFields,
           delimiter: initialContext.delimiter,
-        })
+        }).doc
       : ''
   );
 

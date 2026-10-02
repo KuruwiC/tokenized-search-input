@@ -2,8 +2,10 @@ import { Fragment, type Node as ProseMirrorNode, type Schema, Slice } from '@tip
 import type { Transaction } from '@tiptap/pm/state';
 import type { DeserializeTextFn } from '../../extensions/editor-context';
 import {
+  emptyDiagnostics,
+  type ParseDiagnostics,
   type ParseQueryStringResult,
-  parseQueryStringWithInfo,
+  parseQueryString,
   parseTokenText,
   type SerializedToken,
 } from '../../serializer';
@@ -27,9 +29,9 @@ function parse(text: string, ctx: TokenizeContext): ParseQueryStringResult {
     const tokens: SerializedToken[] = custom.map((token) =>
       token.type === 'freeText' ? { ...token, quoted: false } : token
     );
-    return { tokens, hasIncompleteQuote: false };
+    return { tokens, diagnostics: emptyDiagnostics() };
   }
-  return parseQueryStringWithInfo(text, ctx.fields, {
+  return parseQueryString(text, ctx.fields, {
     unknownFields: ctx.unknownFields,
     delimiter: ctx.delimiter,
   });
@@ -86,6 +88,12 @@ function keepEdgeWhitespace(nodes: ProseMirrorNode[], text: string, schema: Sche
   if (trail && last?.isText) nodes[nodes.length - 1] = schema.text(last.text + trail);
 }
 
+/** An open quote runs to the end of the text, so it is the last token's when that is quoted free text. */
+function quoteOpenAtEnd(tokens: SerializedToken[], diagnostics: ParseDiagnostics): boolean {
+  const last = tokens[tokens.length - 1];
+  return diagnostics.incompleteQuote && last?.type === 'freeText' && last.quoted;
+}
+
 function focusLastQuotedToken(
   tr: Transaction,
   from: number,
@@ -115,7 +123,7 @@ function tokenizeRun(
   focus: FocusTransitionContext | undefined
 ): boolean {
   const { schema } = tr.doc.type;
-  const { tokens, hasIncompleteQuote } = parse(run.text, ctx);
+  const { tokens, diagnostics } = parse(run.text, ctx);
   const nodes = toNodes(tokens, schema, ctx);
   if (!nodes.some(isToken)) return false;
   keepEdgeWhitespace(nodes, run.text, schema);
@@ -132,7 +140,12 @@ function tokenizeRun(
   const caretInRun = caret > run.from && caret <= run.to;
   const content = after.cut(start, end.b + overlap);
   tr.replace(run.from + start, run.from + end.a + overlap, new Slice(content, 0, 0));
-  if (focus && hasIncompleteQuote && caretInRun && ctx.freeTextMode === 'tokenize') {
+  if (
+    focus &&
+    quoteOpenAtEnd(tokens, diagnostics) &&
+    caretInRun &&
+    ctx.freeTextMode === 'tokenize'
+  ) {
     focusLastQuotedToken(tr, run.from + start, run.from + start + content.size, focus);
   }
   return true;

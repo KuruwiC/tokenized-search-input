@@ -101,7 +101,7 @@ export function useTokenizedSearchInputRef(
         freeTextMode: context.freeTextMode,
         unknownFields: context.unknownFields,
         delimiter: context.delimiter,
-      });
+      }).doc;
     };
     /** The document after the held calls. */
     const readDoc = (ed: Editor): JSONContent => {

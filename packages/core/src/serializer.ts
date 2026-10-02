@@ -5,7 +5,7 @@ import {
   type ParsedFreeTextToken,
 } from './plugins/auto-tokenize/free-text-strategy';
 import { getTokenMeta } from './plugins/token-meta-plugin';
-import { resolveTokenValue } from './serializer/resolve-token-value';
+import { knownOperators, readWord } from './serializer/read-word';
 import { filterSegment, freeTextSegment } from './serializer/segments';
 import { splitAtDelimiter, tokenizeQuery } from './serializer/tokenize';
 import { createFilterTokenAttrs } from './tokens/filter-token/create-attrs';
@@ -20,7 +20,6 @@ import {
 } from './types';
 import { NODE_TYPE_NAMES } from './utils/node-predicates';
 import { type NodeVisitor, visitDocument } from './utils/node-visitor';
-import { resolveField } from './utils/resolve-field';
 import { ensureTokenId } from './utils/token-id';
 
 export interface ParseOptions {
@@ -35,14 +34,19 @@ export interface ParseOptions {
   delimiter?: string;
 }
 
+export interface ParsedQuery {
+  doc: JSONContent;
+  diagnostics: ParseDiagnostics;
+}
+
 export function parseQueryToDoc(
   query: string,
   fields: FieldDefinition[],
   options: ParseOptions = {}
-): JSONContent {
+): ParsedQuery {
   const freeTextMode: FreeTextMode = options.freeTextMode ?? 'plain';
   const delimiter = options.delimiter ?? DEFAULT_TOKEN_DELIMITER;
-  const tokens = parseQueryString(query, fields, {
+  const { tokens, diagnostics } = parseQueryString(query, fields, {
     unknownFields: options.unknownFields,
     delimiter,
   });
@@ -80,13 +84,16 @@ export function parseQueryToDoc(
   });
 
   return {
-    type: 'doc',
-    content: [
-      {
-        type: 'paragraph',
-        content: content.length > 0 ? content : undefined,
-      },
-    ],
+    doc: {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: content.length > 0 ? content : undefined,
+        },
+      ],
+    },
+    diagnostics,
   };
 }
 
@@ -139,58 +146,52 @@ export function parseTokenText(
   const { key, rest } = splitAtDelimiter(text, delimiter);
   if (key === null) return null;
 
-  const field = resolveField({ fields, unknownFields: options?.unknownFields }, key);
-  if (!field) return null;
-
-  const separator = rest.indexOf(delimiter);
-  const operator = separator < 0 ? undefined : rest.slice(0, separator);
-  if (operator !== undefined && (field.operators as readonly string[]).includes(operator)) {
-    return {
-      key,
-      operator,
-      value: resolveTokenValue(field, rest.slice(separator + 1)),
-    };
-  }
-
-  return {
-    key,
-    operator: field.operators[0],
-    value: resolveTokenValue(field, rest),
-  };
+  const reading = readWord(
+    { key, rest },
+    { fields, unknownFields: options?.unknownFields },
+    delimiter,
+    knownOperators(fields, options?.unknownFields)
+  );
+  if (reading?.type !== 'filter') return null;
+  return { key: reading.key, operator: reading.operator, value: reading.value };
 }
 
 export type SerializedToken = FilterToken | ParsedFreeTextToken;
 
+/** What a query held that could not be read as it was written. */
+export interface ParseDiagnostics {
+  /** A quote was left open and runs to the end of the query. */
+  incompleteQuote: boolean;
+  /** Keys that start a segment as `key<delimiter>` and match no field, each once. These stay free text unless `unknownFields` allows them. */
+  unknownFields: string[];
+  /** Operators the editor knows that the field of the key does not allow, each pair once. The tokens keep them and are marked invalid by validation. */
+  unknownOperators: { key: string; operator: string }[];
+}
+
+export function emptyDiagnostics(): ParseDiagnostics {
+  return { incompleteQuote: false, unknownFields: [], unknownOperators: [] };
+}
+
 export interface ParseQueryStringResult {
   tokens: Array<SerializedToken>;
-  hasIncompleteQuote: boolean;
-  incompleteQuoteValue?: string;
+  diagnostics: ParseDiagnostics;
 }
 
 export function parseQueryString(
   query: string,
   fields: FieldDefinition[],
   options?: ParseOptions
-): Array<SerializedToken> {
-  return parseQueryStringWithInfo(query, fields, options).tokens;
-}
-
-export function parseQueryStringWithInfo(
-  query: string,
-  fields: FieldDefinition[],
-  options?: ParseOptions
 ): ParseQueryStringResult {
   const tokens: Array<SerializedToken> = [];
-  let hasIncompleteQuote = false;
-  let incompleteQuoteValue: string | undefined;
+  const diagnostics = emptyDiagnostics();
   const delimiter = options?.delimiter ?? DEFAULT_TOKEN_DELIMITER;
+  const source = { fields, unknownFields: options?.unknownFields };
+  const known = knownOperators(fields, options?.unknownFields);
 
   for (const segment of tokenizeQuery(query, delimiter)) {
+    if (!segment.closed) diagnostics.incompleteQuote = true;
+
     if (segment.type === 'quoted') {
-      if (!segment.closed) {
-        hasIncompleteQuote = true;
-        incompleteQuoteValue = segment.value;
-      }
       tokens.push({
         type: 'freeText',
         value: segment.value,
@@ -200,23 +201,32 @@ export function parseQueryStringWithInfo(
       continue;
     }
 
-    const parsed = parseTokenText(segment.raw, fields, {
-      unknownFields: options?.unknownFields,
-      delimiter: options?.delimiter,
-    });
-    if (parsed?.value) {
+    const reading =
+      segment.key === null
+        ? null
+        : readWord({ key: segment.key, rest: segment.rest }, source, delimiter, known);
+    if (reading?.type === 'filter' && reading.value) {
       tokens.push({
         type: 'filter',
-        key: parsed.key,
-        operator: parsed.operator,
-        value: parsed.value,
+        key: reading.key,
+        operator: reading.operator,
+        value: reading.value,
       });
-    } else {
-      tokens.push({ type: 'freeText', value: segment.raw, quoted: false });
+      if (reading.unknownOperator) {
+        const { key, operator } = reading;
+        if (!diagnostics.unknownOperators.some((o) => o.key === key && o.operator === operator)) {
+          diagnostics.unknownOperators.push({ key, operator });
+        }
+      }
+      continue;
     }
+    if (reading?.type === 'unknownField' && !diagnostics.unknownFields.includes(reading.key)) {
+      diagnostics.unknownFields.push(reading.key);
+    }
+    tokens.push({ type: 'freeText', value: segment.raw, quoted: false });
   }
 
-  return { tokens, hasIncompleteQuote, incompleteQuoteValue };
+  return { tokens, diagnostics };
 }
 
 export interface CreateQuerySnapshotOptions {

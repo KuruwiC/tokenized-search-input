@@ -201,16 +201,24 @@ describe('Config API', () => {
       });
     });
 
-    it('rejects operators outside unknownFields.operators', async () => {
+    it('keeps an operator outside unknownFields.operators and marks the token invalid', async () => {
       const ref = renderWithRef({
         defaultValue: 'custom:is:value',
         unknownFields: { operators: ['contains'] },
       });
 
       await waitFor(() => expect(document.querySelectorAll('.node-filterToken')).toHaveLength(1));
-      expect(filterSegments(ref)).toMatchObject([
-        { key: 'custom', operator: 'contains', value: 'is:value' },
-      ]);
+      await waitFor(() =>
+        expect(filterSegments(ref)).toMatchObject([
+          {
+            key: 'custom',
+            operator: 'is',
+            value: 'value',
+            invalid: true,
+            invalidReason: 'unknown-operator',
+          },
+        ])
+      );
     });
 
     it('hides the operator of unknown fields when hideSingleOperator is set and one operator exists', async () => {

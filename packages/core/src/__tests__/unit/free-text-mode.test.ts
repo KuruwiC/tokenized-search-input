@@ -24,7 +24,7 @@ const schema = getSchema([
 const QUERY = 'status:is:active hello "big world"';
 
 function switchMode(from: FreeTextMode, to: FreeTextMode) {
-  const doc = schema.nodeFromJSON(parseQueryToDoc(QUERY, basicFields, { freeTextMode: from }));
+  const doc = schema.nodeFromJSON(parseQueryToDoc(QUERY, basicFields, { freeTextMode: from }).doc);
   const { tr } = EditorState.create({ doc });
   applyFreeTextMode(tr, createEditorContext({ fields: basicFields, freeTextMode: to }));
   return { before: doc, after: tr.doc };

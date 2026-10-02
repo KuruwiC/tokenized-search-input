@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DATE_VALUE_RULE_ID } from '../../plugins/validation/date-value-rule';
 import { FIELD_VALIDATE_RULE_ID } from '../../plugins/validation/field-validate-rule';
 import { createImplicitRules } from '../../plugins/validation/implicit-rules';
+import { UNKNOWN_OPERATOR_RULE_ID } from '../../plugins/validation/unknown-operator-rule';
 import type { FieldDefinition, ValidationContext } from '../../types';
 
 const emailField: FieldDefinition = {
@@ -169,5 +170,59 @@ describe('implicit validation of dates', () => {
 
   it('do not check a string field', () => {
     expect(violationsFor({ ...emailField, validate: undefined }, '2024')).toEqual([]);
+  });
+});
+
+describe('implicit validation of operators', () => {
+  const field: FieldDefinition = {
+    key: 'status',
+    label: 'Status',
+    type: 'string',
+    operators: ['is', 'is_not'],
+  };
+  const rules = createImplicitRules({ fields: [field], unknownFields: undefined });
+  const contextOf = (key: string, operator: string): ValidationContext => ({
+    tokens: [{ id: 't1', type: 'filter', key, operator, value: 'x', rawValue: 'x' }],
+    fields: [field],
+    editingTokenIds: new Set(),
+    focusedTokenId: null,
+    isEditing: () => false,
+    before: () => undefined,
+    fieldOf: () => field,
+  });
+
+  it('include the rule', () => {
+    expect(rules.map((rule) => rule.id)).toContain(UNKNOWN_OPERATOR_RULE_ID);
+  });
+
+  it('mark a token whose operator the field does not allow', () => {
+    const violations = rules.flatMap((rule) => rule.validate(contextOf('status', 'contains')));
+
+    expect(violations).toEqual([
+      {
+        ruleId: UNKNOWN_OPERATOR_RULE_ID,
+        reason: 'unknown-operator',
+        message: 'Operator "contains" is not available for Status',
+        action: 'mark',
+        targets: [{ tokenId: 't1' }],
+      },
+    ]);
+  });
+
+  it('leave an allowed operator and a key without a field unmarked', () => {
+    expect(rules.flatMap((rule) => rule.validate(contextOf('status', 'is_not')))).toEqual([]);
+    expect(rules.flatMap((rule) => rule.validate(contextOf('other', 'contains')))).toEqual([]);
+  });
+
+  it('use the operators of the unknown field template', () => {
+    const withTemplate = createImplicitRules({
+      fields: [field],
+      unknownFields: { operators: ['is'] },
+    });
+
+    expect(
+      withTemplate.flatMap((rule) => rule.validate(contextOf('other', 'contains')))
+    ).toHaveLength(1);
+    expect(withTemplate.flatMap((rule) => rule.validate(contextOf('other', 'is')))).toEqual([]);
   });
 });

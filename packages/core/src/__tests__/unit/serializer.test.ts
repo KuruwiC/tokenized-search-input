@@ -8,14 +8,14 @@ const testFields = fieldsWithDotNotation;
 describe('serializer', () => {
   describe('parseQueryToDoc', () => {
     it('parses empty query', () => {
-      const doc = parseQueryToDoc('', testFields);
+      const doc = parseQueryToDoc('', testFields).doc;
       expect(doc.type).toBe('doc');
       expect(doc.content?.[0]?.type).toBe('paragraph');
       expect(doc.content?.[0]?.content).toBeUndefined();
     });
 
     it('parses simple filter query', () => {
-      const doc = parseQueryToDoc('status:is:active', testFields);
+      const doc = parseQueryToDoc('status:is:active', testFields).doc;
       const content = doc.content?.[0]?.content;
       expect(content).toHaveLength(1);
       expect(content?.[0]).toMatchObject({
@@ -29,13 +29,13 @@ describe('serializer', () => {
     });
 
     it('puts adjacent tokens next to each other with nothing between them', () => {
-      const doc = parseQueryToDoc('status:is:active status:is:inactive', testFields);
+      const doc = parseQueryToDoc('status:is:active status:is:inactive', testFields).doc;
       const content = doc.content?.[0]?.content;
       expect(content?.map((node) => node.type)).toEqual(['filterToken', 'filterToken']);
     });
 
     it('parses filter with shorthand format', () => {
-      const doc = parseQueryToDoc('status:active', testFields);
+      const doc = parseQueryToDoc('status:active', testFields).doc;
       const content = doc.content?.[0]?.content;
       expect(content?.[0]).toMatchObject({
         type: 'filterToken',
@@ -48,7 +48,7 @@ describe('serializer', () => {
     });
 
     it('parses filter with dot notation key', () => {
-      const doc = parseQueryToDoc('user.email:contains:test', testFields);
+      const doc = parseQueryToDoc('user.email:contains:test', testFields).doc;
       const content = doc.content?.[0]?.content;
       expect(content?.[0]).toMatchObject({
         type: 'filterToken',
@@ -61,7 +61,7 @@ describe('serializer', () => {
     });
 
     it('parses free text', () => {
-      const doc = parseQueryToDoc('hello world', testFields);
+      const doc = parseQueryToDoc('hello world', testFields).doc;
       const content = doc.content?.[0]?.content;
       // Free text in plain mode: [text][space][text]
       expect(content?.[0]).toMatchObject({
@@ -79,7 +79,7 @@ describe('serializer', () => {
     });
 
     it('parses mixed filter and free text', () => {
-      const doc = parseQueryToDoc('status:is:active search term', testFields);
+      const doc = parseQueryToDoc('status:is:active search term', testFields).doc;
       const content = doc.content?.[0]?.content;
       // Structure: [filterToken][text][space][text]
       expect(content?.[0]?.type).toBe('filterToken');
@@ -88,7 +88,9 @@ describe('serializer', () => {
     });
 
     it('parses quoted text with escaped quotes', () => {
-      const doc = parseQueryToDoc('"say \\"hello\\""', testFields, { freeTextMode: 'tokenize' });
+      const doc = parseQueryToDoc('"say \\"hello\\""', testFields, {
+        freeTextMode: 'tokenize',
+      }).doc;
       const content = doc.content?.[0]?.content;
       expect(content?.[0]).toMatchObject({
         type: 'freeTextToken',
@@ -100,7 +102,9 @@ describe('serializer', () => {
     });
 
     it('parses quoted text with escaped backslash', () => {
-      const doc = parseQueryToDoc('"path\\\\to\\\\file"', testFields, { freeTextMode: 'tokenize' });
+      const doc = parseQueryToDoc('"path\\\\to\\\\file"', testFields, {
+        freeTextMode: 'tokenize',
+      }).doc;
       const content = doc.content?.[0]?.content;
       expect(content?.[0]).toMatchObject({
         type: 'freeTextToken',
@@ -113,20 +117,20 @@ describe('serializer', () => {
   });
 
   describe('parseQueryToDoc with unknownFields', () => {
-    function filterAttrs(doc: ReturnType<typeof parseQueryToDoc>) {
+    function filterAttrs(doc: ReturnType<typeof parseQueryToDoc>['doc']) {
       return (doc.content?.[0]?.content ?? [])
         .filter((node) => node.type === 'filterToken')
         .map((node) => node.attrs);
     }
 
     it('does not tokenize unknown fields when unknownFields is not provided', () => {
-      expect(filterAttrs(parseQueryToDoc('custom:value', testFields))).toEqual([]);
+      expect(filterAttrs(parseQueryToDoc('custom:value', testFields).doc)).toEqual([]);
     });
 
     it('tokenizes unknown fields with the template operators', () => {
       const doc = parseQueryToDoc('custom:value', testFields, {
         unknownFields: { operators: ['contains'] },
-      });
+      }).doc;
 
       expect(filterAttrs(doc)).toMatchObject([
         { key: 'custom', operator: 'contains', value: 'value' },
@@ -329,13 +333,23 @@ describe('serializer', () => {
       });
     });
 
-    it('keeps the delimiter inside the value when the operator is not allowed for unknown fields', () => {
+    it('keeps an operator the editor knows when it is not allowed for unknown fields', () => {
       const options = { unknownFields: { operators: ['contains'] as const } };
 
       expect(parseTokenText('custom:gt:5', testFields, options)).toEqual({
         key: 'custom',
+        operator: 'gt',
+        value: '5',
+      });
+    });
+
+    it('keeps the delimiter inside the value when the word after the key is no known operator', () => {
+      const options = { unknownFields: { operators: ['contains'] as const } };
+
+      expect(parseTokenText('custom:10:30', testFields, options)).toEqual({
+        key: 'custom',
         operator: 'contains',
-        value: 'gt:5',
+        value: '10:30',
       });
     });
   });
