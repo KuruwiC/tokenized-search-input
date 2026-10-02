@@ -1,6 +1,13 @@
 import type { JSONContent } from '@tiptap/core';
 import type { Editor } from '@tiptap/react';
-import { type ForwardedRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
+import {
+  type ForwardedRef,
+  type MutableRefObject,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from 'react';
 import { getEditorContext } from '../../extensions/editor-context';
 import { FORCE_VALIDATION_CHECK } from '../../plugins/validation-plugin';
 import { createQuerySnapshot, parseQueryToDoc, serializeDocToQuery } from '../../serializer';
@@ -32,29 +39,29 @@ export interface UseTokenizedSearchInputRefOptions {
   onSubmit: ((snapshot: QuerySnapshot) => void) | undefined;
 }
 
+interface PendingHandleWrites {
+  doc: JSONContent | null;
+  focus: boolean;
+}
+
+export interface TokenizedSearchInputHandle {
+  submit: () => void;
+  pending: MutableRefObject<PendingHandleWrites>;
+}
+
 /**
- * Builds the imperative handle and returns the submit action the handle exposes.
+ * Builds the imperative handle.
  *
  * An ancestor's effect in the same commit can call the handle while `editor` is
  * still a destroyed instance. Writes made then are held as a pending document, read
- * back by `getValue`, `getSnapshot` and `submit`, and applied once the live editor
- * renders.
+ * back by `getValue`, `getSnapshot` and `submit`, and applied by
+ * `useApplyPendingHandleWrites` once the live editor renders.
  */
 export function useTokenizedSearchInputRef(
   ref: ForwardedRef<TokenizedSearchInputRef>,
   { editor, onSubmit }: UseTokenizedSearchInputRefOptions
-): () => void {
-  const pendingHandleRef = useRef<{ doc: JSONContent | null; focus: boolean }>({
-    doc: null,
-    focus: false,
-  });
-  useEffect(() => {
-    if (!editor || editor.isDestroyed) return;
-    const { doc, focus } = pendingHandleRef.current;
-    pendingHandleRef.current = { doc: null, focus: false };
-    if (doc) setContentAndValidate(editor, doc);
-    if (focus) editor.commands.focus();
-  }, [editor]);
+): TokenizedSearchInputHandle {
+  const pendingHandleRef = useRef<PendingHandleWrites>({ doc: null, focus: false });
 
   const submit = useCallback(() => {
     if (!editor) return;
@@ -141,5 +148,24 @@ export function useTokenizedSearchInputRef(
     };
   }, [editor, submit]);
 
-  return submit;
+  return { submit, pending: pendingHandleRef };
+}
+
+/**
+ * Applies the writes held while the editor was destroyed. Call it after every other
+ * hook that attaches to the editor: the write sets content, validates and focuses,
+ * so it has to see the configuration synced from the current props, the focus
+ * listeners and the suggestion scheduling already in place.
+ */
+export function useApplyPendingHandleWrites(
+  editor: Editor | null,
+  pending: MutableRefObject<PendingHandleWrites>
+): void {
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    const { doc, focus } = pending.current;
+    pending.current = { doc: null, focus: false };
+    if (doc) setContentAndValidate(editor, doc);
+    if (focus) editor.commands.focus();
+  }, [editor, pending]);
 }

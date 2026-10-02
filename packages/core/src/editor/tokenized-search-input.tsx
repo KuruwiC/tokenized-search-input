@@ -10,7 +10,10 @@ import { useEditorSetup } from './hooks/use-editor-setup';
 import { useFocusWiring } from './hooks/use-focus-wiring';
 import { useSuggestionHandlers } from './hooks/use-suggestion-handlers';
 import { useSuggestionScheduling } from './hooks/use-suggestion-scheduling';
-import { useTokenizedSearchInputRef } from './hooks/use-tokenized-search-input-ref';
+import {
+  useApplyPendingHandleWrites,
+  useTokenizedSearchInputRef,
+} from './hooks/use-tokenized-search-input-ref';
 import { SuggestionAria } from './suggestion-aria';
 import type {
   TokenizedSearchInputProps,
@@ -84,7 +87,10 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       updateSuggestions,
     });
 
-    const handleSubmit = useTokenizedSearchInputRef(ref, { editor, onSubmit });
+    const { submit: handleSubmit, pending } = useTokenizedSearchInputRef(ref, {
+      editor,
+      onSubmit,
+    });
     useEditorConfigSync(editor, config, {
       onFieldSelect: handleFieldSelect,
       onValueSelect: handleValueSelect,
@@ -108,6 +114,8 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       expandOnFocus,
       isInputFocused,
     });
+    // Last on purpose: see useApplyPendingHandleWrites.
+    useApplyPendingHandleWrites(editor, pending);
 
     const containerElement = (
       <div
