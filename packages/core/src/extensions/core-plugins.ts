@@ -2,7 +2,7 @@ import { Extension } from '@tiptap/core';
 import { createSelectionGuardPlugin } from '../plugins/selection-guard-plugin';
 import { createSuggestionPlugin } from '../plugins/suggestion-plugin';
 import { createTokenFocusPlugin } from '../plugins/token-focus-plugin';
-import { getEditorContext, resolveField } from './editor-context';
+import { getEditorContext, getFocusContext, resolveField } from './editor-context';
 
 /** The low priority keeps these plugins behind every other extension's, so they see transactions last. */
 export const CorePluginsExtension = Extension.create({
@@ -19,7 +19,7 @@ export const CorePluginsExtension = Extension.create({
     return [
       createTokenFocusPlugin(),
       createSuggestionPlugin({ resolveField: resolveFieldOfEditor }),
-      createSelectionGuardPlugin(),
+      createSelectionGuardPlugin((state) => getFocusContext(editor, state)),
     ];
   },
 });

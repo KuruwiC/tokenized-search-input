@@ -1,8 +1,10 @@
-import { Extension } from '@tiptap/core';
+import { type Editor, Extension } from '@tiptap/core';
+import type { EditorState } from '@tiptap/pm/state';
 import { getFreeTextStrategy } from '../plugins/auto-tokenize/free-text-strategy';
 import { autoTokenizeKey, createAutoTokenizePlugin } from '../plugins/auto-tokenize/plugin';
 import { tokenizeRange } from '../plugins/auto-tokenize/tokenize-range';
 import { createFreeTextSanitizerPlugin } from '../plugins/free-text-sanitizer-plugin';
+import type { FocusTransitionContext } from '../plugins/token-focus-plugin';
 import { createQuerySnapshot } from '../serializer';
 import {
   type ClassNames,
@@ -222,6 +224,14 @@ export function getEditorContext(editor: object): EditorContextStorage {
   return context;
 }
 
+/** What a focus transition in a transaction from `state` of `editor` needs to know. */
+export function getFocusContext(
+  editor: Editor,
+  state: EditorState = editor.state
+): FocusTransitionContext {
+  return { state, source: getEditorContext(editor), editable: editor.isEditable };
+}
+
 export const EditorContextExtension = Extension.create<EditorContextOptions, EditorContextStorage>({
   name: 'editorContext',
 
@@ -265,7 +275,10 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
           }
 
           if (action === 'tokenize') {
-            if (dispatch && tokenizeRange(tr, 0, tr.doc.content.size, storage)) {
+            if (
+              dispatch &&
+              tokenizeRange(tr, 0, tr.doc.content.size, storage, getFocusContext(editor))
+            ) {
               tr.setMeta(autoTokenizeKey, true);
             }
             return true;
@@ -326,13 +339,16 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
   addProseMirrorPlugins() {
     return [
       // Auto-tokenize runs first: converts text to tokens
-      createAutoTokenizePlugin(() => ({
-        fields: this.storage.fields,
-        freeTextMode: this.storage.freeTextMode,
-        unknownFields: this.storage.unknownFields,
-        deserializeText: this.storage.deserializeText,
-        delimiter: this.storage.delimiter,
-      })),
+      createAutoTokenizePlugin(
+        () => ({
+          fields: this.storage.fields,
+          freeTextMode: this.storage.freeTextMode,
+          unknownFields: this.storage.unknownFields,
+          deserializeText: this.storage.deserializeText,
+          delimiter: this.storage.delimiter,
+        }),
+        (state) => getFocusContext(this.editor, state)
+      ),
       // Sanitizer runs second: removes remaining free text in 'none' mode
       createFreeTextSanitizerPlugin(() => ({
         freeTextMode: this.storage.freeTextMode,

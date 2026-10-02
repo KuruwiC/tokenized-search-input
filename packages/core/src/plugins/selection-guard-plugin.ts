@@ -8,7 +8,7 @@
  */
 
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
-import { Plugin, TextSelection } from '@tiptap/pm/state';
+import { type EditorState, Plugin, TextSelection } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { runKeyHandlers } from '../keyboard';
@@ -20,7 +20,11 @@ import { handleShiftClickSelection } from './selection-guard/shift-click-handler
 import { selectionGuardKeySpecs } from './selection-guard/specs';
 import { buildSelectionGuardContext } from './selection-guard/types';
 import { markAsGuarded } from './selection-guard/utils';
-import { getFocusedToken, setTokenFocus } from './token-focus-plugin';
+import {
+  type FocusTransitionContext,
+  getFocusedToken,
+  leaveFocusedTokenIn,
+} from './token-focus-plugin';
 
 export type { SelectionGuardState } from './selection-guard/plugin-key';
 export { selectionGuardKey } from './selection-guard/plugin-key';
@@ -94,17 +98,21 @@ function setPress(view: EditorView, pressPos: number | null): void {
   view.dispatch(tr);
 }
 
-function placeCaretAtPress(view: EditorView): void {
+type GetFocusContext = (state: EditorState) => FocusTransitionContext;
+
+function placeCaretAtPress(view: EditorView, getFocusContext: GetFocusContext): void {
   const pressPos = selectionGuardKey.getState(view.state)?.pressPos;
   if (pressPos == null) return;
   const tr = view.state.tr;
-  setTokenFocus(tr, null);
+  leaveFocusedTokenIn(tr, getFocusContext(view.state));
   tr.setSelection(TextSelection.create(tr.doc, nearestValidCaret(tr.doc, pressPos, 1)));
   view.dispatch(markAsGuarded(tr));
   view.focus();
 }
 
-export function createSelectionGuardPlugin(): Plugin<SelectionGuardState> {
+export function createSelectionGuardPlugin(
+  getFocusContext: GetFocusContext
+): Plugin<SelectionGuardState> {
   return new Plugin<SelectionGuardState>({
     key: selectionGuardKey,
 
@@ -207,12 +215,9 @@ export function createSelectionGuardPlugin(): Plugin<SelectionGuardState> {
           if (!event.shiftKey) {
             if (isPaddingClick(view, event)) {
               event.preventDefault();
-              const { doc } = view.state;
-              const $first = doc.resolve(1);
-              const targetPos = $first.end();
               const tr = view.state.tr;
-              setTokenFocus(tr, null);
-              tr.setSelection(TextSelection.create(doc, targetPos));
+              leaveFocusedTokenIn(tr, getFocusContext(view.state));
+              tr.setSelection(TextSelection.create(tr.doc, tr.doc.resolve(1).end()));
               view.dispatch(markAsGuarded(tr));
               view.focus();
               return true;
@@ -261,7 +266,7 @@ export function createSelectionGuardPlugin(): Plugin<SelectionGuardState> {
                 view.dispatch(tr);
               },
               onDragEnd: (wasDrag) => {
-                if (!wasDrag && !onToken) placeCaretAtPress(view);
+                if (!wasDrag && !onToken) placeCaretAtPress(view, getFocusContext);
               },
               onCleanup: () => {
                 setPress(view, null);
@@ -282,7 +287,7 @@ export function createSelectionGuardPlugin(): Plugin<SelectionGuardState> {
 
         if (getFocusedToken(view.state) !== null) return false;
 
-        const ctx = buildSelectionGuardContext(view, event);
+        const ctx = buildSelectionGuardContext(view, event, getFocusContext(view.state));
         return runKeyHandlers(selectionGuardKeySpecs, event.key, ctx);
       },
     },

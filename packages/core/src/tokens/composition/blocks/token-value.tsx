@@ -28,7 +28,6 @@ export interface TokenValueProps {
   ariaLabel?: string;
   onFocus?: () => void;
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
-  onConfirm?: () => void;
   inputRef?: React.RefObject<HTMLInputElement | null>;
   /** Content to display before the value (e.g., icon) */
   startContent?: React.ReactNode;
@@ -61,7 +60,6 @@ export function TokenValue({
   ariaLabel = 'Value',
   onFocus,
   onBlur,
-  onConfirm,
   inputRef: externalInputRef,
   startContent,
   endContent,
@@ -183,11 +181,7 @@ export function TokenValue({
           const { atStart, atEnd } = getCursorState();
           if (atEnd) {
             e.preventDefault();
-            if (onConfirm) {
-              onConfirm();
-            } else {
-              exitToken();
-            }
+            exitToken();
             return true;
           }
           // Non-end position: check if custom handler allows the space
@@ -207,11 +201,7 @@ export function TokenValue({
         if (currentFocusId !== 'value') return false;
         if (e.nativeEvent.isComposing) return false;
         e.preventDefault();
-        if (onConfirm) {
-          onConfirm();
-        } else {
-          exitToken();
-        }
+        exitToken();
         return true;
       },
       priority: HandlerPriority.DEFAULT,

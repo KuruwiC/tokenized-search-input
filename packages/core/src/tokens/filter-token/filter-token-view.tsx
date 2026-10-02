@@ -3,12 +3,7 @@ import { useRef } from 'react';
 import { getEditorContext, resolveField } from '../../extensions/editor-context';
 import { useEditorContextUpdate } from '../../hooks/use-editor-context-update';
 import { useTokenMeta } from '../../hooks/use-editor-store';
-import {
-  getDateDisplayValue,
-  getDateTimeDisplayValue,
-  normalizeDateTimeValue,
-  normalizeDateValue,
-} from '../../pickers/date-format';
+import { getDateDisplayValue, getDateTimeDisplayValue } from '../../pickers/date-format';
 import { getApplicableDisplay } from '../../plugins/shared/meta';
 import {
   closeSuggestion,
@@ -30,7 +25,7 @@ import {
   useTokenFocusContext,
 } from '../composition';
 import { resolveDisplayValue } from './resolve-display-value';
-import { applyTokenAction, commitFilterToken, type FilterTokenAction } from './token-actions';
+import { applyTokenAction, type FilterTokenAction } from './token-actions';
 import { useValueSuggestions } from './use-value-suggestions';
 
 export const FilterTokenView: React.FC<NodeViewProps> = ({
@@ -218,37 +213,6 @@ function FilterTokenValue({
   const { deleteToken } = useTokenConfig();
   const fieldSource = getEditorContext(editor);
 
-  // Normalize date/datetime values (shared logic for confirm and blur)
-  const normalizeValue = () => {
-    let normalized = rawValue;
-    if (fieldDef?.type === 'date') {
-      normalized = normalizeDateValue(rawValue, fieldDef.formatConfig);
-    } else if (fieldDef?.type === 'datetime') {
-      const allowDateOnly = !fieldDef.timeRequired;
-      normalized = normalizeDateTimeValue(rawValue, fieldDef.formatConfig, allowDateOnly);
-    }
-    const tr = editor.state.tr;
-    if (applyTokenAction(tr, tokenId, { type: 'setValue', value: normalized }, fieldSource)) {
-      editor.view.dispatch(tr);
-    }
-  };
-
-  // Normalize, confirm, close picker, and exit token on confirm (Enter/Space)
-  const handleConfirm = () => {
-    normalizeValue();
-
-    // Close picker/suggestion and commit token in single transaction
-    const tr = editor.state.tr;
-    closeSuggestion(tr);
-    tr.setMeta('addToHistory', false);
-    commitFilterToken(tr, tokenId, fieldSource);
-    editor.view.dispatch(tr);
-    exitToken();
-  };
-
-  // Date/datetime fields need special handling for normalization and display
-  const isDateOrDateTime = fieldDef?.type === 'date' || fieldDef?.type === 'datetime';
-
   // Editing shows the text that maps back to the value; display data never enters the input
   const effectiveValue = tokenFocused ? editableText : valueDisplayString;
 
@@ -258,11 +222,7 @@ function FilterTokenValue({
   const allowSpaces = baseAllowSpaces || isInsideQuotes(currentInputText);
 
   // Event-driven value suggestions management
-  const {
-    handleValueInputFocus,
-    handleValueInputBlur: baseSuggestionBlur,
-    addSuggestionQuery,
-  } = useValueSuggestions({
+  const { handleValueInputFocus, handleValueInputBlur, addSuggestionQuery } = useValueSuggestions({
     editor,
     tokenId,
     fieldKey,
@@ -277,16 +237,6 @@ function FilterTokenValue({
     if (!applyTokenAction(tr, tokenId, { type: 'setValue', value: inputText }, fieldSource)) return;
     addSuggestionQuery(tr);
     editor.view.dispatch(tr);
-  };
-
-  // Combine blur handling: normalize date/datetime values and handle suggestions
-  const handleValueInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    // Normalize date/datetime values on blur
-    if (isDateOrDateTime) {
-      normalizeValue();
-    }
-    // Call base suggestion blur handler
-    baseSuggestionBlur(e);
   };
 
   // Helper to check if value suggestions are open
@@ -346,22 +296,9 @@ function FilterTokenValue({
         const suggestionState = getSuggestionState(editor.state);
         if (!isValueSuggestionOpen() || !suggestionState) return false;
         e.preventDefault();
-        const items = suggestionState.items as EnumValue[];
-        const activeIndex = suggestionState.activeIndex;
-        const tr = editor.state.tr;
-        closeSuggestion(tr);
-        tr.setMeta('addToHistory', false);
-        const selectedItem = items[activeIndex];
-        if (selectedItem) {
-          applyTokenAction(
-            tr,
-            tokenId,
-            { type: 'setValue', value: getEnumValue(selectedItem) },
-            fieldSource
-          );
-        }
-        editor.view.dispatch(tr);
-        exitToken();
+        // Leaving the token sets the chosen value and commits it in one transaction.
+        const selectedItem = (suggestionState.items as EnumValue[])[suggestionState.activeIndex];
+        exitToken(selectedItem ? getEnumValue(selectedItem) : undefined);
         return true;
       },
       priority: HandlerPriority.VIEW,
@@ -370,9 +307,6 @@ function FilterTokenValue({
 
   // Register with block ID 'filter-value' to distinguish from base 'value' handlers
   useBlockKeyboardContribution('filter-value', keyboardHandlers);
-
-  // Use handleConfirm for date/datetime fields to normalize values on confirm
-  const isDateOrDateTimeField = fieldDef?.type === 'date' || fieldDef?.type === 'datetime';
 
   return (
     <Token.Value
@@ -384,7 +318,6 @@ function FilterTokenValue({
       onFocus={handleValueInputFocus}
       onBlur={handleValueInputBlur}
       inputRef={inputRef}
-      onConfirm={isDateOrDateTimeField ? handleConfirm : undefined}
       startContent={startContent}
       endContent={endContent}
     />

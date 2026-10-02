@@ -7,6 +7,7 @@ import {
   type EditorCallbacks,
   type EditorConfig,
   getEditorContext,
+  getFocusContext,
 } from '../../extensions/editor-context';
 import { requestValidationCheck } from '../../plugins/shared/meta';
 import { applyFreeTextMode } from '../free-text-mode';
@@ -104,7 +105,7 @@ export function useEditorConfigSync(
     if (prevMode === mode) return;
 
     const { tr } = editor.state;
-    applyFreeTextMode(tr, getEditorContext(editor));
+    applyFreeTextMode(tr, getEditorContext(editor), getFocusContext(editor));
     if (tr.docChanged) editor.view.dispatch(tr);
   }, [editor, mode]);
 

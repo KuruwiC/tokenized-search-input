@@ -1,7 +1,8 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
-import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
+import { type EditorState, Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
 import { Mapping } from '@tiptap/pm/transform';
 import { isHistoryTransaction, requestValidationCheck } from '../shared/meta';
+import type { FocusTransitionContext } from '../token-focus-plugin';
 import { type TokenizeContext, tokenizeRange } from './tokenize-range';
 
 /** Marks a transaction whose text was already read as a query. */
@@ -49,7 +50,10 @@ function extendToWords(
  * Typing is read by the key that ends a word instead. Undo, redo and IME composition
  * are left alone.
  */
-export function createAutoTokenizePlugin(getContext: () => TokenizeContext): Plugin {
+export function createAutoTokenizePlugin(
+  getContext: () => TokenizeContext,
+  getFocusContext: (state: EditorState) => FocusTransitionContext
+): Plugin {
   return new Plugin({
     key: autoTokenizeKey,
 
@@ -64,7 +68,7 @@ export function createAutoTokenizePlugin(getContext: () => TokenizeContext): Plu
 
       const { from, to } = extendToWords(newState.doc, span.from, span.to);
       const tr = newState.tr;
-      if (!tokenizeRange(tr, from, to, getContext())) return null;
+      if (!tokenizeRange(tr, from, to, getContext(), getFocusContext(newState))) return null;
 
       requestValidationCheck(tr);
       return tr.setMeta(autoTokenizeKey, true);

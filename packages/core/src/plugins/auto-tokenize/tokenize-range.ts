@@ -10,7 +10,7 @@ import {
 import { createFilterTokenAttrs } from '../../tokens/filter-token/create-attrs';
 import type { FieldDefinition, FreeTextMode, UnknownFieldTemplate } from '../../types';
 import { isFreeTextToken, isToken } from '../../utils/node-predicates';
-import { programEntry, setTokenFocus } from '../token-focus-plugin';
+import { enterTokenIn, type FocusTransitionContext, programEntry } from '../token-focus-plugin';
 import { getFreeTextStrategy } from './free-text-strategy';
 
 export interface TokenizeContext {
@@ -86,14 +86,19 @@ function keepEdgeWhitespace(nodes: ProseMirrorNode[], text: string, schema: Sche
   if (trail && last?.isText) nodes[nodes.length - 1] = schema.text(last.text + trail);
 }
 
-function focusLastQuotedToken(tr: Transaction, from: number, to: number): void {
+function focusLastQuotedToken(
+  tr: Transaction,
+  from: number,
+  to: number,
+  focus: FocusTransitionContext
+): void {
   let id: string | null = null;
   tr.doc.nodesBetween(from, to, (node) => {
     if (isFreeTextToken(node) && node.attrs.quoted) id = String(node.attrs.id);
     return true;
   });
   if (id !== null) {
-    setTokenFocus(tr, { id, entry: programEntry() });
+    enterTokenIn(tr, focus, id, programEntry());
   }
 }
 
@@ -103,7 +108,12 @@ interface TextRun {
   text: string;
 }
 
-function tokenizeRun(tr: Transaction, run: TextRun, ctx: TokenizeContext): boolean {
+function tokenizeRun(
+  tr: Transaction,
+  run: TextRun,
+  ctx: TokenizeContext,
+  focus: FocusTransitionContext | undefined
+): boolean {
   const { schema } = tr.doc.type;
   const { tokens, hasIncompleteQuote } = parse(run.text, ctx);
   const nodes = toNodes(tokens, schema, ctx);
@@ -122,8 +132,8 @@ function tokenizeRun(tr: Transaction, run: TextRun, ctx: TokenizeContext): boole
   const caretInRun = caret > run.from && caret <= run.to;
   const content = after.cut(start, end.b + overlap);
   tr.replace(run.from + start, run.from + end.a + overlap, new Slice(content, 0, 0));
-  if (hasIncompleteQuote && caretInRun && ctx.freeTextMode === 'tokenize') {
-    focusLastQuotedToken(tr, run.from + start, run.from + start + content.size);
+  if (focus && hasIncompleteQuote && caretInRun && ctx.freeTextMode === 'tokenize') {
+    focusLastQuotedToken(tr, run.from + start, run.from + start + content.size, focus);
   }
   return true;
 }
@@ -131,8 +141,8 @@ function tokenizeRun(tr: Transaction, run: TextRun, ctx: TokenizeContext): boole
 /**
  * Reads the text between `from` and `to` in `tr.doc` as a query and puts in the tokens
  * it contains. Only what changes is replaced, so text that stays text keeps its place,
- * and text without tokens is left as it is. In tokenize mode, a quote left open at the
- * caret leaves its free text token focused for the rest of the input.
+ * and text without tokens is left as it is. In tokenize mode, given `focus`, a quote
+ * left open at the caret leaves its free text token focused for the rest of the input.
  *
  * @returns whether the document changed
  */
@@ -140,7 +150,8 @@ export function tokenizeRange(
   tr: Transaction,
   from: number,
   to: number,
-  ctx: TokenizeContext
+  ctx: TokenizeContext,
+  focus?: FocusTransitionContext
 ): boolean {
   const runs: TextRun[] = [];
   tr.doc.nodesBetween(from, to, (node, pos) => {
@@ -153,7 +164,7 @@ export function tokenizeRange(
   });
   let changed = false;
   for (const run of runs.reverse()) {
-    if (tokenizeRun(tr, run, ctx)) changed = true;
+    if (tokenizeRun(tr, run, ctx, focus)) changed = true;
   }
   return changed;
 }

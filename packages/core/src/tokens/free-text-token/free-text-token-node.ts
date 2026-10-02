@@ -1,8 +1,9 @@
 import { type Editor, mergeAttributes, Node } from '@tiptap/core';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 import { ReactNodeViewRenderer } from '@tiptap/react';
+import { getFocusContext } from '../../extensions/editor-context';
 import {
-  canFocusToken,
+  enterTokenIn,
   getFocusedToken,
   programEntry,
   type TokenFocusEntry,
@@ -13,7 +14,7 @@ import { escapeForQuotes } from '../../utils/quoted-string';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
 import { isHistoryShortcut } from '../composition/keyboard';
 import { TOKEN_NODE_CLASS, updateTokenNodeView } from '../composition/node-view-update';
-import { enterToken, enterTokenIn } from '../token-focus';
+import { enterToken } from '../token-focus';
 import { FreeTextTokenView } from './free-text-token-view';
 
 export interface InsertFreeTextTokenAttrs {
@@ -179,11 +180,11 @@ export const FreeTextTokenNode = Node.create({
 
       focusFreeTextToken:
         (id: string, position: TokenFocusEntry['position'] = 'end') =>
-        ({ tr, dispatch, editor }) => {
+        ({ tr, state, dispatch, editor }) => {
           const found = findTokenById(tr.doc, id);
-          if (!found || !isFreeTextToken(found.node) || !canFocusToken(tr.doc, id)) return false;
-          if (dispatch) enterTokenIn(tr, editor, id, programEntry(position));
-          return true;
+          if (!found || !isFreeTextToken(found.node)) return false;
+          if (!dispatch) return true;
+          return enterTokenIn(tr, getFocusContext(editor, state), id, programEntry(position));
         },
     };
   },

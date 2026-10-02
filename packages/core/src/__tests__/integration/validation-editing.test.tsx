@@ -12,8 +12,8 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
-import { getEditorContext } from '../../extensions/editor-context';
-import { programEntry, setTokenFocus } from '../../plugins/token-focus-plugin';
+import { getEditorContext, getFocusContext } from '../../extensions/editor-context';
+import { enterTokenIn, leaveFocusedTokenIn, programEntry } from '../../plugins/token-focus-plugin';
 import { applyTokenAction } from '../../tokens/filter-token/token-actions';
 import type { QuerySnapshotFilterToken, ValidationRule } from '../../types';
 import { findTokenById } from '../../utils/find-token';
@@ -65,13 +65,15 @@ function lastTokenId(editor: Editor): string {
 
 function focusToken(editor: Editor, id: string | null) {
   const tr = editor.state.tr;
-  setTokenFocus(tr, id === null ? null : { id, entry: programEntry() });
+  const ctx = getFocusContext(editor);
+  if (id === null) leaveFocusedTokenIn(tr, ctx);
+  else enterTokenIn(tr, ctx, id, programEntry());
   editor.view.dispatch(tr);
 }
 
 /** Puts the user in the token at `pos` of `tr` and dispatches `tr`. */
 function dispatchFocusingTokenAt(editor: Editor, tr: Transaction, pos: number) {
-  setTokenFocus(tr, { id: String(tr.doc.nodeAt(pos)?.attrs.id), entry: programEntry() });
+  enterTokenIn(tr, getFocusContext(editor), String(tr.doc.nodeAt(pos)?.attrs.id), programEntry());
   editor.view.dispatch(tr);
 }
 
@@ -170,7 +172,7 @@ describe('Unique with onDuplicate reject', () => {
     // the position the focused priority token had, and blurs the priority token.
     act(() => {
       const tr = insertStatus(editor, tokenPos(editor, status.id), 'inactive');
-      setTokenFocus(tr, null);
+      leaveFocusedTokenIn(tr, getFocusContext(editor));
       editor.view.dispatch(tr);
     });
 

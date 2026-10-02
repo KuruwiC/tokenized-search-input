@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/core';
-import { getEditorContext } from '../extensions/editor-context';
+import { getEditorContext, getFocusContext } from '../extensions/editor-context';
 import { autoTokenizeKey } from '../plugins/auto-tokenize/plugin';
 import { tokenizeRange } from '../plugins/auto-tokenize/tokenize-range';
 import { isFilterToken } from '../utils/node-predicates';
@@ -98,7 +98,9 @@ export function tryAutoTokenize(editor: Editor, trigger: string): boolean {
 
   const freeTextMode = trigger === 'Enter' ? 'plain' : context.freeTextMode;
   const tr = editor.state.tr;
-  if (!tokenizeRange(tr, from, to, { ...context, freeTextMode })) return false;
+  if (!tokenizeRange(tr, from, to, { ...context, freeTextMode }, getFocusContext(editor))) {
+    return false;
+  }
 
   editor.view.dispatch(tr.setMeta(autoTokenizeKey, true));
   return true;

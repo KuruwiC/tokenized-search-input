@@ -11,11 +11,15 @@ import {
   isSuggestionOpen,
   type SuggestionType,
 } from '../../plugins/suggestion-plugin';
-import { getFocusedToken, type TokenFocusEntry } from '../../plugins/token-focus-plugin';
+import {
+  getFocusedToken,
+  type LeaveDirection,
+  type TokenFocusEntry,
+} from '../../plugins/token-focus-plugin';
 import { getValidationDescriptionId } from '../../plugins/token-meta-plugin';
 import { getDismissPolicy } from '../../suggestions/dismiss-policy';
 import { cn } from '../../utils/cn';
-import { enterToken, type LeaveDirection } from '../token-focus';
+import { enterToken } from '../token-focus';
 import { TokenDeleteButton } from './blocks/token-delete-button';
 import { TokenLabel, TokenLabelCombobox } from './blocks/token-label';
 import { TokenOperator } from './blocks/token-operator';
@@ -167,14 +171,14 @@ export function Token({
   const [currentFocusId, setCurrentFocusId] = useState<string | null>(null);
 
   const leave = useCallback(
-    (direction: LeaveDirection) => {
-      editor.commands.leaveToken(id, direction);
+    (direction: LeaveDirection, value?: string) => {
+      editor.commands.leaveToken(id, direction, value);
       editor.view.focus();
     },
     [editor, id]
   );
   const handleExitLeft = useCallback(() => leave('left'), [leave]);
-  const handleExitRight = useCallback(() => leave('right'), [leave]);
+  const handleExitRight = useCallback((value?: string) => leave('right', value), [leave]);
 
   const focusRegistry = useFocusRegistry({
     onExitLeft: handleExitLeft,

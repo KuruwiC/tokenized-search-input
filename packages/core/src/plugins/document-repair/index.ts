@@ -1,5 +1,6 @@
 import { Extension } from '@tiptap/core';
 import { type EditorState, Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
+import { getFocusContext } from '../../extensions/editor-context';
 import { isHistoryTransaction } from '../shared/meta';
 import { getFocusedToken } from '../token-focus-plugin';
 import { removeEmptyToken } from './empty-token-cleanup';
@@ -37,6 +38,7 @@ export const DocumentRepairExtension = Extension.create({
   name: 'documentRepair',
 
   addProseMirrorPlugins() {
+    const editor = this.editor;
     return [
       new Plugin({
         key: documentRepairKey,
@@ -56,7 +58,7 @@ export const DocumentRepairExtension = Extension.create({
           let repaired = focusLeft && removeEmptyToken(tr, left);
           if (keepWordsApart(tr, transactions)) repaired = true;
           if (docChanged && transactions.some(isHistoryTransaction)) {
-            if (focusRestoredEmptyToken(tr)) repaired = true;
+            if (focusRestoredEmptyToken(tr, getFocusContext(editor, newState))) repaired = true;
           }
           if (!repaired) return null;
 

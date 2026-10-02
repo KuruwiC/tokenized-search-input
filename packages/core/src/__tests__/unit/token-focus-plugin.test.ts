@@ -6,7 +6,7 @@ import {
   programEntry,
   setTokenFocus,
   type TokenFocusEntry,
-} from '../../plugins/token-focus-plugin';
+} from '../../plugins/token-focus/state';
 import { blockSchema as schema } from '../fixtures';
 
 const token = (id: string, immutable = false) =>

@@ -6,12 +6,11 @@
 
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { TextSelection } from '@tiptap/pm/state';
-import type { EditorView } from '@tiptap/pm/view';
 import type { KeyHandlerFn } from '../../keyboard';
 import { nearestValidCaret } from '../../utils/caret';
 import { isToken } from '../../utils/node-predicates';
 import { safeResolve } from '../../utils/safe-resolve';
-import { setTokenFocus, type TokenFocusEntry } from '../token-focus-plugin';
+import { enterTokenIn, type TokenFocusEntry } from '../token-focus-plugin';
 import type { SelectionGuardContext } from './types';
 import { markAsGuarded } from './utils';
 
@@ -24,13 +23,14 @@ import { markAsGuarded } from './utils';
  * @returns true if handled
  */
 function handleTokenEntry(
-  view: EditorView,
+  ctx: SelectionGuardContext,
   tokenNode: ProseMirrorNode,
   tokenPos: number,
   entry: TokenFocusEntry
 ): boolean {
+  const { view } = ctx;
   const tr = view.state.tr;
-  if (!setTokenFocus(tr, { id: String(tokenNode.attrs.id), entry })) {
+  if (!enterTokenIn(tr, ctx.focus, String(tokenNode.attrs.id), entry)) {
     tr.setSelection(TextSelection.create(tr.doc, tokenPos, tokenPos + tokenNode.nodeSize));
     view.focus();
   }
@@ -79,7 +79,7 @@ export const handleArrowMove: KeyHandlerFn<SelectionGuardContext> = (ctx) => {
 
   ctx.event.preventDefault();
   const tokenPos = direction > 0 ? ctx.selection.from : ctx.selection.from - token.nodeSize;
-  return handleTokenEntry(ctx.view, token, tokenPos, {
+  return handleTokenEntry(ctx, token, tokenPos, {
     source: 'keyboard',
     position: direction > 0 ? 'start' : 'end',
     target: 'entry',
@@ -94,7 +94,7 @@ export const handleDeleteFromToken: KeyHandlerFn<SelectionGuardContext> = (ctx) 
   if (!ctx.nodeAfter || !isToken(ctx.nodeAfter)) return false;
 
   ctx.event.preventDefault();
-  return handleTokenEntry(ctx.view, ctx.nodeAfter, ctx.selection.from, {
+  return handleTokenEntry(ctx, ctx.nodeAfter, ctx.selection.from, {
     source: 'keyboard',
     position: 'start',
     target: 'all',
@@ -110,7 +110,7 @@ export const handleBackspaceFromToken: KeyHandlerFn<SelectionGuardContext> = (ct
 
   ctx.event.preventDefault();
   const tokenPos = ctx.selection.from - ctx.nodeBefore.nodeSize;
-  return handleTokenEntry(ctx.view, ctx.nodeBefore, tokenPos, {
+  return handleTokenEntry(ctx, ctx.nodeBefore, tokenPos, {
     source: 'keyboard',
     position: 'end',
     target: 'all',

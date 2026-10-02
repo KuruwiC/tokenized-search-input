@@ -1,13 +1,13 @@
 import type { Transaction } from '@tiptap/pm/state';
 import { isToken } from '../../utils/node-predicates';
-import { programEntry, setTokenFocus } from '../token-focus-plugin';
+import { enterTokenIn, type FocusTransitionContext, programEntry } from '../token-focus-plugin';
 import { isEmptyToken } from './empty-token-cleanup';
 
 /**
  * Undo and redo can restore a token without a value. Focusing the first such token
  * that can be edited lets the user fill it in, or leave it and have it removed.
  */
-export function focusRestoredEmptyToken(tr: Transaction): boolean {
+export function focusRestoredEmptyToken(tr: Transaction, focus: FocusTransitionContext): boolean {
   let id: string | null = null;
   tr.doc.descendants((node) => {
     if (id !== null) return false;
@@ -17,5 +17,5 @@ export function focusRestoredEmptyToken(tr: Transaction): boolean {
     return !isToken(node);
   });
   if (id === null) return false;
-  return setTokenFocus(tr, { id, entry: programEntry() });
+  return enterTokenIn(tr, focus, id, programEntry());
 }

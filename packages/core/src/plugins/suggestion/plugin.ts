@@ -11,7 +11,7 @@ import type { EnumValue, FieldDefinition } from '../../types';
 import { findTokenById } from '../../utils/find-token';
 import { isFilterToken, isToken } from '../../utils/node-predicates';
 import { getSuggestionQueryUpdate } from '../shared/meta';
-import { getTokenFocusMeta } from '../token-focus-plugin';
+import { getTokenFocusMeta } from '../token-focus/state';
 import { createResetState } from './state-helpers';
 import type {
   CloseSuggestionMeta,

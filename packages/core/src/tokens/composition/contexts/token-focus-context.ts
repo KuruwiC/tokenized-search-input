@@ -51,8 +51,8 @@ export interface TokenFocusContextValue {
   /** The block that holds DOM focus while the token is focused. */
   currentFocusId: string | null;
   setCurrentFocusId: (id: string | null) => void;
-  /** Leaves the token to the right. */
-  exitToken: () => void;
+  /** Leaves the token to the right, committing it with `value` when one is given. */
+  exitToken: (value?: string) => void;
   /**
    * Dispatch a keyboard event to Token-level handler.
    * Blocks should call this in their onKeyDown to ensure proper event flow.

@@ -6,6 +6,7 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Selection } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { safeResolve } from '../../utils/safe-resolve';
+import type { FocusTransitionContext } from '../token-focus-plugin';
 
 /**
  * Context for selection guard keyboard handlers.
@@ -24,6 +25,8 @@ export interface SelectionGuardContext {
   nodeBefore: ProseMirrorNode | null;
   /** Node after the cursor position (null if at end) */
   nodeAfter: ProseMirrorNode | null;
+  /** What moving the token focus needs */
+  focus: FocusTransitionContext;
 }
 
 /**
@@ -31,7 +34,8 @@ export interface SelectionGuardContext {
  */
 export function buildSelectionGuardContext(
   view: EditorView,
-  event: KeyboardEvent
+  event: KeyboardEvent,
+  focus: FocusTransitionContext
 ): SelectionGuardContext {
   const { selection } = view.state;
   const { doc } = view.state;
@@ -52,5 +56,6 @@ export function buildSelectionGuardContext(
     doc,
     nodeBefore,
     nodeAfter,
+    focus,
   };
 }

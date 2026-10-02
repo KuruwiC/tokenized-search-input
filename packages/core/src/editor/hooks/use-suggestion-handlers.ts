@@ -1,11 +1,10 @@
 import type { Editor } from '@tiptap/core';
 import { useCallback } from 'react';
-import { getEditorContext } from '../../extensions/editor-context';
+import { getEditorContext, getFocusContext } from '../../extensions/editor-context';
 import { getDateInternalValue, getDateTimeInternalValue } from '../../pickers/date-format';
 import { closeSuggestion } from '../../plugins/suggestion-plugin';
-import { getFocusedToken } from '../../plugins/token-focus-plugin';
+import { getFocusedToken, leaveTokenIn } from '../../plugins/token-focus-plugin';
 import { applyTokenAction } from '../../tokens/filter-token/token-actions';
-import { leaveTokenIn } from '../../tokens/token-focus';
 import type { DateTimeFieldDefinition } from '../../types';
 import { findTokenById } from '../../utils/find-token';
 import { isFilterToken } from '../../utils/node-predicates';
@@ -46,10 +45,9 @@ export function useSuggestionHandlers({
       const id = focusedFilterTokenId(editor);
       if (id === null) return;
 
-      // Single transaction: update the value and leave the token
+      // Single transaction: set the chosen value and leave the token
       const tr = editor.state.tr;
-      applyTokenAction(tr, id, { type: 'setValue', value }, getEditorContext(editor));
-      leaveTokenIn(tr, editor, id, 'right');
+      leaveTokenIn(tr, getFocusContext(editor), id, { direction: 'right', value });
       editor.view.dispatch(tr);
       editor.view.focus();
     },
@@ -99,7 +97,7 @@ export function useSuggestionHandlers({
     // Single transaction: close suggestion and leave the token
     const tr = editor.state.tr;
     closeSuggestion(tr);
-    if (id !== null) leaveTokenIn(tr, editor, id, 'right');
+    if (id !== null) leaveTokenIn(tr, getFocusContext(editor), id, { direction: 'right' });
     editor.view.dispatch(tr);
     if (id !== null) editor.view.focus();
     // Show field suggestions after leaving the token for consistency

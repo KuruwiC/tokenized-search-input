@@ -1,10 +1,12 @@
 import { type Editor, mergeAttributes, Node } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
-import { getEditorContext } from '../../extensions/editor-context';
+import { getEditorContext, getFocusContext } from '../../extensions/editor-context';
 import { setTokenMeta, type TokenDisplayContent } from '../../plugins/shared/meta';
 import {
-  canFocusToken,
+  enterTokenIn,
   getFocusedToken,
+  type LeaveDirection,
+  leaveTokenIn,
   programEntry,
   type TokenFocusEntry,
 } from '../../plugins/token-focus-plugin';
@@ -13,7 +15,6 @@ import { isFilterToken } from '../../utils/node-predicates';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
 import { isHistoryShortcut } from '../composition/keyboard';
 import { TOKEN_NODE_CLASS, updateTokenNodeView } from '../composition/node-view-update';
-import { enterTokenIn, type LeaveDirection, leaveTokenIn } from '../token-focus';
 import { createFilterTokenAttrs } from './create-attrs';
 import { FilterTokenView } from './filter-token-view';
 
@@ -32,10 +33,10 @@ declare module '@tiptap/core' {
       /** Focuses the filter token `id` with the caret at `position` in its value. */
       focusFilterToken: (id: string, position?: TokenFocusEntry['position']) => ReturnType;
       /**
-       * Leaves the focused token `id`, filter or free text, committing it and putting
-       * the caret beside it on the `direction` side.
+       * Leaves the focused token `id`, filter or free text, committing it with `value`
+       * when one is given, and puts the caret beside it on the `direction` side.
        */
-      leaveToken: (id: string, direction: LeaveDirection) => ReturnType;
+      leaveToken: (id: string, direction: LeaveDirection, value?: string) => ReturnType;
     };
   }
 }
@@ -189,18 +190,18 @@ export const FilterTokenNode = Node.create({
 
       focusFilterToken:
         (id: string, position: TokenFocusEntry['position'] = 'end') =>
-        ({ tr, dispatch, editor }) => {
+        ({ tr, state, dispatch, editor }) => {
           const found = findTokenById(tr.doc, id);
-          if (!found || !isFilterToken(found.node) || !canFocusToken(tr.doc, id)) return false;
-          if (dispatch) enterTokenIn(tr, editor, id, programEntry(position));
-          return true;
+          if (!found || !isFilterToken(found.node)) return false;
+          if (!dispatch) return true;
+          return enterTokenIn(tr, getFocusContext(editor, state), id, programEntry(position));
         },
 
       leaveToken:
-        (id: string, direction: LeaveDirection) =>
+        (id: string, direction: LeaveDirection, value?: string) =>
         ({ tr, state, dispatch, editor }) => {
           if (getFocusedToken(state)?.id !== id) return false;
-          if (dispatch) leaveTokenIn(tr, editor, id, direction);
+          if (dispatch) leaveTokenIn(tr, getFocusContext(editor, state), id, { direction, value });
           return true;
         },
     };
