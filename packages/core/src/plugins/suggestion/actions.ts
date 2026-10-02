@@ -1,5 +1,6 @@
 import type { Transaction } from '@tiptap/pm/state';
 import type { CustomSuggestion, EnumValue, FieldDefinition } from '../../types';
+import { positionAnchor, tokenAnchor } from './anchor';
 import { suggestionKey } from './plugin';
 import type {
   CloseSuggestionMeta,
@@ -39,7 +40,7 @@ export function openFieldSuggestion(
     items: fields,
     activeIndex: -1,
     isLoading: false,
-    anchorPos,
+    anchor: positionAnchor(anchorPos),
     dismissed: false,
   });
 }
@@ -49,7 +50,7 @@ export function openValueSuggestion(
   fieldKey: string,
   items: readonly EnumValue[],
   query: string = '',
-  anchorPos: number | null = null
+  tokenId: string | null = null
 ): Transaction {
   return setSuggestion(tr, {
     type: 'value',
@@ -58,7 +59,7 @@ export function openValueSuggestion(
     items,
     activeIndex: -1,
     isLoading: false,
-    anchorPos,
+    anchor: tokenAnchor(tokenId),
     dismissed: false,
   });
 }
@@ -67,7 +68,7 @@ export function openDateSuggestion(
   tr: Transaction,
   fieldKey: string,
   currentValue: Date | null = null,
-  anchorPos: number | null = null
+  tokenId: string | null = null
 ): Transaction {
   return setSuggestion(tr, {
     type: 'date',
@@ -76,7 +77,7 @@ export function openDateSuggestion(
     items: [],
     activeIndex: -1,
     isLoading: false,
-    anchorPos,
+    anchor: tokenAnchor(tokenId),
     dateValue: currentValue,
     dismissed: false,
   });
@@ -86,7 +87,7 @@ export function openDateTimeSuggestion(
   tr: Transaction,
   fieldKey: string,
   currentValue: Date | null = null,
-  anchorPos: number | null = null
+  tokenId: string | null = null
 ): Transaction {
   return setSuggestion(tr, {
     type: 'datetime',
@@ -95,7 +96,7 @@ export function openDateTimeSuggestion(
     items: [],
     activeIndex: -1,
     isLoading: false,
-    anchorPos,
+    anchor: tokenAnchor(tokenId),
     dateValue: currentValue,
     dismissed: false,
   });
@@ -115,7 +116,7 @@ export function openCustomSuggestion(
     customItems,
     activeIndex: -1,
     isLoading: false,
-    anchorPos,
+    anchor: positionAnchor(anchorPos),
     dismissed: false,
   });
 }
@@ -136,7 +137,7 @@ export function openFieldWithCustomSuggestion(
     customItems,
     activeIndex: -1,
     isLoading: false,
-    anchorPos,
+    anchor: positionAnchor(anchorPos),
     dismissed: false,
     customDisplayMode: displayMode,
   });

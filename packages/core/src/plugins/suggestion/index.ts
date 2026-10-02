@@ -23,6 +23,8 @@ export {
   updateSuggestionDateValue,
   updateSuggestionQuery,
 } from './actions';
+// Anchors
+export { isAnchoredToToken, resolveAnchorPos } from './anchor';
 // Plugin
 export { createSuggestionPlugin, getSuggestionState, suggestionKey } from './plugin';
 // State helpers
@@ -32,6 +34,7 @@ export type {
   CloseSuggestionMeta,
   CustomDisplayMode,
   SetSuggestionMeta,
+  SuggestionAnchor,
   SuggestionMeta,
   SuggestionState,
   SuggestionType,

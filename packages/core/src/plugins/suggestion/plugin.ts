@@ -4,19 +4,49 @@
  * ProseMirror plugin for managing suggestion state in the editor.
  */
 
-import type { EditorState } from '@tiptap/pm/state';
+import type { EditorState, Transaction } from '@tiptap/pm/state';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { findTokenById } from '../../utils/find-token';
 import { isToken } from '../../utils/node-predicates';
 import { getTokenFocusEvent } from '../shared/editor-events';
 import { getTokenFocusMeta } from '../token-focus-plugin';
 import { createResetState } from './state-helpers';
-import type { CloseSuggestionMeta, SuggestionMeta, SuggestionState } from './types';
+import type {
+  CloseSuggestionMeta,
+  SuggestionAnchor,
+  SuggestionMeta,
+  SuggestionState,
+} from './types';
 import { initialSuggestionState } from './types';
 
 export const suggestionKey = new PluginKey<SuggestionState>('suggestion');
 
 function isCloseMeta(meta: SuggestionMeta): meta is CloseSuggestionMeta {
   return 'close' in meta && meta.close === true;
+}
+
+/**
+ * The anchor of an open suggestion after a document change, or null when what it
+ * was anchored to is gone. A token anchor holds while a token with that id and
+ * the suggestion's field is in the document, whatever happened to its attributes.
+ */
+function followAnchor(
+  value: SuggestionState,
+  anchor: SuggestionAnchor,
+  tr: Transaction
+): SuggestionAnchor | null {
+  if ('tokenId' in anchor) {
+    const found = findTokenById(tr.doc, anchor.tokenId);
+    if (!found) return null;
+    if (value.fieldKey !== null && found.node.attrs.key !== value.fieldKey) return null;
+    return anchor;
+  }
+
+  const mapResult = tr.mapping.mapResult(anchor.pos);
+  if (mapResult.deleted) return null;
+  const node = tr.doc.nodeAt(mapResult.pos);
+  if (!node || !isToken(node)) return null;
+  return mapResult.pos === anchor.pos ? anchor : { pos: mapResult.pos };
 }
 
 export function getSuggestionState(state: EditorState): SuggestionState | undefined {
@@ -53,60 +83,15 @@ export function createSuggestionPlugin(): Plugin<SuggestionState> {
           return createResetState(value);
         }
 
-        // Rule: When document changes and we have an active suggestion with anchorPos,
-        // validate that the anchor still points to a valid token.
-        // This handles token deletion (e.g., Backspace) where blur events don't fire.
-        if (tr.docChanged && value.anchorPos !== null && value.type !== null) {
-          const mapResult = tr.mapping.mapResult(value.anchorPos);
-
-          // For date/datetime pickers, check if a token still exists at the position.
-          // setNodeMarkup marks the position as "deleted" even though the node is just updated,
-          // so we can't rely on mapResult.deleted for these picker types.
-          if (value.type === 'date' || value.type === 'datetime') {
-            const mappedPos = mapResult.pos;
-            try {
-              const node = tr.doc.nodeAt(mappedPos);
-              // If no token exists at the position, close the picker
-              if (!node || !isToken(node)) {
-                return createResetState(value);
-              }
-              // Update anchorPos if it shifted
-              if (mappedPos !== value.anchorPos) {
-                value = { ...value, anchorPos: mappedPos };
-              }
-            } catch {
-              // Position resolution failed - close picker
-              return createResetState(value);
-            }
-          } else {
-            // For field/value suggestions, use mapResult.deleted check
-            if (mapResult.deleted) {
-              return createResetState(value);
-            }
-            // Check if a valid token exists at the mapped position
-            const mappedPos = mapResult.pos;
-            try {
-              const node = tr.doc.nodeAt(mappedPos);
-              if (!node || !isToken(node)) {
-                return createResetState(value);
-              }
-
-              // For value suggestions, verify the token's fieldKey matches
-              if (value.type === 'value' && value.fieldKey !== null) {
-                const tokenFieldKey = node.attrs?.key;
-                if (tokenFieldKey !== value.fieldKey) {
-                  return createResetState(value);
-                }
-              }
-
-              // Update anchorPos if it shifted due to document changes
-              if (mappedPos !== value.anchorPos) {
-                value = { ...value, anchorPos: mappedPos };
-              }
-            } catch {
-              // Position resolution failed - close suggestion
-              return createResetState(value);
-            }
+        // Rule: A suggestion lives as long as what it is anchored to. This also covers
+        // token deletion (e.g., Backspace), where no blur event fires.
+        if (tr.docChanged && value.anchor !== null && value.type !== null) {
+          const anchor = followAnchor(value, value.anchor, tr);
+          if (anchor === null) {
+            return createResetState(value);
+          }
+          if (anchor !== value.anchor) {
+            value = { ...value, anchor };
           }
         }
 
@@ -150,7 +135,7 @@ export function createSuggestionPlugin(): Plugin<SuggestionState> {
           customItems: newCustomItems,
           activeIndex: newActiveIndex,
           isLoading: meta.isLoading ?? value.isLoading,
-          anchorPos: meta.anchorPos !== undefined ? meta.anchorPos : value.anchorPos,
+          anchor: meta.anchor !== undefined ? meta.anchor : value.anchor,
           dateValue: meta.dateValue !== undefined ? meta.dateValue : value.dateValue,
           dismissed: meta.dismissed ?? value.dismissed,
           customDisplayMode:

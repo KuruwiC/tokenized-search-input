@@ -177,7 +177,6 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
       ) : (
         <FilterTokenValue
           editor={editor}
-          getPos={getPos}
           tokenId={id}
           inputRef={inputRef}
           fieldDef={fieldDef}
@@ -205,7 +204,6 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
 // Separated component to access Token context
 interface FilterTokenValueProps {
   editor: NodeViewProps['editor'];
-  getPos: NodeViewProps['getPos'];
   tokenId: string;
   inputRef: React.RefObject<HTMLInputElement | null>;
   fieldDef: FieldDefinition | undefined;
@@ -228,7 +226,6 @@ interface FilterTokenValueProps {
 
 function FilterTokenValue({
   editor,
-  getPos,
   tokenId,
   inputRef,
   fieldDef,
@@ -297,7 +294,7 @@ function FilterTokenValue({
   // Pass inputRef so the hook can get current input text for filtering
   const { handleValueInputFocus, handleValueInputBlur: baseSuggestionBlur } = useValueSuggestions({
     editor,
-    getPos,
+    tokenId,
     inputRef,
     fieldKey,
     fieldDef,

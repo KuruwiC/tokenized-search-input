@@ -3,6 +3,7 @@ import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } fro
 import { getEditorContext } from '../extensions/editor-context';
 import { useDebouncedPickerSync } from '../hooks/use-debounced-picker-sync';
 import { useEditorContextUpdate } from '../hooks/use-editor-context-update';
+import { useEditorSelector } from '../hooks/use-editor-store';
 import { usePluginState } from '../hooks/use-plugin-state';
 import { useSuggestionPosition } from '../hooks/use-suggestion-position';
 import { useVisualViewport } from '../hooks/use-visual-viewport';
@@ -10,6 +11,7 @@ import { isDateOnlyValue, isUTCValue } from '../pickers/date-format';
 import {
   closeSuggestion,
   isSuggestionOpen,
+  resolveAnchorPos,
   type SuggestionType,
   suggestionKey,
   updateSuggestionActiveIndex,
@@ -89,9 +91,13 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
 
   const { height: viewportHeight } = useVisualViewport();
 
+  const anchorPos = useEditorSelector(editor, (state) =>
+    resolveAnchorPos(state.doc, suggestionKey.getState(state)?.anchor ?? null)
+  );
+
   const position = useSuggestionPosition(
     editor,
-    suggestionState?.anchorPos ?? null,
+    anchorPos,
     suggestionState?.type ?? null,
     containerRef,
     suggestionRef
@@ -107,9 +113,8 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     const focusedToken = findFocusedFilterToken(containerRef.current);
     if (focusedToken) return focusedToken;
 
-    // Fallback: try to find from anchorPos if no focused token
-    const anchorPos = suggestionState?.anchorPos;
-    if (anchorPos === null || anchorPos === undefined) return null;
+    // Fallback: the token the suggestion is anchored to
+    if (anchorPos === null) return null;
 
     try {
       const domAtPos = editor.view.domAtPos(anchorPos);
@@ -119,7 +124,7 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     } catch {
       return null;
     }
-  }, [containerRef, suggestionState?.anchorPos, editor.view]);
+  }, [containerRef, anchorPos, editor.view]);
 
   const getValueInputElement = useCallback((): HTMLInputElement | null => {
     // First try provided ref
@@ -312,53 +317,36 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
       return;
     }
 
+    const tokenValueAt = (pos: number | null): string | null =>
+      pos === null ? null : String(editor.state.doc.nodeAt(pos)?.attrs.value ?? '');
+
     const updateValue = ({ transaction }: { transaction: { docChanged: boolean } }) => {
       // Skip if document wasn't changed (performance optimization)
       if (!transaction.docChanged) return;
 
-      // Get anchorPos from plugin state directly to avoid stale closure
-      const currentSuggestionState = suggestionKey.getState(editor.state);
-      const anchorPos = currentSuggestionState?.anchorPos;
-      if (anchorPos === null || anchorPos === undefined) {
-        setTokenInputValue('');
-        return;
-      }
-      try {
-        const node = editor.state.doc.nodeAt(anchorPos);
-        setTokenInputValue((node?.attrs?.value as string) ?? '');
-      } catch {
-        setTokenInputValue('');
-      }
+      // Read the anchor from plugin state directly to avoid stale closure
+      const currentAnchor = suggestionKey.getState(editor.state)?.anchor ?? null;
+      setTokenInputValue(tokenValueAt(resolveAnchorPos(editor.state.doc, currentAnchor)) ?? '');
     };
 
     // Set initial value and UTC state
-    const anchorPos = suggestionState?.anchorPos;
-    if (anchorPos !== null && anchorPos !== undefined) {
-      try {
-        const node = editor.state.doc.nodeAt(anchorPos);
-        const initialValue = (node?.attrs?.value as string) ?? '';
-        setTokenInputValue(initialValue);
-        // Initialize UTC checkbox based on value (default to false for empty values)
-        if (suggestionState?.type === 'datetime') {
-          setIsUTC(initialValue ? isUTCValue(initialValue) : false);
-          // Initialize includeTime: true if value contains time, or if timeRequired is set
-          const fieldDef = suggestionState.fieldKey
-            ? fields.find((f) => f.key === suggestionState.fieldKey)
-            : undefined;
-          if (fieldDef?.type === 'datetime') {
-            const valueHasTime = !!initialValue && !isDateOnlyValue(initialValue);
-            setIncludeTime(fieldDef.timeRequired === true || valueHasTime);
-          }
-        }
-      } catch {
-        setTokenInputValue('');
-        if (suggestionState?.type === 'datetime') {
-          setIsUTC(false);
-          setIncludeTime(false);
+    const initialValue = tokenValueAt(anchorPos);
+    if (initialValue !== null) {
+      setTokenInputValue(initialValue);
+      // Initialize UTC checkbox based on value (default to false for empty values)
+      if (suggestionState?.type === 'datetime') {
+        setIsUTC(initialValue ? isUTCValue(initialValue) : false);
+        // Initialize includeTime: true if value contains time, or if timeRequired is set
+        const fieldDef = suggestionState.fieldKey
+          ? fields.find((f) => f.key === suggestionState.fieldKey)
+          : undefined;
+        if (fieldDef?.type === 'datetime') {
+          const valueHasTime = !!initialValue && !isDateOnlyValue(initialValue);
+          setIncludeTime(fieldDef.timeRequired === true || valueHasTime);
         }
       }
     } else if (suggestionState?.type === 'datetime') {
-      // No anchor position but datetime type - reset UTC and includeTime
+      // No anchored token but datetime type - reset UTC and includeTime
       setIsUTC(false);
       setIncludeTime(false);
     }
@@ -367,13 +355,7 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     return () => {
       editor.off('transaction', updateValue);
     };
-  }, [
-    editor,
-    suggestionState?.anchorPos,
-    suggestionState?.type,
-    suggestionState?.fieldKey,
-    fields,
-  ]);
+  }, [editor, anchorPos, suggestionState?.type, suggestionState?.fieldKey, fields]);
 
   const { date: syncedDate } = useDebouncedPickerSync({
     inputValue: tokenInputValue,

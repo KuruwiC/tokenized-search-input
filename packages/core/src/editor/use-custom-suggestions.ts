@@ -7,6 +7,7 @@ import {
   getSuggestionState,
   openCustomSuggestion,
   openFieldWithCustomSuggestion,
+  resolveAnchorPos,
 } from '../plugins/suggestion-plugin';
 import { canShowCustomSuggestion, isSuggestionDismissed } from '../suggestions/suggestion-guards';
 import type {
@@ -386,9 +387,10 @@ export function useCustomSuggestions(
       setHasMore(result.hasMore ?? false);
 
       // Update suggestion state with appended items
+      const anchorPos = resolveAnchorPos(editor.state.doc, currentState.anchor);
       const tr = editor.state.tr;
       if (currentState.type === 'custom') {
-        openCustomSuggestion(tr, newSuggestions, queryAtStart, currentState.anchorPos);
+        openCustomSuggestion(tr, newSuggestions, queryAtStart, anchorPos);
       } else {
         // fieldWithCustom: preserve field items and display mode
         openFieldWithCustomSuggestion(
@@ -397,7 +399,7 @@ export function useCustomSuggestions(
           newSuggestions,
           currentState.customDisplayMode ?? 'prepend',
           queryAtStart,
-          currentState.anchorPos
+          anchorPos
         );
       }
       tr.setMeta('addToHistory', false);

@@ -38,7 +38,7 @@ describe('SuggestionPlugin', () => {
         customItems: [],
         activeIndex: -1,
         isLoading: false,
-        anchorPos: null,
+        anchor: null,
         dateValue: null,
         dismissed: false,
         customDisplayMode: null,
@@ -55,7 +55,7 @@ describe('SuggestionPlugin', () => {
 
       expect(suggestionState?.type).toBe('field');
       expect(suggestionState?.items).toEqual(testFields);
-      expect(suggestionState?.anchorPos).toBe(10);
+      expect(suggestionState?.anchor).toEqual({ pos: 10 });
     });
 
     it('opens field suggestions with query', () => {
@@ -73,14 +73,14 @@ describe('SuggestionPlugin', () => {
     it('opens value suggestions with field key', () => {
       const state = createEditorState();
       const values = ['active', 'inactive', 'pending'];
-      const tr = openValueSuggestion(state.tr, 'status', values, '', 15);
+      const tr = openValueSuggestion(state.tr, 'status', values, '', 'token-1');
       const newState = state.apply(tr);
       const suggestionState = getSuggestionState(newState);
 
       expect(suggestionState?.type).toBe('value');
       expect(suggestionState?.fieldKey).toBe('status');
       expect(suggestionState?.items).toEqual(values);
-      expect(suggestionState?.anchorPos).toBe(15);
+      expect(suggestionState?.anchor).toEqual({ tokenId: 'token-1' });
     });
   });
 
@@ -99,7 +99,7 @@ describe('SuggestionPlugin', () => {
 
       expect(suggestionState?.type).toBe(null);
       expect(suggestionState?.items).toEqual([]);
-      expect(suggestionState?.anchorPos).toBe(null);
+      expect(suggestionState?.anchor).toBe(null);
     });
   });
 
@@ -189,7 +189,7 @@ describe('SuggestionPlugin', () => {
 
       expect(suggestionState?.type).toBe('field');
       expect(suggestionState?.query).toBe('test');
-      expect(suggestionState?.anchorPos).toBe(5);
+      expect(suggestionState?.anchor).toEqual({ pos: 5 });
     });
   });
 

@@ -15,6 +15,7 @@ import {
 } from '../../editor/tokenized-search-input';
 import { useAsyncTokenResolver } from '../../helpers/use-async-token-resolver';
 import { requestValidationCheck, setTokenMeta } from '../../plugins/shared/meta';
+import { getSuggestionState } from '../../plugins/suggestion-plugin';
 import { tokenMetaKey } from '../../plugins/token-meta-plugin';
 import type {
   FieldDefinition,
@@ -23,6 +24,7 @@ import type {
   QuerySnapshotFreeTextToken,
   ValidationRule,
 } from '../../types';
+import { findTokenById } from '../../utils/find-token';
 
 afterEach(() => {
   cleanup();
@@ -79,6 +81,12 @@ function pasteHTML(editor: Editor, html: string): void {
     editor.commands.focus('end');
     editor.view.pasteHTML(html, new Event('paste') as ClipboardEvent);
   });
+}
+
+function tokenPos(editor: Editor, id: string): number {
+  const found = findTokenById(editor.state.doc, id);
+  if (!found) throw new Error(`token ${id} not found`);
+  return found.pos;
 }
 
 function containsReactElement(value: unknown): boolean {
@@ -212,6 +220,73 @@ describe('Document model', () => {
         (t) => t.invalid === true
       );
       expect(invalid).toEqual([true, false]);
+    });
+
+    it('keeps a value suggestion with the pasted token it was opened for', async () => {
+      const user = userEvent.setup();
+      const enumFields: FieldDefinition[] = [
+        {
+          key: 'status',
+          label: 'Status',
+          type: 'enum',
+          operators: ['is'],
+          enumValues: ['active', 'inactive'],
+        },
+      ];
+      const { ref, editor } = await renderWithRef(enumFields);
+      const html =
+        '<span data-filter-token data-token-id="copied" data-key="status" data-operator="is" data-value="active"></span>';
+
+      pasteHTML(editor, html);
+      pasteHTML(editor, html);
+      const [first, second] = filterSegments(
+        ref.current?.getSnapshot() ?? { segments: [], text: '' }
+      );
+
+      await waitFor(() => expect(tokenGroups()).toHaveLength(2));
+      await user.click(tokenGroups()[0]);
+      await screen.findByRole('listbox');
+      expect(getSuggestionState(editor.state)?.anchor).toEqual({ tokenId: first.id });
+
+      act(() => {
+        ref.current?.deleteToken(first.id);
+      });
+
+      expect(getSuggestionState(editor.state)?.type).toBeNull();
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+      expect(filterSegments(ref.current?.getSnapshot() ?? { segments: [], text: '' })).toEqual([
+        expect.objectContaining({ id: second.id }),
+      ]);
+    });
+
+    it('closes a date picker whose pasted token is removed instead of moving it to the other one', async () => {
+      const user = userEvent.setup();
+      const dateFields: FieldDefinition[] = [
+        { key: 'created', label: 'Created', type: 'date', operators: ['gt'] },
+      ];
+      const { ref, editor } = await renderWithRef(dateFields);
+      const html =
+        '<span data-filter-token data-token-id="copied" data-key="created" data-operator="gt" data-value="2024-01-01"></span>';
+
+      pasteHTML(editor, html);
+      pasteHTML(editor, html);
+      const [first, second] = filterSegments(
+        ref.current?.getSnapshot() ?? { segments: [], text: '' }
+      );
+
+      await waitFor(() => expect(tokenGroups()).toHaveLength(2));
+      await user.click(tokenGroups()[0]);
+      await screen.findByRole('dialog');
+
+      // Remove the first token and everything up to the second one, so the second
+      // token now starts where the first one did. The transaction is applied, not
+      // dispatched: what follows it (focus moving by position) is not about the anchor.
+      const next = editor.state.apply(
+        editor.state.tr.delete(tokenPos(editor, first.id), tokenPos(editor, second.id))
+      );
+
+      expect(getSuggestionState(next)?.type).toBeNull();
+      expect(getSuggestionState(next)?.anchor).toBeNull();
     });
 
     it('re-issues an id that a content insert duplicates', async () => {

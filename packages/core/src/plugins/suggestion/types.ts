@@ -11,6 +11,13 @@ export type SuggestionType =
 
 export type CustomDisplayMode = 'prepend' | 'append';
 
+/**
+ * What a suggestion list is attached to. Value, date and datetime suggestions
+ * belong to a token and follow it by id, so editing or moving the token keeps
+ * them; suggestions typed in plain text sit at a document position.
+ */
+export type SuggestionAnchor = { readonly tokenId: string } | { readonly pos: number };
+
 export interface SuggestionState {
   type: SuggestionType;
   fieldKey: string | null;
@@ -19,7 +26,7 @@ export interface SuggestionState {
   customItems: readonly CustomSuggestion[];
   activeIndex: number;
   isLoading: boolean;
-  anchorPos: number | null;
+  anchor: SuggestionAnchor | null;
   dateValue: Date | null;
   dismissed: boolean;
   /** Display mode for fieldWithCustom type */
@@ -34,7 +41,7 @@ export interface SetSuggestionMeta {
   customItems?: readonly CustomSuggestion[];
   activeIndex?: number;
   isLoading?: boolean;
-  anchorPos?: number | null;
+  anchor?: SuggestionAnchor | null;
   dateValue?: Date | null;
   dismissed?: boolean;
   customDisplayMode?: CustomDisplayMode | null;
@@ -54,7 +61,7 @@ export const initialSuggestionState: SuggestionState = {
   customItems: [],
   activeIndex: -1,
   isLoading: false,
-  anchorPos: null,
+  anchor: null,
   dateValue: null,
   dismissed: false,
   customDisplayMode: null,

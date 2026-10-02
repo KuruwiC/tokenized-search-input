@@ -2,7 +2,7 @@
  * Integration tests for the validation system.
  * Tests validation rules, duplicate detection, and constraint behaviors.
  */
-import { act, cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef, useEffect, useRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -10,6 +10,7 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
+import { getSuggestionState, type SuggestionType } from '../../plugins/suggestion-plugin';
 import type { FieldDefinition, ValidationRule } from '../../types';
 import { MaxCount, RequirePattern, Unique } from '../../validation/presets';
 import { fieldsWithValidationOverride } from '../fixtures';
@@ -2183,6 +2184,65 @@ describe('Validation System Integration', () => {
         },
         { timeout: 2000 }
       );
+    });
+  });
+  describe('Validation marks while a value is edited', () => {
+    it('fires onChange once per edit and keeps the value suggestions open', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const ref = createRef<TokenizedSearchInputRef>();
+      const enumFields: FieldDefinition[] = [
+        {
+          key: 'status',
+          label: 'Status',
+          type: 'enum',
+          operators: ['is'],
+          enumValues: ['active', 'archived', 'pending'],
+        },
+      ];
+      const minLength: ValidationRule = {
+        id: 'min-length',
+        validate: (ctx) =>
+          ctx.tokens
+            .filter((t) => t.value.length < 3)
+            .map((t) => ({
+              ruleId: 'min-length',
+              reason: 'too-short',
+              action: 'mark' as const,
+              targets: [{ tokenId: t.id, pos: t.pos }],
+            })),
+      };
+      render(
+        <TokenizedSearchInput
+          ref={ref}
+          fields={enumFields}
+          defaultValue="status:is:arc"
+          onChange={onChange}
+          validation={{ rules: [minLength] }}
+        />
+      );
+      await expectTokenCounts(1, 0);
+      const editor = getInternalEditor(ref.current);
+      if (!editor) throw new Error('editor not created');
+
+      await user.click(screen.getByRole('group', { name: /Filter: status/i }));
+      await screen.findByRole('listbox');
+
+      const suggestionTypes: SuggestionType[] = [];
+      const recordSuggestion = () => {
+        suggestionTypes.push(getSuggestionState(editor.state)?.type ?? null);
+      };
+      editor.on('transaction', recordSuggestion);
+      const callsBefore = onChange.mock.calls.length;
+
+      await user.keyboard('{Backspace}');
+
+      await expectTokenCounts(1, 1);
+      expect(ref.current?.getValue()).toBe('status:is:ar');
+      expect(onChange.mock.calls.length - callsBefore).toBe(1);
+      expect(suggestionTypes).not.toContain(null);
+      expect(screen.getByRole('listbox')).toBeInTheDocument();
+      editor.off('transaction', recordSuggestion);
     });
   });
 });

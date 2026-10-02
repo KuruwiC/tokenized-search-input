@@ -5,6 +5,7 @@ import { parseISOToDate } from '../../pickers/date-format';
 import {
   closeSuggestion,
   getSuggestionState,
+  isAnchoredToToken,
   openDateSuggestion,
   openDateTimeSuggestion,
   openValueSuggestion,
@@ -16,7 +17,7 @@ import { filterEnumValues } from '../../utils/enum-value';
 
 export interface UseValueSuggestionsOptions {
   editor: Editor;
-  getPos: () => number | undefined;
+  tokenId: string;
   inputRef: RefObject<HTMLInputElement | null>;
   fieldKey: string;
   fieldDef: FieldDefinition | undefined;
@@ -44,7 +45,7 @@ export interface UseValueSuggestionsReturn {
  */
 export function useValueSuggestions({
   editor,
-  getPos,
+  tokenId,
   inputRef,
   fieldKey,
   fieldDef,
@@ -63,16 +64,10 @@ export function useValueSuggestions({
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      // Safety: close suggestion if this specific token unmounts.
+      // The suggestion of this token's value input goes away with the input.
       if (!editor.isDestroyed) {
         const suggestionState = getSuggestionState(editor.state);
-        // Only close if it's OUR suggestion (check fieldKey to avoid closing others)
-        const isOurSuggestion =
-          suggestionState?.fieldKey === fieldKey &&
-          (suggestionState?.type === 'value' ||
-            suggestionState?.type === 'date' ||
-            suggestionState?.type === 'datetime');
-        if (isOurSuggestion) {
+        if (suggestionState && isAnchoredToToken(suggestionState.anchor, tokenId)) {
           try {
             const tr = editor.state.tr;
             closeSuggestion(tr);
@@ -84,7 +79,7 @@ export function useValueSuggestions({
         }
       }
     };
-  }, [editor, fieldKey]);
+  }, [editor, tokenId]);
 
   // Open suggestions when value input receives focus
   const handleValueInputFocus = () => {
@@ -93,14 +88,11 @@ export function useValueSuggestions({
 
     if (!canShowValueSuggestion(editor)) return;
 
-    const pos = getPos();
-    const anchorPos = typeof pos === 'number' ? pos : null;
-
     // Skip if picker is already open for THIS specific token (prevents re-opening on click)
     const currentState = getSuggestionState(editor.state);
     if (
-      typeof pos === 'number' &&
-      currentState?.anchorPos === pos &&
+      currentState &&
+      isAnchoredToToken(currentState.anchor, tokenId) &&
       (currentState.type === 'date' || currentState.type === 'datetime')
     ) {
       return;
@@ -110,19 +102,19 @@ export function useValueSuggestions({
 
     if (isEnumField && fieldDef?.type === 'enum' && fieldDef.enumValues) {
       // Enum field: show value suggestions
-      openValueSuggestion(tr, fieldKey, fieldDef.enumValues, value, anchorPos);
+      openValueSuggestion(tr, fieldKey, fieldDef.enumValues, value, tokenId);
       tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
     } else if (isDateField) {
       // Date field: show date picker
       const currentDate = value ? parseISOToDate(value) : null;
-      openDateSuggestion(tr, fieldKey, currentDate, anchorPos);
+      openDateSuggestion(tr, fieldKey, currentDate, tokenId);
       tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
     } else if (isDateTimeField) {
       // DateTime field: show datetime picker
       const currentDate = value ? parseISOToDate(value) : null;
-      openDateTimeSuggestion(tr, fieldKey, currentDate, anchorPos);
+      openDateTimeSuggestion(tr, fieldKey, currentDate, tokenId);
       tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
     }
@@ -167,11 +159,10 @@ export function useValueSuggestions({
     const filteredValues = filterEnumValues(fieldDef.enumValues, currentInputText, {
       matcher: fieldDef.suggestionMatcher,
     });
-    const anchorPos = typeof getPos() === 'number' ? getPos() : null;
-    openValueSuggestion(tr, fieldKey, filteredValues, value, anchorPos);
+    openValueSuggestion(tr, fieldKey, filteredValues, value, tokenId);
     tr.setMeta('addToHistory', false);
     editor.view.dispatch(tr);
-  }, [valueDisplay, value, editor, getPos, fieldKey, fieldDef, enabled, isEnumField, inputRef]);
+  }, [valueDisplay, value, editor, tokenId, fieldKey, fieldDef, enabled, isEnumField, inputRef]);
 
   return { handleValueInputFocus, handleValueInputBlur };
 }
