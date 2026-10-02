@@ -9,11 +9,14 @@ import {
 } from '../../plugins/token-focus-plugin';
 import { blockSchema as schema } from '../fixtures';
 
-const token = (id: string) => schema.node('filterToken', { id, key: 'status', value: id });
+const token = (id: string, immutable = false) =>
+  schema.node('filterToken', { id, key: 'status', value: id, immutable });
 
 function createState(): EditorState {
   return EditorState.create({
-    doc: schema.node('doc', null, [schema.node('paragraph', null, [token('a'), token('b')])]),
+    doc: schema.node('doc', null, [
+      schema.node('paragraph', null, [token('a'), token('b'), token('locked', true)]),
+    ]),
     plugins: [createTokenFocusPlugin()],
   });
 }
@@ -45,6 +48,13 @@ describe('TokenFocusPlugin', () => {
       expect(getFocusedToken(state)).toBeNull();
     });
 
+    it('refuses an immutable token', () => {
+      const { set, state } = focus(createState(), 'locked');
+
+      expect(set).toBe(false);
+      expect(getFocusedToken(state)).toBeNull();
+    });
+
     it('clears the focus with null', () => {
       const focused = focus(createState(), 'a').state;
       const tr = focused.tr;
@@ -70,6 +80,15 @@ describe('TokenFocusPlugin', () => {
       );
 
       expect(getFocusedToken(next)?.id).toBe('a');
+    });
+
+    it('drops the focus when the focused token becomes immutable', () => {
+      const { state } = focus(createState(), 'a');
+      const next = state.apply(
+        state.tr.setNodeMarkup(1, undefined, { ...state.doc.nodeAt(1)?.attrs, immutable: true })
+      );
+
+      expect(getFocusedToken(next)).toBeNull();
     });
 
     it('keeps the focus on the token when content before it changes', () => {

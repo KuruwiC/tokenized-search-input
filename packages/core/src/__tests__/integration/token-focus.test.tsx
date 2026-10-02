@@ -13,7 +13,7 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
-import { getTokenFocusMeta } from '../../plugins/token-focus-plugin';
+import { getFocusedToken, getTokenFocusMeta } from '../../plugins/token-focus-plugin';
 import type { FieldDefinition, QuerySnapshotFilterToken } from '../../types';
 import { extendedFields } from '../fixtures';
 
@@ -103,6 +103,45 @@ describe('Token focus', () => {
       await waitFor(() => expect(document.activeElement).toBe(input));
       expect(input.selectionStart).toBe(0);
       expect(input.selectionEnd).toBe(0);
+    });
+  });
+
+  describe('immutable tokens', () => {
+    it('does not focus an immutable token that undo restored', async () => {
+      const { ref, container } = await renderInput('country:is:" "', fieldsWithImmutable);
+      const editor = getEditor(ref);
+      expect(container.querySelector('.tsi-token[data-immutable="true"]')).not.toBeNull();
+
+      act(() => {
+        editor.commands.deleteRange({ from: 1, to: 2 });
+      });
+      expect(container.querySelector('.tsi-token')).toBeNull();
+
+      act(() => {
+        editor.commands.undo();
+      });
+
+      await waitFor(() =>
+        expect(container.querySelector('.tsi-token[data-immutable="true"]')).not.toBeNull()
+      );
+      expect(container.querySelectorAll('.tsi-token[data-focused="true"]')).toHaveLength(0);
+    });
+
+    it('selects an immutable token that ArrowRight moves onto instead of editing it', async () => {
+      const user = userEvent.setup();
+      const { ref, container } = await renderInput('country:is:jp', fieldsWithImmutable);
+      const editor = getEditor(ref);
+      act(() => {
+        editor.commands.focus('start');
+      });
+      await waitFor(() => expect(editor.isFocused).toBe(true));
+
+      await user.keyboard('{ArrowRight}');
+
+      expect(getFocusedToken(editor.state)).toBeNull();
+      expect(editor.state.selection.from).toBe(1);
+      expect(editor.state.selection.to).toBe(2);
+      expect(container.querySelectorAll('.tsi-token[data-focused="true"]')).toHaveLength(0);
     });
   });
 

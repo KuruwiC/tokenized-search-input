@@ -58,6 +58,7 @@ export const blockSchema = new Schema({
         key: { default: '' },
         operator: { default: 'is' },
         value: { default: '' },
+        immutable: { default: false },
       },
     },
   },

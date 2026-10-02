@@ -5,13 +5,15 @@ import { isEmptyToken } from './empty-token-cleanup';
 
 /**
  * Undo and redo can restore a token without a value. Focusing the first such token
- * lets the user fill it in, or leave it and have it removed.
+ * that can be edited lets the user fill it in, or leave it and have it removed.
  */
 export function focusRestoredEmptyToken(tr: Transaction): boolean {
   let id: string | null = null;
   tr.doc.descendants((node) => {
     if (id !== null) return false;
-    if (isToken(node) && isEmptyToken(node)) id = String(node.attrs.id);
+    if (isToken(node) && isEmptyToken(node) && node.attrs.immutable !== true) {
+      id = String(node.attrs.id);
+    }
     return !isToken(node);
   });
   if (id === null) return false;
