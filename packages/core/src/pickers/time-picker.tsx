@@ -1,4 +1,4 @@
-import { type FC, useEffect, useMemo, useState } from 'react';
+import { type FC, useEffect, useState } from 'react';
 
 export interface TimeValue {
   hours: number;
@@ -8,7 +8,6 @@ export interface TimeValue {
 export interface TimePickerProps {
   value: TimeValue | null;
   onChange: (time: TimeValue) => void;
-  hour24?: boolean;
   disabled?: boolean;
 }
 
@@ -48,24 +47,12 @@ const parseTimeString = (str: string): TimeValue | null => {
  * - Handles keyboard navigation automatically
  * - Accessible by default
  *
- * When hour24=false, an AM/PM toggle button is displayed alongside the input.
- *
  * @see https://daypicker.dev/docs/time-pickers
  */
-export const TimePicker: FC<TimePickerProps> = ({
-  value,
-  onChange,
-  hour24 = true,
-  disabled = false,
-}) => {
+export const TimePicker: FC<TimePickerProps> = ({ value, onChange, disabled = false }) => {
   // Local state for immediate input responsiveness
   const [localValue, setLocalValue] = useState<string>(() => formatTimeValue(value));
   const [isEditing, setIsEditing] = useState(false);
-
-  // Derive effective time from localValue (if valid) or fallback to value
-  const parsedLocal = useMemo(() => parseTimeString(localValue), [localValue]);
-  const effectiveTime = parsedLocal ?? value;
-  const isPM = (effectiveTime?.hours ?? 0) >= 12;
 
   // Sync with external value when not editing
   useEffect(() => {
@@ -105,15 +92,6 @@ export const TimePicker: FC<TimePickerProps> = ({
     }
   };
 
-  const togglePeriod = () => {
-    if (!effectiveTime) return;
-    const normalizedHours = effectiveTime.hours % 12;
-    const newHours = isPM ? normalizedHours : normalizedHours + 12;
-    const newTime = { hours: newHours, minutes: effectiveTime.minutes };
-    setLocalValue(formatTimeValue(newTime));
-    onChange(newTime);
-  };
-
   return (
     <div className="tsi-time-picker">
       <input
@@ -124,20 +102,9 @@ export const TimePicker: FC<TimePickerProps> = ({
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        aria-label={hour24 ? 'Time (24-hour format)' : 'Time (12-hour format)'}
+        aria-label="Time"
         className="tsi-time-input"
       />
-      {!hour24 && (
-        <button
-          type="button"
-          onClick={togglePeriod}
-          disabled={disabled || !effectiveTime}
-          aria-label={isPM ? 'Switch to AM' : 'Switch to PM'}
-          className="tsi-time-ampm-btn"
-        >
-          {isPM ? 'PM' : 'AM'}
-        </button>
-      )}
     </div>
   );
 };

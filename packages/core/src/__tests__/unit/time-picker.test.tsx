@@ -1,8 +1,7 @@
 /**
  * Unit tests for TimePicker component.
  *
- * Tests focus/blur behavior, editing mode, AM/PM toggle,
- * and keyboard interactions.
+ * Tests focus/blur behavior, editing mode, and keyboard interactions.
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
@@ -29,14 +28,14 @@ describe('TimePicker', () => {
       expect(input).toHaveValue('14:30');
     });
 
-    it('renders AM/PM toggle when hour24 is false', () => {
-      render(<TimePicker value={{ hours: 14, minutes: 30 }} onChange={vi.fn()} hour24={false} />);
-      expect(screen.getByRole('button', { name: /switch to am/i })).toBeInTheDocument();
+    it('is labelled Time, with no 12-hour or 24-hour claim, since the browser decides the format', () => {
+      render(<TimePicker value={{ hours: 14, minutes: 30 }} onChange={vi.fn()} />);
+      expect(screen.getByLabelText('Time')).toBeInTheDocument();
     });
 
-    it('does not render AM/PM toggle when hour24 is true', () => {
-      render(<TimePicker value={{ hours: 14, minutes: 30 }} onChange={vi.fn()} hour24={true} />);
-      expect(screen.queryByRole('button', { name: /switch/i })).not.toBeInTheDocument();
+    it('has no AM/PM toggle', () => {
+      render(<TimePicker value={{ hours: 14, minutes: 30 }} onChange={vi.fn()} />);
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
   });
 
@@ -146,76 +145,6 @@ describe('TimePicker', () => {
       fireEvent.keyDown(input, { key: 'Enter' });
 
       expect(document.activeElement).not.toBe(input);
-    });
-  });
-
-  describe('AM/PM toggle', () => {
-    it('shows PM when hours >= 12', () => {
-      render(<TimePicker value={{ hours: 14, minutes: 30 }} onChange={vi.fn()} hour24={false} />);
-      expect(screen.getByRole('button')).toHaveTextContent('PM');
-    });
-
-    it('shows AM when hours < 12', () => {
-      render(<TimePicker value={{ hours: 9, minutes: 30 }} onChange={vi.fn()} hour24={false} />);
-      expect(screen.getByRole('button')).toHaveTextContent('AM');
-    });
-
-    it('toggles from PM to AM correctly', () => {
-      const onChange = vi.fn();
-      render(<TimePicker value={{ hours: 14, minutes: 30 }} onChange={onChange} hour24={false} />);
-      const button = screen.getByRole('button', { name: /switch to am/i });
-
-      fireEvent.click(button);
-
-      // 14:30 PM -> 2:30 AM (hours: 2)
-      expect(onChange).toHaveBeenCalledWith({ hours: 2, minutes: 30 });
-    });
-
-    it('toggles from AM to PM correctly', () => {
-      const onChange = vi.fn();
-      render(<TimePicker value={{ hours: 9, minutes: 15 }} onChange={onChange} hour24={false} />);
-      const button = screen.getByRole('button', { name: /switch to pm/i });
-
-      fireEvent.click(button);
-
-      // 9:15 AM -> 21:15 PM (hours: 21)
-      expect(onChange).toHaveBeenCalledWith({ hours: 21, minutes: 15 });
-    });
-
-    it('handles midnight (00:00) toggle correctly', () => {
-      const onChange = vi.fn();
-      render(<TimePicker value={{ hours: 0, minutes: 0 }} onChange={onChange} hour24={false} />);
-
-      const button = screen.getByRole('button', { name: /switch to pm/i });
-      fireEvent.click(button);
-
-      // 00:00 (12 AM) -> 12:00 (12 PM)
-      expect(onChange).toHaveBeenCalledWith({ hours: 12, minutes: 0 });
-    });
-
-    it('handles noon (12:00) toggle correctly', () => {
-      const onChange = vi.fn();
-      render(<TimePicker value={{ hours: 12, minutes: 0 }} onChange={onChange} hour24={false} />);
-
-      const button = screen.getByRole('button', { name: /switch to am/i });
-      fireEvent.click(button);
-
-      // 12:00 (12 PM) -> 00:00 (12 AM)
-      expect(onChange).toHaveBeenCalledWith({ hours: 0, minutes: 0 });
-    });
-
-    it('is disabled when value is null', () => {
-      render(<TimePicker value={null} onChange={vi.fn()} hour24={false} />);
-      const button = screen.getByRole('button');
-      expect(button).toBeDisabled();
-    });
-
-    it('is disabled when picker is disabled', () => {
-      render(
-        <TimePicker value={{ hours: 14, minutes: 30 }} onChange={vi.fn()} hour24={false} disabled />
-      );
-      const button = screen.getByRole('button');
-      expect(button).toBeDisabled();
     });
   });
 

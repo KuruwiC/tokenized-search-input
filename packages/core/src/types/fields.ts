@@ -259,9 +259,6 @@ export interface DateFieldDefinition extends BaseFieldDefinition {
 export interface DateTimeFieldDefinition extends BaseFieldDefinition {
   type: 'datetime';
   formatConfig?: DateTimeFormatConfig;
-  timeOptions?: {
-    hour24?: boolean;
-  };
   /** Earliest selectable day. Days are compared, so a time in the value does not matter. */
   minDate?: Date | string;
   /** Latest selectable day. Days are compared, so a time in the value does not matter. */

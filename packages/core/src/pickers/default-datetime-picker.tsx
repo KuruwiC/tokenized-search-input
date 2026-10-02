@@ -64,8 +64,6 @@ export const DefaultDateTimePicker: FC<DateTimePickerRenderProps> = ({
     }
   }, [selectedDate]);
 
-  const hour24 = fieldDef.timeOptions?.hour24 ?? true;
-
   const { minDate, maxDate, disabledDates } = fieldDef;
   const disabled = useMemo(
     () => createDayMatcher({ minDate, maxDate, disabledDates }, isUTC),
@@ -150,12 +148,7 @@ export const DefaultDateTimePicker: FC<DateTimePickerRenderProps> = ({
             onBlur={handleTimePickerBlur}
             onKeyDown={handleTimePickerKeyDown}
           >
-            <TimePicker
-              value={currentTime}
-              onChange={handleTimeChange}
-              hour24={hour24}
-              disabled={!isTimeEnabled}
-            />
+            <TimePicker value={currentTime} onChange={handleTimeChange} disabled={!isTimeEnabled} />
           </fieldset>
           {supportsUTCMode(fieldDef.formatConfig) && (
             <label className="tsi-utc-label">

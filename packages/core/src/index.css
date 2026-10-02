@@ -1742,37 +1742,4 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
-
-  :where(.tsi-time-ampm-btn) {
-    height: 2rem;
-    padding-left: 0.625rem;
-    padding-right: 0.625rem;
-    font-size: var(--tsi-font-size-sm);
-    font-weight: 500;
-    color: var(--tsi-foreground);
-    background-color: var(--tsi-background);
-    border: 1px solid var(--tsi-border);
-    border-radius: var(--tsi-radius-sm);
-    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  }
-
-  :where(.tsi-time-ampm-btn):hover {
-    background-color: color-mix(in srgb, var(--tsi-muted) 80%, transparent);
-  }
-
-  :where(.tsi-time-ampm-btn):active {
-    background-color: color-mix(in srgb, var(--tsi-muted) 70%, transparent);
-  }
-
-  :where(.tsi-time-ampm-btn):focus {
-    outline: none;
-    box-shadow:
-      0 0 0 2px var(--tsi-foreground),
-      0 0 0 3px var(--tsi-background);
-  }
-
-  :where(.tsi-time-ampm-btn):disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
 }
