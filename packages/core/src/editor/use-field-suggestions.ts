@@ -85,7 +85,7 @@ export function useFieldSuggestions(
     (forceClose = false) => {
       if (!editor) return;
 
-      const currentState = editor.view.state;
+      const currentState = editor.state;
       const suggestionState = getSuggestionState(currentState);
       const currentType = getCurrentSuggestionType(currentState);
 

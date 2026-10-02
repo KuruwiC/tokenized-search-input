@@ -16,6 +16,7 @@ import {
   useState,
 } from 'react';
 import { ClipboardSerializer } from '../extensions/clipboard-serializer';
+import { CorePluginsExtension } from '../extensions/core-plugins';
 import {
   createEditorContext,
   EDITOR_CONTEXT_UPDATED,
@@ -28,19 +29,13 @@ import { TokenNavigation } from '../extensions/token-navigation';
 import { useDevWarnings } from '../hooks/use-dev-warnings';
 import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
 import { usePluginState } from '../hooks/use-plugin-state';
-import { createSelectionGuardPlugin } from '../plugins/selection-guard-plugin';
 import {
   clearDismissed,
-  createSuggestionPlugin,
   dismissSuggestion,
   getSuggestionState,
   suggestionKey,
 } from '../plugins/suggestion-plugin';
-import {
-  createTokenFocusPlugin,
-  getTokenFocusState,
-  tokenFocusKey,
-} from '../plugins/token-focus-plugin';
+import { getTokenFocusState, tokenFocusKey } from '../plugins/token-focus-plugin';
 import {
   SelectionInvariantExtension,
   TokenSpacingExtension,
@@ -228,6 +223,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       SelectionInvariantExtension,
       EditorContextExtension.configure(initialContext),
       KeyboardShortcutsExtension,
+      CorePluginsExtension,
     ]);
 
     const editor = useEditor({
@@ -251,23 +247,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
         // Browser synthesizes click from touch, which is handled by React onClick.
       },
       onCreate: ({ editor: ed }) => {
-        const focusPlugin = createTokenFocusPlugin();
-        const suggestionPlugin = createSuggestionPlugin();
-        const selectionGuardPlugin = createSelectionGuardPlugin();
-        ed.view.updateState(
-          ed.view.state.reconfigure({
-            plugins: [
-              ...ed.view.state.plugins,
-              focusPlugin,
-              suggestionPlugin,
-              selectionGuardPlugin,
-            ],
-          })
-        );
-
-        // Force validation check
-        // IMPORTANT: Use ed.view.state.tr (not ed.state.tr) because plugins were added to view.state
-        const tr = ed.view.state.tr;
+        const tr = ed.state.tr;
         tr.setMeta(FORCE_VALIDATION_CHECK, true);
         ed.view.dispatch(tr);
       },
@@ -278,13 +258,13 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
 
         // Detect changes in confirmed (non-focused) filter tokens for onTokensChange
         if (onTokensChange) {
-          const focusState = getTokenFocusState(ed.view.state);
+          const focusState = getTokenFocusState(ed.state);
           const focusedPos = focusState?.focusedPos ?? null;
 
           // Get focused token ID from node attrs
           let focusedTokenId: string | null = null;
           if (focusedPos !== null) {
-            const node = ed.view.state.doc.nodeAt(focusedPos);
+            const node = ed.state.doc.nodeAt(focusedPos);
             if (node && isToken(node)) {
               focusedTokenId = (node.attrs as { id?: string }).id ?? null;
             }
