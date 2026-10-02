@@ -1,7 +1,33 @@
 /** Parsers used when typing dates into picker navigation controls. */
 
-import { chainParsers, err, isOk, ok, type ParseResult } from '../types/parse-result';
 import type { TimeValue } from './time-picker';
+
+// ============================================================================
+// Parse results
+// ============================================================================
+
+export type ParseOk<T> = { readonly ok: true; readonly value: T };
+export type ParseErr = { readonly ok: false; readonly error: string; readonly hint?: string };
+export type ParseResult<T> = ParseOk<T> | ParseErr;
+
+export const ok = <T>(value: T): ParseOk<T> => ({ ok: true, value });
+
+export const err = (error: string, hint?: string): ParseErr => ({ ok: false, error, hint });
+
+/** Chains parsers, returning the first success, or the last failure when all fail. */
+const chainParsers = <T>(
+  parsers: readonly ((input: string) => ParseResult<T>)[]
+): ((input: string) => ParseResult<T>) => {
+  return (input) => {
+    let lastErr: ParseErr = err('No parsers provided');
+    for (const parse of parsers) {
+      const result = parse(input);
+      if (result.ok) return result;
+      lastErr = result;
+    }
+    return lastErr;
+  };
+};
 
 // ============================================================================
 // Date Navigation Parsers
@@ -72,7 +98,7 @@ const dateNavigationParser = chainParsers<Date>([
 export function parseDateForNavigation(input: string): Date | null {
   if (!input || typeof input !== 'string') return null;
   const result = dateNavigationParser(input.trim());
-  return isOk(result) ? result.value : null;
+  return result.ok ? result.value : null;
 }
 
 // ============================================================================
