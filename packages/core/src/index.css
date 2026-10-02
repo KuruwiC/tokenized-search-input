@@ -1217,6 +1217,8 @@
 
   :where(.tsi-custom-suggestion-item) {
     flex-direction: column;
+    align-items: stretch;
+    gap: 0;
     min-width: 0;
   }
 
