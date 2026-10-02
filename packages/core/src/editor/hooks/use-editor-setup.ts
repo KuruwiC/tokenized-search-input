@@ -20,6 +20,7 @@ import { TokenNavigation } from '../../extensions/token-navigation';
 import { useIsomorphicLayoutEffect } from '../../hooks/use-isomorphic-layout-effect';
 import { markContentEntered } from '../../plugins/shared/meta';
 import { getTokenFocusState, tokenFocusKey } from '../../plugins/token-focus-plugin';
+import { TokenGapExtension } from '../../plugins/token-gap-decorations';
 import {
   SelectionInvariantExtension,
   TokenSpacingExtension,
@@ -86,6 +87,7 @@ export function useEditorSetup({
     FreeTextTokenNode,
     TokenNavigation,
     ClipboardSerializer,
+    TokenGapExtension,
     ValidationExtension,
     TokenSpacingExtension,
     SelectionInvariantExtension,
