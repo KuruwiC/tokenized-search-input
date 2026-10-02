@@ -4,9 +4,9 @@ import { Check } from '../icons/check';
 import { ChevronLeft } from '../icons/chevron-left';
 import { ChevronRight } from '../icons/chevron-right';
 import type { DateTimePickerRenderProps } from '../types';
-import { calendarDayToDate, toCalendarDay } from './calendar-days';
+import { calendarDayToDate, createDayMatcher, toCalendarDay } from './calendar-days';
 import { calendarClassNames, closeButtonClassName } from './calendar-styles';
-import { isSameMonth, parseISOToDate, supportsUTCMode } from './date-format';
+import { isSameMonth, supportsUTCMode } from './date-format';
 import { type DateTimeValue, localOffsetAt, toInstant } from './date-time-value';
 import { TimePicker, type TimeValue } from './time-picker';
 
@@ -66,28 +66,11 @@ export const DefaultDateTimePicker: FC<DateTimePickerRenderProps> = ({
 
   const hour24 = fieldDef.timeOptions?.hour24 ?? true;
 
-  const minDate = useMemo(() => {
-    if (!fieldDef.minDate) return undefined;
-    return typeof fieldDef.minDate === 'string'
-      ? parseISOToDate(fieldDef.minDate)
-      : fieldDef.minDate;
-  }, [fieldDef.minDate]);
-
-  const maxDate = useMemo(() => {
-    if (!fieldDef.maxDate) return undefined;
-    return typeof fieldDef.maxDate === 'string'
-      ? parseISOToDate(fieldDef.maxDate)
-      : fieldDef.maxDate;
-  }, [fieldDef.maxDate]);
-
-  const disabled = useMemo(() => {
-    return (date: Date): boolean => {
-      if (minDate && date < minDate) return true;
-      if (maxDate && date > maxDate) return true;
-      if (fieldDef.disabledDates?.(date)) return true;
-      return false;
-    };
-  }, [minDate, maxDate, fieldDef.disabledDates]);
+  const { minDate, maxDate, disabledDates } = fieldDef;
+  const disabled = useMemo(
+    () => createDayMatcher({ minDate, maxDate, disabledDates }, isUTC),
+    [minDate, maxDate, disabledDates, isUTC]
+  );
 
   /** The value for `date` at `at`: the offset of the current value, else UTC or the local one. */
   const valueAt = (date: string, at: string): DateTimeValue => ({

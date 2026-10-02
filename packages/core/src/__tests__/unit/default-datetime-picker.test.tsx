@@ -277,4 +277,51 @@ describe('DefaultDateTimePicker', () => {
       expect(onUTCChange).toHaveBeenCalledWith(true);
     });
   });
+
+  describe('the days that can be chosen', () => {
+    it('leaves March 5 selectable for a maximum of 2024-03-05T15:00 (f)', () => {
+      render(
+        <DefaultDateTimePicker
+          {...propsOf({
+            value: { date: '2024-03-05' },
+            fieldDef: field({ maxDate: '2024-03-05T15:00' }),
+          })}
+        />
+      );
+      expect(day(/March 5th, 2024/)).toBeEnabled();
+      expect(day(/March 6th, 2024/)).toBeDisabled();
+    });
+
+    it('leaves March 5 selectable for a minimum of 2024-03-05T15:00', () => {
+      render(
+        <DefaultDateTimePicker
+          {...propsOf({
+            value: { date: '2024-03-05' },
+            fieldDef: field({ minDate: '2024-03-05T15:00' }),
+          })}
+        />
+      );
+      expect(day(/March 5th, 2024/)).toBeEnabled();
+      expect(day(/March 4th, 2024/)).toBeDisabled();
+    });
+
+    it('compares a Date maximum by its UTC day while the value is in UTC', () => {
+      render(
+        <DefaultDateTimePicker
+          {...propsOf({
+            value: { date: '2024-03-05', time: '10:00', offset: 'Z' },
+            fieldDef: field({ maxDate: new Date('2024-03-05T23:30:00Z') }),
+            timeControls: {
+              isUTC: true,
+              onUTCChange: vi.fn(),
+              includeTime: true,
+              onIncludeTimeChange: vi.fn(),
+            },
+          })}
+        />
+      );
+      expect(day(/March 5th, 2024/)).toBeEnabled();
+      expect(day(/March 6th, 2024/)).toBeDisabled();
+    });
+  });
 });

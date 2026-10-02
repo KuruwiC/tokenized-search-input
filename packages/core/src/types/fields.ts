@@ -246,7 +246,9 @@ export interface DateTimeFormatConfig extends DateFormatConfig {
 export interface DateFieldDefinition extends BaseFieldDefinition {
   type: 'date';
   formatConfig?: DateFormatConfig;
+  /** Earliest selectable day. Days are compared, so a time in the value does not matter. */
   minDate?: Date | string;
+  /** Latest selectable day. Days are compared, so a time in the value does not matter. */
   maxDate?: Date | string;
   disabledDates?: (date: Date) => boolean;
   renderPicker?: (props: DatePickerRenderProps) => ReactNode;
@@ -260,7 +262,9 @@ export interface DateTimeFieldDefinition extends BaseFieldDefinition {
   timeOptions?: {
     hour24?: boolean;
   };
+  /** Earliest selectable day. Days are compared, so a time in the value does not matter. */
   minDate?: Date | string;
+  /** Latest selectable day. Days are compared, so a time in the value does not matter. */
   maxDate?: Date | string;
   disabledDates?: (date: Date) => boolean;
   renderPicker?: (props: DateTimePickerRenderProps) => ReactNode;

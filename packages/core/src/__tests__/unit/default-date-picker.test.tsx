@@ -41,4 +41,30 @@ describe('DefaultDatePicker', () => {
     rerender(<DefaultDatePicker {...props} value={{ date: '2024-07-04' }} />);
     expect(screen.getByRole('button', { name: /July 4th, 2024/ })).toBeInTheDocument();
   });
+
+  it('leaves the day of the maximum selectable whatever time the maximum has (f)', () => {
+    render(
+      <DefaultDatePicker
+        value={{ date: '2024-03-05' }}
+        onChange={vi.fn()}
+        onClose={vi.fn()}
+        fieldDef={{ ...field, maxDate: '2024-03-05T15:00' }}
+      />
+    );
+    expect(screen.getByRole('button', { name: /March 5th, 2024/ })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /March 6th, 2024/ })).toBeDisabled();
+  });
+
+  it('compares a Date minimum by its local day', () => {
+    render(
+      <DefaultDatePicker
+        value={{ date: '2024-03-05' }}
+        onChange={vi.fn()}
+        onClose={vi.fn()}
+        fieldDef={{ ...field, minDate: new Date(2024, 2, 5, 23, 0) }}
+      />
+    );
+    expect(screen.getByRole('button', { name: /March 5th, 2024/ })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /March 4th, 2024/ })).toBeDisabled();
+  });
 });

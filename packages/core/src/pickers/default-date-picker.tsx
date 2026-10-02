@@ -4,9 +4,9 @@ import { Check } from '../icons/check';
 import { ChevronLeft } from '../icons/chevron-left';
 import { ChevronRight } from '../icons/chevron-right';
 import type { DatePickerRenderProps } from '../types';
-import { calendarDayToDate, toCalendarDay } from './calendar-days';
+import { calendarDayToDate, createDayMatcher, toCalendarDay } from './calendar-days';
 import { calendarClassNames, closeButtonClassName } from './calendar-styles';
-import { isSameMonth, parseISOToDate } from './date-format';
+import { isSameMonth } from './date-format';
 
 /**
  * Default date picker component using react-day-picker.
@@ -38,28 +38,11 @@ export const DefaultDatePicker: FC<DatePickerRenderProps> = ({
     }
   }, [selectedDate]);
 
-  const minDate = useMemo(() => {
-    if (!fieldDef.minDate) return undefined;
-    return typeof fieldDef.minDate === 'string'
-      ? parseISOToDate(fieldDef.minDate)
-      : fieldDef.minDate;
-  }, [fieldDef.minDate]);
-
-  const maxDate = useMemo(() => {
-    if (!fieldDef.maxDate) return undefined;
-    return typeof fieldDef.maxDate === 'string'
-      ? parseISOToDate(fieldDef.maxDate)
-      : fieldDef.maxDate;
-  }, [fieldDef.maxDate]);
-
-  const disabled = useMemo(() => {
-    return (date: Date): boolean => {
-      if (minDate && date < minDate) return true;
-      if (maxDate && date > maxDate) return true;
-      if (fieldDef.disabledDates?.(date)) return true;
-      return false;
-    };
-  }, [minDate, maxDate, fieldDef.disabledDates]);
+  const { minDate, maxDate, disabledDates } = fieldDef;
+  const disabled = useMemo(
+    () => createDayMatcher({ minDate, maxDate, disabledDates }, false),
+    [minDate, maxDate, disabledDates]
+  );
 
   const handleSelect = (date: Date | undefined) => {
     if (date) {
