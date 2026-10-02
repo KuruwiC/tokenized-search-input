@@ -1,6 +1,8 @@
-import { closeSuggestion, navigateSuggestion } from '../../../plugins/suggestion-plugin';
-import { getFieldsInDisplayOrder } from '../../../suggestions/field-suggestion-list';
-import type { CustomSuggestion, FieldDefinition } from '../../../types';
+import {
+  closeSuggestion,
+  navigateSuggestion,
+  suggestionEntries,
+} from '../../../plugins/suggestion-plugin';
 import { isSuggestionOpen, isTokenFocused } from '../guards';
 import type { KeyboardCallbacks, KeyboardContext } from '../types';
 
@@ -36,8 +38,8 @@ export function handleArrowUp(ctx: KeyboardContext): boolean {
 
 /**
  * Handle Enter key for suggestion selection.
- * - If an item is selected (activeIndex >= 0), select it
- * - If no item is selected (activeIndex === -1), close suggestions without selecting
+ * - If an entry is active (activeIndex >= 0), select it
+ * - If none is active (activeIndex === -1), close suggestions without selecting
  * Returns true if handled, false otherwise.
  */
 export function handleEnterOnSuggestion(
@@ -51,74 +53,17 @@ export function handleEnterOnSuggestion(
     return false;
   }
 
-  const items = suggestionState.items;
-  const activeIndex = suggestionState.activeIndex;
-
-  // Handle custom suggestions
-  if (suggestionState.type === 'custom') {
-    const customItems = suggestionState.customItems;
-    if (activeIndex >= 0 && activeIndex < customItems.length) {
-      const selectedCustom = customItems[activeIndex] as CustomSuggestion;
-      callbacks.onCustomSelect(selectedCustom);
-      return true;
-    }
+  const entry = suggestionEntries(suggestionState)[suggestionState.activeIndex];
+  if (entry?.kind === 'field') {
+    callbacks.onFieldSelect(entry.field);
+    return true;
+  }
+  if (entry?.kind === 'custom') {
+    callbacks.onCustomSelect(entry.suggestion);
+    return true;
   }
 
-  // Handle fieldWithCustom suggestions (prepend/append mode)
-  if (suggestionState.type === 'fieldWithCustom') {
-    const customItems = suggestionState.customItems;
-    const fieldItems = items as FieldDefinition[];
-    const displayOrderFields = getFieldsInDisplayOrder(fieldItems);
-    const isPrepend = suggestionState.customDisplayMode === 'prepend';
-
-    if (activeIndex >= 0) {
-      if (isPrepend) {
-        // Prepend mode: custom items first, then field items
-        if (activeIndex < customItems.length) {
-          const selectedCustom = customItems[activeIndex] as CustomSuggestion;
-          callbacks.onCustomSelect(selectedCustom);
-          return true;
-        }
-        const fieldIndex = activeIndex - customItems.length;
-        if (fieldIndex < displayOrderFields.length) {
-          const selectedField = displayOrderFields[fieldIndex];
-          callbacks.onFieldSelect(selectedField);
-          return true;
-        }
-      } else {
-        // Append mode: field items first, then custom items
-        if (activeIndex < displayOrderFields.length) {
-          const selectedField = displayOrderFields[activeIndex];
-          callbacks.onFieldSelect(selectedField);
-          return true;
-        }
-        const customIndex = activeIndex - displayOrderFields.length;
-        if (customIndex < customItems.length) {
-          const selectedCustom = customItems[customIndex] as CustomSuggestion;
-          callbacks.onCustomSelect(selectedCustom);
-          return true;
-        }
-      }
-    }
-  }
-
-  // If an item is selected, select it
-  if (activeIndex >= 0 && activeIndex < items.length) {
-    if (suggestionState.type === 'field') {
-      // Use display order to match visual order in FieldSuggestionList
-      const displayOrderFields = getFieldsInDisplayOrder(items as FieldDefinition[]);
-      const selectedField = displayOrderFields[activeIndex];
-      callbacks.onFieldSelect(selectedField);
-      return true;
-    }
-    if (suggestionState.type === 'value') {
-      const selectedValue = items[activeIndex] as string;
-      callbacks.onValueSelect(selectedValue);
-      return true;
-    }
-  }
-
-  // No item selected (activeIndex === -1) or no items - close suggestions
+  // No entry selected (activeIndex === -1) or none to select - close suggestions
   // This provides predictable UX: first Enter closes, second Enter triggers search
   const tr = editor.state.tr;
   closeSuggestion(tr);

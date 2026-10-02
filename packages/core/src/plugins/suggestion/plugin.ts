@@ -12,6 +12,7 @@ import { findTokenById } from '../../utils/find-token';
 import { isFilterToken, isToken } from '../../utils/node-predicates';
 import { getSuggestionQueryUpdate } from '../shared/meta';
 import { getTokenFocusMeta } from '../token-focus/state';
+import { suggestionEntries } from './entries';
 import { createResetState } from './state-helpers';
 import type {
   CloseSuggestionMeta,
@@ -171,21 +172,25 @@ export function createSuggestionPlugin(
           return createResetState(value);
         }
 
-        const newItems = meta.items ?? value.items;
-        const newCustomItems = meta.customItems ?? value.customItems;
-        let newActiveIndex = meta.activeIndex ?? value.activeIndex;
-
-        // Determine total item count based on suggestion type
         const newType = meta.type ?? value.type;
-        let totalItems: number;
-        if (newType === 'custom') {
-          totalItems = newCustomItems.length;
-        } else if (newType === 'fieldWithCustom') {
-          totalItems = newItems.length + newCustomItems.length;
-        } else {
-          totalItems = newItems.length;
-        }
+        // A suggestion that is closed or dismissed keeps none of the custom suggestions it had
+        const newDismissed = meta.dismissed ?? value.dismissed;
+        const closed = newType === null || newDismissed;
+        const newItems = meta.items ?? value.items;
+        const newCustomItems = closed ? [] : (meta.customItems ?? value.customItems);
+        const newCustomDisplayMode = closed
+          ? null
+          : meta.customDisplayMode !== undefined
+            ? meta.customDisplayMode
+            : value.customDisplayMode;
 
+        const totalItems = suggestionEntries({
+          type: newType,
+          items: newItems,
+          customItems: newCustomItems,
+          customDisplayMode: newCustomDisplayMode,
+        }).length;
+        let newActiveIndex = meta.activeIndex ?? value.activeIndex;
         if (totalItems === 0) {
           newActiveIndex = -1;
         } else if (newActiveIndex >= totalItems) {
@@ -200,16 +205,15 @@ export function createSuggestionPlugin(
           query: meta.query ?? value.query,
           items: newItems,
           customItems: newCustomItems,
-          custom: meta.custom ?? value.custom,
+          custom: closed ? initialSuggestionState.custom : (meta.custom ?? value.custom),
           activeIndex: newActiveIndex,
           isLoading: meta.isLoading ?? value.isLoading,
           anchor: meta.anchor !== undefined ? meta.anchor : value.anchor,
           dateValue: meta.dateValue !== undefined ? meta.dateValue : value.dateValue,
           isUTC: meta.isUTC ?? value.isUTC,
           includeTime: meta.includeTime ?? value.includeTime,
-          dismissed: meta.dismissed ?? value.dismissed,
-          customDisplayMode:
-            meta.customDisplayMode !== undefined ? meta.customDisplayMode : value.customDisplayMode,
+          dismissed: newDismissed,
+          customDisplayMode: newCustomDisplayMode,
         };
       },
     },

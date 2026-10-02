@@ -1,17 +1,15 @@
-import { Fragment, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { cn } from '../utils/cn';
 import { useScrollActiveIntoView } from '../utils/scroll-into-view';
 
 export interface SuggestionGroup {
   /** Items next to each other with the same key form one group. */
   key: string;
-  /** Names the group; a group without a label is not set apart from the options around it. */
+  /** Names the group; a group without a label is only set apart by a divider, if any. */
   label?: ReactNode;
   labelClassName?: string;
   /** Whether a divider separates the group from the one before it. */
   separated?: boolean;
-  /** Shown after the options of the group, such as a row that loads more of them. */
-  footer?: ReactNode;
 }
 
 export interface SuggestionListProps<T> {
@@ -29,6 +27,8 @@ export interface SuggestionListProps<T> {
   getOptionClassName?: (item: T) => string;
   getGroup?: (item: T) => SuggestionGroup | undefined;
   dividerClassName?: string;
+  /** Shown below the listbox, such as a row that loads more options. */
+  footer?: ReactNode;
 }
 
 interface Run<T> {
@@ -67,6 +67,7 @@ export function SuggestionList<T>({
   getOptionClassName,
   getGroup,
   dividerClassName,
+  footer,
 }: SuggestionListProps<T>): React.ReactElement {
   const optionRefs = useScrollActiveIntoView<HTMLButtonElement>(activeIndex);
 
@@ -107,13 +108,13 @@ export function SuggestionList<T>({
       <div role="listbox" id={listboxId}>
         {toRuns(items, getGroup).map((run, runIndex) => {
           const { group } = run;
+          if (!group) return run.entries.map((entry) => renderOption(entry, false));
+
           const labelId = `${optionIdPrefix}-group-${runIndex}`;
-          const labeled = group?.label !== undefined;
+          const labeled = group.label !== undefined;
           return (
-            <Fragment key={`${runIndex}:${group?.key ?? ''}`}>
-              {group?.separated && (
-                <div aria-hidden="true" className={cn('tsi-divider', dividerClassName)} />
-              )}
+            <fieldset key={group.key} aria-labelledby={labeled ? labelId : undefined}>
+              {group.separated && <hr className={cn('tsi-divider', dividerClassName)} />}
               {labeled && (
                 <div
                   id={labelId}
@@ -123,18 +124,12 @@ export function SuggestionList<T>({
                   {group.label}
                 </div>
               )}
-              {labeled ? (
-                <fieldset aria-labelledby={labelId}>
-                  {run.entries.map((entry, i) => renderOption(entry, i === 0))}
-                </fieldset>
-              ) : (
-                run.entries.map((entry) => renderOption(entry, false))
-              )}
-              {group?.footer}
-            </Fragment>
+              {run.entries.map((entry, i) => renderOption(entry, labeled && i === 0))}
+            </fieldset>
           );
         })}
       </div>
+      {footer}
     </div>
   );
 }

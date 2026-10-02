@@ -27,6 +27,8 @@ export {
 } from './actions';
 // Anchors
 export { isAnchoredToToken, resolveAnchorPos } from './anchor';
+// Entries
+export { DEFAULT_CATEGORY, type SuggestionEntry, suggestionEntries } from './entries';
 // Plugin
 export {
   createSuggestionPlugin,

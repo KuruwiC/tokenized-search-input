@@ -2,12 +2,14 @@ import type { Transaction } from '@tiptap/pm/state';
 import type { DateTimeValue } from '../../pickers/date-time-value';
 import type { CustomSuggestion, EnumValue, FieldDefinition } from '../../types';
 import { positionAnchor, tokenAnchor } from './anchor';
+import { suggestionEntries } from './entries';
 import { suggestionKey } from './plugin';
-import type {
-  CloseSuggestionMeta,
-  CustomDisplayMode,
-  SuggestionMeta,
-  SuggestionState,
+import {
+  type CloseSuggestionMeta,
+  type CustomDisplayMode,
+  initialSuggestionState,
+  type SuggestionMeta,
+  type SuggestionState,
 } from './types';
 
 function isCloseMeta(meta: SuggestionMeta): meta is CloseSuggestionMeta {
@@ -39,6 +41,9 @@ export function openFieldSuggestion(
     fieldKey: null,
     query,
     items: fields,
+    customItems: [],
+    custom: initialSuggestionState.custom,
+    customDisplayMode: null,
     activeIndex: -1,
     isLoading: false,
     anchor: positionAnchor(anchorPos),
@@ -161,16 +166,22 @@ export function setCustomLoadingMore(
   return setSuggestion(tr, { custom: { ...state.custom, isLoadingMore } });
 }
 
-/** Adds the next page to the custom suggestions, keeping what is active and where it is anchored. */
+/** Adds the next page to the custom suggestions, keeping the same entry active and the anchor. */
 export function appendCustomSuggestions(
   tr: Transaction,
   state: SuggestionState,
   page: readonly CustomSuggestion[],
   hasMore: boolean
 ): Transaction {
+  const customItems = [...state.customItems, ...page];
+  const active = suggestionEntries(state)[state.activeIndex];
+  const activeIndex = active
+    ? suggestionEntries({ ...state, customItems }).findIndex((entry) => entry.key === active.key)
+    : state.activeIndex;
   return setSuggestion(tr, {
-    customItems: [...state.customItems, ...page],
+    customItems,
     custom: { hasMore, offset: state.custom.offset + page.length, isLoadingMore: false },
+    activeIndex,
   });
 }
 
@@ -223,15 +234,8 @@ export function navigateSuggestion(
   state: SuggestionState,
   direction: 'up' | 'down'
 ): void {
-  const { items, customItems, activeIndex, type } = state;
-  let itemCount: number;
-  if (type === 'custom') {
-    itemCount = customItems.length;
-  } else if (type === 'fieldWithCustom') {
-    itemCount = items.length + customItems.length;
-  } else {
-    itemCount = items.length;
-  }
+  const { activeIndex } = state;
+  const itemCount = suggestionEntries(state).length;
   if (itemCount === 0) return;
 
   let newIndex: number;

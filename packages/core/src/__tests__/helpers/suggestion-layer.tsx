@@ -1,7 +1,7 @@
 import { render, waitFor } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
 import { createRef, type RefObject } from 'react';
-import { expect } from 'vitest';
+import { expect, vi } from 'vitest';
 import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
@@ -35,4 +35,38 @@ export function activeDescendant(element: HTMLElement): HTMLElement {
   const option = id ? document.getElementById(id) : null;
   if (!option) throw new Error(`aria-activedescendant ${id} does not name an element`);
   return option;
+}
+
+/** Custom suggestions named `names`, each inserting an owner token of that name. */
+export const page = (names: string[]): CustomSuggestion[] =>
+  names.map((label) => ({ label, tokens: [{ key: 'owner', operator: 'is', value: label }] }));
+
+/**
+ * Replaces IntersectionObserver with one that reports nothing until the returned function
+ * is called, which reports every observed element as visible.
+ */
+export function observeIntersections(): () => void {
+  const observed = new Set<IntersectionObserverCallback>();
+  class ControlledObserver {
+    private readonly callback: IntersectionObserverCallback;
+    constructor(callback: IntersectionObserverCallback) {
+      this.callback = callback;
+    }
+    observe() {
+      observed.add(this.callback);
+    }
+    unobserve() {}
+    disconnect() {
+      observed.delete(this.callback);
+    }
+    takeRecords() {
+      return [];
+    }
+  }
+  vi.stubGlobal('IntersectionObserver', ControlledObserver);
+  return () => {
+    for (const callback of [...observed]) {
+      callback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+    }
+  };
 }

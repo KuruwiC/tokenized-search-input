@@ -2,7 +2,13 @@ import { calendarDayToDate } from '../pickers/calendar-days';
 import type { DateTimeValue } from '../pickers/date-time-value';
 import { DefaultDatePicker } from '../pickers/default-date-picker';
 import { DefaultDateTimePicker } from '../pickers/default-datetime-picker';
-import type { SuggestionType } from '../plugins/suggestion-plugin';
+import {
+  DEFAULT_CATEGORY,
+  type SuggestionEntry,
+  type SuggestionState,
+  type SuggestionType,
+  suggestionEntries,
+} from '../plugins/suggestion-plugin';
 import type {
   ClassNames,
   CustomSuggestion,
@@ -10,28 +16,19 @@ import type {
   DatePickerRenderProps,
   DateTimeFieldDefinition,
   DateTimePickerRenderProps,
-  EnumValue,
   FieldDefinition,
   PaginationLabels,
 } from '../types';
 import { cn } from '../utils/cn';
 import { getEnumValue } from '../utils/enum-value';
-import {
-  CustomSuggestionItem,
-  CustomSuggestionLoadMore,
-  customSuggestionKey,
-} from './custom-suggestion-list';
-import {
-  FieldSuggestionItem,
-  groupFieldsByCategory,
-  hasCategoryHeaders,
-} from './field-suggestion-list';
+import { CustomSuggestionItem, CustomSuggestionLoadMore } from './custom-suggestion-list';
+import { FieldSuggestionItem } from './field-suggestion-list';
 import { type SuggestionGroup, SuggestionList } from './suggestion-list';
 import { ValueSuggestionItem } from './value-suggestion-list';
 
 export interface SuggestionContentProps {
   type: SuggestionType;
-  items: readonly unknown[];
+  items: SuggestionState['items'];
   customItems: readonly CustomSuggestion[];
   activeIndex: number;
   query: string;
@@ -105,21 +102,9 @@ export function renderSuggestionContent({
     case 'custom':
     case 'fieldWithCustom': {
       if ((type === 'custom' || type === 'fieldWithCustom') && !onCustomSelect) return null;
-      const entries = suggestionEntries({
-        type,
-        items,
-        customItems,
-        customDisplayMode,
-        classNames,
-        customFooter:
-          customHasMore && onCustomLoadMore ? (
-            <CustomSuggestionLoadMore
-              isLoadingMore={customIsLoadingMore ?? false}
-              onLoadMore={onCustomLoadMore}
-              labels={paginationLabels}
-            />
-          ) : undefined,
-      });
+      const entries = suggestionEntries({ type, items, customItems, customDisplayMode });
+      const getGroup = groupOf(entries, type, customDisplayMode, classNames);
+      const hasCustom = entries.some((entry) => entry.kind === 'custom');
       return (
         <SuggestionList
           items={entries}
@@ -135,12 +120,21 @@ export function renderSuggestionContent({
                 return onCustomSelect?.(entry.suggestion);
             }
           }}
-          getKey={entryKey}
-          getGroup={(entry) => entry.group}
+          getKey={(entry) => entry.key}
+          getGroup={getGroup}
           getOptionClassName={(entry) =>
             cn(entry.kind === 'custom' && 'tsi-custom-suggestion-item', classNames?.suggestionItem)
           }
           dividerClassName={classNames?.divider}
+          footer={
+            hasCustom && customHasMore && onCustomLoadMore ? (
+              <CustomSuggestionLoadMore
+                isLoadingMore={customIsLoadingMore ?? false}
+                onLoadMore={onCustomLoadMore}
+                labels={paginationLabels}
+              />
+            ) : undefined
+          }
           renderItem={(entry) => {
             switch (entry.kind) {
               case 'field':
@@ -213,73 +207,40 @@ export function renderSuggestionContent({
   }
 }
 
-type SuggestionEntry =
-  | { kind: 'field'; field: FieldDefinition; group: SuggestionGroup | undefined }
-  | { kind: 'custom'; suggestion: CustomSuggestion; group: SuggestionGroup | undefined }
-  | { kind: 'value'; value: EnumValue; group?: undefined };
-
-function entryKey(entry: SuggestionEntry): string {
-  switch (entry.kind) {
-    case 'field':
-      return `field:${entry.field.key}`;
-    case 'value':
-      return `value:${getEnumValue(entry.value)}`;
-    case 'custom':
-      return `custom:${customSuggestionKey(entry.suggestion)}`;
-  }
-}
-
-interface SuggestionEntriesInput {
-  type: 'field' | 'value' | 'custom' | 'fieldWithCustom';
-  items: readonly unknown[];
-  customItems: readonly CustomSuggestion[];
-  customDisplayMode: 'prepend' | 'append' | null;
-  classNames: ClassNames | undefined;
-  customFooter: React.ReactNode;
-}
-
 /**
- * The options of a list suggestion in the order they are shown: custom suggestions before
- * or after the fields, the fields by category. An index into it is the active index.
+ * How the entries of a list fall into groups: the fields by category, named when there is
+ * more than the default category, and the custom suggestions of a mixed list, divided from
+ * the fields.
  */
-function suggestionEntries({
-  type,
-  items,
-  customItems,
-  customDisplayMode,
-  classNames,
-  customFooter,
-}: SuggestionEntriesInput): SuggestionEntry[] {
-  if (type === 'value') {
-    return (items as EnumValue[]).map((value) => ({ kind: 'value', value }));
+function groupOf(
+  entries: SuggestionEntry[],
+  type: SuggestionType,
+  customDisplayMode: 'prepend' | 'append' | null,
+  classNames: ClassNames | undefined
+): (entry: SuggestionEntry) => SuggestionGroup | undefined {
+  const categories: string[] = [];
+  for (const entry of entries) {
+    if (entry.kind === 'field' && !categories.includes(entry.category)) {
+      categories.push(entry.category);
+    }
   }
-
-  const prepend = customDisplayMode === 'prepend';
+  const named =
+    categories.length > 1 || (categories.length === 1 && categories[0] !== DEFAULT_CATEGORY);
   const mixed = type === 'fieldWithCustom';
-  const fieldGroups = type === 'custom' ? [] : groupFieldsByCategory(items as FieldDefinition[]);
-  const named = hasCategoryHeaders(fieldGroups);
+  const prepend = customDisplayMode === 'prepend';
+  const hasCustom = entries.some((entry) => entry.kind === 'custom');
 
-  const fieldEntries = fieldGroups.flatMap((group, groupIndex): SuggestionEntry[] => {
-    const entryGroup: SuggestionGroup = {
-      key: `field:${group.category}`,
-      label: named ? group.category : undefined,
-      labelClassName: cn(
-        groupIndex > 0 && 'tsi-field-category--separated',
-        classNames?.fieldCategory
-      ),
-      separated: mixed && prepend && groupIndex === 0 && customItems.length > 0,
+  return (entry) => {
+    if (entry.kind === 'custom') {
+      return mixed ? { key: 'custom', separated: !prepend && categories.length > 0 } : undefined;
+    }
+    if (entry.kind === 'value') return undefined;
+    const index = categories.indexOf(entry.category);
+    return {
+      key: `field:${entry.category}`,
+      label: named ? entry.category : undefined,
+      labelClassName: cn(index > 0 && 'tsi-field-category--separated', classNames?.fieldCategory),
+      separated: mixed && prepend && index === 0 && hasCustom,
     };
-    return group.fields.map((field) => ({ kind: 'field', field, group: entryGroup }));
-  });
-
-  const customGroup: SuggestionGroup = {
-    key: 'custom',
-    separated: mixed && !prepend && fieldEntries.length > 0,
-    footer: customFooter,
   };
-  const customEntries = customItems.map(
-    (suggestion): SuggestionEntry => ({ kind: 'custom', suggestion, group: customGroup })
-  );
-
-  return prepend ? [...customEntries, ...fieldEntries] : [...fieldEntries, ...customEntries];
 }

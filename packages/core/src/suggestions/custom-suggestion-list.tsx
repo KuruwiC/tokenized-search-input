@@ -34,12 +34,6 @@ export const CustomSuggestionItem: React.FC<CustomSuggestionItemProps> = ({
   </>
 );
 
-/** The key of a custom suggestion, which has no id: its label and the tokens it inserts. */
-export function customSuggestionKey(suggestion: CustomSuggestion): string {
-  const tokens = suggestion.tokens.map((t) => `${t.key}\u0000${t.operator}\u0000${t.value}`);
-  return [suggestion.label, ...tokens].join('\u0001');
-}
-
 interface CustomSuggestionLoadMoreProps {
   isLoadingMore: boolean;
   onLoadMore: () => void;

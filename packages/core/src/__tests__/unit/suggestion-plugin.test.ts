@@ -2,6 +2,7 @@ import { Schema } from '@tiptap/pm/model';
 import { EditorState } from '@tiptap/pm/state';
 import { describe, expect, it } from 'vitest';
 import { updateSuggestionQuery } from '../../plugins/shared/meta';
+import { suggestionEntries } from '../../plugins/suggestion/entries';
 import {
   appendCustomSuggestions,
   clearDismissed,
@@ -9,6 +10,7 @@ import {
   createSuggestionPlugin,
   dismissSuggestion,
   getSuggestionState,
+  navigateSuggestion,
   openCustomSuggestion,
   openDateSuggestion,
   openDateTimeSuggestion,
@@ -266,6 +268,90 @@ describe('SuggestionPlugin', () => {
         offset: 0,
         isLoadingMore: false,
       });
+    });
+  });
+
+  describe('entries of the list', () => {
+    const suggestion = (label: string): CustomSuggestion => ({
+      label,
+      tokens: [{ key: 'status', operator: 'is', value: label }],
+    });
+
+    function suggestionOf(state: EditorState) {
+      const current = getSuggestionState(state);
+      if (!current) throw new Error('the plugin has no state');
+      return current;
+    }
+
+    it('drops custom suggestions when the suggestion becomes a field list', () => {
+      let state = createEditorState();
+      let tr = state.tr;
+      openFieldWithCustomSuggestion(tr, testFields, [suggestion('a')], 'prepend', 'q', 1, true);
+      state = state.apply(tr);
+
+      tr = state.tr;
+      openFieldSuggestion(tr, testFields, 'q', 1);
+      state = state.apply(tr);
+
+      expect(suggestionOf(state)).toMatchObject({
+        type: 'field',
+        customItems: [],
+        custom: { hasMore: false, offset: 0, isLoadingMore: false },
+        customDisplayMode: null,
+      });
+    });
+
+    it('drops custom suggestions when the suggestion is dismissed', () => {
+      let state = createEditorState();
+      let tr = state.tr;
+      openCustomSuggestion(tr, [suggestion('a')], 'q', 1, true);
+      state = state.apply(tr);
+
+      tr = state.tr;
+      dismissSuggestion(tr);
+      state = state.apply(tr);
+
+      expect(suggestionOf(state)).toMatchObject({
+        dismissed: true,
+        customItems: [],
+        custom: { hasMore: false, offset: 0, isLoadingMore: false },
+      });
+    });
+
+    it('wraps the active index around the entries of a mixed list', () => {
+      let state = createEditorState();
+      let tr = state.tr;
+      openFieldWithCustomSuggestion(tr, testFields, [suggestion('a')], 'append', '', 1);
+      state = state.apply(tr);
+      const total = testFields.length + 1;
+
+      tr = state.tr;
+      updateSuggestionActiveIndex(tr, total - 1);
+      state = state.apply(tr);
+      tr = state.tr;
+      navigateSuggestion(tr, suggestionOf(state), 'down');
+      state = state.apply(tr);
+
+      expect(suggestionOf(state).activeIndex).toBe(0);
+    });
+
+    it('keeps the same entry active when a page arrives before it', () => {
+      let state = createEditorState();
+      let tr = state.tr;
+      openFieldWithCustomSuggestion(tr, testFields, [suggestion('a')], 'prepend', '', 1, true);
+      state = state.apply(tr);
+      tr = state.tr;
+      updateSuggestionActiveIndex(tr, 2);
+      state = state.apply(tr);
+      const before = suggestionEntries(suggestionOf(state))[2];
+
+      tr = state.tr;
+      appendCustomSuggestions(tr, suggestionOf(state), [suggestion('b'), suggestion('c')], false);
+      state = state.apply(tr);
+
+      const current = suggestionOf(state);
+      expect(current.activeIndex).toBe(4);
+      expect(suggestionEntries(current)[4]).toEqual(before);
     });
   });
 
