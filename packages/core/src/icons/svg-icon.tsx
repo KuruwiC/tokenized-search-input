@@ -9,7 +9,7 @@ interface SvgIconProps extends IconProps {
   children: ReactNode;
 }
 
-/** Decorative 24x24 stroke icon. Hidden from assistive technology. */
+/** Decorative icon, hidden from assistive technology. */
 export function SvgIcon({ size = 24, children, ...rest }: SvgIconProps) {
   return (
     <svg
