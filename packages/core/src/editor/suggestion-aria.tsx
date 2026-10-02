@@ -5,18 +5,14 @@ import { suggestionKey } from '../plugins/suggestion-plugin';
 
 interface SuggestionAriaProps {
   editor: Editor;
-  /** Id of the suggestion popup, referenced by `aria-controls`. */
   listboxId: string;
-  /** Prefix of the option ids, referenced by `aria-activedescendant`. */
   optionIdPrefix: string;
 }
 
 /**
- * The only writer of the combobox relationships on the contenteditable element:
- * `aria-haspopup`, `aria-expanded`, `aria-controls` and `aria-activedescendant`.
- * They are derived from the suggestion state, and subscribing here keeps the
- * input's root from re-rendering with it. The attributes that do not depend on
- * the suggestion state go through the editor's `editorProps`.
+ * The only writer of `aria-haspopup`, `aria-expanded`, `aria-controls` and
+ * `aria-activedescendant`. Subscribing here keeps the input's root from re-rendering
+ * with the suggestion state; the other attributes go through `editorProps`.
  */
 export const SuggestionAria: React.FC<SuggestionAriaProps> = ({
   editor,

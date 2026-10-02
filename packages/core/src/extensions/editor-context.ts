@@ -43,10 +43,7 @@ export interface EditorCallbacks {
   onSubmit: () => void;
 }
 
-/**
- * The single owner of editor configuration. Every reader goes through
- * `getEditorContext(editor)`; nothing else keeps a copy.
- */
+/** The single owner of editor configuration; readers go through `getEditorContext`. */
 export interface EditorContextStorage {
   fields: FieldDefinition[];
   freeTextMode: FreeTextMode;
@@ -67,10 +64,7 @@ export interface EditorContextStorage {
   paginationLabels: PaginationLabels | undefined;
 }
 
-/**
- * The members of the editor context that can change after the editor is created.
- * An `undefined` member means its default.
- */
+/** Members that can change after the editor is created; `undefined` means the default. */
 export type EditorConfig = {
   [K in keyof Omit<EditorContextStorage, 'callbacks' | 'delimiter'>]?:
     | EditorContextStorage[K]
@@ -79,7 +73,6 @@ export type EditorConfig = {
 
 export type EditorContextUpdate = EditorConfig & { callbacks?: Partial<EditorCallbacks> };
 
-/** What `createEditorContext` accepts: the updatable members plus the delimiter. */
 export type EditorContextOptions = EditorContextUpdate & { delimiter?: string | undefined };
 
 export const DEFAULT_EDITOR_CONTEXT: EditorContextStorage = {
@@ -135,7 +128,6 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return prototype === Object.prototype || prototype === null;
 }
 
-/** Same value, or plain objects and arrays whose members are the same values. */
 function isSameValue(a: unknown, b: unknown): boolean {
   if (Object.is(a, b)) return true;
   if (Array.isArray(a) && Array.isArray(b)) {
@@ -176,7 +168,6 @@ export function applyEditorContext(
   return changed;
 }
 
-/** Builds the initial editor context. Absent or `undefined` members take their defaults. */
 export function createEditorContext(options: EditorContextOptions = {}): EditorContextStorage {
   const { delimiter, ...update } = options;
   if (delimiter !== undefined && delimiter.length !== 1) {

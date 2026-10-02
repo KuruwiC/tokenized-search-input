@@ -80,17 +80,14 @@ export function useEditorConfigSync(
     paginationLabels,
   ]);
 
-  // Re-validate when validation config changes
   const prevValidationRef = useRef(validation);
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
     const prevValidation = prevValidationRef.current;
     prevValidationRef.current = validation;
 
-    // Skip if validation hasn't changed (referential equality check is sufficient)
     if (prevValidation === validation) return;
 
-    // Trigger re-validation
     const tr = editor.state.tr;
     tr.setMeta(FORCE_VALIDATION_CHECK, true);
     editor.view.dispatch(tr);

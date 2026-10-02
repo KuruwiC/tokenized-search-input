@@ -32,10 +32,8 @@ export function useSuggestionScheduling({
     updateCustomSuggestionsRef.current = updateCustomSuggestions;
   });
 
-  // RAF ID stored in ref to persist across useEffect dependencies updates
   const rafIdRef = useRef<number | null>(null);
 
-  // Update suggestions on selection/update changes
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
 
@@ -53,7 +51,6 @@ export function useSuggestionScheduling({
     const handleSelectionUpdate = () => {
       debouncedUpdate();
 
-      // Scroll cursor into view in collapsed state only
       if (singleLine || (expandOnFocus && !isInputFocused)) {
         try {
           const domAtPos = editor.view.domAtPos(editor.state.selection.from);

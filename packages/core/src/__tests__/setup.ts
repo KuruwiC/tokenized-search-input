@@ -8,10 +8,9 @@ import { afterEach, beforeEach, vi } from 'vitest';
 const allowedConsoleMessages: RegExp[] = [
   // React 18 reports updates scheduled by Tiptap's asynchronous NodeViews;
   // wrapping every internal update would couple these integration tests to
-  // Tiptap implementation details. The same warning comes from components that
-  // mirror plugin state through usePluginState (SuggestionAria, SuggestionOverlay):
-  // tests drive the editor with direct editor.commands calls outside act, and each
-  // transaction sets their state. Keep matching limited to this exact act
+  // Tiptap implementation details. SuggestionAria and SuggestionOverlay mirror
+  // plugin state and warn the same way when tests call editor.commands outside
+  // act. Keep matching limited to this exact act
   // warning (React 18 includes the "Warning: " prefix; React 19 does not)
   // and continue failing on every other React/runtime warning.
   /^(?:Warning: )?An update to (?:Portals|ForwardRef\(TokenizedSearchInput2\)|SuggestionAria|SuggestionOverlay|Token|TokenValue) inside a test was not wrapped in act\(\.\.\.\)/,

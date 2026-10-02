@@ -28,7 +28,6 @@ import type {
 
 function setContentAndValidate(editor: Editor, doc: JSONContent): void {
   editor.commands.setContent(doc);
-  // Trigger validation after programmatic content change
   const tr = editor.state.tr;
   tr.setMeta(FORCE_VALIDATION_CHECK, true);
   editor.view.dispatch(tr);

@@ -65,11 +65,8 @@ export function useEditorSetup({
 }: UseEditorSetupOptions): UseEditorSetupResult {
   const [isEmpty, setIsEmpty] = useState(true);
 
-  // Track previous snapshot for onChange
   const prevSnapshotRef = useRef<QuerySnapshot>(EMPTY_SNAPSHOT);
 
-  // Track confirmed (non-focused) tokens for onTokensChange
-  // Only updated when onTokensChange fires
   const confirmedTokensRef = useRef<ComparableToken[]>([]);
 
   // Changing the extensions recreates the TipTap editor, which would discard the
@@ -136,12 +133,10 @@ export function useEditorSetup({
         delimiter: getEditorContext(ed).delimiter,
       });
 
-      // Detect changes in confirmed (non-focused) filter tokens for onTokensChange
       if (onTokensChange) {
         const focusState = getTokenFocusState(ed.state);
         const focusedPos = focusState?.focusedPos ?? null;
 
-        // Get focused token ID from node attrs
         let focusedTokenId: string | null = null;
         if (focusedPos !== null) {
           const node = ed.state.doc.nodeAt(focusedPos);
@@ -152,9 +147,7 @@ export function useEditorSetup({
 
         const currentTokens = getAllTokens(snapshot);
 
-        // Compare excluding focused token from BOTH lists
-        // confirmedTokensRef always stores all tokens (unfiltered)
-        // Filtering is applied during comparison only
+        // The focused token is excluded from both lists only for the comparison.
         const isEqual = areTokenListsEqualExcludingFocused(
           confirmedTokensRef.current,
           currentTokens,
@@ -163,7 +156,6 @@ export function useEditorSetup({
 
         if (!isEqual) {
           onTokensChange(snapshot);
-          // Store all tokens (unfiltered) for next comparison
           confirmedTokensRef.current = currentTokens;
         }
       }
@@ -173,26 +165,20 @@ export function useEditorSetup({
       setIsEmpty(isEditorEmpty(ed));
     },
     onTransaction: ({ editor: ed, transaction }) => {
-      // Handle onTokensChange when focus leaves a token
-      // onUpdate only fires on doc changes, but we need to detect focus changes too
+      // onUpdate only fires on document changes; this covers focus leaving a token.
       if (!onTokensChange) return;
 
-      // Check if this transaction changed focusedPos to null
       const meta = transaction.getMeta(tokenFocusKey);
       if (!meta || meta.focusedPos !== null) return;
 
-      // Skip if doc changed - onUpdate will handle it
-      // This prevents double snapshot creation and ensures consistent behavior
+      // onUpdate handles document changes; running both would create two snapshots.
       if (transaction.docChanged) return;
 
-      // Focus is leaving a token without doc change - check for changes
-      // Reuse prevSnapshotRef to avoid redundant snapshot creation
       const snapshot =
         prevSnapshotRef.current ??
         createQuerySnapshot(ed.getJSON(), { delimiter: getEditorContext(ed).delimiter });
       const currentTokens = getAllTokens(snapshot);
 
-      // Compare full lists (no exclusion since focus is leaving)
       const isEqual = areTokenListsEqual(confirmedTokensRef.current, currentTokens);
 
       if (!isEqual) {
@@ -207,15 +193,13 @@ export function useEditorSetup({
   // Suspense-prerendered tree late. The commit then still sees that instance, and
   // useEditor re-renders with a fresh one right after.
 
-  // Sync isEmpty state when editor becomes available
-  // useIsomorphicLayoutEffect runs before paint on client, preventing placeholder flash
-  // Falls back to useEffect on server for SSR compatibility
+  // Before paint, so the placeholder does not flash.
   useIsomorphicLayoutEffect(() => {
     if (!editor || editor.isDestroyed) return;
     setIsEmpty(isEditorEmpty(editor));
   }, [editor]);
 
-  // Sync disabled state with editor.isEditable. aria-disabled follows from editorProps.
+  // aria-disabled follows from editorProps; this only toggles editability.
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
     editor.setEditable(!disabled);

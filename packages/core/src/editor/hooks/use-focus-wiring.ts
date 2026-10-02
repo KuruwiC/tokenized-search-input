@@ -63,7 +63,6 @@ export function useFocusWiring({
         return;
       }
 
-      // Check if current suggestion type should dismiss on blur
       const suggestionState = getSuggestionState(editor.state);
       if (suggestionState?.type) {
         const policy = getDismissPolicy(suggestionState.type);
@@ -72,7 +71,6 @@ export function useFocusWiring({
         }
       }
 
-      // Focus is leaving the container - process blur
       setIsInputFocused(false);
       editor.commands.finalizeInput();
 
@@ -90,7 +88,6 @@ export function useFocusWiring({
     };
 
     const handleContainerFocusIn = () => {
-      // Only trigger on first focus into the container
       if (isInputFocused) return;
 
       setIsInputFocused(true);
@@ -127,26 +124,22 @@ export function useFocusWiring({
     isInputFocused,
   ]);
 
-  // Handle outside clicks to dismiss suggestions
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
 
     const handlePointerDown = (e: PointerEvent) => {
       const target = e.target as Node;
 
-      // Check if click is inside this editor's suggestion overlay
       const suggestionRoot = containerRef.current?.querySelector('[data-suggestion-root]');
       if (suggestionRoot?.contains(target)) {
         pointerDownInSuggestionRef.current = true;
         return;
       }
 
-      // Check if click is inside editor container
       if (containerRef.current?.contains(target)) {
         return;
       }
 
-      // Click is outside - dismiss suggestions
       const tr = editor.state.tr;
       dismissSuggestion(tr);
       tr.setMeta('addToHistory', false);
