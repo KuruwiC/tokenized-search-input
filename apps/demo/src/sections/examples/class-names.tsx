@@ -6,7 +6,7 @@ import { CodeBlock } from '../../components';
 import { createSearchFields } from '../../fields';
 import { ExampleDetails, VariantSwitch } from './example';
 
-type PresetId = 'tokens' | 'hover' | 'container' | 'dropdown';
+type PresetId = 'tokens' | 'hover' | 'root' | 'dropdown';
 
 const CATEGORIZED_FIELDS: FieldDefinition[] = [
   {
@@ -77,12 +77,12 @@ const PRESETS: Array<{
     },
   },
   {
-    id: 'container',
-    label: 'Container and input',
-    placeholder: 'Gradient container…',
+    id: 'root',
+    label: 'Root and input',
+    placeholder: 'Narrow, centered root with a ring…',
     defaultValue: 'status:is:active',
     classNames: {
-      root: 'bg-gradient-to-r from-blue-50 to-purple-50 border-0 shadow-inner',
+      root: 'mx-auto max-w-md rounded-lg shadow-lg ring-1 ring-purple-300',
       input: 'text-purple-700',
       placeholder: 'text-purple-300',
     },
@@ -112,7 +112,7 @@ export function ClassNamesExample() {
   return (
     <ExampleDetails
       title="classNames"
-      summary="Attach utility classes to individual slots: root, input, token parts, and dropdown parts."
+      summary="Attach utility classes to individual slots: root (the outer element, for size, spacing and outline), input, token parts, and dropdown parts."
     >
       <VariantSwitch
         legend="Slot group"
