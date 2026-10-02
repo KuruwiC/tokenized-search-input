@@ -1,11 +1,11 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { shouldDeleteNow } from './deletion-planner';
-import type { TokenAction, ValidationPlan, ValidationSnapshot } from './types';
+import type { DeleteAction, ValidationPlan, ValidationSnapshot } from './types';
 
+/** Plans the token deletions that the configured rules call for. */
 export function buildPlan(snap: ValidationSnapshot, doc: ProseMirrorNode): ValidationPlan {
-  const actions: TokenAction[] = [];
+  const deletions: DeleteAction[] = [];
   const pendingDeletes = new Set<number>();
-  const invalidPositions = new Set<number>();
 
   const deleteNow = shouldDeleteNow(snap);
 
@@ -26,8 +26,7 @@ export function buildPlan(snap: ValidationSnapshot, doc: ProseMirrorNode): Valid
 
       const node = doc.nodeAt(token.pos);
       if (node) {
-        actions.push({
-          type: 'delete',
+        deletions.push({
           pos: token.pos,
           nodeSize: node.nodeSize,
           isOrphanedEmpty: true,
@@ -50,37 +49,11 @@ export function buildPlan(snap: ValidationSnapshot, doc: ProseMirrorNode): Valid
 
       const node = doc.nodeAt(target.pos);
       if (node) {
-        actions.push({ type: 'delete', pos: target.pos, nodeSize: node.nodeSize });
+        deletions.push({ pos: target.pos, nodeSize: node.nodeSize });
         pendingDeletes.add(target.pos);
       }
     }
   }
 
-  // Third pass: collect invalid positions for marking
-  for (const violation of snap.violations) {
-    for (const target of violation.targets) {
-      invalidPositions.add(target.pos);
-    }
-  }
-
-  // Fourth pass: mark/clear actions
-  for (const token of snap.tokens) {
-    if (pendingDeletes.has(token.pos)) continue;
-
-    const isInvalid = invalidPositions.has(token.pos);
-
-    if (isInvalid) {
-      // Find the violation for this token to get the reason
-      const violation = snap.violations.find((v) => v.targets.some((t) => t.pos === token.pos));
-      actions.push({ type: 'mark', pos: token.pos, reason: violation?.reason });
-    } else {
-      // Clear mark if previously marked
-      const node = doc.nodeAt(token.pos);
-      if (node?.attrs?.invalid) {
-        actions.push({ type: 'clear', pos: token.pos });
-      }
-    }
-  }
-
-  return { actions };
+  return { deletions };
 }

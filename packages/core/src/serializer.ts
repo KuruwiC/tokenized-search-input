@@ -1,8 +1,10 @@
 import type { JSONContent } from '@tiptap/core';
+import type { EditorState } from '@tiptap/pm/state';
 import {
   getFreeTextStrategy,
   type ParsedFreeTextToken,
 } from './editor/auto-tokenize/free-text-strategy';
+import { getTokenMeta } from './plugins/token-meta-plugin';
 import { createFilterTokenAttrs } from './tokens/filter-token/create-attrs';
 import {
   DEFAULT_TOKEN_DELIMITER,
@@ -328,31 +330,35 @@ export interface CreateQuerySnapshotOptions {
 }
 
 /**
- * Creates a QuerySnapshot from a TipTap document JSON.
+ * Creates a QuerySnapshot from an editor state.
  * This is the recommended way to get a stable representation of the query.
  *
- * Token IDs are read from node attributes (persistent UUIDs).
- * If a node is missing an ID (e.g., legacy data), a new UUID is generated.
+ * Token IDs are read from node attributes (persistent UUIDs). Validation results
+ * (`invalid`, `invalidReason`) are read from the editor's token meta, so a state
+ * built without the editor's plugins reports no validation.
  */
 export function createQuerySnapshot(
-  doc: JSONContent,
+  state: EditorState,
   options: CreateQuerySnapshotOptions = {}
 ): QuerySnapshot {
   const delimiter = options.delimiter ?? DEFAULT_TOKEN_DELIMITER;
+  const doc = state.doc.toJSON() as JSONContent;
   const context = { segments: [] as QuerySnapshotSegment[] };
 
   const visitor: NodeVisitor<typeof context> = {
     filterToken: (node, ctx) => {
       const value = node.attrs?.value || '';
       if (value) {
+        const id = ensureTokenId(node.attrs?.id);
+        const validation = getTokenMeta(state, id)?.validation;
         ctx.segments.push({
-          id: ensureTokenId(node.attrs?.id),
+          id,
           type: 'filter',
           key: node.attrs?.key || '',
           operator: node.attrs?.operator || 'is',
           value,
-          invalid: node.attrs?.invalid || undefined,
-          invalidReason: node.attrs?.invalidReason || undefined,
+          invalid: validation ? true : undefined,
+          invalidReason: validation?.reason,
         });
       }
     },

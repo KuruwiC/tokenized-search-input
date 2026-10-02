@@ -75,7 +75,7 @@ export function useFocusWiring({
       editor.commands.finalizeInput();
 
       if (onBlur) {
-        const snapshot = createQuerySnapshot(editor.getJSON(), {
+        const snapshot = createQuerySnapshot(editor.state, {
           delimiter: getEditorContext(editor).delimiter,
         });
         onBlur(snapshot);
@@ -93,7 +93,7 @@ export function useFocusWiring({
       setIsInputFocused(true);
 
       if (onFocus) {
-        const snapshot = createQuerySnapshot(editor.getJSON(), {
+        const snapshot = createQuerySnapshot(editor.state, {
           delimiter: getEditorContext(editor).delimiter,
         });
         onFocus(snapshot);

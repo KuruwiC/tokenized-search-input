@@ -2,6 +2,7 @@ import { type Editor, mergeAttributes, Node } from '@tiptap/core';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import { getEditorContext } from '../../extensions/editor-context';
+import { setTokenMeta, type TokenDisplayContent } from '../../plugins/shared/meta';
 import {
   type CursorPosition,
   setTokenFocus,
@@ -9,6 +10,7 @@ import {
 } from '../../plugins/token-focus-plugin';
 import { isFilterToken } from '../../utils/node-predicates';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
+import { updateTokenNodeView } from '../composition/node-view-update';
 import { createFilterTokenAttrs } from './create-attrs';
 import { FilterTokenView } from './filter-token-view';
 
@@ -16,13 +18,8 @@ export interface InsertFilterTokenAttrs {
   key: string;
   operator: string;
   value?: string;
-  fieldLabel?: string;
-  /** Display label for aria-label and text operations (used when enumValues is empty/dynamic) */
-  displayValue?: string;
-  /** Content to display before the label (icon, emoji, loader) */
-  startContent?: React.ReactNode;
-  /** Content to display after the label (badge, indicator) */
-  endContent?: React.ReactNode;
+  /** How the token presents its value, kept in token meta rather than the document. */
+  display?: TokenDisplayContent;
 }
 
 declare module '@tiptap/core' {
@@ -58,7 +55,9 @@ export const FilterTokenNode = Node.create({
     return {
       id: {
         default: null,
-        parseHTML: (el) => el.getAttribute('data-token-id') || generateTokenId(),
+        // Ids are unique within a document, so content parsed from HTML always gets
+        // fresh ones: pasting a copied token must not duplicate the original's id.
+        parseHTML: () => generateTokenId(),
         renderHTML: (attrs) => ({ 'data-token-id': ensureTokenId(attrs.id) }),
       },
       key: {
@@ -76,31 +75,10 @@ export const FilterTokenNode = Node.create({
         parseHTML: (el) => el.getAttribute('data-value') ?? '',
         renderHTML: (attrs) => ({ 'data-value': attrs.value }),
       },
-      fieldLabel: {
-        default: '',
-      },
-      invalid: {
-        default: false,
-      },
-      invalidReason: {
-        default: null,
-      },
       immutable: {
         default: false,
         parseHTML: (el) => el.getAttribute('data-immutable') === 'true',
         renderHTML: (attrs) => (attrs.immutable ? { 'data-immutable': 'true' } : {}),
-      },
-      displayValue: {
-        default: null,
-      },
-      startContent: {
-        default: null,
-      },
-      endContent: {
-        default: null,
-      },
-      confirmed: {
-        default: false,
       },
     };
   },
@@ -137,6 +115,7 @@ export const FilterTokenNode = Node.create({
     const editor = this.editor;
 
     return ReactNodeViewRenderer(FilterTokenView, {
+      update: updateTokenNodeView,
       stopEvent: ({ event }) => {
         // When disabled, let all events flow to ProseMirror (don't handle in NodeView)
         if (!editor.isEditable) {
@@ -171,28 +150,20 @@ export const FilterTokenNode = Node.create({
       insertFilterToken:
         (attrs: InsertFilterTokenAttrs) =>
         ({ tr, state, dispatch }) => {
-          // Build overrides only with defined values
-          const overrides =
-            attrs.fieldLabel || attrs.displayValue || attrs.startContent || attrs.endContent
-              ? {
-                  fieldLabel: attrs.fieldLabel,
-                  displayValue: attrs.displayValue,
-                  startContent: attrs.startContent,
-                  endContent: attrs.endContent,
-                }
-              : undefined;
-
           const { schema, selection } = state;
           const spacerNode = schema.nodes.spacer.create();
-          const tokenNode = schema.nodes.filterToken.create(
-            createFilterTokenAttrs({
-              key: attrs.key,
-              operator: attrs.operator,
-              value: attrs.value,
-              fields: getEditorContext(this.editor).fields,
-              overrides,
-            })
-          );
+          const tokenAttrs = createFilterTokenAttrs({
+            key: attrs.key,
+            operator: attrs.operator,
+            value: attrs.value,
+            fields: getEditorContext(this.editor).fields,
+          });
+          const tokenNode = schema.nodes.filterToken.create(tokenAttrs);
+          if (attrs.display) {
+            setTokenMeta(tr, tokenAttrs.id, {
+              display: { ...attrs.display, forKey: tokenAttrs.key, forValue: tokenAttrs.value },
+            });
+          }
 
           // Create nodes: spacer + token + spacer
           const nodes = [spacerNode, tokenNode, spacerNode.copy()];

@@ -9,6 +9,7 @@ import {
 import { isFreeTextToken } from '../../utils/node-predicates';
 import { escapeForQuotes } from '../../utils/quoted-string';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
+import { updateTokenNodeView } from '../composition/node-view-update';
 import { FreeTextTokenView } from './free-text-token-view';
 
 export interface InsertFreeTextTokenAttrs {
@@ -44,7 +45,9 @@ export const FreeTextTokenNode = Node.create({
     return {
       id: {
         default: null,
-        parseHTML: (el) => el.getAttribute('data-token-id') || generateTokenId(),
+        // Ids are unique within a document, so content parsed from HTML always gets
+        // fresh ones: pasting a copied token must not duplicate the original's id.
+        parseHTML: () => generateTokenId(),
         renderHTML: (attrs) => ({ 'data-token-id': ensureTokenId(attrs.id) }),
       },
       value: {
@@ -56,12 +59,6 @@ export const FreeTextTokenNode = Node.create({
         default: false,
         parseHTML: (el) => el.getAttribute('data-quoted') === 'true',
         renderHTML: (attrs) => ({ 'data-quoted': String(attrs.quoted) }),
-      },
-      invalid: {
-        default: false,
-      },
-      invalidReason: {
-        default: null,
       },
     };
   },
@@ -97,6 +94,7 @@ export const FreeTextTokenNode = Node.create({
     const editor = this.editor;
 
     return ReactNodeViewRenderer(FreeTextTokenView, {
+      update: updateTokenNodeView,
       stopEvent: ({ event }) => {
         // When disabled, let all events flow to ProseMirror (don't handle in NodeView)
         if (!editor.isEditable) {

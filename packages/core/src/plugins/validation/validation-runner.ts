@@ -1,7 +1,7 @@
 import type {
   FieldDefinition,
-  ValidationConfig,
   ValidationContext,
+  ValidationRule,
   ValidationToken,
   Violation,
 } from '../../types';
@@ -51,11 +51,10 @@ function applyFieldOverrides(
 export function runValidation(
   tokens: ValidationToken[],
   fields: FieldDefinition[],
-  config: ValidationConfig,
+  rules: readonly ValidationRule[],
   editingTokenIds: Set<string>
 ): Violation[] {
   const violations: Violation[] = [];
-  const rules = config.rules ?? [];
 
   // Sort rules by priority (higher first)
   const sortedRules = [...rules].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));

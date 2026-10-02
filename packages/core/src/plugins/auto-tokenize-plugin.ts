@@ -13,7 +13,7 @@ import { setTokenFocus } from '../plugins/token-focus-plugin';
 import { type ParseQueryStringResult, parseQueryStringWithInfo } from '../serializer';
 import type { FieldDefinition, FreeTextMode, UnknownFieldTemplate } from '../types';
 import { isFreeTextToken } from '../utils/node-predicates';
-import { FORCE_VALIDATION_CHECK } from './validation-plugin';
+import { requestValidationCheck } from './shared/meta';
 
 const DEBOUNCE_MS = 50;
 
@@ -198,7 +198,7 @@ export function createAutoTokenizePlugin(getContext: () => AutoTokenizeContext):
 
         const tr = tokenizeAllTextNodes(newState, context, true);
         if (tr) {
-          tr.setMeta(FORCE_VALIDATION_CHECK, true);
+          requestValidationCheck(tr);
         }
         return tr;
       }
@@ -214,7 +214,7 @@ export function createAutoTokenizePlugin(getContext: () => AutoTokenizeContext):
 
           const tr = tokenizeAllTextNodes(viewRef.state, context, false);
           if (tr) {
-            tr.setMeta(FORCE_VALIDATION_CHECK, true);
+            requestValidationCheck(tr);
             viewRef.dispatch(tr);
           }
         }, DEBOUNCE_MS);

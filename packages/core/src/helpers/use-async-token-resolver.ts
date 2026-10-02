@@ -1,8 +1,12 @@
 import type { Editor } from '@tiptap/core';
-import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { ReactNode, RefObject } from 'react';
 import { useCallback, useRef } from 'react';
 import type { TokenDisplay, TokenizedSearchInputRef } from '../editor/tokenized-search-input';
+import { getApplicableDisplay } from '../plugins/shared/meta';
+import { getTokenFocusState } from '../plugins/token-focus-plugin';
+import { getTokenMeta } from '../plugins/token-meta-plugin';
+import { findTokenById } from '../utils/find-token';
+import { isFilterToken } from '../utils/node-predicates';
 
 export interface ResolvedTokenData {
   displayValue: string;
@@ -69,6 +73,15 @@ interface PendingToken {
   startContent: ReactNode;
 }
 
+/** What the resolver reads about a filter token: its query facts, display, and whether it is being edited. */
+interface TokenView {
+  key: string;
+  value: string;
+  displayValue: string | undefined;
+  startContent: ReactNode;
+  confirmed: boolean;
+}
+
 function getEditor(ref: RefObject<TokenizedSearchInputRef | null>): Editor | null {
   return ref.current?.getEditor() ?? null;
 }
@@ -80,42 +93,45 @@ function toTokenDisplay(data: ResolvedTokenData): TokenDisplay {
   return display;
 }
 
+/** A token is confirmed while the user is not editing it. */
+function isConfirmed(editor: Editor, pos: number): boolean {
+  return getTokenFocusState(editor.state)?.focusedPos !== pos;
+}
+
+function readToken(editor: Editor, id: string): TokenView | null {
+  const found = findTokenById(editor.state.doc, id);
+  if (!found || !isFilterToken(found.node)) return null;
+  const { key, value } = found.node.attrs;
+  const display = getApplicableDisplay(getTokenMeta(editor.state, id)?.display, key, value);
+  return {
+    key,
+    value,
+    displayValue: display?.displayValue,
+    startContent: display?.startContent ?? null,
+    confirmed: isConfirmed(editor, found.pos),
+  };
+}
+
 function collectPendingTokens(editor: Editor, fieldKey: string): PendingToken[] {
   const tokens: PendingToken[] = [];
 
-  editor.state.doc.descendants((node) => {
+  editor.state.doc.descendants((node, pos) => {
+    if (!isFilterToken(node)) return true;
+    const { id, key, value } = node.attrs;
     if (
-      node.type.name === 'filterToken' &&
-      node.attrs.key === fieldKey &&
-      typeof node.attrs.id === 'string' &&
-      node.attrs.id.length > 0 &&
-      node.attrs.value &&
-      !node.attrs.displayValue &&
-      node.attrs.confirmed === true
+      key === fieldKey &&
+      typeof id === 'string' &&
+      id.length > 0 &&
+      value &&
+      !getApplicableDisplay(getTokenMeta(editor.state, id)?.display, key, value)?.displayValue &&
+      isConfirmed(editor, pos)
     ) {
-      tokens.push({
-        id: node.attrs.id,
-        value: node.attrs.value,
-        displayValue: node.attrs.displayValue ?? null,
-        startContent: node.attrs.startContent ?? null,
-      });
+      tokens.push({ id, value, displayValue: null, startContent: null });
     }
-    return true;
+    return false;
   });
 
   return tokens;
-}
-
-function readTokenNode(editor: Editor, id: string) {
-  let match: ProseMirrorNode | null = null;
-  editor.state.doc.descendants((node) => {
-    if (node.type.name === 'filterToken' && node.attrs.id === id) {
-      match = node;
-      return false;
-    }
-    return true;
-  });
-  return match as ProseMirrorNode | null;
 }
 
 /**
@@ -123,13 +139,13 @@ function readTokenNode(editor: Editor, id: string) {
  *
  * When tokens are created from pasted text or deserialization, they often only have
  * a `value` but no `displayValue`. This hook provides a convenient way to:
- * 1. Detect tokens needing resolution (where displayValue is not set AND confirmed is true)
+ * 1. Detect tokens needing resolution (no displayValue, and not being edited)
  * 2. Optionally show a loading state
  * 3. Fetch the display data asynchronously
  * 4. Update the tokens with resolved display data
  * 5. Handle tokens that couldn't be resolved (delete or keep)
  *
- * **Important**: Only tokens with `confirmed: true` are resolved. Tokens being edited
+ * **Important**: Only tokens the user is not editing are resolved. Tokens being edited
  * (where the user is still typing) are skipped until the user exits the token (blur/Tab/Enter).
  * This prevents display updates during editing which would disrupt the user's input.
  *
@@ -209,8 +225,8 @@ export function useAsyncTokenResolver<T>(
           applyingResultRef.current = true;
           try {
             for (const token of tokensToResolve) {
-              const node = readTokenNode(editor, token.id);
-              if (node?.attrs.value === token.value && !node.attrs.displayValue) {
+              const current = readToken(editor, token.id);
+              if (current?.value === token.value && !current.displayValue) {
                 inputRef.current?.setTokenDisplay(token.id, {
                   displayValue: loadingDisplayValue,
                   startContent: loadingContent.startContent ?? null,
@@ -233,11 +249,11 @@ export function useAsyncTokenResolver<T>(
             applyingResultRef.current = true;
             try {
               for (const token of tokensToResolve) {
-                const node = readTokenNode(editor, token.id);
+                const current = readToken(editor, token.id);
                 if (
-                  node?.attrs.key === fieldKey &&
-                  node.attrs.value === token.value &&
-                  node.attrs.displayValue === loadingDisplayValue
+                  current?.key === fieldKey &&
+                  current.value === token.value &&
+                  current.displayValue === loadingDisplayValue
                 ) {
                   inputRef.current?.setTokenDisplay(token.id, {
                     displayValue: token.displayValue,
@@ -265,14 +281,12 @@ export function useAsyncTokenResolver<T>(
         const toDelete: string[] = [];
 
         for (const token of tokensToResolve) {
-          const node = readTokenNode(editor, token.id);
+          const current = readToken(editor, token.id);
           const stillPending =
-            node?.attrs.key === fieldKey &&
-            node.attrs.value === token.value &&
-            node.attrs.confirmed === true &&
-            (loadingContent
-              ? node.attrs.displayValue === loadingDisplayValue
-              : !node.attrs.displayValue);
+            current?.key === fieldKey &&
+            current.value === token.value &&
+            current.confirmed &&
+            (loadingContent ? current.displayValue === loadingDisplayValue : !current.displayValue);
 
           if (!stillPending) continue;
 

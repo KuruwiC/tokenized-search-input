@@ -5,10 +5,9 @@ import { getDateInternalValue, getDateTimeInternalValue } from '../../pickers/da
 import { closeSuggestion } from '../../plugins/suggestion-plugin';
 import { getTokenFocusState } from '../../plugins/token-focus-plugin';
 import { exitTokenRight } from '../../tokens/composition';
-import { commitFilterToken } from '../../tokens/filter-token/commit-token';
+import { applyTokenAction, commitFilterToken } from '../../tokens/filter-token/token-actions';
 import type { DateTimeFieldDefinition } from '../../types';
 import { isFilterToken } from '../../utils/node-predicates';
-import { updateTokenAttrs } from '../../utils/token-attrs';
 
 export interface UseSuggestionHandlersOptions {
   editor: Editor | null;
@@ -43,16 +42,8 @@ export function useSuggestionHandlers({
       if (!node || !isFilterToken(node)) return;
 
       // Single transaction: update value, close suggestion, and exit token
-      // Clear display metadata so resolveDisplayValue can resolve from enumValues
       const tr = editor.state.tr;
-      updateTokenAttrs(tr, pos, {
-        value,
-        displayValue: null,
-        startContent: null,
-        endContent: null,
-        invalid: false,
-        confirmed: true,
-      });
+      applyTokenAction(tr, node.attrs.id, { type: 'setValue', value });
       closeSuggestion(tr);
       exitTokenRight(editor, pos + node.nodeSize, tr);
     },
@@ -89,16 +80,10 @@ export function useSuggestionHandlers({
         value = getDateInternalValue(date);
       }
 
-      // Clear display metadata so resolveDisplayValue can resolve fresh value
       const tr = editor.state.tr;
-      updateTokenAttrs(tr, pos, {
-        value,
-        displayValue: null,
-        startContent: null,
-        endContent: null,
-        invalid: false,
-      });
-      editor.view.dispatch(tr);
+      if (applyTokenAction(tr, node.attrs.id, { type: 'setValue', value })) {
+        editor.view.dispatch(tr);
+      }
     },
     [editor]
   );
@@ -117,17 +102,11 @@ export function useSuggestionHandlers({
     if (pos !== null && pos !== undefined) {
       const node = tr.doc.nodeAt(pos);
       if (node && isFilterToken(node)) {
-        // Get field definition for immutable/validate check
+        // Get field definition for the immutable check
         const fieldKey = node.attrs.key;
         const fieldDef = getEditorContext(editor).fields.find((f) => f.key === fieldKey);
 
-        // Commit token (confirm + immutable + validation)
-        commitFilterToken({
-          tr,
-          pos,
-          fieldDef,
-          validate: fieldDef?.validate,
-        });
+        commitFilterToken(tr, node.attrs.id, fieldDef);
 
         exitTokenRight(editor, pos + node.nodeSize, tr);
         // Show field suggestions after exiting token for consistency

@@ -10,6 +10,8 @@ import {
   type AsyncTokenResolverOptions,
   useAsyncTokenResolver,
 } from '../../helpers/use-async-token-resolver';
+import { getApplicableDisplay } from '../../plugins/shared/meta';
+import { getTokenMeta } from '../../plugins/token-meta-plugin';
 import type { FieldDefinition } from '../../types';
 
 interface Country {
@@ -36,12 +38,22 @@ function createDeferred<T>() {
   return { promise, resolve, reject };
 }
 
+/** Each country token's attributes together with the display data of its current value (`null` when unset). */
 function getCountryTokenAttrs(inputRef: RefObject<TokenizedSearchInputRef>) {
   const editor = inputRef.current?.getEditor();
   const attrs: Record<string, unknown>[] = [];
   editor?.state.doc.descendants((node) => {
     if (node.type.name === 'filterToken' && node.attrs.key === 'country') {
-      attrs.push(node.attrs);
+      const display = getApplicableDisplay(
+        getTokenMeta(editor.state, node.attrs.id)?.display,
+        node.attrs.key,
+        node.attrs.value
+      );
+      attrs.push({
+        ...node.attrs,
+        displayValue: display?.displayValue ?? null,
+        startContent: display?.startContent ?? null,
+      });
     }
     return true;
   });

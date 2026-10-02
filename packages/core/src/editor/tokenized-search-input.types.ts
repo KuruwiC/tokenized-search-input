@@ -148,8 +148,8 @@ export interface TokenPatch {
 }
 
 /**
- * Display attributes `setTokenDisplay` applies to a filter token. Omitted members
- * are left unchanged; `null` clears a member.
+ * Display data `setTokenDisplay` applies to a filter token. Omitted members are
+ * left unchanged; `null` clears a member.
  */
 export interface TokenDisplay {
   displayValue?: string | null;
@@ -174,7 +174,7 @@ export interface TokenizedSearchInputRef {
   getSnapshot: () => QuerySnapshot;
   /** Focus the input */
   focus: () => void;
-  /** Clear all content */
+  /** Clear all content. Like `setValue`, this discards the display data of every token. */
   clear: () => void;
   /** Trigger submit programmatically */
   submit: () => void;
@@ -188,16 +188,21 @@ export interface TokenizedSearchInputRef {
   deleteToken: (id: string) => void;
   /**
    * Set the display value and surrounding content of the filter token with the
-   * given id without changing the query. Not recorded in undo history. Unknown
-   * ids are ignored.
+   * given id without changing the query or firing `onChange`. Display data is not
+   * part of the document or the undo history: it stays with the token id while the
+   * editor lives and applies while the token keeps the key and value it had when the
+   * display was set, so a token whose edit or removal is undone shows it again.
+   * `setValue` and `clear` discard it. Unknown ids are ignored.
    */
   setTokenDisplay: (id: string, display: TokenDisplay) => void;
   /**
    * Escape hatch to the underlying TipTap editor, or `null` before it exists.
    *
    * Intended for reading and debugging. The editor's internals are outside
-   * semver, and writing through it directly is unsupported: use `setValue`,
-   * `clear`, `updateToken`, `deleteToken` and `setTokenDisplay` to change content.
+   * semver, and writing through it directly (raw node attribute changes or
+   * `setContent`) is unsupported: it bypasses the undo history policy of token
+   * edits and the per-token state keyed by token id. Use `setValue`, `clear`,
+   * `updateToken`, `deleteToken` and `setTokenDisplay` to change content.
    */
   getEditor: () => Editor | null;
 }

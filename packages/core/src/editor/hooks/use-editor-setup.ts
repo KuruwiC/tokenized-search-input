@@ -14,14 +14,17 @@ import {
 } from '../../extensions/editor-context';
 import { KeyboardShortcutsExtension } from '../../extensions/keyboard-shortcuts';
 import { SpacerNode } from '../../extensions/spacer-node';
+import { TokenCommandsExtension } from '../../extensions/token-commands';
+import { TokenMetaExtension } from '../../extensions/token-meta';
 import { TokenNavigation } from '../../extensions/token-navigation';
 import { useIsomorphicLayoutEffect } from '../../hooks/use-isomorphic-layout-effect';
+import { requestValidationCheck } from '../../plugins/shared/meta';
 import { getTokenFocusState, tokenFocusKey } from '../../plugins/token-focus-plugin';
 import {
   SelectionInvariantExtension,
   TokenSpacingExtension,
 } from '../../plugins/token-spacing-plugin';
-import { FORCE_VALIDATION_CHECK, ValidationExtension } from '../../plugins/validation-plugin';
+import { ValidationExtension } from '../../plugins/validation-plugin';
 import { createQuerySnapshot, parseQueryToDoc } from '../../serializer';
 import { FilterTokenNode } from '../../tokens/filter-token/filter-token-node';
 import { FreeTextTokenNode } from '../../tokens/free-text-token/free-text-token-node';
@@ -91,6 +94,8 @@ export function useEditorSetup({
     EditorContextExtension.configure(initialContext),
     KeyboardShortcutsExtension,
     CorePluginsExtension,
+    TokenMetaExtension,
+    TokenCommandsExtension,
   ]);
   const [initialContent] = useState(() =>
     defaultValue
@@ -125,11 +130,11 @@ export function useEditorSetup({
     editorProps,
     onCreate: ({ editor: ed }) => {
       const tr = ed.state.tr;
-      tr.setMeta(FORCE_VALIDATION_CHECK, true);
+      requestValidationCheck(tr);
       ed.view.dispatch(tr);
     },
     onUpdate: ({ editor: ed }) => {
-      const snapshot = createQuerySnapshot(ed.getJSON(), {
+      const snapshot = createQuerySnapshot(ed.state, {
         delimiter: getEditorContext(ed).delimiter,
       });
 
@@ -176,7 +181,7 @@ export function useEditorSetup({
 
       const snapshot =
         prevSnapshotRef.current ??
-        createQuerySnapshot(ed.getJSON(), { delimiter: getEditorContext(ed).delimiter });
+        createQuerySnapshot(ed.state, { delimiter: getEditorContext(ed).delimiter });
       const currentTokens = getAllTokens(snapshot);
 
       const isEqual = areTokenListsEqual(confirmedTokensRef.current, currentTokens);

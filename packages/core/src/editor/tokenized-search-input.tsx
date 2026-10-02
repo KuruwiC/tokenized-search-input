@@ -154,7 +154,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
             {clearable && (
               <ClearButton
                 onClick={() => {
-                  editor?.commands.clearContent();
+                  editor?.commands.replaceContent('');
                   onClear?.();
                 }}
                 visible={!isEmpty}

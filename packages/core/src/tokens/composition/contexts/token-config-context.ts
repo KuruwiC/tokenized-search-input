@@ -10,7 +10,6 @@ export interface TokenConfigContextValue {
   editor: Editor;
   getPos: () => number | undefined;
   node: ProseMirrorNode;
-  updateAttributes: (attrs: Record<string, unknown>) => void;
   deleteToken: () => void;
 }
 

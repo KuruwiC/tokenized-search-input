@@ -127,24 +127,6 @@ export {
 } from './utils/query-snapshot';
 
 // ============================================
-// Token Attribute Utilities
-// ============================================
-
-export {
-  CONFIG_ATTRS,
-  CORE_ATTRS,
-  type ConfigAttr,
-  type CoreAttr,
-  DISPLAY_ATTRS,
-  type DisplayAttr,
-  isDisplayOnlyChange,
-  type UpdateTokenAttrsOptions,
-  updateTokenAttrs,
-  VALIDATION_ATTRS,
-  type ValidationAttr,
-} from './utils/token-attrs';
-
-// ============================================
 // Helpers (React-independent)
 // ============================================
 

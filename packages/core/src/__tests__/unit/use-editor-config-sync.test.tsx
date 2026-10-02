@@ -7,7 +7,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { useEditorConfig } from '../../editor/hooks/use-editor-config';
 import { useEditorConfigSync } from '../../editor/hooks/use-editor-config-sync';
 import { EditorContextExtension, getEditorContext } from '../../extensions/editor-context';
-import { FORCE_VALIDATION_CHECK, ValidationExtension } from '../../plugins/validation-plugin';
+import { requestValidationCheck } from '../../plugins/shared/meta';
+import { ValidationExtension } from '../../plugins/validation-plugin';
 import type { FieldDefinition } from '../../types';
 
 const fields: FieldDefinition[] = [
@@ -52,9 +53,7 @@ describe('ValidationExtension', () => {
       extensions: [Document, Paragraph, Text, ValidationExtension],
       content: '',
     });
-    const dispatch = vi.fn(() =>
-      editor.view.dispatch(editor.state.tr.setMeta(FORCE_VALIDATION_CHECK, true))
-    );
+    const dispatch = vi.fn(() => editor.view.dispatch(requestValidationCheck(editor.state.tr)));
 
     expect(dispatch).toThrow('EditorContextExtension is not registered');
 

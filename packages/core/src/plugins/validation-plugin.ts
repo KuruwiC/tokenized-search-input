@@ -1,13 +1,8 @@
-export type {
-  DeletionContext,
-  TokenAction,
-  ValidationPlan,
-  ValidationSnapshot,
-} from './validation';
+export type { DeletionContext, ValidationPlan, ValidationSnapshot } from './validation';
 export {
   buildDeletionContext,
   collectTokens,
-  FORCE_VALIDATION_CHECK,
+  FIELD_VALIDATE_RULE_ID,
   isNewToken,
   shouldDeleteNow,
   ValidationExtension,

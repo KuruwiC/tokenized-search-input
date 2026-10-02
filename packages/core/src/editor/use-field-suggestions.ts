@@ -62,7 +62,6 @@ export function useFieldSuggestions(
           key: field.key,
           operator: field.operators[0] || 'is',
           value: '',
-          fieldLabel: field.label,
         })
         .command(({ tr }) => {
           // Empty token creation should not be in history

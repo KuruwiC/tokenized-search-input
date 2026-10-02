@@ -107,4 +107,34 @@ describe('TokenizedSearchInput inside Suspense', () => {
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onSubmit.mock.calls[0]?.[0].text).toBe('hello');
   });
+
+  it('applies token display set from an ancestor effect once the live editor renders', async () => {
+    const SuspendOnce = createSuspendOnce(50);
+    const ref = createRef<TokenizedSearchInputRef>();
+    function SearchPage() {
+      useEffect(() => {
+        const [token] = ref.current?.getSnapshot().segments ?? [];
+        if (token?.type === 'filter') {
+          ref.current?.setTokenDisplay(token.id, { displayValue: 'Shown active' });
+        }
+      }, []);
+      return (
+        <>
+          <TokenizedSearchInput ref={ref} fields={basicFields} defaultValue="status:is:active" />
+          <SuspendOnce />
+        </>
+      );
+    }
+
+    root.render(
+      <Suspense fallback={<p>loading</p>}>
+        <SearchPage />
+      </Suspense>
+    );
+    await waitFor(() => {
+      expect(uncaughtErrors).toEqual([]);
+      expect(ref.current?.getValue()).toBe('status:is:active');
+      expect(container.textContent).toContain('Shown active');
+    });
+  });
 });

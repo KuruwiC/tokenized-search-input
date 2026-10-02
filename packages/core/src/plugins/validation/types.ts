@@ -1,4 +1,4 @@
-import type { FieldDefinition, ValidationConfig, ValidationToken, Violation } from '../../types';
+import type { FieldDefinition, ValidationRule, ValidationToken, Violation } from '../../types';
 
 export interface ValidationSnapshot {
   tokens: ValidationToken[];
@@ -17,22 +17,19 @@ export interface ValidationSnapshot {
   forceCheck: boolean;
   isHistoryOperation: boolean;
   fields: FieldDefinition[];
-  validation: ValidationConfig;
+  /** Rules to run: the configured ones followed by the implicit field rule */
+  rules: ValidationRule[];
 }
 
-export type TokenAction =
-  | { type: 'mark'; pos: number; reason?: string }
-  | { type: 'clear'; pos: number }
-  | {
-      type: 'delete';
-      pos: number;
-      nodeSize: number;
-      /** True if this is an orphaned empty token deletion (should not be in history) */
-      isOrphanedEmpty?: boolean;
-    };
+export interface DeleteAction {
+  pos: number;
+  nodeSize: number;
+  /** True if this is an orphaned empty token deletion (should not be in history) */
+  isOrphanedEmpty?: boolean;
+}
 
 export interface ValidationPlan {
-  actions: TokenAction[];
+  deletions: DeleteAction[];
 }
 
 export interface DeletionContext {

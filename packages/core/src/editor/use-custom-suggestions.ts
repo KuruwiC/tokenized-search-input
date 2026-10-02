@@ -1,6 +1,7 @@
 import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getEditorContext } from '../extensions/editor-context';
+import type { TokenDisplayContent } from '../plugins/shared/meta';
 import {
   closeSuggestion,
   getSuggestionState,
@@ -15,6 +16,7 @@ import type {
   ExistingToken,
   ExistingTokenWithId,
   FieldDefinition,
+  SuggestedFilterToken,
   SuggestFnReturn,
   SuggestionErrorContext,
 } from '../types';
@@ -22,6 +24,14 @@ import { isWithinToken } from '../utils/dom-focus';
 import { isFilterToken } from '../utils/node-predicates';
 import { isInsideQuotes } from '../utils/quoted-string';
 import { getPlainTextSegment } from './use-auto-tokenize';
+
+function toDisplayContent(token: SuggestedFilterToken): TokenDisplayContent | undefined {
+  const display: TokenDisplayContent = {};
+  if (token.displayValue !== undefined) display.displayValue = token.displayValue;
+  if (token.startContent != null) display.startContent = token.startContent;
+  if (token.endContent != null) display.endContent = token.endContent;
+  return Object.keys(display).length > 0 ? display : undefined;
+}
 
 const DEFAULT_DEBOUNCE_MS = 150;
 const DEFAULT_MAX_SUGGESTIONS = 5;
@@ -166,18 +176,13 @@ export function useCustomSuggestions(
       }
 
       // Default behavior: Insert all tokens from the suggestion
-      const { fields } = getEditorContext(editor);
       let chain = editor.chain().focus();
       for (const token of suggestion.tokens) {
-        const fieldDef = fields.find((f) => f.key === token.key);
         chain = chain.insertFilterToken({
           key: token.key,
           operator: token.operator,
           value: token.value,
-          fieldLabel: fieldDef?.label ?? token.key,
-          displayValue: token.displayValue,
-          startContent: token.startContent,
-          endContent: token.endContent,
+          display: toDisplayContent(token),
         });
       }
       chain.run();

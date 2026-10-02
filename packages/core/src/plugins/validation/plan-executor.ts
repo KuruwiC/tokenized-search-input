@@ -5,180 +5,97 @@ import {
   expandWithSpacers,
   mergeOverlappingRanges,
 } from '../../spacer';
-import { isToken } from '../../utils/node-predicates';
-import { updateTokenAttrs } from '../../utils/token-attrs';
-import { buildPlan } from './action-planner';
+import type { Violation } from '../../types';
+import { setTokenMeta, type TokenValidation } from '../shared/meta';
+import { tokenMetaKey } from '../token-meta-plugin';
 import { collectTokens } from './snapshot-builder';
-import type { TokenAction, ValidationPlan, ValidationSnapshot } from './types';
+import type { ValidationPlan, ValidationSnapshot } from './types';
 import { runValidation } from './validation-runner';
 
-export function applyPlan(
+/**
+ * Applies the planned deletions to `tr` and returns the violations of the tokens
+ * that remain.
+ */
+export function applyDeletions(
+  tr: Transaction,
   state: EditorState,
   plan: ValidationPlan,
-  snap: ValidationSnapshot,
-  validationKey: import('@tiptap/pm/state').PluginKey
-): Transaction | null {
-  const tr = state.tr;
+  snap: ValidationSnapshot
+): Violation[] {
+  const { deletions } = plan;
+  if (deletions.length === 0) return snap.violations;
 
-  // 1. Apply deletions (reverse order for position stability)
-  const deletions = plan.actions.filter(
-    (a): a is Extract<TokenAction, { type: 'delete' }> => a.type === 'delete'
-  );
+  const ranges = deletions.map((del) => expandWithSpacers(state.doc, del.pos, del.nodeSize));
+  const mergedRanges = mergeOverlappingRanges(ranges);
 
-  if (deletions.length > 0) {
-    // Expand deletions with spacers
-    const ranges = deletions.map((del) => expandWithSpacers(state.doc, del.pos, del.nodeSize));
-
-    // Merge overlapping ranges
-    const mergedRanges = mergeOverlappingRanges(ranges);
-
-    // Recompute needsSpaceSeparator based on actual merged boundaries
-    for (const range of mergedRanges) {
-      range.needsSpaceSeparator = checkBoundaryNeedsSpace(state.doc, range.from, range.to);
-    }
-
-    // Delete in reverse order and insert space where needed
-    mergedRanges.sort((a, b) => b.from - a.from);
-    for (const range of mergedRanges) {
-      applySpacerDeletion(tr, state.schema, range);
-    }
+  // Recompute needsSpaceSeparator based on actual merged boundaries
+  for (const range of mergedRanges) {
+    range.needsSpaceSeparator = checkBoundaryNeedsSpace(state.doc, range.from, range.to);
   }
 
-  // 2. Revalidate remaining tokens if deletions occurred
-  let tokensAfterDeletion = snap.tokens;
-  let violationsAfterDeletion = snap.violations;
-
-  if (deletions.length > 0) {
-    tokensAfterDeletion = collectTokens(tr.doc);
-    if (tokensAfterDeletion.length > 0) {
-      // After deletions, positions have shifted and blur has been handled
-      // Use empty set since deletion already completed (no tokens are "editing")
-      violationsAfterDeletion = runValidation(
-        tokensAfterDeletion,
-        snap.fields,
-        snap.validation,
-        new Set()
-      );
-    }
-  }
-
-  // 3. Apply marks/clears (rebuild plan for remaining tokens after deletion)
-  const remainingPlan =
-    deletions.length > 0
-      ? buildPlan(
-          {
-            ...snap,
-            tokens: tokensAfterDeletion,
-            violations: violationsAfterDeletion,
-            focus: { previousPos: null, currentPos: null },
-            forceCheck: false,
-            isHistoryOperation: false,
-            // Clear newTokenIds to prevent re-triggering deletion logic
-            newTokenIds: new Set(),
-            modifiedTokenIds: new Set(),
-          },
-          tr.doc
-        )
-      : plan;
-
-  for (const action of remainingPlan.actions) {
-    if (action.type === 'mark') {
-      const node = tr.doc.nodeAt(action.pos);
-      if (node && isToken(node)) {
-        updateTokenAttrs(tr, action.pos, {
-          invalid: true,
-          invalidReason: action.reason,
-        });
-      }
-    } else if (action.type === 'clear') {
-      const node = tr.doc.nodeAt(action.pos);
-      if (node && isToken(node)) {
-        updateTokenAttrs(tr, action.pos, {
-          invalid: false,
-          invalidReason: undefined,
-        });
-      }
-    }
-  }
-
-  if (!tr.docChanged) return null;
-
-  tr.setMeta(validationKey, true);
-
-  // Determine if this transaction should be added to history:
-  // - Deletions from validation rules (e.g., Unique.replace) should be in history
-  //   so that undo restores the deleted tokens
-  // - Orphaned empty token cleanup should NOT be in history
-  //   (these are incomplete tokens left over from undo or cancelled creation)
-  // - Empty token cleanup on history operations should NOT be in history
-  //   (it's a side effect of undo/redo, not a user action)
-  // - Mark/clear only changes should NOT be in history
-  const validationDeletions = deletions.filter((d) => !d.isOrphanedEmpty);
-  const hasValidationDeletions = validationDeletions.length > 0 && !snap.isHistoryOperation;
-
-  if (!hasValidationDeletions) {
-    tr.setMeta('addToHistory', false);
-  }
-
-  return tr;
-}
-
-export function clearInvalidMarksIfNeeded(
-  state: EditorState,
-  validationKey: import('@tiptap/pm/state').PluginKey
-): Transaction | null {
-  const tokens = collectTokens(state.doc);
-  const invalidTokens = tokens.filter((t) => {
-    const node = state.doc.nodeAt(t.pos);
-    return node?.attrs.invalid;
-  });
-
-  if (invalidTokens.length === 0) return null;
-
-  const tr = state.tr;
-  for (const token of invalidTokens) {
-    const node = state.doc.nodeAt(token.pos);
-    if (node) {
-      updateTokenAttrs(tr, token.pos, {
-        invalid: false,
-        invalidReason: undefined,
-      });
-    }
-  }
-
-  if (!tr.docChanged) return null;
-
-  tr.setMeta(validationKey, true);
-  tr.setMeta('addToHistory', false);
-  return tr;
-}
-
-export function deleteEmptyTokensOnHistory(
-  state: EditorState,
-  validationKey: import('@tiptap/pm/state').PluginKey
-): Transaction | null {
-  const tokens = collectTokens(state.doc);
-  const emptyTokens = tokens.filter((t) => !t.value);
-
-  if (emptyTokens.length === 0) return null;
-
-  const tr = state.tr;
-
-  // Delete in reverse order to maintain valid positions
-  const sortedTokens = [...emptyTokens].sort((a, b) => b.pos - a.pos);
-
-  for (const token of sortedTokens) {
-    const node = state.doc.nodeAt(token.pos);
-    if (!node) continue;
-
-    // Expand deletion range to include surrounding spacers and apply deletion
-    const range = expandWithSpacers(state.doc, token.pos, node.nodeSize);
+  // Delete in reverse order and insert space where needed
+  mergedRanges.sort((a, b) => b.from - a.from);
+  for (const range of mergedRanges) {
     applySpacerDeletion(tr, state.schema, range);
   }
 
-  if (!tr.docChanged) return null;
+  // Positions have shifted and the deletion is complete, so no token is "editing".
+  const remaining = collectTokens(tr.doc);
+  return runValidation(remaining, snap.fields, snap.rules, new Set());
+}
 
-  tr.setMeta(validationKey, true);
-  tr.setMeta('addToHistory', false);
-  return tr;
+/** Whether the deletions in the plan should be undoable. */
+export function hasUndoableDeletions(plan: ValidationPlan, snap: ValidationSnapshot): boolean {
+  // Deletions from validation rules (e.g., Unique.replace) are undoable. Cleanup of
+  // orphaned empty tokens and anything done during undo/redo is not a user action.
+  return !snap.isHistoryOperation && plan.deletions.some((d) => !d.isOrphanedEmpty);
+}
+
+function toValidation(violation: Violation): TokenValidation {
+  const validation: TokenValidation = { ruleId: violation.ruleId, reason: violation.reason };
+  if (violation.message !== undefined) validation.message = violation.message;
+  return validation;
+}
+
+function sameValidation(a: TokenValidation | undefined, b: TokenValidation | undefined): boolean {
+  if (a === undefined || b === undefined) return a === b;
+  return a.ruleId === b.ruleId && a.reason === b.reason && a.message === b.message;
+}
+
+/**
+ * Writes the validation of every token in `tr.doc` to token meta, and clears it
+ * for tokens that left the document. The first violation targeting a token wins.
+ *
+ * @returns whether any token's validation changed
+ */
+export function writeValidation(
+  tr: Transaction,
+  state: EditorState,
+  violations: readonly Violation[]
+): boolean {
+  const desired = new Map<string, TokenValidation>();
+  for (const violation of violations) {
+    for (const target of violation.targets) {
+      if (!desired.has(target.tokenId)) desired.set(target.tokenId, toValidation(violation));
+    }
+  }
+
+  const entries = tokenMetaKey.getState(state)?.entries ?? new Map();
+  let changed = false;
+  const present = new Set<string>();
+  for (const token of collectTokens(tr.doc)) {
+    present.add(token.id);
+    const next = desired.get(token.id);
+    if (!sameValidation(entries.get(token.id)?.validation, next)) {
+      setTokenMeta(tr, token.id, { validation: next });
+      changed = true;
+    }
+  }
+  for (const [id, meta] of entries) {
+    if (!present.has(id) && meta.validation) {
+      setTokenMeta(tr, id, { validation: undefined });
+      changed = true;
+    }
+  }
+  return changed;
 }

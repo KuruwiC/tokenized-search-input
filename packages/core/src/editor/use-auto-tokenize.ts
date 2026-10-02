@@ -54,19 +54,16 @@ function getCurrentWord(editor: Editor): { word: string; from: number; to: numbe
 
 function insertFilterToken(
   editor: Editor,
-  fields: FieldDefinition[],
   from: number,
   to: number,
   key: string,
   operator: string,
   value: string
 ): void {
-  const fieldLabel = fields.find((f) => f.key === key)?.label || key;
-
   const chain = editor
     .chain()
     .deleteRange({ from, to })
-    .insertFilterToken({ key, operator, value, fieldLabel });
+    .insertFilterToken({ key, operator, value });
 
   if (!value) {
     // Empty token creation should not be in history
@@ -103,14 +100,14 @@ export function tryAutoTokenize(
     const field = resolveField({ fields, unknownFields }, word);
     if (!field) return false;
 
-    insertFilterToken(editor, fields, from, to, field.key, field.operators[0], '');
+    insertFilterToken(editor, from, to, field.key, field.operators[0], '');
     return true;
   }
 
   const parsed = parseTokenText(word, fields, { unknownFields, delimiter });
   if (!parsed) return false;
 
-  insertFilterToken(editor, fields, from, to, parsed.key, parsed.operator, parsed.value);
+  insertFilterToken(editor, from, to, parsed.key, parsed.operator, parsed.value);
   return true;
 }
 

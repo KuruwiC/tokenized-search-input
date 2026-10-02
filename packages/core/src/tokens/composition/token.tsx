@@ -3,6 +3,7 @@ import { TextSelection, type Transaction } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
 import { NodeViewWrapper } from '@tiptap/react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef } from 'react';
+import type { TokenValidation } from '../../plugins/shared/meta';
 import {
   closeSuggestion,
   dismissSuggestion,
@@ -16,6 +17,7 @@ import {
   type CursorPosition as PluginCursorPosition,
   setTokenFocus,
 } from '../../plugins/token-focus-plugin';
+import { getValidationDescriptionId } from '../../plugins/token-meta-plugin';
 import { getDismissPolicy } from '../../suggestions/dismiss-policy';
 import { cn } from '../../utils/cn';
 import { isSpacer } from '../../utils/node-predicates';
@@ -135,17 +137,13 @@ export interface TokenProps {
   editor: Editor;
   getPos: () => number | undefined;
   node: ProseMirrorNode;
-  updateAttributes: (attrs: Record<string, unknown>) => void;
   deleteNode: () => void;
   children: React.ReactNode;
   className?: string;
   ariaLabel?: string;
-  invalid?: boolean;
+  /** The token's validation failure, as computed by the validation plugin. */
+  validation?: TokenValidation;
   dataAttrs?: Record<string, string>;
-  /** Canonical value for validation (e.g., 'active' not 'アクティブ'). Falls back to input display value if not provided. */
-  value?: string;
-  validate?: (value: string) => boolean | string;
-  onInvalidChange?: (invalid: boolean) => void;
   /** Callback when token loses focus (blur). Called after internal blur handling. */
   onBlur?: () => void;
   /** Make token immutable (only deletable via X button or 2-stage Backspace). Default: false */
@@ -223,16 +221,12 @@ export function Token({
   editor,
   getPos,
   node,
-  updateAttributes,
   deleteNode,
   children,
   className = '',
   ariaLabel,
-  invalid = false,
+  validation,
   dataAttrs,
-  value,
-  validate,
-  onInvalidChange,
   onBlur: onBlurCallback,
   immutable = false,
   rangeSelected = false,
@@ -393,26 +387,6 @@ export function Token({
         }
       }
 
-      if (validate) {
-        // Use canonical value prop if provided, otherwise fall back to input display value
-        let valueToValidate: string | undefined;
-        if (value !== undefined) {
-          valueToValidate = value;
-        } else {
-          const elements = focusRegistry.getElements();
-          const valueElement = elements.find((el) => el.id === 'value');
-          if (valueElement?.ref.current instanceof HTMLInputElement) {
-            valueToValidate = valueElement.ref.current.value;
-          }
-        }
-
-        if (valueToValidate !== undefined) {
-          const result = validate(valueToValidate);
-          const isValid = result === true;
-          onInvalidChange?.(!isValid);
-        }
-      }
-
       dispatch({ type: 'PLUGIN_FOCUS_LOST' });
 
       const pos = getPos();
@@ -437,7 +411,7 @@ export function Token({
         }
       }
     },
-    [editor, getPos, value, validate, onInvalidChange, focusRegistry, onBlurCallback]
+    [editor, getPos, onBlurCallback]
   );
 
   const handleKeyDown = useCallback(
@@ -500,10 +474,9 @@ export function Token({
       editor,
       getPos,
       node,
-      updateAttributes,
       deleteToken: handleDelete,
     }),
-    [editor, getPos, node, updateAttributes, handleDelete]
+    [editor, getPos, node, handleDelete]
   );
 
   const focusContextValue: TokenFocusContextValue = useMemo(
@@ -552,6 +525,11 @@ export function Token({
 
   const dataState = isFocused ? 'editing' : 'idle';
 
+  const validationMessage = validation ? (validation.message ?? validation.reason) : undefined;
+  const validationDescriptionId = validation
+    ? getValidationDescriptionId(String(node.attrs.id))
+    : undefined;
+
   return (
     <NodeViewWrapper
       as="span"
@@ -565,6 +543,8 @@ export function Token({
       aria-label={computedAriaLabel}
       aria-disabled={!editor.isEditable || undefined}
       aria-readonly={immutable || undefined}
+      aria-describedby={validationDescriptionId}
+      title={validationMessage}
       role="group"
       tabIndex={-1}
     >
@@ -572,7 +552,7 @@ export function Token({
         className={tokenClasses}
         data-focused={isFocused}
         data-state={dataState}
-        data-invalid={invalid}
+        data-invalid={validation !== undefined}
         data-immutable={immutable}
         data-editable={editor.isEditable}
         data-range-selected={rangeSelected || undefined}
@@ -586,6 +566,11 @@ export function Token({
           </TokenFocusContext.Provider>
         </TokenConfigContext.Provider>
       </span>
+      {validationDescriptionId && (
+        <span id={validationDescriptionId} className="tsi-sr-only">
+          {validationMessage}
+        </span>
+      )}
     </NodeViewWrapper>
   );
 }

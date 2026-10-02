@@ -37,16 +37,9 @@ export interface SuggestedFilterToken {
   value: string;
   /** Display label for aria-label and text operations (used when enumValues is empty/dynamic) */
   displayValue?: string;
-  /**
-   * Content to display before the label.
-   * Not persisted across Undo/Redo with dynamic enumValues.
-   * Use `displayValue` for persistent representation.
-   */
+  /** Content to display before the label. */
   startContent?: ReactNode;
-  /**
-   * Content to display after the label.
-   * Not persisted across Undo/Redo with dynamic enumValues.
-   */
+  /** Content to display after the label. */
   endContent?: ReactNode;
 }
 

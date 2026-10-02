@@ -12,13 +12,6 @@ export interface CreateFilterTokenAttrsInput {
   fields: FieldDefinition[];
   /** Explicit token ID (if not provided, a new UUID will be generated) */
   id?: string;
-  /** Display overrides (for custom suggestions) */
-  overrides?: {
-    fieldLabel?: string;
-    displayValue?: string;
-    startContent?: React.ReactNode;
-    endContent?: React.ReactNode;
-  };
 }
 
 export interface NodeFilterTokenAttrs {
@@ -26,13 +19,7 @@ export interface NodeFilterTokenAttrs {
   key: string;
   operator: string;
   value: string;
-  fieldLabel: string;
-  invalid: boolean;
   immutable: boolean;
-  confirmed: boolean;
-  displayValue: string | null;
-  startContent: React.ReactNode | null;
-  endContent: React.ReactNode | null;
   [key: string]: unknown;
 }
 
@@ -44,25 +31,14 @@ export interface NodeFilterTokenAttrs {
  * @returns Complete filter token attributes including a stable UUID
  */
 export function createFilterTokenAttrs(input: CreateFilterTokenAttrsInput): NodeFilterTokenAttrs {
-  const { key, operator, value = '', fields, id, overrides } = input;
+  const { key, operator, value = '', fields, id } = input;
   const fieldDef = fields.find((f) => f.key === key);
-
-  // Tokens with value are considered confirmed (e.g., from deserialization)
-  const hasValue = !!value;
-  const isConfirmed = hasValue;
-  const isImmutable = (fieldDef?.immutable ?? false) && hasValue;
 
   return {
     id: id ?? generateTokenId(),
     key,
     operator,
     value,
-    fieldLabel: overrides?.fieldLabel ?? fieldDef?.label ?? key,
-    invalid: false,
-    immutable: isImmutable,
-    confirmed: isConfirmed,
-    displayValue: overrides?.displayValue ?? null,
-    startContent: overrides?.startContent ?? null,
-    endContent: overrides?.endContent ?? null,
+    immutable: (fieldDef?.immutable ?? false) && !!value,
   };
 }

@@ -41,7 +41,6 @@ describe('TokenSpacingExtension - Integration Tests', () => {
         key: 'status',
         operator: 'is',
         value: '',
-        fieldLabel: 'Status',
       });
 
       // Find the inserted token and focus it

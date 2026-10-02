@@ -1,14 +1,12 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
-import type { EditorContextStorage } from '../../extensions/editor-context';
-import type { ValidationToken } from '../../types';
+import type { FieldDefinition, ValidationRule, ValidationToken } from '../../types';
 import { isFilterToken, isFreeTextToken } from '../../utils/node-predicates';
 import { ensureTokenId } from '../../utils/token-id';
+import { isValidationCheckRequested } from '../shared/meta';
 import { getTokenFocusMeta, getTokenFocusState } from '../token-focus-plugin';
 import type { ShouldRunResult, ValidationSnapshot } from './types';
 import { runValidation } from './validation-runner';
-
-export const FORCE_VALIDATION_CHECK = 'forceValidationCheck';
 
 export function collectTokens(doc: ProseMirrorNode): ValidationToken[] {
   const tokens: ValidationToken[] = [];
@@ -55,7 +53,7 @@ export function shouldRun(
   }
 
   // Check if force check is requested
-  const forceCheck = transactions.some((tr) => tr.getMeta(FORCE_VALIDATION_CHECK));
+  const forceCheck = transactions.some(isValidationCheckRequested);
 
   // Check if this is a history operation (undo/redo)
   const isHistoryOperation = transactions.some((tr) => {
@@ -78,17 +76,11 @@ export function shouldRun(
 export function buildSnapshot(
   oldState: EditorState,
   newState: EditorState,
-  editorContext: EditorContextStorage,
+  fields: FieldDefinition[],
+  rules: ValidationRule[],
   forceCheck: boolean,
   isHistoryOperation: boolean
 ): ValidationSnapshot | null {
-  const { fields, validation } = editorContext;
-
-  // If validation is disabled, return null
-  if (!validation || !validation.rules || validation.rules.length === 0) {
-    return null;
-  }
-
   // Collect all filter tokens from both states
   const oldTokens = collectTokens(oldState.doc);
   const tokens = collectTokens(newState.doc);
@@ -146,7 +138,7 @@ export function buildSnapshot(
       if (blurredToken) editingTokenIds.add(blurredToken.id);
     }
   }
-  const violations = runValidation(tokens, fields, validation, editingTokenIds);
+  const violations = runValidation(tokens, fields, rules, editingTokenIds);
 
   return {
     tokens,
@@ -158,6 +150,6 @@ export function buildSnapshot(
     forceCheck,
     isHistoryOperation,
     fields,
-    validation,
+    rules,
   };
 }

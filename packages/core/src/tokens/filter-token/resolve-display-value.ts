@@ -1,3 +1,4 @@
+import type { TokenDisplayContent } from '../../plugins/shared/meta';
 import type {
   DateFormatConfig,
   DateTimeFormatConfig,
@@ -9,11 +10,8 @@ import { getEnumIcon, getEnumLabel, getEnumValue } from '../../utils/enum-value'
 export interface ResolveDisplayValueInput {
   rawValue: string;
   fieldDef: FieldDefinition | undefined;
-  nodeAttrs: {
-    displayValue?: string | null;
-    startContent?: React.ReactNode | null;
-    endContent?: React.ReactNode | null;
-  };
+  /** Display data that describes the token's current value, if any */
+  display: TokenDisplayContent | undefined;
   /** Date display formatter (injected for testability) */
   getDateDisplayValue?: (value: string, config?: DateFormatConfig) => string;
   /** DateTime display formatter (injected for testability) */
@@ -27,40 +25,40 @@ export interface ResolveDisplayValueResult {
 }
 
 /**
- * Priority: node.attrs > enumValues > date/datetime formatting > raw value
+ * Priority: token display data > enumValues > date/datetime formatting > raw value
  */
 export function resolveDisplayValue(input: ResolveDisplayValueInput): ResolveDisplayValueResult {
-  const { rawValue, fieldDef, nodeAttrs, getDateDisplayValue, getDateTimeDisplayValue } = input;
+  const { rawValue, fieldDef, display, getDateDisplayValue, getDateTimeDisplayValue } = input;
 
   const isEnumField = fieldDef?.type === 'enum';
   const isDateField = fieldDef?.type === 'date';
   const isDateTimeField = fieldDef?.type === 'datetime';
 
-  // 1. node.attrs take precedence (for custom suggestions with displayValue/startContent/endContent)
-  if (nodeAttrs.displayValue || nodeAttrs.startContent || nodeAttrs.endContent) {
+  // 1. Display data takes precedence (custom suggestions, async resolvers)
+  if (display && (display.displayValue || display.startContent || display.endContent)) {
     // For date/datetime, use formatted display but allow custom startContent/endContent
     if (isDateField && fieldDef?.type === 'date' && getDateDisplayValue) {
       const dateDisplay =
-        nodeAttrs.displayValue ?? getDateDisplayValue(rawValue, fieldDef.formatConfig);
+        display.displayValue ?? getDateDisplayValue(rawValue, fieldDef.formatConfig);
       return {
         valueDisplayString: dateDisplay,
-        startContent: nodeAttrs.startContent ?? undefined,
-        endContent: nodeAttrs.endContent ?? undefined,
+        startContent: display.startContent ?? undefined,
+        endContent: display.endContent ?? undefined,
       };
     }
     if (isDateTimeField && fieldDef?.type === 'datetime' && getDateTimeDisplayValue) {
       const dateTimeDisplay =
-        nodeAttrs.displayValue ?? getDateTimeDisplayValue(rawValue, fieldDef.formatConfig);
+        display.displayValue ?? getDateTimeDisplayValue(rawValue, fieldDef.formatConfig);
       return {
         valueDisplayString: dateTimeDisplay,
-        startContent: nodeAttrs.startContent ?? undefined,
-        endContent: nodeAttrs.endContent ?? undefined,
+        startContent: display.startContent ?? undefined,
+        endContent: display.endContent ?? undefined,
       };
     }
     return {
-      valueDisplayString: nodeAttrs.displayValue ?? rawValue,
-      startContent: nodeAttrs.startContent ?? undefined,
-      endContent: nodeAttrs.endContent ?? undefined,
+      valueDisplayString: display.displayValue ?? rawValue,
+      startContent: display.startContent ?? undefined,
+      endContent: display.endContent ?? undefined,
     };
   }
 

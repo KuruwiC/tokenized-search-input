@@ -5,6 +5,8 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
+import { getTokenFocusState } from '../../plugins/token-focus-plugin';
+import { getTokenMeta } from '../../plugins/token-meta-plugin';
 import type { QuerySnapshotFilterToken } from '../../types';
 import { extendedFields } from '../fixtures';
 
@@ -23,16 +25,9 @@ function filterTokens(ref: RefObject<TokenizedSearchInputRef>): QuerySnapshotFil
   );
 }
 
-function tokenAttrs(ref: RefObject<TokenizedSearchInputRef>, id: string) {
-  let attrs: Record<string, unknown> | null = null;
-  ref.current?.getEditor()?.state.doc.descendants((node) => {
-    if (node.type.name === 'filterToken' && node.attrs.id === id) {
-      attrs = node.attrs;
-      return false;
-    }
-    return true;
-  });
-  return attrs as Record<string, unknown> | null;
+function tokenDisplay(ref: RefObject<TokenizedSearchInputRef>, id: string) {
+  const editor = ref.current?.getEditor();
+  return editor ? getTokenMeta(editor.state, id)?.display : undefined;
 }
 
 describe('TokenizedSearchInputRef', () => {
@@ -72,7 +67,7 @@ describe('TokenizedSearchInputRef', () => {
       expect(ref.current?.getValue()).toBe('status:is_not:active assignee:is:john');
     });
 
-    it('applies value and operator together and confirms the token', async () => {
+    it('applies value and operator together and leaves the token unfocused', async () => {
       const ref = await renderInput();
       const [, assignee] = filterTokens(ref);
 
@@ -81,7 +76,8 @@ describe('TokenizedSearchInputRef', () => {
       });
 
       expect(ref.current?.getValue()).toBe('status:is:active assignee:contains:jo');
-      expect(tokenAttrs(ref, assignee.id)?.confirmed).toBe(true);
+      const editor = ref.current?.getEditor();
+      expect(editor && getTokenFocusState(editor.state)?.focusedPos).toBeNull();
     });
 
     it('is undoable as a regular edit', async () => {
@@ -134,7 +130,7 @@ describe('TokenizedSearchInputRef', () => {
   });
 
   describe('setTokenDisplay', () => {
-    it('sets display attributes without changing the serialized query', async () => {
+    it('sets display data without changing the serialized query', async () => {
       const ref = await renderInput();
       const [status] = filterTokens(ref);
 
@@ -142,14 +138,16 @@ describe('TokenizedSearchInputRef', () => {
         ref.current?.setTokenDisplay(status.id, { displayValue: 'Active!', startContent: 'icon' });
       });
 
-      expect(tokenAttrs(ref, status.id)).toMatchObject({
+      expect(tokenDisplay(ref, status.id)).toEqual({
+        forKey: 'status',
+        forValue: 'active',
         displayValue: 'Active!',
         startContent: 'icon',
       });
       expect(ref.current?.getValue()).toBe(DEFAULT_VALUE);
     });
 
-    it('clears a display attribute with null and leaves omitted attributes alone', async () => {
+    it('clears a display member with null and leaves omitted members alone', async () => {
       const ref = await renderInput();
       const [status] = filterTokens(ref);
 
@@ -160,8 +158,9 @@ describe('TokenizedSearchInputRef', () => {
         ref.current?.setTokenDisplay(status.id, { displayValue: null });
       });
 
-      expect(tokenAttrs(ref, status.id)).toMatchObject({
-        displayValue: null,
+      expect(tokenDisplay(ref, status.id)).toEqual({
+        forKey: 'status',
+        forValue: 'active',
         startContent: 'icon',
       });
     });

@@ -1,32 +1,36 @@
 import type { NodeViewProps } from '@tiptap/react';
 import { getEditorContext } from '../../extensions/editor-context';
 import { useEditorContextUpdate } from '../../hooks/use-editor-context-update';
+import { getDecorationValidation } from '../../plugins/token-meta-plugin';
 import { isRangeSelected } from '../../utils/decoration-helpers';
 import { Token } from '../composition';
+import { applyTokenAction } from '../filter-token/token-actions';
 
 export const FreeTextTokenView: React.FC<NodeViewProps> = ({
   node,
-  updateAttributes,
   deleteNode,
   editor,
   getPos,
   decorations,
 }) => {
   useEditorContextUpdate(editor);
-  const { value, quoted } = node.attrs;
+  const { id, value, quoted } = node.attrs;
 
   const editorContext = getEditorContext(editor);
   const classNames = editorContext.classNames;
 
   const rangeSelected = isRangeSelected(decorations);
+  const validation = getDecorationValidation(decorations);
 
   const handleValueChange = (newValue: string) => {
-    // Auto-convert to quoted token when space is entered in non-quoted token
-    if (!quoted && newValue.includes(' ')) {
-      updateAttributes({ value: newValue, quoted: true });
-    } else {
-      updateAttributes({ value: newValue });
-    }
+    const tr = editor.state.tr;
+    // A space typed into an unquoted token turns it into a quoted one.
+    const changed = applyTokenAction(tr, id, {
+      type: 'setValue',
+      value: newValue,
+      quoted: quoted || newValue.includes(' '),
+    });
+    if (changed) editor.view.dispatch(tr);
   };
 
   // Allow space insertion at non-end position for non-quoted tokens
@@ -40,9 +44,9 @@ export const FreeTextTokenView: React.FC<NodeViewProps> = ({
       editor={editor}
       getPos={getPos}
       node={node}
-      updateAttributes={updateAttributes}
       deleteNode={deleteNode}
       ariaLabel={`Free text: ${value}`}
+      validation={validation}
       className={classNames?.token}
       dataAttrs={{ 'data-free-text-token': '', 'data-quoted': String(quoted) }}
       rangeSelected={rangeSelected}

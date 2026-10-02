@@ -8,7 +8,7 @@ import {
   type EditorConfig,
   getEditorContext,
 } from '../../extensions/editor-context';
-import { FORCE_VALIDATION_CHECK } from '../../plugins/validation-plugin';
+import { requestValidationCheck } from '../../plugins/shared/meta';
 import { parseQueryToDoc, serializeDocToQuery } from '../../serializer';
 
 /**
@@ -89,7 +89,7 @@ export function useEditorConfigSync(
     if (prevValidation === validation) return;
 
     const tr = editor.state.tr;
-    tr.setMeta(FORCE_VALIDATION_CHECK, true);
+    requestValidationCheck(tr);
     editor.view.dispatch(tr);
   }, [editor, validation]);
 
@@ -112,7 +112,8 @@ export function useEditorConfigSync(
       unknownFields: context.unknownFields,
       delimiter: context.delimiter,
     });
-    editor.commands.setContent(newDoc);
+    // Re-parsing gives every token a new id, so their meta no longer applies.
+    editor.commands.replaceContent(newDoc);
   }, [editor, mode]);
 
   // Callbacks change with the handlers' identities, so they update the storage
