@@ -99,7 +99,7 @@
     "typescript": "^5.7.2",
     "vite": "^6.4.3",
     "vite-plugin-dts": "^5.1.0",
-    "vitest": "^4.1.11"
+    "vitest": "4.1.11"
   },
   "keywords": [
     "react",
