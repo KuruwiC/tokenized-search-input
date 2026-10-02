@@ -12,6 +12,13 @@ export default defineConfig({
       screenshotFailures: false,
       provider: playwright(),
       instances: [{ browser: 'chromium' }, { browser: 'webkit' }],
+      commands: {
+        // Types text into the focused element the way an input method commits it: as a
+        // single insertion, not as key presses. Works on every engine.
+        insertText: async ({ page }, text: string) => {
+          await page.keyboard.insertText(text);
+        },
+      },
     },
   },
 });
