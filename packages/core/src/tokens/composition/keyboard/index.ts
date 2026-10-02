@@ -1,3 +1,4 @@
+export { isHistoryShortcut } from './history-shortcut';
 export { HandlerPriority, type HandlerPriorityValue } from './priorities';
 export {
   type KeyboardHandler,

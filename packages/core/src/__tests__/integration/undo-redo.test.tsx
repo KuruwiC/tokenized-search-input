@@ -2,13 +2,17 @@
  * Integration tests for undo/redo functionality.
  * Tests TipTap editor history commands through the TokenizedSearchInput ref API.
  */
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import type { Editor } from '@tiptap/core';
+import { closeHistory } from '@tiptap/pm/history';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
+import type { FieldDefinition } from '../../types';
 import { extendedFields } from '../fixtures';
 import { getInternalEditor } from '../helpers/get-editor';
 
@@ -89,6 +93,87 @@ describe('Undo/Redo', () => {
       expect(onChange).toHaveBeenLastCalledWith(
         expect.objectContaining({ text: 'status:is:active' })
       );
+    });
+  });
+  describe('inside a token', () => {
+    const tagFields: FieldDefinition[] = [
+      { key: 'tag', label: 'Tag', type: 'string', operators: ['is'] },
+    ];
+
+    async function renderTagInput(defaultValue?: string) {
+      const ref = createRef<TokenizedSearchInputRef>();
+      render(<TokenizedSearchInput ref={ref} fields={tagFields} defaultValue={defaultValue} />);
+      await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+      const editor = getInternalEditor(ref.current);
+      if (!editor) throw new Error('editor not created');
+      return { ref, editor };
+    }
+
+    /** Ends the current undo step, as a pause in typing would. */
+    function endUndoStep(editor: Editor): void {
+      act(() => {
+        editor.view.dispatch(closeHistory(editor.state.tr));
+      });
+    }
+
+    const token = () => screen.getByRole('group', { name: /Filter: tag/i });
+
+    /** The values of the filter tokens in the document, including empty ones. */
+    function filterTokenValues(editor: Editor): string[] {
+      const values: string[] = [];
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === 'filterToken') values.push(String(node.attrs.value));
+      });
+      return values;
+    }
+
+    it('undoes and redoes the last value change of a confirmed token from its input', async () => {
+      const user = userEvent.setup();
+      const { ref, editor } = await renderTagInput('tag:is:react');
+
+      await user.click(token());
+      await user.type(await screen.findByPlaceholderText('...'), 'x');
+      await user.keyboard('{Tab}');
+      expect(ref.current?.getValue()).toBe('tag:is:reactx');
+      endUndoStep(editor);
+
+      await user.click(token());
+      await screen.findByPlaceholderText('...');
+      await user.keyboard('{Control>}z{/Control}');
+      expect(ref.current?.getValue()).toBe('tag:is:react');
+
+      await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+      expect(ref.current?.getValue()).toBe('tag:is:reactx');
+
+      await user.keyboard('{Control>}z{/Control}');
+      await user.keyboard('{Control>}y{/Control}');
+      expect(ref.current?.getValue()).toBe('tag:is:reactx');
+    });
+
+    it('keeps a token emptied by undo when there is nothing left to undo', async () => {
+      const user = userEvent.setup();
+      const { ref, editor } = await renderTagInput();
+
+      await user.click(screen.getByRole('combobox'));
+      await user.click(await screen.findByRole('option', { name: /Tag/ }));
+      endUndoStep(editor);
+      await user.type(await screen.findByPlaceholderText('...'), 'abc');
+      await user.keyboard('{Tab}');
+      expect(ref.current?.getValue()).toBe('tag:is:abc');
+      endUndoStep(editor);
+
+      await user.click(token());
+      await screen.findByPlaceholderText('...');
+      await user.keyboard('{Control>}z{/Control}');
+      expect(filterTokenValues(editor)).toEqual(['']);
+
+      // Undo again on the empty input; the token must not be deleted in its place.
+      await user.keyboard('{Control>}z{/Control}');
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(filterTokenValues(editor)).toEqual(['']);
+
+      await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+      expect(ref.current?.getValue()).toBe('tag:is:abc');
     });
   });
 });

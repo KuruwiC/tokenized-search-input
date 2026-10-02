@@ -10,6 +10,7 @@ import {
 } from '../../plugins/token-focus-plugin';
 import { isFilterToken } from '../../utils/node-predicates';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
+import { isHistoryShortcut } from '../composition/keyboard';
 import { updateTokenNodeView } from '../composition/node-view-update';
 import { createFilterTokenAttrs } from './create-attrs';
 import { FilterTokenView } from './filter-token-view';
@@ -119,6 +120,11 @@ export const FilterTokenNode = Node.create({
       stopEvent: ({ event }) => {
         // When disabled, let all events flow to ProseMirror (don't handle in NodeView)
         if (!editor.isEditable) {
+          return false;
+        }
+
+        // Undo and redo go to the editor, which owns the history of token edits
+        if (event instanceof KeyboardEvent && isHistoryShortcut(event)) {
           return false;
         }
 

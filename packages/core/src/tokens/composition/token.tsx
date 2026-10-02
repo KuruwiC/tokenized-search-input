@@ -43,7 +43,11 @@ import {
   tokenFocusReducer,
   useFocusRegistry,
 } from './focus';
-import { KeyboardHandlersContext, useKeyboardHandlersRegistry } from './keyboard';
+import {
+  isHistoryShortcut,
+  KeyboardHandlersContext,
+  useKeyboardHandlersRegistry,
+} from './keyboard';
 
 interface ClickContext {
   event: React.MouseEvent;
@@ -463,6 +467,8 @@ export function Token({
 
   const dispatchKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // Undo and redo propagate to the editor, which owns the history of token edits
+      if (isHistoryShortcut(e.nativeEvent)) return;
       handleKeyDown(e);
       e.stopPropagation();
     },

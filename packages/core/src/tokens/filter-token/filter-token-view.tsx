@@ -30,7 +30,6 @@ import {
 } from '../composition';
 import { resolveDisplayValue } from './resolve-display-value';
 import { applyTokenAction, commitFilterToken, type FilterTokenAction } from './token-actions';
-import { useNativeUndoFallback } from './use-native-undo-fallback';
 import { useValueSuggestions } from './use-value-suggestions';
 
 /** The text the user edits: a static enum value's label, otherwise the value itself. */
@@ -238,14 +237,6 @@ function FilterTokenValue({
   const { exitToken, currentFocusId, isFocused: tokenFocused } = useTokenFocusContext();
   const { deleteToken } = useTokenConfig();
 
-  // Native undo fallback: when Cmd+Z is pressed on empty input and browser has no undo history,
-  // delete the token so user can continue undoing in the editor
-  const { handleUndoKeyDown } = useNativeUndoFallback({
-    inputRef,
-    onFallback: deleteToken,
-    enabled: currentFocusId === 'value' && rawValue === '',
-  });
-
   // Normalize date/datetime values (shared logic for confirm and blur)
   const normalizeValue = () => {
     let normalized = rawValue;
@@ -338,15 +329,6 @@ function FilterTokenValue({
         e.preventDefault();
         deleteToken();
         return true;
-      },
-      priority: HandlerPriority.VIEW,
-    },
-    z: {
-      handler: (e: React.KeyboardEvent) => {
-        if (e.nativeEvent.isComposing) return false;
-        if (currentFocusId !== 'value') return false;
-        if (rawValue !== '') return false;
-        return handleUndoKeyDown(e);
       },
       priority: HandlerPriority.VIEW,
     },
