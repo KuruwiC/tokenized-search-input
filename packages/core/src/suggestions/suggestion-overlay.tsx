@@ -113,7 +113,6 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     const focusedToken = findFocusedFilterToken(containerRef.current);
     if (focusedToken) return focusedToken;
 
-    // Fallback: the token the suggestion is anchored to
     if (anchorPos === null) return null;
 
     try {
@@ -346,7 +345,6 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
         }
       }
     } else if (suggestionState?.type === 'datetime') {
-      // No anchored token but datetime type - reset UTC and includeTime
       setIsUTC(false);
       setIncludeTime(false);
     }

@@ -48,7 +48,6 @@ export function getValidationDescriptionId(tokenId: string): string {
   return `tsi-token-validation-${tokenId}`;
 }
 
-/** The validation a node view received through its decorations. */
 export function getDecorationValidation(
   decorations: readonly Decoration[]
 ): TokenValidation | undefined {

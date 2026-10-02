@@ -62,7 +62,6 @@ export function useEditorSelector<T>(
   return useSyncExternalStore(store.subscribe, getSnapshot, getSnapshot);
 }
 
-/** The meta of the token with the given id. */
 export function useTokenMeta(editor: Editor, id: string): TokenMeta | undefined {
   return useEditorSelector(editor, (state) => getTokenMeta(state, id));
 }

@@ -68,7 +68,6 @@ interface DerivedValueSuggestion {
   items: EnumValue[];
 }
 
-/** The value suggestions of a filter token, derived from its key and current value. */
 function deriveValueSuggestion(
   doc: ProseMirrorNode,
   tokenId: string,

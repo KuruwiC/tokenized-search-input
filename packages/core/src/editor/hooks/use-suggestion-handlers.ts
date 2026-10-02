@@ -102,7 +102,6 @@ export function useSuggestionHandlers({
     if (pos !== null && pos !== undefined) {
       const node = tr.doc.nodeAt(pos);
       if (node && isFilterToken(node)) {
-        // Get field definition for the immutable check
         const fieldKey = node.attrs.key;
         const fieldDef = getEditorContext(editor).fields.find((f) => f.key === fieldKey);
 
