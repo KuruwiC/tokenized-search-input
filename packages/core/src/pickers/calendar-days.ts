@@ -1,4 +1,5 @@
-import { parseDateTimeValue } from './date-time-value';
+import { isDevelopment } from '../utils/env';
+import { fromInstant, parseDateTimeValue, toInstant } from './date-time-value';
 
 /** The calendar cells of a picker are days; a day is `yyyy-MM-dd`, with no time zone. */
 
@@ -20,22 +21,46 @@ export function calendarDayToDate(day: string): Date {
   return cell;
 }
 
-/** The day a bound stands for, or null when there is no bound or it is not a date. */
+/**
+ * The day a bound stands for, or null when there is no bound or it is not a date. A
+ * string is the date it is written with, except that in UTC mode a string with a time
+ * is the day that moment falls on in UTC, as a `Date` is.
+ */
 export function resolveBoundDay(bound: Date | string | undefined, utc: boolean): string | null {
   if (bound === undefined) return null;
   if (typeof bound === 'string') {
     const parsed = parseDateTimeValue(bound, 'datetime');
-    return parsed.ok ? parsed.value.date : null;
+    if (!parsed.ok) return null;
+    // A moment is on the day it falls on in UTC, as it is for a Date
+    if (utc && parsed.value.time !== undefined) {
+      return fromInstant(toInstant(parsed.value), 'Z')?.date ?? parsed.value.date;
+    }
+    return parsed.value.date;
   }
   if (Number.isNaN(bound.getTime())) return null;
   if (!utc) return toCalendarDay(bound);
   return `${pad(bound.getUTCFullYear(), 4)}-${pad(bound.getUTCMonth() + 1)}-${pad(bound.getUTCDate())}`;
 }
 
+function resolveBoundDayOrWarn(
+  name: 'minDate' | 'maxDate',
+  bound: Date | string | undefined,
+  utc: boolean
+): string | null {
+  const day = resolveBoundDay(bound, utc);
+  if (day === null && bound !== undefined && isDevelopment()) {
+    console.warn(
+      `[TokenizedSearchInput] ${name} ${JSON.stringify(String(bound))} is not a date and is ignored. Use yyyy-MM-dd, yyyy-MM-ddTHH:mm[:ss][Z|±HH:MM] or a Date.`
+    );
+  }
+  return day;
+}
+
 /**
  * Tells whether a calendar cell is out of range. Bounds and cells are compared as
  * days, so a bound with a time in it still leaves its own day selectable. In UTC mode
- * a bound given as a `Date` is the day it falls on in UTC.
+ * a bound with a moment in it is the day that moment falls on in UTC. A bound that is
+ * not a date is ignored, with a warning in development.
  */
 export function createDayMatcher(
   field: {
@@ -45,8 +70,8 @@ export function createDayMatcher(
   },
   utc: boolean
 ): (cell: Date) => boolean {
-  const min = resolveBoundDay(field.minDate, utc);
-  const max = resolveBoundDay(field.maxDate, utc);
+  const min = resolveBoundDayOrWarn('minDate', field.minDate, utc);
+  const max = resolveBoundDayOrWarn('maxDate', field.maxDate, utc);
   return (cell) => {
     const day = toCalendarDay(cell);
     if (min !== null && day < min) return true;

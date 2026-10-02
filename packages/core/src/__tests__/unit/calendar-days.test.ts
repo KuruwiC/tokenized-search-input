@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   calendarDayToDate,
   createDayMatcher,
@@ -18,9 +18,21 @@ describe('toCalendarDay and calendarDayToDate', () => {
 describe('resolveBoundDay', () => {
   it('is the date of a string, whatever time and offset follow it', () => {
     expect(resolveBoundDay('2024-03-05', false)).toBe('2024-03-05');
+    expect(resolveBoundDay('2024-03-05', true)).toBe('2024-03-05');
     expect(resolveBoundDay('2024-03-05T15:00', false)).toBe('2024-03-05');
-    expect(resolveBoundDay('2024-03-05T01:00:00+09:00', true)).toBe('2024-03-05');
+    expect(resolveBoundDay('2024-03-05T01:00:00+09:00', false)).toBe('2024-03-05');
     expect(resolveBoundDay('2024-03-05T23:30:00Z', false)).toBe('2024-03-05');
+  });
+
+  it('is the UTC day of a string with a time in UTC mode, as for a Date', () => {
+    expect(resolveBoundDay('2024-03-05T01:00:00+09:00', true)).toBe('2024-03-04');
+    expect(resolveBoundDay('2024-03-05T23:30:00-05:00', true)).toBe('2024-03-06');
+    expect(resolveBoundDay('2024-03-05T23:30:00Z', true)).toBe('2024-03-05');
+  });
+
+  it('is the UTC day of the local moment for a string with a time and no offset in UTC mode', () => {
+    const local = new Date(2024, 2, 5, 0, 30);
+    expect(resolveBoundDay('2024-03-05T00:30', true)).toBe(local.toISOString().slice(0, 10));
   });
 
   it('is the local day of a Date', () => {
@@ -42,6 +54,17 @@ describe('resolveBoundDay', () => {
 });
 
 describe('createDayMatcher', () => {
+  let warn: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warn.mockRestore();
+    vi.unstubAllEnvs();
+  });
+
   const cell = (month: number, day: number) => new Date(2024, month - 1, day);
 
   it('leaves the day of the maximum selectable even when its time is later in the day', () => {
@@ -86,5 +109,28 @@ describe('createDayMatcher', () => {
 
   it('disables nothing without bounds', () => {
     expect(createDayMatcher({}, false)(cell(3, 5))).toBe(false);
+  });
+
+  describe('a bound that is not a date', () => {
+    it.each(['2024-1-1', '2024', 'soon'])('warns in development about the string %s', (bound) => {
+      const disabled = createDayMatcher({ minDate: bound }, false);
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0]?.[0])).toContain('minDate');
+      expect(String(warn.mock.calls[0]?.[0])).toContain(bound);
+      expect(disabled(cell(1, 1))).toBe(false);
+    });
+
+    it('warns about an invalid Date', () => {
+      createDayMatcher({ maxDate: new Date(Number.NaN) }, false);
+      expect(String(warn.mock.calls[0]?.[0])).toContain('maxDate');
+    });
+
+    it('does not warn in production, or for a bound that is a date or is not given', () => {
+      createDayMatcher({ minDate: '2024-03-05', maxDate: new Date() }, false);
+      createDayMatcher({}, false);
+      vi.stubEnv('NODE_ENV', 'production');
+      createDayMatcher({ minDate: 'soon' }, false);
+      expect(warn).not.toHaveBeenCalled();
+    });
   });
 });
