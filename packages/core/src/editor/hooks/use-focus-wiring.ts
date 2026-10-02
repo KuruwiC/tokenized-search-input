@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/react';
-import { type RefObject, useEffect, useRef } from 'react';
+import { type RefObject, useEffect } from 'react';
 import { getEditorContext } from '../../extensions/editor-context';
 import {
   clearDismissed,
@@ -20,11 +20,16 @@ export interface UseFocusWiringOptions {
   updateCustomSuggestions: () => void;
 }
 
+/** Elements a press focuses by itself. */
+const FOCUSABLE = 'input, textarea, select, button, a[href], [tabindex], [contenteditable="true"]';
+
 /**
  * Wires focus entering and leaving the whole container (onFocus, onBlur and the
  * suggestion dismissal that goes with them) and dismisses suggestions on pointer
  * presses outside it. Whether focus entered or left is decided only by where it moves:
- * from or to an element outside the container and its suggestion overlay.
+ * from or to an element outside the container and its suggestion overlay. A press in
+ * the overlay that does not land on a focusable control keeps focus where it is, so
+ * focus does not fall back to the document there.
  */
 export function useFocusWiring({
   editor,
@@ -34,8 +39,6 @@ export function useFocusWiring({
   updateSuggestions,
   updateCustomSuggestions,
 }: UseFocusWiringOptions): void {
-  const pointerDownInSuggestionRef = useRef(false);
-
   // Handle focus/blur at container level using focusout (bubbles from all children)
   // This catches blur from both ProseMirror and token value inputs
   // Reference: https://danburzo.ro/focus-within/
@@ -49,11 +52,6 @@ export function useFocusWiring({
       target instanceof Element && (container.contains(target) || isWithinSuggestion(target));
 
     const handleContainerFocusOut = (e: FocusEvent) => {
-      // Skip if pointerdown was in suggestion (user is clicking a suggestion item)
-      if (pointerDownInSuggestionRef.current) {
-        pointerDownInSuggestionRef.current = false;
-        return;
-      }
       if (isInside(e.relatedTarget)) return;
 
       editor.commands.finalizeInput();
@@ -92,12 +90,21 @@ export function useFocusWiring({
       updateCustomSuggestions();
     };
 
+    const keepFocusOnSuggestionPress = (e: MouseEvent) => {
+      const target = e.target;
+      if (!(target instanceof Element) || !isWithinSuggestion(target)) return;
+      if (target.closest(FOCUSABLE)) return;
+      e.preventDefault();
+    };
+
     container.addEventListener('focusout', handleContainerFocusOut);
     container.addEventListener('focusin', handleContainerFocusIn);
+    container.addEventListener('mousedown', keepFocusOnSuggestionPress);
 
     return () => {
       container.removeEventListener('focusout', handleContainerFocusOut);
       container.removeEventListener('focusin', handleContainerFocusIn);
+      container.removeEventListener('mousedown', keepFocusOnSuggestionPress);
     };
   }, [editor, containerRef, updateSuggestions, updateCustomSuggestions, onBlur, onFocus]);
 
@@ -106,16 +113,7 @@ export function useFocusWiring({
 
     const handlePointerDown = (e: PointerEvent) => {
       const target = e.target as Node;
-
-      const suggestionRoot = containerRef.current?.querySelector('[data-suggestion-root]');
-      if (suggestionRoot?.contains(target)) {
-        pointerDownInSuggestionRef.current = true;
-        return;
-      }
-
-      if (containerRef.current?.contains(target)) {
-        return;
-      }
+      if (containerRef.current?.contains(target)) return;
 
       const tr = editor.state.tr;
       dismissSuggestion(tr);

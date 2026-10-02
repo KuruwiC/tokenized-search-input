@@ -234,6 +234,77 @@ describe('Focus Callbacks', () => {
       });
     });
 
+    it('triggers onBlur once when Tab leaves the container while a value suggestion is open', async () => {
+      const onBlur = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <div>
+          <TokenizedSearchInput fields={extendedFields} onBlur={onBlur} />
+          <button type="button">Other Element</button>
+        </div>
+      );
+
+      await user.click(screen.getByRole('combobox'));
+      await user.keyboard('status');
+      await user.click(await screen.findByText('Status'));
+      await screen.findByText('active');
+
+      // The first Tab leaves the token for the editor, the second leaves the container.
+      await user.tab();
+      await user.tab();
+
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'Other Element' })).toHaveFocus()
+      );
+      await waitFor(() => expect(onBlur).toHaveBeenCalledTimes(1));
+    });
+
+    it('triggers onBlur when focus leaves after a press on a suggestion that selected nothing', async () => {
+      const onBlur = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <div>
+          <TokenizedSearchInput fields={extendedFields} onBlur={onBlur} />
+          <button type="button">Other Element</button>
+        </div>
+      );
+
+      await user.click(screen.getByRole('combobox'));
+      await user.keyboard('stat');
+      const option = await screen.findByText('Status');
+      // The press starts on the option and is released outside it, so nothing is selected.
+      await user.pointer([
+        { keys: '[MouseLeft>]', target: option },
+        { keys: '[/MouseLeft]', target: document.body },
+      ]);
+      expect(screen.getByRole('combobox')).toHaveFocus();
+
+      act(() => {
+        screen.getByRole('button', { name: 'Other Element' }).focus();
+      });
+
+      await waitFor(() => expect(onBlur).toHaveBeenCalledTimes(1));
+    });
+
+    it('keeps focus in the input when a press in the suggestion list lands outside an option', async () => {
+      const onBlur = vi.fn();
+      const user = userEvent.setup();
+      const { container } = render(
+        <TokenizedSearchInput fields={extendedFields} onBlur={onBlur} />
+      );
+
+      await user.click(screen.getByRole('combobox'));
+      await user.keyboard('stat');
+      await screen.findByText('Status');
+      const suggestionRoot = container.querySelector('[data-suggestion-root]');
+      if (!suggestionRoot) throw new Error('suggestion list not rendered');
+
+      await user.click(suggestionRoot);
+
+      expect(screen.getByRole('combobox')).toHaveFocus();
+      expect(onBlur).not.toHaveBeenCalled();
+    });
+
     it('triggers onBlur after multiple suggestion selections and clicking outside', async () => {
       const onBlur = vi.fn();
       const user = userEvent.setup();
