@@ -36,7 +36,6 @@ const COMPOSING_KEY_CODE = 229;
 /** A press on a token edits it as a whole. */
 const CLICK_ENTRY: TokenFocusEntry = { source: 'click', position: 'end', target: 'all' };
 
-/** What a press on a token lands on. */
 export type ClickTarget =
   | 'label'
   | 'operator'
@@ -165,7 +164,6 @@ export function Token({
     enterToken(editor, id, CLICK_ENTRY);
   }, [editor, id, focusRegistry]);
 
-  // The press of a token that cannot be edited selects it whole, so that it can be deleted
   const selectToken = useCallback(() => {
     const pos = getPos();
     if (typeof pos !== 'number') return;

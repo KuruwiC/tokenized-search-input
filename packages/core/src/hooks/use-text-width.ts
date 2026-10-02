@@ -16,7 +16,6 @@ function getMeasureContext(): CanvasRenderingContext2D | null {
 
 let fieldSizing: boolean | undefined;
 
-/** Whether CSS sizes an input to its content, so that it needs no measuring. */
 function sizesToContent(): boolean {
   if (fieldSizing === undefined) {
     fieldSizing =

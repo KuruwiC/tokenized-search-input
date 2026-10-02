@@ -89,7 +89,6 @@ export interface UseFocusableBlockOptions {
   ref: RefObject<HTMLElement | null>;
   /** Handles a key pressed while the block holds focus; true when it was handled. */
   handleKey: (e: React.KeyboardEvent) => boolean;
-  /** Called when the block is pressed with the pointer. */
   activate?: () => void;
   focus?: (position?: CursorPosition) => void;
   /** Whether this block is available for focus navigation. Default: true */

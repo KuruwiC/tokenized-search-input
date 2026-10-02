@@ -3,10 +3,8 @@ import { createPortal } from 'react-dom';
 import { useScrollActiveIntoView } from '../../../utils/scroll-into-view';
 import type { CursorPosition } from '../contexts/token-focus-context';
 
-/** The active index while no option is active. */
 const NO_ACTIVE_OPTION = -1;
 
-/** Gap between the trigger and its list. */
 const LIST_OFFSET = 4;
 
 interface ListPlacement {
@@ -20,7 +18,6 @@ export interface ActiveBounds {
   max: number;
 }
 
-/** How a block moves focus to its neighbours. */
 export interface BlockNavigation {
   left: () => void;
   right: (position?: CursorPosition) => void;
@@ -37,7 +34,6 @@ export interface TokenDropdownState {
   anchorRef: RefObject<HTMLElement | null>;
   listRef: RefObject<HTMLDivElement>;
   placement: ListPlacement | null;
-  /** Opens the list with `activeIndex` active. */
   open: (activeIndex?: number) => void;
   close: () => void;
   setActiveIndex: (index: number) => void;
@@ -196,13 +192,11 @@ export interface TokenDropdownOption {
 
 export interface TokenDropdownProps {
   dropdown: TokenDropdownState;
-  /** The accessible name of the list. */
   label: string;
   options: readonly TokenDropdownOption[];
   onSelect: (key: string) => void;
   className?: string;
   optionClassName?: string;
-  /** Shown in place of the options when there are none. */
   empty?: ReactNode;
 }
 
