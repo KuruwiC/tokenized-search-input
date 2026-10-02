@@ -68,7 +68,6 @@ export function getFocusedToken(state: EditorState): FocusedToken | null {
   return tokenFocusKey.getState(state)?.focused ?? null;
 }
 
-/** The token focus a transaction sets, if it sets one. */
 export function getTokenFocusMeta(tr: Transaction): TokenFocusPluginState | undefined {
   return tr.getMeta(tokenFocusKey) as TokenFocusPluginState | undefined;
 }

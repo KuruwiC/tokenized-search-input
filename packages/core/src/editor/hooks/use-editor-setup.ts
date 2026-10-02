@@ -75,7 +75,6 @@ export function useEditorSetup({
   const reportedDocRef = useRef<ProseMirrorNode | null>(null);
   // The tokens last reported through onTokensChange, in their confirmed form.
   const confirmedTokensRef = useRef<readonly ComparableToken[]>([]);
-  /** Calls onTokensChange when the confirmed tokens differ from the last report. */
   const reportConfirmedTokens = (ed: Editor, snapshot: QuerySnapshot) => {
     if (!onTokensChange) return;
     const focusedId = getFocusedToken(ed.state)?.id ?? null;
