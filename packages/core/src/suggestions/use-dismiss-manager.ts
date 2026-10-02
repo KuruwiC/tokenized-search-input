@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import type { SuggestionType } from '../plugins/suggestion-plugin';
 import { interactionBoundary } from './suggestion-type';
 
+export type DismissReason = 'pointer-outside' | 'escape' | 'focus-outside';
+
 /**
  * Closes an open suggestion on a pointer press outside it, on Escape, and, for a suggestion
  * that belongs to a token, on focus moving outside it.
@@ -9,13 +11,14 @@ import { interactionBoundary } from './suggestion-type';
  * @param isOpen - Whether the suggestion overlay is currently open
  * @param type - The current suggestion type
  * @param isInside - Whether an element is inside the suggestion's interaction boundary
- * @param onDismiss - Called when the suggestion should close; returns true if it did
+ * @param onDismiss - Called with what asked for it when the suggestion should close; returns
+ *   true if it did
  */
 export function useDismissManager(
   isOpen: boolean,
   type: SuggestionType,
   isInside: (el: Element | null) => boolean,
-  onDismiss: () => boolean
+  onDismiss: (reason: DismissReason) => boolean
 ): void {
   // Prevent double-dismiss when pointerdown and focusin fire for the same interaction
   const dismissedRef = useRef(false);
@@ -26,25 +29,25 @@ export function useDismissManager(
       return;
     }
 
-    const safeDismiss = () => {
+    const safeDismiss = (reason: DismissReason) => {
       if (dismissedRef.current) return;
       // Only mark as dismissed if onDismiss actually executed the dismiss
-      if (onDismiss()) dismissedRef.current = true;
+      if (onDismiss(reason)) dismissedRef.current = true;
     };
 
     const handlePointerDown = (e: PointerEvent) => {
-      if (!isInside(e.target as Element | null)) safeDismiss();
+      if (!isInside(e.target as Element | null)) safeDismiss('pointer-outside');
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        safeDismiss();
+        safeDismiss('escape');
       }
     };
 
     const handleFocusIn = (e: FocusEvent) => {
-      if (!isInside(e.target as Element | null)) safeDismiss();
+      if (!isInside(e.target as Element | null)) safeDismiss('focus-outside');
     };
 
     // Use capture phase for pointer events to handle before focus changes

@@ -7,7 +7,7 @@ import {
   suggestionKey,
 } from '../../plugins/suggestion-plugin';
 import { interactionBoundary } from '../suggestion-type';
-import { useDismissManager } from '../use-dismiss-manager';
+import { type DismissReason, useDismissManager } from '../use-dismiss-manager';
 
 /** Closes the open suggestion when the user presses or moves focus outside its boundary. */
 export function useSuggestionDismissal(
@@ -23,24 +23,31 @@ export function useSuggestionDismissal(
     (el: Element | null): boolean => {
       if (!el) return false;
       if (suggestionRef.current?.contains(el)) return true;
-      if (interactionBoundary(type) === 'container') {
+      // The type is read when asked, not when the handler was attached
+      if (interactionBoundary(suggestionKey.getState(editor.state)?.type ?? null) === 'container') {
         return containerRef.current?.contains(el) === true;
       }
       return getValueInput()?.contains(el) === true;
     },
-    [type, containerRef, suggestionRef, getValueInput]
+    [editor, containerRef, suggestionRef, getValueInput]
   );
 
-  // Re-check current state to avoid race conditions
-  const dismiss = useCallback((): boolean => {
-    if (!suggestionKey.getState(editor.state)?.type) return false;
+  // The suggestion is read again when the handler runs: it may have changed since the
+  // handler was attached, and a focus change only closes one that belongs to a token.
+  const dismiss = useCallback(
+    (reason: DismissReason): boolean => {
+      const current = suggestionKey.getState(editor.state)?.type ?? null;
+      if (current === null) return false;
+      if (reason === 'focus-outside' && interactionBoundary(current) === 'container') return false;
 
-    const tr = editor.state.tr;
-    closeSuggestion(tr);
-    tr.setMeta('addToHistory', false);
-    editor.view.dispatch(tr);
-    return true;
-  }, [editor]);
+      const tr = editor.state.tr;
+      closeSuggestion(tr);
+      tr.setMeta('addToHistory', false);
+      editor.view.dispatch(tr);
+      return true;
+    },
+    [editor]
+  );
 
   useDismissManager(isSuggestionOpen(suggestionState), type, isInside, dismiss);
 }
