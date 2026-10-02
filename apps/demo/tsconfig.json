@@ -1,4 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src"]
+  "include": ["src"],
+  "compilerOptions": {
+    "paths": {
+      "@kuruwic/tokenized-search-input": ["../../packages/core/src/index.ts"],
+      "@kuruwic/tokenized-search-input/utils": ["../../packages/core/src/utils.ts"]
+    }
+  }
 }
