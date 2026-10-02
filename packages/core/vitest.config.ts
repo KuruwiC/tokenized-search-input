@@ -23,7 +23,6 @@ export default defineConfig({
         'src/keyboard/index.ts',
         'src/pickers/index.ts',
         'src/plugins/suggestion/index.ts',
-        'src/plugins/token-spacing/helpers/index.ts',
         'src/tokens/composition/**/index.ts',
         'src/types/index.ts',
       ],

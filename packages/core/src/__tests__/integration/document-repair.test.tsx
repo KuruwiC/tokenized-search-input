@@ -1,10 +1,9 @@
 /**
- * Integration tests for token-spacing-plugin.ts
+ * Integration tests for the document repair plugin.
  *
  * Tests token cleanup and the word boundary a removed token leaves, with full editor context.
- * Note: enforceSelectionInvariant algorithm is tested in unit/selection-invariant.test.ts
  */
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -20,7 +19,7 @@ afterEach(() => {
   cleanup();
 });
 
-describe('TokenSpacingExtension - Integration Tests', () => {
+describe('DocumentRepairExtension - Integration Tests', () => {
   describe('Empty token cleanup', () => {
     it('deletes empty filter token when focus moves away', async () => {
       const ref = createRef<TokenizedSearchInputRef>();
@@ -145,6 +144,36 @@ describe('TokenSpacingExtension - Integration Tests', () => {
         });
         expect(hasFilterToken).toBe(true);
       });
+    });
+
+    it('keeps an empty token the user is still in when an edit moves it', async () => {
+      const ref = createRef<TokenizedSearchInputRef>();
+      render(<TokenizedSearchInput ref={ref} fields={testFields} />);
+      await waitFor(() => expect(getInternalEditor(ref.current)).not.toBeNull());
+      const editor = getInternalEditor(ref.current);
+      if (!editor) return;
+      const empty = (id: string) => ({
+        type: 'filterToken',
+        attrs: { id, key: 'status', operator: 'is', value: '' },
+      });
+      editor.commands.setContent({
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [empty('left'), empty('focused')] }],
+      });
+      act(() => {
+        editor.commands.focusFilterToken(2, 'end');
+      });
+
+      act(() => {
+        editor.commands.insertContentAt(1, 'x');
+      });
+
+      const ids: string[] = [];
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === 'filterToken') ids.push(String(node.attrs.id));
+        return true;
+      });
+      expect(ids).toEqual(['left', 'focused']);
     });
 
     it('leaves a space where a token between two words is removed', async () => {

@@ -17,13 +17,11 @@ import { TokenCommandsExtension } from '../../extensions/token-commands';
 import { TokenMetaExtension } from '../../extensions/token-meta';
 import { TokenNavigation } from '../../extensions/token-navigation';
 import { useIsomorphicLayoutEffect } from '../../hooks/use-isomorphic-layout-effect';
+import { DocumentRepairExtension } from '../../plugins/document-repair';
+import { SelectionInvariantExtension } from '../../plugins/selection-invariant-plugin';
 import { markContentEntered } from '../../plugins/shared/meta';
 import { getTokenFocusState, tokenFocusKey } from '../../plugins/token-focus-plugin';
 import { TokenGapExtension } from '../../plugins/token-gap-decorations';
-import {
-  SelectionInvariantExtension,
-  TokenSpacingExtension,
-} from '../../plugins/token-spacing-plugin';
 import { ValidationExtension } from '../../plugins/validation-plugin';
 import { createQuerySnapshot, parseQueryToDoc } from '../../serializer';
 import { FilterTokenNode } from '../../tokens/filter-token/filter-token-node';
@@ -87,7 +85,7 @@ export function useEditorSetup({
     ClipboardSerializer,
     TokenGapExtension,
     ValidationExtension,
-    TokenSpacingExtension,
+    DocumentRepairExtension,
     SelectionInvariantExtension,
     EditorContextExtension.configure(initialContext),
     KeyboardShortcutsExtension,

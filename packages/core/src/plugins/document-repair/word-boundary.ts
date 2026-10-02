@@ -1,8 +1,7 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Transaction } from '@tiptap/pm/state';
 import { Mapping } from '@tiptap/pm/transform';
-import { isToken } from '../../../utils/node-predicates';
-import type { DocumentRepairPhase, RepairContext } from '../types';
+import { isToken } from '../../utils/node-predicates';
 
 function containsToken(doc: ProseMirrorNode, from: number, to: number): boolean {
   let found = false;
@@ -47,21 +46,13 @@ function joinsTwoWords(doc: ProseMirrorNode, pos: number): boolean {
  * typing over a selection), text that comes to touch text where they were is kept
  * apart by a space.
  */
-export const wordBoundaryPhase: DocumentRepairPhase = {
-  name: 'wordBoundary',
-
-  shouldRun({ docChanged }: RepairContext): boolean {
-    return docChanged;
-  },
-
-  execute(tr: Transaction, { transactions }: RepairContext): boolean {
-    const edges = [...new Set(findTokenRemovalEdges([...transactions, tr]))].sort((a, b) => b - a);
-    let modified = false;
-    for (const pos of edges) {
-      if (!joinsTwoWords(tr.doc, pos)) continue;
-      tr.insertText(' ', pos);
-      modified = true;
-    }
-    return modified;
-  },
-};
+export function keepWordsApart(tr: Transaction, transactions: readonly Transaction[]): boolean {
+  const edges = [...new Set(findTokenRemovalEdges([...transactions, tr]))].sort((a, b) => b - a);
+  let modified = false;
+  for (const pos of edges) {
+    if (!joinsTwoWords(tr.doc, pos)) continue;
+    tr.insertText(' ', pos);
+    modified = true;
+  }
+  return modified;
+}
