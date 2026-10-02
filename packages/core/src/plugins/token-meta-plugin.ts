@@ -1,5 +1,6 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { type EditorState, Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
+import { Mapping } from '@tiptap/pm/transform';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { isToken } from '../utils/node-predicates';
 import { generateTokenId } from '../utils/token-id';
@@ -24,7 +25,9 @@ import {
  *
  * All id-keyed state relies on token ids being unique within the document. The
  * plugin keeps that invariant by giving a fresh id to any token whose id is
- * missing or already used earlier in the document.
+ * missing or held by another token. A token that already had the id before the
+ * change keeps it, so a copy inserted before its original never takes the
+ * original's id and the state keyed by it.
  */
 export interface TokenMetaPluginState {
   entries: ReadonlyMap<string, TokenMeta>;
@@ -111,21 +114,64 @@ function buildDecorations(
   return DecorationSet.create(doc, decorations);
 }
 
-/** Gives a fresh id to every token whose id is missing or used by an earlier token. */
-function reissueDuplicateIds(state: EditorState): Transaction | null {
+function tokenIdAt(doc: ProseMirrorNode, pos: number): unknown {
+  if (pos < 0 || pos >= doc.content.size) return undefined;
+  const node = doc.nodeAt(pos);
+  return node && isToken(node) ? node.attrs.id : undefined;
+}
+
+/**
+ * Where each id that existed before the transactions now lives: the position its
+ * token maps to, if a token with that id is still there. That occurrence keeps the
+ * id; copies inserted anywhere else get a fresh one.
+ */
+function mapExistingIds(
+  transactions: readonly Transaction[],
+  oldState: EditorState,
+  newState: EditorState
+): Map<string, number> {
+  const mapping = new Mapping();
+  for (const tr of transactions) mapping.appendMapping(tr.mapping);
+
+  const owners = new Map<string, number>();
+  oldState.doc.descendants((node, pos) => {
+    if (!isToken(node)) return true;
+    const id: unknown = node.attrs.id;
+    if (typeof id === 'string' && id !== '' && !owners.has(id)) {
+      const mapped = mapping.mapResult(pos, 1);
+      if (!mapped.deleted && tokenIdAt(newState.doc, mapped.pos) === id) {
+        owners.set(id, mapped.pos);
+      }
+    }
+    return false;
+  });
+  return owners;
+}
+
+/**
+ * Gives a fresh id to every token whose id is missing or belongs to another token:
+ * the one the id was on before, or else the first in document order.
+ */
+function reissueDuplicateIds(
+  transactions: readonly Transaction[],
+  oldState: EditorState,
+  newState: EditorState
+): Transaction | null {
+  const owners = mapExistingIds(transactions, oldState, newState);
   const seen = new Set<string>();
   let tr: Transaction | null = null;
-  state.doc.descendants((node, pos) => {
+  newState.doc.descendants((node, pos) => {
     if (!isToken(node)) return true;
     const id: unknown = node.attrs.id;
     if (typeof id === 'string' && id !== '' && !seen.has(id)) {
-      seen.add(id);
-      return false;
+      const owner = owners.get(id);
+      if (owner === undefined || owner === pos) {
+        seen.add(id);
+        return false;
+      }
     }
-    const freshId = generateTokenId();
-    seen.add(freshId);
-    tr ??= state.tr;
-    tr.setNodeAttribute(pos, 'id', freshId);
+    tr ??= newState.tr;
+    tr.setNodeAttribute(pos, 'id', generateTokenId());
     return false;
   });
   return tr;
@@ -146,9 +192,9 @@ export function createTokenMetaPlugin(): Plugin<TokenMetaPluginState> {
         return { entries, decorations: buildDecorations(newState.doc, entries) };
       },
     },
-    appendTransaction(transactions, _oldState, newState) {
+    appendTransaction(transactions, oldState, newState) {
       if (!transactions.some((tr) => tr.docChanged)) return null;
-      return reissueDuplicateIds(newState);
+      return reissueDuplicateIds(transactions, oldState, newState);
     },
     props: {
       decorations(state) {

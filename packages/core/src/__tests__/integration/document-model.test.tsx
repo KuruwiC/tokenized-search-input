@@ -309,6 +309,33 @@ describe('Document model', () => {
       expect(ids[0]).toBe(token.id);
       expect(new Set(ids).size).toBe(2);
     });
+
+    it('keeps the id on the original when a copy is inserted before it', async () => {
+      const { ref, editor } = await renderWithRef(statusFields, {
+        defaultValue: 'status:is:active',
+      });
+      const [token] = filterSegments(ref.current?.getSnapshot() ?? { segments: [], text: '' });
+      act(() => {
+        ref.current?.setTokenDisplay(token.id, { displayValue: 'Original' });
+      });
+
+      act(() => {
+        editor.commands.insertContentAt(1, {
+          type: 'filterToken',
+          attrs: { id: token.id, key: 'status', operator: 'is', value: 'copy' },
+        });
+      });
+
+      const tokens = filterSegments(ref.current?.getSnapshot() ?? { segments: [], text: '' });
+      expect(tokens.map((t) => t.value)).toEqual(['copy', 'active']);
+      expect(tokens[1].id).toBe(token.id);
+      expect(tokens[0].id).not.toBe(token.id);
+      await waitFor(() =>
+        expect(
+          screen.getByRole('group', { name: /Filter: status is Original/i })
+        ).toBeInTheDocument()
+      );
+    });
   });
 
   describe('display data across content resets and history', () => {
