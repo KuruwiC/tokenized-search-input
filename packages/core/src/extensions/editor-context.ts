@@ -2,7 +2,6 @@ import { Extension } from '@tiptap/core';
 import { getFreeTextStrategy } from '../editor/auto-tokenize/free-text-strategy';
 import { getCurrentWord } from '../editor/use-auto-tokenize';
 import { createAutoTokenizePlugin } from '../plugins/auto-tokenize-plugin';
-import { createDocInvariantPlugin } from '../plugins/doc-invariant-plugin';
 import { createFreeTextSanitizerPlugin } from '../plugins/free-text-sanitizer-plugin';
 import {
   type ClassNames,
@@ -291,9 +290,7 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
 
   addProseMirrorPlugins() {
     return [
-      // Doc invariant runs first: removes empty leading paragraphs (TipTap #2560 fix)
-      createDocInvariantPlugin(),
-      // Auto-tokenize runs second: converts text to tokens
+      // Auto-tokenize runs first: converts text to tokens
       createAutoTokenizePlugin(() => ({
         fields: this.storage.fields,
         freeTextMode: this.storage.freeTextMode,
@@ -301,7 +298,7 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
         deserializeText: this.storage.deserializeText,
         delimiter: this.storage.delimiter,
       })),
-      // Sanitizer runs third: removes remaining free text in 'none' mode
+      // Sanitizer runs second: removes remaining free text in 'none' mode
       createFreeTextSanitizerPlugin(() => ({
         freeTextMode: this.storage.freeTextMode,
       })),

@@ -171,7 +171,6 @@ export const FilterTokenNode = Node.create({
             });
           }
 
-          // doc-invariant-plugin handles paragraph normalization
           tr.insert(selection.from, tokenNode);
 
           if (dispatch) {

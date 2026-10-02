@@ -107,7 +107,6 @@ function tokenizeAllTextNodes(
     if (nodes.length === 0) continue;
 
     // Delete existing content and insert new nodes
-    // (doc-invariant-plugin handles paragraph normalization)
     if (pos !== nodeEnd) {
       tr.delete(pos, nodeEnd);
     }

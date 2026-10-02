@@ -152,7 +152,6 @@ export const FreeTextTokenNode = Node.create({
             value: attrs.value ?? '',
             quoted: attrs.quoted ?? false,
           });
-          // doc-invariant-plugin handles paragraph normalization
           tr.insert(selection.from, tokenNode);
 
           if (dispatch) {

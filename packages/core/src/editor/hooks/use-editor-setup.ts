@@ -1,4 +1,3 @@
-import Document from '@tiptap/extension-document';
 import History from '@tiptap/extension-history';
 import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
@@ -13,6 +12,7 @@ import {
   getEditorContext,
 } from '../../extensions/editor-context';
 import { KeyboardShortcutsExtension } from '../../extensions/keyboard-shortcuts';
+import { SingleParagraphDocument } from '../../extensions/single-paragraph-document';
 import { TokenCommandsExtension } from '../../extensions/token-commands';
 import { TokenMetaExtension } from '../../extensions/token-meta';
 import { TokenNavigation } from '../../extensions/token-navigation';
@@ -77,7 +77,7 @@ export function useEditorSetup({
     createEditorContext({ ...config, delimiter: initialDelimiter })
   );
   const [extensions] = useState(() => [
-    Document,
+    SingleParagraphDocument,
     Paragraph,
     Text,
     History,
