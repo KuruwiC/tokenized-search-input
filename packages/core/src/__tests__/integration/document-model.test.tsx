@@ -13,6 +13,7 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
+import { getEditorContext } from '../../extensions/editor-context';
 import { useAsyncTokenResolver } from '../../helpers/use-async-token-resolver';
 import { requestValidationCheck, setTokenMeta } from '../../plugins/shared/meta';
 import { getSuggestionState } from '../../plugins/suggestion-plugin';
@@ -511,10 +512,16 @@ describe('Document model', () => {
       expect(tokenMetaSize(editor)).toBe(0);
     });
 
-    it('discards token meta when a free text mode change re-parses the content', async () => {
+    it('keeps token ids and meta when a free text mode change re-reads the content', async () => {
       const ref = createRef<TokenizedSearchInputRef>();
+      const onTokensChange = vi.fn<(snapshot: QuerySnapshot) => void>();
       const { rerender } = render(
-        <TokenizedSearchInput ref={ref} fields={statusFields} defaultValue="status:is:active" />
+        <TokenizedSearchInput
+          ref={ref}
+          fields={statusFields}
+          defaultValue="status:is:active"
+          onTokensChange={onTokensChange}
+        />
       );
       await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
       const editor = ref.current?.getEditor();
@@ -523,6 +530,8 @@ describe('Document model', () => {
       act(() => {
         ref.current?.setTokenDisplay(token.id, { displayValue: 'Shown active' });
       });
+      await waitFor(() => expect(onTokensChange).toHaveBeenCalled());
+      onTokensChange.mockClear();
 
       rerender(
         <TokenizedSearchInput
@@ -530,14 +539,38 @@ describe('Document model', () => {
           fields={statusFields}
           defaultValue="status:is:active"
           freeTextMode="tokenize"
+          onTokensChange={onTokensChange}
         />
       );
 
-      await waitFor(() => {
-        const [reparsed] = filterSegments(ref.current?.getSnapshot() ?? { segments: [], text: '' });
-        expect(reparsed.id).not.toBe(token.id);
-      });
-      expect(tokenMetaSize(editor)).toBe(0);
+      await waitFor(() => expect(getEditorContext(editor).freeTextMode).toBe('tokenize'));
+      const [kept] = filterSegments(ref.current?.getSnapshot() ?? { segments: [], text: '' });
+      expect(kept.id).toBe(token.id);
+      expect(tokenMetaSize(editor)).toBe(1);
+      expect(onTokensChange).not.toHaveBeenCalled();
+    });
+
+    it('turns free text tokens back into text and keeps filter token ids', async () => {
+      const ref = createRef<TokenizedSearchInputRef>();
+      const element = (freeTextMode: 'plain' | 'tokenize') => (
+        <TokenizedSearchInput
+          ref={ref}
+          fields={statusFields}
+          defaultValue='status:is:active hello "big world"'
+          freeTextMode={freeTextMode}
+        />
+      );
+      const { rerender } = render(element('tokenize'));
+      await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+      const read = () => ref.current?.getSnapshot() ?? { segments: [], text: '' };
+      expect(freeTextSegments(read())).toHaveLength(2);
+      const [token] = filterSegments(read());
+
+      rerender(element('plain'));
+
+      await waitFor(() => expect(freeTextSegments(read())).toHaveLength(0));
+      expect(filterSegments(read())[0]?.id).toBe(token.id);
+      expect(ref.current?.getValue()).toBe('status:is:active hello "big world"');
     });
 
     it('binds a display held while the editor is destroyed to the value at call time', async () => {

@@ -9,7 +9,7 @@ import {
   getEditorContext,
 } from '../../extensions/editor-context';
 import { requestValidationCheck } from '../../plugins/shared/meta';
-import { parseQueryToDoc, serializeDocToQuery } from '../../serializer';
+import { applyFreeTextMode } from '../free-text-mode';
 
 /**
  * The only place that writes configuration into the editor context storage after
@@ -93,7 +93,7 @@ export function useEditorConfigSync(
     editor.view.dispatch(tr);
   }, [editor, validation]);
 
-  // Re-parse content when freeTextMode changes. An unset mode means the default.
+  // Read the content again when freeTextMode changes. An unset mode means the default.
   const mode = freeTextMode ?? DEFAULT_EDITOR_CONTEXT.freeTextMode;
   const prevFreeTextModeRef = useRef(mode);
   useEffect(() => {
@@ -103,17 +103,9 @@ export function useEditorConfigSync(
 
     if (prevMode === mode) return;
 
-    const context = getEditorContext(editor);
-    const currentQuery = serializeDocToQuery(editor.getJSON(), { delimiter: context.delimiter });
-    if (!currentQuery) return;
-
-    const newDoc = parseQueryToDoc(currentQuery, context.fields, {
-      freeTextMode: context.freeTextMode,
-      unknownFields: context.unknownFields,
-      delimiter: context.delimiter,
-    });
-    // Re-parsing gives every token a new id, so their meta no longer applies.
-    editor.commands.replaceContent(newDoc);
+    const { tr } = editor.state;
+    applyFreeTextMode(tr, getEditorContext(editor));
+    if (tr.docChanged) editor.view.dispatch(tr);
   }, [editor, mode]);
 
   // Callbacks change with the handlers' identities, so they update the storage
