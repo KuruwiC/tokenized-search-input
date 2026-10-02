@@ -125,4 +125,39 @@ describe('TokenFocusPlugin', () => {
       });
     });
   });
+
+  describe('following the focused token through edits', () => {
+    const token = (id: string) => schema.node('filterToken', { id, key: 'status', value: id });
+    function focusedFirst(): EditorState {
+      const state = EditorState.create({
+        doc: schema.node('doc', null, [schema.node('paragraph', null, [token('a'), token('b')])]),
+        plugins: [createTokenFocusPlugin()],
+      });
+      return state.apply(setTokenFocus(state.tr, { focusedPos: 1 }));
+    }
+
+    it('drops the focus when the focused token is deleted, rather than passing it on', () => {
+      const state = focusedFirst();
+      const next = state.apply(state.tr.delete(1, 2));
+
+      expect(next.doc.nodeAt(1)?.attrs.id).toBe('b');
+      expect(getTokenFocusState(next)?.focusedPos).toBeNull();
+    });
+
+    it('keeps the focus when the focused token is edited', () => {
+      const state = focusedFirst();
+      const next = state.apply(
+        state.tr.setNodeMarkup(1, undefined, { ...state.doc.nodeAt(1)?.attrs, value: 'x' })
+      );
+
+      expect(getTokenFocusState(next)?.focusedPos).toBe(1);
+    });
+
+    it('follows the focused token when content before it changes', () => {
+      const state = focusedFirst();
+      const next = state.apply(state.tr.insertText('hi', 1));
+
+      expect(getTokenFocusState(next)?.focusedPos).toBe(3);
+    });
+  });
 });

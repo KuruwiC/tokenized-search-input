@@ -1,3 +1,4 @@
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { isToken } from '../utils/node-predicates';
@@ -101,6 +102,10 @@ export function getTokenFocusMeta(tr: Transaction): SetTokenFocusMeta | undefine
   return isSetTokenFocusMeta(meta) ? meta : undefined;
 }
 
+function nodeAtPos(doc: ProseMirrorNode, pos: number): ProseMirrorNode | null {
+  return pos >= 0 && pos < doc.content.size ? doc.nodeAt(pos) : null;
+}
+
 export function createTokenFocusPlugin(): Plugin<TokenFocusPluginState> {
   return new Plugin<TokenFocusPluginState>({
     key: tokenFocusKey,
@@ -112,7 +117,7 @@ export function createTokenFocusPlugin(): Plugin<TokenFocusPluginState> {
           mode: null,
         };
       },
-      apply(tr, value): TokenFocusPluginState {
+      apply(tr, value, oldState): TokenFocusPluginState {
         const meta = getTokenFocusMeta(tr);
         if (meta) {
           return {
@@ -123,26 +128,18 @@ export function createTokenFocusPlugin(): Plugin<TokenFocusPluginState> {
           };
         }
 
-        // Map focusedPos through document changes
-        if (value.focusedPos !== null && tr.docChanged) {
-          const mappedPos = tr.mapping.map(value.focusedPos);
-          value = { ...value, focusedPos: mappedPos };
-        }
+        if (value.focusedPos === null) return value;
 
-        // Clear focus if the focused position no longer exists or is at a different node
-        if (value.focusedPos !== null) {
-          try {
-            const node = tr.doc.nodeAt(value.focusedPos);
-            if (!node || !isToken(node)) {
-              return { focusedPos: null, cursorPosition: 'end', mode: null };
-            }
-          } catch {
-            // Position out of range
-            return { focusedPos: null, cursorPosition: 'end', mode: null };
-          }
+        // The focus follows the token it is on. When that token is gone, the focus is
+        // dropped: the mapped position may now point at a neighbouring token, which was
+        // not the one being edited.
+        const focused = nodeAtPos(oldState.doc, value.focusedPos);
+        const focusedPos = tr.mapping.map(value.focusedPos);
+        const node = nodeAtPos(tr.doc, focusedPos);
+        if (!node || !isToken(node) || node.attrs.id !== focused?.attrs.id) {
+          return { focusedPos: null, cursorPosition: 'end', mode: null };
         }
-
-        return value;
+        return focusedPos === value.focusedPos ? value : { ...value, focusedPos };
       },
     },
   });
