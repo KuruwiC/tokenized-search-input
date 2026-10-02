@@ -64,6 +64,8 @@ export interface TokenMetaWrite {
 const TOKEN_META = 'tokenMeta';
 const CONTENT_RESET = 'contentReset';
 const FORCE_VALIDATION_CHECK = 'forceValidationCheck';
+const CONTENT_ENTERED = 'contentEntered';
+const PROGRAMMATIC_EDIT = 'programmaticEdit';
 const SUGGESTION_QUERY = 'suggestionQuery';
 
 /**
@@ -91,9 +93,37 @@ export function isContentReset(tr: Transaction): boolean {
   return tr.getMeta(CONTENT_RESET) === true;
 }
 
-/** Asks the validation plugin to validate every token even when the document did not change. */
+/**
+ * Asks the validation plugin to validate every token even when the document did not
+ * change. No token counts as edited, so a check only marks.
+ */
 export function requestValidationCheck(tr: Transaction): Transaction {
   return tr.setMeta(FORCE_VALIDATION_CHECK, true);
+}
+
+/**
+ * Tells the validation plugin that the whole content was just entered, as the initial
+ * content is. Every token then counts as edited.
+ */
+export function markContentEntered(tr: Transaction): Transaction {
+  return tr.setMeta(CONTENT_ENTERED, true);
+}
+
+export function isContentEntered(tr: Transaction): boolean {
+  return tr.getMeta(CONTENT_ENTERED) === true;
+}
+
+/**
+ * Marks the transaction as a change the application made through the ref, not one
+ * the user made. Validation still sees the change, but does not keep the token
+ * edited once the user leaves the token they are in.
+ */
+export function markProgrammaticEdit(tr: Transaction): Transaction {
+  return tr.setMeta(PROGRAMMATIC_EDIT, true);
+}
+
+export function isProgrammaticEdit(tr: Transaction): boolean {
+  return tr.getMeta(PROGRAMMATIC_EDIT) === true;
 }
 
 export function isValidationCheckRequested(tr: Transaction): boolean {

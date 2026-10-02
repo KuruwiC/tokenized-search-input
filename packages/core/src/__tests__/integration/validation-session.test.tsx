@@ -1,0 +1,349 @@
+/**
+ * How validation follows edits across undo, focus, configuration changes and token
+ * creation: what counts as edited, what a deletion leaves behind, and what undo
+ * restores.
+ */
+import { act, cleanup, render, waitFor } from '@testing-library/react';
+import type { Editor } from '@tiptap/core';
+import { createRef, type RefObject, useState } from 'react';
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+  TokenizedSearchInput,
+  type TokenizedSearchInputRef,
+} from '../../editor/tokenized-search-input';
+import { getEditorContext } from '../../extensions/editor-context';
+import { setTokenFocus } from '../../plugins/token-focus-plugin';
+import { getTokenMeta } from '../../plugins/token-meta-plugin';
+import { applyTokenAction } from '../../tokens/filter-token/token-actions';
+import type { FieldDefinition, QuerySnapshotFilterToken, ValidationRule } from '../../types';
+import { findTokenById } from '../../utils/find-token';
+import { generateTokenId } from '../../utils/token-id';
+import { MaxCount, Unique } from '../../validation/presets';
+import { priorityField, statusField } from '../fixtures/fields';
+
+afterEach(() => {
+  cleanup();
+});
+
+const fields = [statusField, priorityField];
+const rejectKey = () => Unique.rule('key', { onDuplicate: 'reject' });
+
+async function renderEditor(
+  defaultValue: string,
+  rules: ValidationRule[],
+  props: Partial<React.ComponentProps<typeof TokenizedSearchInput>> = {}
+) {
+  const ref = createRef<TokenizedSearchInputRef>();
+  render(
+    <TokenizedSearchInput
+      ref={ref}
+      fields={fields}
+      defaultValue={defaultValue}
+      validation={{ rules }}
+      {...props}
+    />
+  );
+  await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+  const editor = ref.current?.getEditor();
+  if (!editor) throw new Error('editor not created');
+  return { ref: ref as RefObject<TokenizedSearchInputRef>, editor };
+}
+
+function filterTokens(ref: RefObject<TokenizedSearchInputRef>): QuerySnapshotFilterToken[] {
+  return (ref.current?.getSnapshot().segments ?? []).filter(
+    (segment): segment is QuerySnapshotFilterToken => segment.type === 'filter'
+  );
+}
+
+const values = (ref: RefObject<TokenizedSearchInputRef>) => filterTokens(ref).map((t) => t.value);
+
+function tokenPos(editor: Editor, id: string): number {
+  const found = findTokenById(editor.state.doc, id);
+  if (!found) throw new Error(`token ${id} not found`);
+  return found.pos;
+}
+
+function lastTokenId(editor: Editor): string {
+  let id = '';
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === 'filterToken') id = node.attrs.id;
+  });
+  return id;
+}
+
+function focusToken(editor: Editor, pos: number | null) {
+  editor.view.dispatch(setTokenFocus(editor.state.tr, { focusedPos: pos }));
+}
+
+function setValue(editor: Editor, id: string, value: string) {
+  const tr = editor.state.tr;
+  applyTokenAction(tr, id, { type: 'setValue', value }, getEditorContext(editor));
+  editor.view.dispatch(tr);
+}
+
+function insertToken(editor: Editor, pos: number, key: string, value: string) {
+  const { filterToken, spacer } = editor.state.schema.nodes;
+  const tr = editor.state.tr;
+  tr.insert(pos, [
+    filterToken.create({ id: generateTokenId(), key, operator: 'is', value }),
+    spacer.create(),
+  ]);
+  return tr;
+}
+
+/** Creates an empty status token with the user in it, types `typed` into it and leaves it. */
+function typeStatusAndLeave(editor: Editor, typed: string[]) {
+  const end = editor.state.doc.content.size - 1;
+  act(() => {
+    editor.view.dispatch(
+      setTokenFocus(insertToken(editor, end, 'status', ''), { focusedPos: end })
+    );
+  });
+  const id = lastTokenId(editor);
+  for (const value of typed) act(() => setValue(editor, id, value));
+  act(() => focusToken(editor, null));
+}
+
+const settle = () => new Promise((resolve) => setTimeout(resolve, 30));
+
+/** A rule that records which tokens each validation pass treated as edited. */
+function recordingRule(passes: string[][]): ValidationRule {
+  return {
+    id: 'recording',
+    validate: (ctx) => {
+      passes.push([...ctx.editingTokenIds]);
+      return [];
+    },
+  };
+}
+
+describe('undo and redo', () => {
+  it('does not delete a token that undo restored while the user is in another token', async () => {
+    const { ref, editor } = await renderEditor('status:is:active priority:is:high', [rejectKey()]);
+    typeStatusAndLeave(editor, ['inactive']);
+    await waitFor(() => expect(values(ref)).toEqual(['active', 'high']));
+
+    const priority = filterTokens(ref).find((t) => t.key === 'priority');
+    if (!priority) throw new Error('priority token missing');
+    act(() => focusToken(editor, tokenPos(editor, priority.id)));
+    act(() => {
+      editor.commands.undo();
+    });
+    await settle();
+    expect(values(ref)).toEqual(['active', 'high', 'inactive']);
+
+    act(() => focusToken(editor, null));
+    await settle();
+    expect(values(ref)).toEqual(['active', 'high', 'inactive']);
+  });
+
+  it('does not make a token edited by reverting it while the user is in another token', async () => {
+    const passes: string[][] = [];
+    const { ref, editor } = await renderEditor('status:is:active priority:is:high', [
+      recordingRule(passes),
+    ]);
+    const [status, priority] = filterTokens(ref);
+    act(() => setValue(editor, priority.id, 'low'));
+    act(() => focusToken(editor, tokenPos(editor, status.id)));
+    act(() => {
+      editor.commands.undo();
+    });
+    await settle();
+    expect(filterTokens(ref)[1].value).toBe('high');
+
+    passes.length = 0;
+    act(() => focusToken(editor, null));
+    await settle();
+    expect(passes[passes.length - 1]).toEqual([]);
+  });
+
+  it('does not keep a token edited that the application updated while the user was in another', async () => {
+    const passes: string[][] = [];
+    const { ref, editor } = await renderEditor('status:is:active priority:is:high', [
+      recordingRule(passes),
+    ]);
+    const [status, priority] = filterTokens(ref);
+    act(() => focusToken(editor, tokenPos(editor, status.id)));
+    act(() => {
+      ref.current?.updateToken(priority.id, { value: 'low' });
+    });
+    expect(filterTokens(ref)[1].value).toBe('low');
+
+    passes.length = 0;
+    act(() => focusToken(editor, null));
+    await settle();
+    expect(passes[passes.length - 1]).toEqual([]);
+  });
+});
+
+describe('changing the validation prop', () => {
+  function Host({ onRender }: { onRender: (rerender: () => void) => void }) {
+    const [count, setCount] = useState(0);
+    onRender(() => setCount((n) => n + 1));
+    return (
+      <div data-count={count}>
+        <TokenizedSearchInput
+          ref={hostRef}
+          fields={fields}
+          defaultValue="status:is:active"
+          validation={{ rules: [rejectKey()] }}
+        />
+      </div>
+    );
+  }
+  const hostRef = createRef<TokenizedSearchInputRef>();
+
+  it('does not delete an existing duplicate when the parent renders again', async () => {
+    let rerender: () => void = () => {};
+    render(<Host onRender={(fn) => (rerender = fn)} />);
+    await waitFor(() => expect(hostRef.current?.getEditor()).not.toBeNull());
+    const editor = hostRef.current?.getEditor();
+    if (!editor) throw new Error('editor not created');
+    const ref = hostRef as RefObject<TokenizedSearchInputRef>;
+
+    typeStatusAndLeave(editor, ['inactive']);
+    await waitFor(() => expect(values(ref)).toEqual(['active']));
+    act(() => {
+      editor.commands.undo();
+    });
+    await waitFor(() => expect(values(ref)).toEqual(['active', 'inactive']));
+
+    act(() => rerender());
+    await settle();
+    expect(values(ref)).toEqual(['active', 'inactive']);
+  });
+
+  it('treats no token as edited when the rules change', async () => {
+    const passes: string[][] = [];
+    const { rerender } = render(
+      <TokenizedSearchInput
+        fields={fields}
+        defaultValue="status:is:active priority:is:high"
+        validation={{ rules: [recordingRule(passes)] }}
+      />
+    );
+    await settle();
+    passes.length = 0;
+
+    rerender(
+      <TokenizedSearchInput
+        fields={fields}
+        defaultValue="status:is:active priority:is:high"
+        validation={{ rules: [recordingRule(passes)] }}
+      />
+    );
+    await settle();
+
+    expect(passes.length).toBeGreaterThan(0);
+    expect(passes.every((edited) => edited.length === 0)).toBe(true);
+  });
+});
+
+describe('marks after a deletion', () => {
+  it('shows no mark from a rule that the deletion made obsolete', async () => {
+    const { ref, editor } = await renderEditor('status:is:active priority:is:high', [
+      rejectKey(),
+      MaxCount.rule('*', 2),
+    ]);
+    const priority = filterTokens(ref).find((t) => t.key === 'priority');
+    if (!priority) throw new Error('priority token missing');
+    const at = tokenPos(editor, priority.id);
+    act(() => {
+      editor.view.dispatch(
+        setTokenFocus(insertToken(editor, at, 'status', ''), { focusedPos: at })
+      );
+    });
+    const id = editor.state.doc.nodeAt(at)?.attrs.id as string;
+    act(() => setValue(editor, id, 'inactive'));
+    act(() => focusToken(editor, null));
+    await waitFor(() => expect(values(ref)).toEqual(['active', 'high']));
+
+    const reasons = filterTokens(ref).map(
+      (t) => getTokenMeta(editor.state, t.id)?.validation?.reason ?? null
+    );
+    expect(reasons).toEqual([null, null]);
+  });
+});
+
+describe('undoing a deletion', () => {
+  it('restores the deleted token with the value it had in one step', async () => {
+    const { ref, editor } = await renderEditor('status:is:active', [rejectKey()]);
+
+    typeStatusAndLeave(editor, ['i', 'in', 'ina', 'inactive']);
+    await waitFor(() => expect(values(ref)).toEqual(['active']));
+    act(() => {
+      editor.commands.undo();
+    });
+    await settle();
+
+    expect(values(ref)).toEqual(['active', 'inactive']);
+  });
+});
+
+describe('Unique reject and an edit that does not change what is compared', () => {
+  it('keeps an existing duplicate whose value changed under the key constraint', async () => {
+    const { ref, editor } = await renderEditor('status:is:active', [rejectKey()]);
+    typeStatusAndLeave(editor, ['inactive']);
+    await waitFor(() => expect(values(ref)).toEqual(['active']));
+    act(() => {
+      editor.commands.undo();
+    });
+    await waitFor(() => expect(values(ref)).toEqual(['active', 'inactive']));
+
+    const duplicate = filterTokens(ref)[1];
+    act(() => focusToken(editor, tokenPos(editor, duplicate.id)));
+    act(() => setValue(editor, duplicate.id, 'pending'));
+    act(() => focusToken(editor, null));
+    await settle();
+
+    expect(values(ref)).toEqual(['active', 'pending']);
+  });
+
+  it('deletes an existing token that was edited to duplicate another', async () => {
+    const { ref, editor } = await renderEditor('status:is:active priority:is:high', [rejectKey()]);
+    const priority = filterTokens(ref)[1];
+    act(() => focusToken(editor, tokenPos(editor, priority.id)));
+    act(() =>
+      editor.view.dispatch(
+        (() => {
+          const tr = editor.state.tr;
+          tr.setNodeMarkup(tokenPos(editor, priority.id), undefined, {
+            ...editor.state.doc.nodeAt(tokenPos(editor, priority.id))?.attrs,
+            key: 'status',
+            value: 'pending',
+          });
+          return tr;
+        })()
+      )
+    );
+    act(() => focusToken(editor, null));
+
+    await waitFor(() => expect(values(ref)).toEqual(['active']));
+  });
+});
+
+describe('MaxCount with onExceed reject', () => {
+  it('keeps the first tokens and deletes the last ones when all of them are new', async () => {
+    const { ref } = await renderEditor('status:is:active priority:is:high status:is:pending', [
+      MaxCount.rule('*', 2, { onExceed: 'reject' }),
+    ]);
+    await waitFor(() => expect(values(ref)).toEqual(['active', 'high']));
+  });
+});
+
+describe('the field a token belongs to', () => {
+  it('resolves the field of a key that only the unknown field template defines', async () => {
+    const seen: Array<FieldDefinition | null> = [];
+    const rule: ValidationRule = {
+      id: 'field-probe',
+      validate: (ctx) => {
+        for (const token of ctx.tokens) seen.push(ctx.fieldOf(token));
+        return [];
+      },
+    };
+    await renderEditor('mystery:is:x', [rule], { unknownFields: {} });
+    await waitFor(() => expect(seen.length).toBeGreaterThan(0));
+
+    expect(seen[seen.length - 1]).toMatchObject({ key: 'mystery', type: 'string' });
+  });
+});

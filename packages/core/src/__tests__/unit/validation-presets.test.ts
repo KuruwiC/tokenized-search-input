@@ -43,15 +43,21 @@ const contextOf = (
     editing?: string[];
     focused?: string | null;
     fields?: FieldDefinition[];
+    /** The edited tokens as they were before, by id; an edited token not listed was added. */
+    before?: ValidationToken[];
   } = {}
 ): ValidationContext => {
   const editingTokenIds = new Set(options.editing ?? []);
+  const fields = options.fields ?? [];
+  const before = new Map((options.before ?? []).map((t) => [t.id, t]));
   return {
     tokens,
-    fields: options.fields ?? [],
+    fields,
     editingTokenIds,
     focusedTokenId: options.focused ?? null,
     isEditing: (t) => editingTokenIds.has(t.id),
+    before: (t) => before.get(t.id),
+    fieldOf: (t) => fields.find((f) => f.key === t.key) ?? null,
   };
 };
 
@@ -433,6 +439,40 @@ describe('Unique', () => {
       expect(targetIds(result, 'mark')).toEqual(['b']);
     });
 
+    it("'reject' keeps an edited duplicate when what the constraint compares did not change", () => {
+      const rule = Unique.rule('key', { onDuplicate: 'reject' });
+      const result = rule.validate(
+        contextOf([first, second], {
+          editing: ['b'],
+          before: [filterToken('b', 'status', 'is', 'old')],
+        })
+      );
+      expect(targetIds(result, 'delete')).toEqual([]);
+      expect(targetIds(result, 'mark')).toEqual(['b']);
+    });
+
+    it("'reject' deletes an edited token whose key now matches another", () => {
+      const rule = Unique.rule('key', { onDuplicate: 'reject' });
+      const result = rule.validate(
+        contextOf([first, second], {
+          editing: ['b'],
+          before: [filterToken('b', 'priority', 'is', 'b')],
+        })
+      );
+      expect(targetIds(result, 'delete')).toEqual(['b']);
+    });
+
+    it("'reject' deletes a token that had no value before it was edited", () => {
+      const rule = Unique.rule('key', { onDuplicate: 'reject' });
+      const result = rule.validate(
+        contextOf([first, second], {
+          editing: ['b'],
+          before: [filterToken('b', 'status', 'is', '')],
+        })
+      );
+      expect(targetIds(result, 'delete')).toEqual(['b']);
+    });
+
     it("'replace' deletes the others and keeps the last edited token", () => {
       const rule = Unique.rule('key', { onDuplicate: 'replace' });
       const result = rule.validate(contextOf([first, second, third], { editing: ['b'] }));
@@ -485,6 +525,12 @@ describe('MaxCount', () => {
     const result = rule.validate(contextOf(tags, { editing: ['b'] }));
     expect(targetIds(result, 'delete')).toEqual(['b']);
     expect(targetIds(result, 'mark')).toEqual([]);
+  });
+
+  it("deletes the last edited tokens first with onExceed 'reject'", () => {
+    const rule = MaxCount.rule('tag', 2, { onExceed: 'reject' });
+    const result = rule.validate(contextOf(tags, { editing: ['a', 'b', 'c', 'd'] }));
+    expect(targetIds(result, 'delete')).toEqual(['c', 'd']);
   });
 
   it("marks the last tokens when too few are edited to delete with onExceed 'reject'", () => {

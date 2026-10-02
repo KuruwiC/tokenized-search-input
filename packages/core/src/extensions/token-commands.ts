@@ -4,6 +4,7 @@ import type { TokenDisplay, TokenPatch } from '../editor/tokenized-search-input.
 import {
   getApplicableDisplay,
   markContentReset,
+  markProgrammaticEdit,
   setTokenMeta,
   type TokenDisplayContent,
 } from '../plugins/shared/meta';
@@ -41,6 +42,7 @@ export function applyTokenPatch(
 ): boolean {
   const found = findTokenById(tr.doc, id);
   if (!found || !isFilterToken(found.node)) return false;
+  markProgrammaticEdit(tr);
   if (patch.operator !== undefined) {
     applyTokenAction(tr, id, { type: 'setOperator', operator: patch.operator }, source);
   }

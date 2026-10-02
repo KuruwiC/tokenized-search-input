@@ -15,16 +15,27 @@ export interface ValidationContext {
   tokens: ValidationToken[];
   fields: FieldDefinition[];
   /**
-   * IDs of the tokens that were added, or whose key, operator or value changed,
-   * in the transactions being validated. Moving focus does not make a token
-   * edited. When the whole content is validated at once (initial value,
-   * `setValue`, changed rules) every token counts as edited.
+   * IDs of the tokens being edited: those the user added, or changed in key,
+   * operator or value, in the transactions being validated, and, while the user
+   * is in a token, those they added or changed since they entered it. Moving focus,
+   * undo and redo, and replacing the whole content do not make a token edited, and
+   * neither does a later pass for a token the application updated. A change to the
+   * rules edits nothing. The initial content counts as entered at once, so every
+   * token is edited then.
    */
   editingTokenIds: Set<string>;
   /** ID of the token the user is in right now, if any. */
   focusedTokenId: string | null;
-  /** Whether the token was edited in the transactions being validated. */
+  /** Whether the token is being edited (see `editingTokenIds`). */
   isEditing: (token: ValidationToken) => boolean;
+  /**
+   * The token as it was before the edits being validated, for a token that existed
+   * then and is being edited. `undefined` for a token the edits added, and for one
+   * that is not being edited.
+   */
+  before: (token: ValidationToken) => ValidationToken | undefined;
+  /** The field the token belongs to, `null` for free text and for a key that no field defines. */
+  fieldOf: (token: ValidationToken) => FieldDefinition | null;
 }
 
 /** A token that a violation is about. */

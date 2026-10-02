@@ -18,7 +18,7 @@ import { TokenCommandsExtension } from '../../extensions/token-commands';
 import { TokenMetaExtension } from '../../extensions/token-meta';
 import { TokenNavigation } from '../../extensions/token-navigation';
 import { useIsomorphicLayoutEffect } from '../../hooks/use-isomorphic-layout-effect';
-import { requestValidationCheck } from '../../plugins/shared/meta';
+import { markContentEntered } from '../../plugins/shared/meta';
 import { getTokenFocusState, tokenFocusKey } from '../../plugins/token-focus-plugin';
 import {
   SelectionInvariantExtension,
@@ -128,7 +128,7 @@ export function useEditorSetup({
     editorProps,
     onCreate: ({ editor: ed }) => {
       const tr = ed.state.tr;
-      requestValidationCheck(tr);
+      markContentEntered(tr);
       ed.view.dispatch(tr);
     },
     onUpdate: ({ editor: ed }) => {

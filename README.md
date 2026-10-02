@@ -270,7 +270,7 @@ import {
 />;
 ```
 
-`createRule(id, check, options?)` calls `check(token, ctx)` for every token. `ctx.tokens` holds all tokens, `ctx.isEditing(token)` tells whether the token was just added or changed, and `ctx.focusedTokenId` is the token the user is in. The check returns a violation, an array of violations, or `null`. A violation names the tokens it is about in `targets`, which need not include the checked token.
+`createRule(id, check, options?)` calls `check(token, ctx)` for every token. `ctx.tokens` holds all tokens, `ctx.isEditing(token)` tells whether the user just added or changed the token (or did so since entering the token they are in), `ctx.before(token)` returns the token as it was before that edit, `ctx.fieldOf(token)` returns its field, and `ctx.focusedTokenId` is the token the user is in. The check returns a violation, an array of violations, or `null`. A violation names the tokens it is about in `targets`, which need not include the checked token.
 
 ### Validation Options
 
@@ -288,7 +288,7 @@ Each preset rule takes an option that controls how violations are handled:
 | `RequireEnum` | `onInvalid: 'mark'` (default) | Highlight invalid enum values |
 | | `onInvalid: 'reject'` | Auto-delete new invalid enum values |
 
-Rules reject only tokens that were just added or changed, never one that is only focused. When a token has several violations, the one from the rule with the highest `priority` is shown.
+Rules reject only tokens that were just added or changed, never one that is only focused, and a change to the `validation` prop only re-marks tokens. When a token has several violations, the one from the rule with the highest `priority` is shown.
 
 ### Unique Constraints
 

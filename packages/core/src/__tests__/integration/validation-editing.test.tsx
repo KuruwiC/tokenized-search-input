@@ -1,10 +1,10 @@
 /**
- * Which tokens validation treats as edited: only those added or changed by the
- * transactions it validates. Where focus is does not make a token edited.
+ * Which tokens validation treats as edited: those added or changed by the
+ * transactions it validates, and those the user edited since entering the token
+ * they are in. Where focus is does not make a token edited.
  */
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
-import { closeHistory } from '@tiptap/pm/history';
 import { createRef, type RefObject } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -135,7 +135,6 @@ describe('Unique with onDuplicate reject', () => {
       );
       editor.view.dispatch(tr);
     });
-    act(() => editor.view.dispatch(closeHistory(editor.state.tr)));
     act(() => focusToken(editor, null));
     await waitFor(() => expect(filterTokens(ref)).toHaveLength(1));
 

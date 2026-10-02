@@ -17,6 +17,8 @@ const contextOf = (value: string): ValidationContext => ({
   editingTokenIds: new Set(),
   focusedTokenId: null,
   isEditing: () => false,
+  before: () => undefined,
+  fieldOf: () => emailField,
 });
 
 describe('implicit validation rules', () => {

@@ -1,3 +1,4 @@
+import { closeHistory } from '@tiptap/pm/history';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Transaction } from '@tiptap/pm/state';
 import {
@@ -16,6 +17,7 @@ import type {
 } from '../../types';
 import { findTokenById } from '../../utils/find-token';
 import { isFilterToken, isFreeTextToken } from '../../utils/node-predicates';
+import { type FieldResolutionSource, resolveField } from '../../utils/resolve-field';
 import { ensureTokenId } from '../../utils/token-id';
 import { setTokenMeta, type TokenValidation } from '../shared/meta';
 
@@ -52,8 +54,15 @@ export function collectTokens(doc: ProseMirrorNode): ValidationToken[] {
   return tokens;
 }
 
+/**
+ * The tokens a user edited, each as it was before its first edit, or `null` when the
+ * edit added it.
+ */
+export type Edits = ReadonlyMap<string, ValidationToken | null>;
+
 export interface ValidationInput {
-  fields: FieldDefinition[];
+  /** Decides which field a token's key refers to. */
+  source: FieldResolutionSource;
   /** The rules the application configured. Only they may delete tokens. */
   rules: readonly ValidationRule[];
   /** Rules that run whether or not any are configured. They only mark. */
@@ -61,15 +70,16 @@ export interface ValidationInput {
   /** The token the user is in, if any. */
   focusedTokenId: string | null;
   /**
-   * The document from when the user entered the token they are in, if any. A token
-   * typed into over several transactions is edited until they leave it, so edits
-   * are measured from here instead of from the previous document.
+   * What the user edited since they entered the token they are in. A token typed
+   * into over several transactions stays edited until they leave it.
    */
-  editBase: ProseMirrorNode | null;
-  /** Validate the whole content as if every token had just been entered. */
-  forceCheck: boolean;
+  sessionEdits: Edits;
+  /** The whole content was just entered, so every token counts as edited. */
+  contentEntered: boolean;
   /** The change is an undo or redo, which never deletes tokens. */
   isHistoryOperation: boolean;
+  /** The transactions being validated changed the document in a way undo reverts. */
+  recordsHistory: boolean;
   /** The validation token meta holds now, by token id. */
   recorded: ReadonlyMap<string, TokenValidation>;
 }
@@ -86,6 +96,8 @@ export interface Plan {
   deletions: readonly string[];
   /** Whether the deletions are a user-visible change that undo should revert. */
   undoable: boolean;
+  /** Whether undo reverts the deletions on their own, not together with the edit that led to them. */
+  ownUndoStep: boolean;
   /** Token meta writes for the tokens that remain, and for those that left. */
   changes: readonly ValidationChange[];
 }
@@ -96,49 +108,81 @@ function sameContent(a: Fingerprint, b: Fingerprint): boolean {
   return a.key === b.key && a.operator === b.operator && a.value === b.value;
 }
 
-/** The ids of the tokens added, and of those changed in key, operator or value, going from `prev` to `next`. */
+/**
+ * The tokens of `next` that are not in `prev`, as `null`, and those that differ
+ * from their counterpart in `prev`, as that counterpart.
+ */
 function diffTokens(
   prev: ValidationToken[],
   next: ValidationToken[]
-): { added: Set<string>; changed: Set<string> } {
+): Map<string, ValidationToken | null> {
   const before = new Map(prev.map((t) => [t.id, t]));
-  const added = new Set<string>();
-  const changed = new Set<string>();
+  const edits = new Map<string, ValidationToken | null>();
   for (const token of next) {
     const old = before.get(token.id);
-    if (!old) added.add(token.id);
-    else if (!sameContent(old, token)) changed.add(token.id);
+    if (!old) edits.set(token.id, null);
+    else if (!sameContent(old, token)) edits.set(token.id, old);
   }
-  return { added, changed };
+  return edits;
 }
 
-/** The tokens being edited, and those that the transactions being validated added. */
+/**
+ * `edits` with what changed from the document `prev` to `next` added: a token that
+ * was already edited keeps the content it had before its first edit.
+ */
+export function recordEdits(edits: Edits, prev: ProseMirrorNode, next: ProseMirrorNode): Edits {
+  const changes = diffTokens(collectTokens(prev), collectTokens(next));
+  let recorded: Map<string, ValidationToken | null> | null = null;
+  for (const [id, before] of changes) {
+    if (edits.has(id)) continue;
+    recorded ??= new Map(edits);
+    recorded.set(id, before);
+  }
+  return recorded ?? edits;
+}
+
+interface EditedTokens {
+  /** The tokens that the transactions being validated added. */
+  added: Set<string>;
+  /** The tokens being edited. */
+  editing: Set<string>;
+  /** The edited tokens that existed before, as they were. */
+  before: Map<string, ValidationToken>;
+}
+
 function editedTokens(
   prev: ProseMirrorNode,
   next: ValidationToken[],
   input: ValidationInput
-): { added: Set<string>; editing: Set<string> } {
+): EditedTokens {
   // Restored by undo or redo, so nothing counts as entered.
-  if (input.isHistoryOperation) return { added: new Set(), editing: new Set() };
+  if (input.isHistoryOperation) return { added: new Set(), editing: new Set(), before: new Map() };
 
   const group = diffTokens(collectTokens(prev), next);
-  const since = input.editBase ? diffTokens(collectTokens(input.editBase), next) : group;
-  const editing = new Set([...since.added, ...since.changed]);
-
-  // Nothing differs but everything was requested (initial value, rules changed).
-  if (input.forceCheck && editing.size === 0) {
-    return { added: group.added, editing: new Set(next.map((t) => t.id)) };
+  const added = new Set([...group].filter(([, before]) => before === null).map(([id]) => id));
+  if (input.contentEntered) {
+    return { added, editing: new Set(next.map((t) => t.id)), before: new Map() };
   }
-  return { added: group.added, editing };
+
+  const present = new Set(next.map((t) => t.id));
+  const origins = new Map<string, ValidationToken | null>(group);
+  for (const [id, before] of input.sessionEdits) {
+    if (present.has(id)) origins.set(id, before);
+  }
+  const before = new Map<string, ValidationToken>();
+  for (const [id, token] of origins) {
+    if (token) before.set(id, token);
+  }
+  return { added, editing: new Set(origins.keys()), before };
 }
 
-function isRuleDisabled(ruleId: string, field: FieldDefinition | undefined): boolean {
+function isRuleDisabled(ruleId: string, field: FieldDefinition | null): boolean {
   return field?.validation?.[ruleId] === false;
 }
 
 /** The violations of every rule, from the highest priority to the lowest. */
 function runRules(rules: readonly ValidationRule[], ctx: ValidationContext): Violation[] {
-  const fieldOf = new Map(ctx.tokens.map((t) => [t.id, ctx.fields.find((f) => f.key === t.key)]));
+  const fieldOf = new Map(ctx.tokens.map((t) => [t.id, ctx.fieldOf(t)]));
   const sorted = [...rules].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
   const violations: Violation[] = [];
 
@@ -146,7 +190,7 @@ function runRules(rules: readonly ValidationRule[], ctx: ValidationContext): Vio
     try {
       for (const violation of rule.validate(ctx)) {
         const targets = violation.targets.filter(
-          (target) => !isRuleDisabled(violation.ruleId, fieldOf.get(target.tokenId))
+          (target) => !isRuleDisabled(violation.ruleId, fieldOf.get(target.tokenId) ?? null)
         );
         if (targets.length > 0) violations.push({ ...violation, targets });
       }
@@ -169,17 +213,33 @@ function toValidation(violation: Violation): TokenValidation {
   return validation;
 }
 
+function contextFor(
+  tokens: ValidationToken[],
+  editing: Set<string>,
+  before: Map<string, ValidationToken>,
+  input: ValidationInput
+): ValidationContext {
+  return {
+    tokens,
+    fields: [...input.source.fields],
+    editingTokenIds: editing,
+    focusedTokenId: input.focusedTokenId,
+    isEditing: (token) => editing.has(token.id),
+    before: (token) => (editing.has(token.id) ? before.get(token.id) : undefined),
+    fieldOf: (token) => (token.type === 'freeText' ? null : resolveField(input.source, token.key)),
+  };
+}
+
 /**
  * Validates the document `next`, which came from `prev`, and decides what to change.
  * Tokens are identified by id throughout, so nothing here depends on where a token was.
  *
- * `prev` is the document the edits are measured from: the one before the
- * transactions being validated, or, while the user is in a token, the one from when
- * they entered it. The tokens added or changed since `prev` are the ones being edited,
- * where the user is does not make a token edited. A token
- * is deleted only when a configured rule asks for it, never while the user is in
- * it, and never as part of an undo or redo. Without configured rules nothing is
- * deleted.
+ * A token is edited when it was added or changed in `next` relative to `prev`, or
+ * is in `input.sessionEdits`. Where the user is does not make a token edited. A
+ * token is deleted only when a configured rule asks for it, never while the user is
+ * in it, and never as part of an undo or redo. Without configured rules nothing is
+ * deleted. After deleting, the marks of the tokens that remain are decided by
+ * running the rules again on those tokens alone, with nothing edited.
  */
 export function planValidation(
   prev: ProseMirrorNode,
@@ -187,15 +247,9 @@ export function planValidation(
   input: ValidationInput
 ): Plan {
   const tokens = collectTokens(next);
-  const { added, editing } = editedTokens(prev, tokens, input);
-  const ctx: ValidationContext = {
-    tokens,
-    fields: input.fields,
-    editingTokenIds: editing,
-    focusedTokenId: input.focusedTokenId,
-    isEditing: (token) => editing.has(token.id),
-  };
-  const violations = runRules([...input.rules, ...input.implicitRules], ctx);
+  const { added, editing, before } = editedTokens(prev, tokens, input);
+  const rules = [...input.rules, ...input.implicitRules];
+  let violations = runRules(rules, contextFor(tokens, editing, before, input));
 
   const present = new Set(tokens.map((t) => t.id));
   const deleted = new Set<string>();
@@ -219,6 +273,12 @@ export function planValidation(
     }
   }
 
+  // Marks computed with the deleted tokens present may no longer apply.
+  if (deleted.size > 0) {
+    const remaining = tokens.filter((t) => !deleted.has(t.id));
+    violations = runRules(rules, contextFor(remaining, new Set(), new Map(), input));
+  }
+
   // The first violation of a token is the one it shows.
   const shown = new Map<string, TokenValidation>();
   for (const violation of violations) {
@@ -228,20 +288,25 @@ export function planValidation(
   }
 
   const changes: ValidationChange[] = [];
-  const remaining = new Set<string>();
+  const kept = new Set<string>();
   for (const token of tokens) {
     if (deleted.has(token.id)) continue;
-    remaining.add(token.id);
+    kept.add(token.id);
     const validation = shown.get(token.id);
     if (!sameValidation(input.recorded.get(token.id), validation)) {
       changes.push({ tokenId: token.id, validation });
     }
   }
   for (const tokenId of input.recorded.keys()) {
-    if (!remaining.has(tokenId)) changes.push({ tokenId, validation: undefined });
+    if (!kept.has(tokenId)) changes.push({ tokenId, validation: undefined });
   }
 
-  return { deletions: [...deleted], undoable, changes };
+  return {
+    deletions: [...deleted],
+    undoable,
+    ownUndoStep: undoable && !input.recordsHistory,
+    changes,
+  };
 }
 
 function deleteTokens(tr: Transaction, ids: readonly string[]): void {
@@ -267,6 +332,8 @@ function deleteTokens(tr: Transaction, ids: readonly string[]): void {
 /**
  * Carries out `plan` on `tr`, whose document must be the one that was validated.
  *
+ * A deletion that no edit led to, such as one on leaving a token, is its own undo step.
+ *
  * @returns whether `tr` now changes the document or token meta
  */
 export function applyPlan(tr: Transaction, plan: Plan): boolean {
@@ -274,6 +341,7 @@ export function applyPlan(tr: Transaction, plan: Plan): boolean {
   for (const { tokenId, validation } of plan.changes) {
     setTokenMeta(tr, tokenId, { validation });
   }
+  if (plan.ownUndoStep) closeHistory(tr);
   if (!plan.undoable) tr.setMeta('addToHistory', false);
   return tr.docChanged || plan.changes.length > 0;
 }

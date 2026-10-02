@@ -101,30 +101,47 @@ const duplicateMessages: Record<UniqueConstraint, (key: string) => string> = {
   exact: () => 'Duplicate filter',
 };
 
+/**
+ * Whether the token newly duplicates the others: it was edited, and it did not exist
+ * before, had no value yet, or differs in what the constraint compares.
+ */
+function isNewDuplicate(
+  token: ValidationToken,
+  ctx: ValidationContext,
+  constraint: UniqueConstraint
+): boolean {
+  if (!ctx.isEditing(token)) return false;
+  const before = ctx.before(token);
+  return (
+    !before ||
+    before.value === '' ||
+    signatureOf(before, constraint) !== signatureOf(token, constraint)
+  );
+}
+
 function resolveDuplicates(
   group: ValidationToken[],
   ctx: ValidationContext,
+  constraint: UniqueConstraint,
   strategy: DuplicateStrategy
 ): Outcome {
-  const edited = group.filter((t) => ctx.isEditing(t));
+  const added = group.filter((t) => isNewDuplicate(t, ctx, constraint));
 
-  // Nothing was edited (undo, redo, focus moves): there is no newer token to favour.
-  if (strategy === 'mark' || edited.length === 0) {
+  // Nothing new joined the group (undo, redo, focus moves): there is no newer token to favour.
+  if (strategy === 'mark' || added.length === 0) {
     return { delete: [], mark: strategy === 'replace' ? group.slice(0, -1) : group.slice(1) };
   }
 
   if (strategy === 'replace') {
-    const kept = edited[edited.length - 1];
+    const kept = added[added.length - 1];
     const others = group.filter((t) => t !== kept);
     // The token that replaces the others is still being filled in: wait until it is entered.
     return isEntered(kept, ctx) ? { delete: others, mark: [] } : { delete: [], mark: others };
   }
 
   // reject: the existing token wins; when every token is new the first one does.
-  const existing = group.filter((t) => !ctx.isEditing(t));
-  const rejected = (existing.length > 0 ? edited : edited.slice(1)).filter((t) =>
-    isRejectable(t, ctx)
-  );
+  const existing = group.filter((t) => !added.includes(t));
+  const rejected = (existing.length > 0 ? added : added.slice(1)).filter((t) => isEntered(t, ctx));
   const survivors = group.filter((t) => !rejected.includes(t));
   return { delete: rejected, mark: survivors.slice(1) };
 }
@@ -133,7 +150,7 @@ function resolveDuplicates(
  * Rule factory for tokens that duplicate each other.
  *
  * @example
- * import { Unique } from '@kuruwic/tokenized-search-input';
+ * import { Unique } from '@kuruwic/tokenized-search-input/utils';
  *
  * Unique.rule('key')                                  // Mark duplicates
  * Unique.rule('key', { onDuplicate: 'replace' })      // The newest token replaces the others
@@ -155,7 +172,7 @@ export const Unique = {
       priority,
       validate: (ctx) =>
         duplicateGroups(ctx.tokens, constraint).flatMap((group) =>
-          toViolations(resolveDuplicates(group, ctx, onDuplicate), {
+          toViolations(resolveDuplicates(group, ctx, constraint, onDuplicate), {
             ruleId,
             reason: 'duplicate',
             message: duplicateMessages[constraint](group[0].key),
@@ -188,7 +205,7 @@ function resolveExcess(
 ): Outcome {
   if (strategy === 'mark') return { delete: [], mark: tokens.slice(-excess) };
 
-  const rejected = tokens.filter((t) => isRejectable(t, ctx)).slice(0, excess);
+  const rejected = tokens.filter((t) => isRejectable(t, ctx)).slice(-excess);
   const survivors = tokens.filter((t) => !rejected.includes(t));
   const remaining = excess - rejected.length;
   return { delete: rejected, mark: remaining > 0 ? survivors.slice(-remaining) : [] };
@@ -198,7 +215,7 @@ function resolveExcess(
  * Rule factory for tokens that exceed a count limit.
  *
  * @example
- * import { MaxCount } from '@kuruwic/tokenized-search-input';
+ * import { MaxCount } from '@kuruwic/tokenized-search-input/utils';
  *
  * MaxCount.rule('tag', 3)                           // Mark tags past the third
  * MaxCount.rule('tag', 3, { onExceed: 'reject' })   // Delete new tags past the third
@@ -267,7 +284,7 @@ function invalidAction(
  * Rule factory for validating tokens against a regex pattern.
  *
  * @example
- * import { RequirePattern } from '@kuruwic/tokenized-search-input';
+ * import { RequirePattern } from '@kuruwic/tokenized-search-input/utils';
  *
  * RequirePattern.rule('email', /^[^\s@]+@[^\s@]+\.[^\s@]+$/)
  * RequirePattern.rule('email', /.../, { onInvalid: 'reject', message: 'Invalid email' })
@@ -335,7 +352,7 @@ export interface RequireEnumOptions {
  * Rule factory for validating enum field values.
  *
  * @example
- * import { RequireEnum } from '@kuruwic/tokenized-search-input';
+ * import { RequireEnum } from '@kuruwic/tokenized-search-input/utils';
  *
  * RequireEnum.rule()                            // Mark invalid enum values
  * RequireEnum.rule({ onInvalid: 'reject' })     // Delete edited tokens with invalid values
@@ -357,7 +374,7 @@ export const RequireEnum = {
         const violations: Violation[] = [];
 
         for (const token of ctx.tokens) {
-          const field = ctx.fields.find((f) => f.key === token.key);
+          const field = ctx.fieldOf(token);
 
           if (field?.type !== 'enum' || !field.enumValues) continue;
           if (!token.value) continue;
