@@ -6,8 +6,13 @@ on:
       - "v*"
 
 jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
   release:
     name: Build and Release
+    needs: ci
     runs-on: ubuntu-latest
 
     permissions:
@@ -30,27 +35,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build workspace package for consumers
-        run: pnpm build
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Type check
-        run: pnpm typecheck
-
-      - name: Test with coverage thresholds
-        run: pnpm test:coverage
-
-      - name: Audit production dependencies
-        run: pnpm audit --prod
-
-      - name: Install Chromium
-        run: pnpm --filter @kuruwic/tokenized-search-input exec playwright install --with-deps chromium
-
-      - name: Run browser smoke test
-        run: pnpm --filter @kuruwic/tokenized-search-input test:browser
-
       - name: Verify release tag
         run: node packages/core/scripts/verify-tag.mjs
 
@@ -62,10 +46,8 @@ jobs:
           node packages/core/scripts/verify-pack.mjs
           pnpm exec publint dist-packages/*.tgz --strict
 
-      - name: Verify React 19 peer compatibility
-        run: |
-          pnpm add --filter @kuruwic/tokenized-search-input --save-dev --lockfile=false react@19.1.1 react-dom@19.1.1
-          pnpm --filter @kuruwic/tokenized-search-input test:run
+      - name: Verify packed artifact in consumer projects
+        run: node packages/core/scripts/verify-consumer.mjs dist-packages/*.tgz
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

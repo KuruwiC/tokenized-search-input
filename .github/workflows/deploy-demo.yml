@@ -34,9 +34,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build workspace package for consumers
-        run: pnpm build
-
       - name: Build demo
         run: pnpm build:demo
 

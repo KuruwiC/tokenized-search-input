@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:
 
 jobs:
   build:
@@ -12,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [20, 22]
+        node-version: [20, 22, 24]
 
     steps:
       - uses: actions/checkout@v4
@@ -30,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build workspace package for consumers
+      - name: Build and validate package
         run: pnpm build
 
       - name: Lint
@@ -45,11 +46,14 @@ jobs:
       - name: Audit production dependencies
         run: pnpm audit --prod
 
-      - name: Build and validate package
-        run: pnpm build
-
       - name: Validate package metadata
         run: pnpm exec publint packages/core --pack false --strict
+
+      - name: Verify packed package in consumer projects
+        run: node packages/core/scripts/verify-consumer.mjs
+
+      - name: Build demo
+        run: pnpm build:demo
 
   browser-smoke:
     runs-on: ubuntu-latest
@@ -74,7 +78,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        react-version: [18.3.1, 19.1.1]
+        include:
+          - react-version: 18.3.1
+            types-major: 18
+          - react-version: 19.1.1
+            types-major: 19
     steps:
       - uses: actions/checkout@v4
       - name: Install pnpm
@@ -88,6 +96,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Select React ${{ matrix.react-version }}
-        run: pnpm add --filter @kuruwic/tokenized-search-input --save-dev --lockfile=false react@${{ matrix.react-version }} react-dom@${{ matrix.react-version }}
+        run: >-
+          pnpm add --filter @kuruwic/tokenized-search-input --save-dev --lockfile=false
+          react@${{ matrix.react-version }}
+          react-dom@${{ matrix.react-version }}
+          @types/react@${{ matrix.types-major }}
+          @types/react-dom@${{ matrix.types-major }}
       - name: Run compatibility tests
         run: pnpm --filter @kuruwic/tokenized-search-input test:run
