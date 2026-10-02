@@ -4,14 +4,12 @@ import { useEffect, useRef } from 'react';
 import { parseISOToDate } from '../../pickers/date-format';
 import { updateSuggestionQuery } from '../../plugins/shared/meta';
 import {
-  closeSuggestion,
   getSuggestionState,
   isAnchoredToToken,
   openDateSuggestion,
   openDateTimeSuggestion,
   openValueSuggestion,
 } from '../../plugins/suggestion-plugin';
-import { getDismissPolicy } from '../../suggestions/dismiss-policy';
 import { canShowValueSuggestion } from '../../suggestions/suggestion-guards';
 import type { FieldDefinition } from '../../types';
 
@@ -26,7 +24,6 @@ export interface UseValueSuggestionsOptions {
 
 export interface UseValueSuggestionsReturn {
   handleValueInputFocus: () => void;
-  handleValueInputBlur: (e: React.FocusEvent) => void;
   /**
    * Marks the transaction that writes a typed value, so the value suggestions are
    * shown for it even after the user dismissed them.
@@ -43,7 +40,7 @@ export interface UseValueSuggestionsReturn {
  *
  * Trigger points:
  * - Open: value input receives focus (focus event)
- * - Close: value input loses focus (blur event), unless focus moved to suggestion list
+ * - Close: the dismiss manager closes them when focus or a press lands outside the value input
  * - Update: the suggestion plugin derives the query from the token's value; typing
  *   also shows suggestions the user dismissed
  */
@@ -108,32 +105,10 @@ export function useValueSuggestions({
     }
   };
 
-  // Close suggestions when value input loses focus
-  // Note: value/date/datetime use dismissOnBlur: false and rely on useDismissManager's focusin handler
-  // This handler only processes blur for types with dismissOnBlur: true (e.g., field)
-  const handleValueInputBlur = (_e: React.FocusEvent) => {
-    if (!isMountedRef.current) return;
-
-    const suggestionState = getSuggestionState(editor.state);
-    if (!suggestionState?.type) return;
-
-    const policy = getDismissPolicy(suggestionState.type);
-
-    // Let useDismissManager handle dismiss via focusin event for types with dismissOnFocusOutside
-    if (!policy.dismissOnBlur) return;
-
-    // For blur-dismissable types, close immediately
-    // (Currently no value-related types use dismissOnBlur: true, but keeping for future extensibility)
-    const tr = editor.state.tr;
-    closeSuggestion(tr);
-    tr.setMeta('addToHistory', false);
-    editor.view.dispatch(tr);
-  };
-
   const addSuggestionQuery = (tr: Transaction) => {
     if (!enabled || !isEnumField) return;
     updateSuggestionQuery(tr, tokenId);
   };
 
-  return { handleValueInputFocus, handleValueInputBlur, addSuggestionQuery };
+  return { handleValueInputFocus, addSuggestionQuery };
 }

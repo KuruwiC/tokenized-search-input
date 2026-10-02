@@ -1,5 +1,4 @@
 import type { NodeViewProps } from '@tiptap/react';
-import { useRef } from 'react';
 import { getEditorContext, resolveField } from '../../extensions/editor-context';
 import { useEditorContextUpdate } from '../../hooks/use-editor-context-update';
 import { useTokenMeta } from '../../hooks/use-editor-store';
@@ -37,7 +36,6 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
 }) => {
   useEditorContextUpdate(editor);
   const { id, key, operator, value } = node.attrs;
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const editorContext = getEditorContext(editor);
   const { fields } = editorContext;
@@ -150,7 +148,6 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
         <FilterTokenValue
           editor={editor}
           tokenId={id}
-          inputRef={inputRef}
           fieldDef={fieldDef}
           fieldKey={key}
           rawValue={rawValue}
@@ -176,7 +173,6 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
 interface FilterTokenValueProps {
   editor: NodeViewProps['editor'];
   tokenId: string;
-  inputRef: React.RefObject<HTMLInputElement | null>;
   fieldDef: FieldDefinition | undefined;
   fieldKey: string;
   rawValue: string;
@@ -197,7 +193,6 @@ interface FilterTokenValueProps {
 function FilterTokenValue({
   editor,
   tokenId,
-  inputRef,
   fieldDef,
   fieldKey,
   rawValue,
@@ -216,13 +211,11 @@ function FilterTokenValue({
   // Editing shows the text that maps back to the value; display data never enters the input
   const effectiveValue = tokenFocused ? editableText : valueDisplayString;
 
-  // allowSpaces: check current input text from inputRef for real-time quote detection
-  // This allows users to type quotes and then input spaces
-  const currentInputText = inputRef.current?.value ?? valueDisplayString;
-  const allowSpaces = baseAllowSpaces || isInsideQuotes(currentInputText);
+  // A space is part of the value once the typed text opens a quote
+  const allowSpaces = baseAllowSpaces || isInsideQuotes(effectiveValue);
 
   // Event-driven value suggestions management
-  const { handleValueInputFocus, handleValueInputBlur, addSuggestionQuery } = useValueSuggestions({
+  const { handleValueInputFocus, addSuggestionQuery } = useValueSuggestions({
     editor,
     tokenId,
     fieldKey,
@@ -316,8 +309,6 @@ function FilterTokenValue({
       containerClassName={valueClassName}
       ariaLabel={`Value for ${fieldKey} filter`}
       onFocus={handleValueInputFocus}
-      onBlur={handleValueInputBlur}
-      inputRef={inputRef}
       startContent={startContent}
       endContent={endContent}
     />

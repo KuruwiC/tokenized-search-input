@@ -21,7 +21,7 @@ import { getDismissPolicy } from '../../suggestions/dismiss-policy';
 import { cn } from '../../utils/cn';
 import { enterToken } from '../token-focus';
 import { TokenDeleteButton } from './blocks/token-delete-button';
-import { TokenLabel, TokenLabelCombobox } from './blocks/token-label';
+import { TokenLabelCombobox } from './blocks/token-label';
 import { TokenOperator } from './blocks/token-operator';
 import { TokenValue } from './blocks/token-value';
 import {
@@ -409,7 +409,6 @@ export function Token({
 }
 
 // Attach block components as static properties for Compound Components pattern
-Token.Label = TokenLabel;
 Token.LabelCombobox = TokenLabelCombobox;
 Token.Operator = TokenOperator;
 Token.Value = TokenValue;

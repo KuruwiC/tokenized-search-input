@@ -4,9 +4,6 @@ import { type CursorPosition, useTokenFocusContext } from '../contexts';
 import { useFocusableBlock } from '../focus';
 import { HandlerPriority, useBlockKeyboardContribution } from '../keyboard';
 
-/** Icon slot style for consistent icon rendering in token values */
-export const TOKEN_ICON_SLOT_CLASS = 'tsi-icon-slot';
-
 /** Renders an icon slot with consistent styling */
 export function TokenIconSlot({
   children,
@@ -14,7 +11,7 @@ export function TokenIconSlot({
   children: React.ReactNode;
 }): React.ReactElement | null {
   if (!children) return null;
-  return <span className={TOKEN_ICON_SLOT_CLASS}>{children}</span>;
+  return <span className="tsi-icon-slot">{children}</span>;
 }
 
 export interface TokenValueProps {
@@ -27,8 +24,6 @@ export interface TokenValueProps {
   containerClassName?: string;
   ariaLabel?: string;
   onFocus?: () => void;
-  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
-  inputRef?: React.RefObject<HTMLInputElement | null>;
   /** Content to display before the value (e.g., icon) */
   startContent?: React.ReactNode;
   /** Content to display after the value (e.g., icon) */
@@ -59,14 +54,11 @@ export function TokenValue({
   containerClassName,
   ariaLabel = 'Value',
   onFocus,
-  onBlur,
-  inputRef: externalInputRef,
   startContent,
   endContent,
   onSpaceNotAtEnd,
 }: TokenValueProps): React.ReactElement {
-  const internalInputRef = useRef<HTMLInputElement>(null);
-  const inputRef = externalInputRef ?? internalInputRef;
+  const inputRef = useRef<HTMLInputElement>(null);
   const {
     isFocused: tokenFocused,
     exitToken,
@@ -75,19 +67,16 @@ export function TokenValue({
   } = useTokenFocusContext();
   const [inputWidth, setInputWidth] = useState<number>(20);
 
-  const focusInput = useCallback(
-    (position?: CursorPosition) => {
-      const input = inputRef.current;
-      if (!input) return;
-      input.focus();
-      if (position === 'start') {
-        input.setSelectionRange(0, 0);
-      } else {
-        input.setSelectionRange(input.value.length, input.value.length);
-      }
-    },
-    [inputRef]
-  );
+  const focusInput = useCallback((position?: CursorPosition) => {
+    const input = inputRef.current;
+    if (!input) return;
+    input.focus();
+    if (position === 'start') {
+      input.setSelectionRange(0, 0);
+    } else {
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+  }, []);
 
   const {
     navigateLeft,
@@ -212,7 +201,6 @@ export function TokenValue({
 
   // Update input width based on value using temporary DOM measurement span
   // This is more accurate than Canvas API as it uses the same rendering engine
-  // biome-ignore lint/correctness/useExhaustiveDependencies: inputRef.current is accessed at execution time; ref objects are stable and don't belong in deps
   useLayoutEffect(() => {
     // Only measure when focused (input is visible)
     if (!tokenFocused) return;
@@ -259,10 +247,6 @@ export function TokenValue({
     onFocus?.();
   };
 
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    onBlur?.(e);
-  };
-
   const isValueFocused = tokenFocused && currentFocusId === 'value';
 
   // Render both span and input to avoid DOM remount flickering
@@ -276,13 +260,12 @@ export function TokenValue({
         </span>
       )}
       <input
-        ref={inputRef as React.RefObject<HTMLInputElement>}
+        ref={inputRef}
         type="text"
         value={value}
         onChange={handleChange}
         onKeyDown={dispatchKeyDown}
         onFocus={handleFocus}
-        onBlur={handleBlur}
         className={cn('tsi-token-value__input', className)}
         style={{
           width: tokenFocused ? `${inputWidth}px` : 0,
