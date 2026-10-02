@@ -195,7 +195,13 @@ describe('changing the validation prop', () => {
 
   it('does not delete an existing duplicate when the parent renders again', async () => {
     let rerender: () => void = () => {};
-    render(<Host onRender={(fn) => (rerender = fn)} />);
+    render(
+      <Host
+        onRender={(fn) => {
+          rerender = fn;
+        }}
+      />
+    );
     await waitFor(() => expect(hostRef.current?.getEditor()).not.toBeNull());
     const editor = hostRef.current?.getEditor();
     if (!editor) throw new Error('editor not created');
