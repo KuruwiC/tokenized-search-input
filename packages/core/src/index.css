@@ -723,19 +723,24 @@
     pointer-events: none;
   }
 
-  /* Token Operator Dropdown */
+  /* === Popover (shared by the suggestion dropdown and the dropdowns of a token) === */
 
-  :where(.tsi-token-operator__dropdown) {
+  :where(.tsi-popover) {
     z-index: var(--tsi-z-dropdown);
-    min-width: 6rem;
-    max-height: var(--tsi-dropdown-max-height);
-    overflow: auto;
     border-radius: var(--tsi-radius);
     border: 1px solid var(--tsi-border);
     background-color: var(--tsi-background);
     box-shadow: var(--tsi-shadow);
-    padding: 0.25rem 0;
     color: var(--tsi-foreground);
+  }
+
+  /* Token Operator Dropdown */
+
+  :where(.tsi-token-operator__dropdown) {
+    min-width: 6rem;
+    max-height: var(--tsi-dropdown-max-height);
+    overflow: auto;
+    padding: 0.25rem 0;
   }
 
   :where(.tsi-token-operator__option) {
@@ -827,17 +832,11 @@
   /* Token Label Combobox Dropdown */
 
   :where(.tsi-token-label-combobox__dropdown) {
-    z-index: var(--tsi-z-dropdown);
     min-width: var(--tsi-dropdown-min-width);
     max-width: var(--tsi-dropdown-max-width);
     max-height: var(--tsi-dropdown-max-height);
     overflow: auto;
-    border-radius: var(--tsi-radius);
-    border: 1px solid var(--tsi-border);
-    background-color: var(--tsi-background);
-    box-shadow: var(--tsi-shadow);
     padding: 0.25rem 0;
-    color: var(--tsi-foreground);
   }
 
   :where(.tsi-token-label-combobox__option) {
@@ -1156,13 +1155,7 @@
   :where(.tsi-dropdown),
   :where(.tsi-dropdown--date) {
     position: absolute;
-    z-index: var(--tsi-z-dropdown);
     width: max-content;
-    border-radius: var(--tsi-radius);
-    border: 1px solid var(--tsi-border);
-    background-color: var(--tsi-background);
-    box-shadow: var(--tsi-shadow);
-    color: var(--tsi-foreground);
   }
 
   :where(.tsi-dropdown) {

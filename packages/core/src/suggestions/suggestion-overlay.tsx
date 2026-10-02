@@ -162,6 +162,7 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
         maxHeight: isPicker ? undefined : `${maxDropdownHeight}px`,
       }}
       className={cn(
+        'tsi-popover',
         isPicker ? 'tsi-dropdown--date' : 'tsi-dropdown',
         top === undefined && 'tsi-dropdown--top-full',
         classNames?.dropdown

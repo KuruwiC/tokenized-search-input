@@ -1,5 +1,6 @@
 import { type ReactNode, type RefObject, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { cn } from '../../../utils/cn';
 import { useScrollActiveIntoView } from '../../../utils/scroll-into-view';
 import type { CursorPosition } from '../contexts/token-focus-context';
 
@@ -274,7 +275,7 @@ function DropdownList({
       role="listbox"
       aria-label={label}
       style={{ position: 'fixed', top, left }}
-      className={className}
+      className={cn('tsi-popover', className)}
     >
       {options.map((option, index) => (
         <button
