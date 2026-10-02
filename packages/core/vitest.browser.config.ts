@@ -2,6 +2,22 @@ import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
+const mobileFile = 'src/__tests__/browser/mobile.test.tsx';
+
+// There is no mobile device in CI. A mobile run is a desktop engine with a phone viewport,
+// touch support and an Android Chrome user agent, on WebKit as well as Chromium so that both
+// take the same user-agent dependent code paths and meet the same expectations.
+const androidChrome =
+  'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Mobile Safari/537.36';
+
+// Both viewports are shorter than the 720px browser window, so the test iframe is not scaled
+// down and element-relative pointer positions land where the tests compute them.
+const desktop = { width: 800, height: 600 };
+const phone = { width: 375, height: 640 };
+
+const mobileProvider = (userAgent: string) =>
+  playwright({ contextOptions: { userAgent, hasTouch: true } });
+
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -11,12 +27,33 @@ export default defineConfig({
       headless: true,
       screenshotFailures: false,
       provider: playwright(),
-      instances: [{ browser: 'chromium' }, { browser: 'webkit' }],
+      instances: [
+        { browser: 'chromium', exclude: [mobileFile], viewport: desktop },
+        { browser: 'webkit', exclude: [mobileFile], viewport: desktop },
+        {
+          browser: 'chromium',
+          name: 'chromium-mobile',
+          include: [mobileFile],
+          viewport: phone,
+          provider: mobileProvider(androidChrome),
+        },
+        {
+          browser: 'webkit',
+          name: 'webkit-mobile',
+          include: [mobileFile],
+          viewport: phone,
+          provider: mobileProvider(androidChrome),
+        },
+      ],
       commands: {
         // Types text into the focused element the way an input method commits it: as a
         // single insertion, not as key presses. Works on every engine.
         insertText: async ({ page }, text: string) => {
           await page.keyboard.insertText(text);
+        },
+        // A real touch tap on the editor. Needs a context created with touch support.
+        tapEditor: async ({ iframe }, position: { x: number; y: number }) => {
+          await iframe.locator('.ProseMirror').tap({ position });
         },
       },
     },
