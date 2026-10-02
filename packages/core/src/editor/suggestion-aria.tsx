@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
 import { usePluginState } from '../hooks/use-plugin-state';
 import {
+  isSuggestionOpen,
   resolveAnchorPos,
   type SuggestionState,
   suggestionKey,
@@ -82,7 +83,8 @@ export const SuggestionAria: React.FC<SuggestionAriaProps> = ({
     if (editor.isDestroyed) return;
 
     const type = suggestionState?.type ?? null;
-    const isOpen = !!suggestionState && type !== null && !suggestionState.dismissed;
+    // Open only while the overlay has something to show
+    const isOpen = isSuggestionOpen(suggestionState);
     const activeIndex = suggestionState?.activeIndex ?? -1;
     const popup = isPickerType(type) ? 'dialog' : 'listbox';
     const relations: ComboboxRelations = {

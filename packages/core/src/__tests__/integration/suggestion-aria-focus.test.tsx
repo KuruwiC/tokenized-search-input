@@ -73,3 +73,22 @@ describe('combobox relationships of a value suggestion', () => {
     expect(input).not.toHaveAttribute('aria-activedescendant');
   });
 });
+
+describe('combobox relationships of a suggestion that shows nothing', () => {
+  it('does not claim an open list while a value matches none of the suggestions', async () => {
+    const user = userEvent.setup();
+    await renderInput({ defaultValue: 'status:is:a' });
+    const editorRoot = screen.getByRole('combobox', { name: 'Search query input' });
+
+    await user.click(screen.getByRole('group', { name: /Filter: status/i }));
+    const input = await screen.findByLabelText('Value for status filter');
+    await waitFor(() => expect(input).toHaveAttribute('aria-expanded', 'true'));
+
+    await user.type(input, 'zzz');
+
+    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument());
+    expect(input).not.toHaveAttribute('aria-controls');
+    expect(input).not.toHaveAttribute('aria-expanded', 'true');
+    expect(editorRoot).not.toHaveAttribute('aria-controls');
+  });
+});
