@@ -1,9 +1,26 @@
 import { format, isValid, parse, parseISO } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
-import type { DateFormatConfig, DateTimeFormatConfig } from '../types';
+import type {
+  DateFieldDefinition,
+  DateFormatConfig,
+  DateTimeFieldDefinition,
+  DateTimeFormatConfig,
+} from '../types';
+import {
+  type DateTimeValue,
+  formatDateTimeValue,
+  localMidnight,
+  localOffsetAt,
+  parseDateTimeValue,
+  toInstant,
+} from './date-time-value';
+import { err, ok, type ParseResult } from './navigation-parsers';
 
 export const DEFAULT_DATE_VALUE_FORMAT = 'yyyy-MM-dd';
 export const DEFAULT_DATETIME_VALUE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssxxx";
+
+/** What the date functions need to know about a date or datetime field. */
+type DateLikeField = Pick<DateFieldDefinition | DateTimeFieldDefinition, 'type' | 'formatConfig'>;
 
 /**
  * Parses ISO 8601 string to Date object.
@@ -41,96 +58,71 @@ function formatDateTimeToISO(date: Date): string {
 }
 
 /**
- * Default parse: accepts ISO-like input and normalizes to yyyy-MM-dd.
- * Handles both strict ISO (2024-03-05) and loose formats (2024-3-5).
+ * Reads `input` as a value of `field`: with the field's custom parse when it has one,
+ * otherwise as the one strict format. This is the only way a typed date enters the
+ * library, so validation, storage and display all agree on what a date is.
  */
-function defaultDateParse(input: string): string | null {
+export function parseDateFieldValue(
+  input: string,
+  field: DateLikeField
+): ParseResult<DateTimeValue> {
   const trimmed = input.trim();
-  if (!trimmed) return null;
+  const message = field.type === 'date' ? 'Invalid date format' : 'Invalid datetime format';
+  const parseConfig = field.formatConfig?.parse;
+  if (!parseConfig) return parseDateTimeValue(trimmed, field.type);
 
-  // Try strict ISO first
-  let parsed = parseISO(trimmed);
-  if (isValid(parsed)) {
-    return format(parsed, DEFAULT_DATE_VALUE_FORMAT);
+  let parsed: DateTimeValue | null;
+  try {
+    parsed = parseConfig(trimmed);
+  } catch {
+    // A parse supplied by the application that throws rejects the input like one that returns null.
+    parsed = null;
   }
-
-  // Fallback: try parsing with default format (handles 2024-3-5)
-  parsed = parse(trimmed, DEFAULT_DATE_VALUE_FORMAT, new Date());
-  if (isValid(parsed)) {
-    return format(parsed, DEFAULT_DATE_VALUE_FORMAT);
-  }
-
-  return null;
+  if (!parsed) return err(message);
+  return ok(field.type === 'date' ? { date: parsed.date } : parsed);
 }
 
 /**
- * Default parse for datetime: validates and normalizes ISO datetime string.
- * Preserves original timezone offset from the input string.
- *
- * @param input - The datetime string to parse
- * @param allowDateOnly - If true, date-only values (yyyy-MM-dd) are preserved as-is.
- *                        If false, date-only values are converted to datetime format.
+ * The string stored in a token for `value`. A datetime field that requires a time
+ * stores a date that has none as local midnight.
  */
-function defaultDateTimeParse(input: string, allowDateOnly: boolean = true): string | null {
+export function toStoredValue(
+  value: DateTimeValue,
+  field: Pick<DateFieldDefinition | DateTimeFieldDefinition, 'type'> & { timeRequired?: boolean }
+): string {
+  if (field.type === 'date') return value.date;
+  const complete =
+    value.time === undefined && field.timeRequired ? localMidnight(value.date) : value;
+  return formatDateTimeValue(complete);
+}
+
+/**
+ * The stored form of a value typed for `field`, or the trimmed input when it is not
+ * a valid value, so the user can see and fix what they typed.
+ */
+export function normalizeDateFieldValue(
+  input: string,
+  field: DateLikeField & { timeRequired?: boolean }
+): string {
   const trimmed = input.trim();
-  if (!trimmed) return null;
-
-  // Preserve date-only format (yyyy-MM-dd) without adding time component
-  if (allowDateOnly && isDateOnlyValue(trimmed)) {
-    const parsed = parseISO(trimmed);
-    if (!isValid(parsed)) return null;
-    return format(parsed, DEFAULT_DATE_VALUE_FORMAT);
-  }
-
-  const parsed = parseISO(trimmed);
-  if (!isValid(parsed)) return null;
-
-  // Extract original timezone from input to preserve it
-  const tz = extractTimezone(trimmed);
-
-  if (tz === 'Z' || tz === '+00:00' || tz === '-00:00') {
-    // UTC: format with Z suffix
-    return formatInTimeZone(parsed, 'UTC', "yyyy-MM-dd'T'HH:mm:ssXXX");
-  }
-
-  if (tz) {
-    // Non-local timezone: preserve the original offset by formatting in that timezone
-    return formatInTimeZone(parsed, tz, "yyyy-MM-dd'T'HH:mm:ssxxx");
-  }
-
-  // No timezone or local: format with local timezone
-  return format(parsed, DEFAULT_DATETIME_VALUE_FORMAT);
+  if (!trimmed) return trimmed;
+  const parsed = parseDateFieldValue(trimmed, field);
+  return parsed.ok ? toStoredValue(parsed.value, field) : trimmed;
 }
 
 /**
- * Default format: returns ISO string as-is for date fields.
+ * The text shown for a date. A custom `format` is given the typed value.
  */
-function defaultDateFormat(isoValue: string): string {
-  const date = parseISO(isoValue);
-  if (!isValid(date)) return isoValue;
-  return format(date, DEFAULT_DATE_VALUE_FORMAT);
-}
-
-/**
- * Converts date value to display format only if it's a complete, valid date.
- * Partial or incomplete values are returned as-is to preserve user input during editing.
- */
-export function getDateDisplayValue(value: string, config?: DateFormatConfig): string {
-  if (!value) return value;
-
+export function getDateDisplayValue(value: DateTimeValue, config?: DateFormatConfig): string {
   if (config?.format) {
     try {
       return config.format(value);
     } catch {
-      // Custom format failed (e.g., invalid date), return raw value
-      return value;
+      // A format supplied by the application that throws falls back to the plain date.
+      return value.date;
     }
   }
-
-  const date = parseISO(value);
-  if (!isValid(date)) return value;
-
-  return defaultDateFormat(value);
+  return value.date;
 }
 
 /**
@@ -177,80 +169,6 @@ export function isUTCValue(value: string): boolean {
 }
 
 /**
- * Calculates timezone offset string for a specific date.
- * Uses the date's own offset to handle DST correctly.
- */
-export function getTimezoneOffsetForDate(date: Date): string {
-  const offset = date.getTimezoneOffset();
-  const sign = offset <= 0 ? '+' : '-';
-  const absOffset = Math.abs(offset);
-  const hours = String(Math.floor(absOffset / 60)).padStart(2, '0');
-  const minutes = String(absOffset % 60).padStart(2, '0');
-  return `${sign}${hours}:${minutes}`;
-}
-
-/**
- * Gets local timezone offset for current moment.
- * @deprecated Use getTimezoneOffsetForDate for DST-aware comparison
- */
-export function getLocalTimezoneOffset(): string {
-  return getTimezoneOffsetForDate(new Date());
-}
-
-/**
- * Checks if a datetime value's timezone matches the local timezone at that specific moment.
- * Handles DST correctly by comparing against the offset that would apply at the value's time.
- */
-export function isLocalTimezoneValue(value: string): boolean {
-  const tz = extractTimezone(value);
-  if (!tz) return true;
-  if (tz === 'Z') return false;
-
-  // Parse the value to get the Date, then check what the local offset would be at that time
-  const date = parseISO(value);
-  if (!isValid(date)) return true;
-
-  const localOffsetAtValueTime = getTimezoneOffsetForDate(date);
-  return tz === localOffsetAtValueTime;
-}
-
-/**
- * Converts timezone offset string to IANA-compatible format for date-fns-tz.
- * '+09:00' → '+09:00', 'Z' → 'UTC'
- */
-function timezoneOffsetToIANA(tz: string): string {
-  if (tz === 'Z') return 'UTC';
-  return tz;
-}
-
-/**
- * Default datetime display format string.
- */
-const DEFAULT_DATETIME_DISPLAY = 'yyyy-MM-dd HH:mm';
-
-/**
- * Non-local timezone values show original time from the string to avoid confusing conversions.
- * Converting "2024-01-01T10:00+09:00" to local time would change the displayed hour,
- * making it unclear what timezone the user is working in.
- */
-function formatDateTimeWithTimezone(date: Date, value: string): string {
-  const tz = extractTimezone(value);
-
-  if (isUTCValue(value)) {
-    const formatted = formatInTimeZone(date, 'UTC', DEFAULT_DATETIME_DISPLAY);
-    return `${formatted} (UTC)`;
-  }
-
-  if (tz && !isLocalTimezoneValue(value)) {
-    const tzIdent = timezoneOffsetToIANA(tz);
-    const formatted = formatInTimeZone(date, tzIdent, DEFAULT_DATETIME_DISPLAY);
-    return `${formatted} (${tz})`;
-  }
-
-  return format(date, DEFAULT_DATETIME_DISPLAY);
-}
-
-/**
  * Checks if a value contains a time component.
  * Uses the same logic as navigation-parsers.ts extractTime for consistency.
  * Matches: "2024-03-05T14:30", "2024-03-05 14:30", "2024-03-05T14", etc.
@@ -288,32 +206,31 @@ export function isDateOnlyValue(value: string): boolean {
   return !hasTimeComponent(trimmed);
 }
 
-/**
- * Converts datetime value to display format with timezone suffix.
- * Partial or incomplete values are returned as-is to preserve user input during editing.
- * Date-only values (yyyy-MM-dd) are displayed without time component.
- */
-export function getDateTimeDisplayValue(value: string, config?: DateTimeFormatConfig): string {
-  if (!value) return value;
+const DEFAULT_DATETIME_DISPLAY_LENGTH = 'HH:mm'.length;
 
+/**
+ * The text shown for a datetime: the reading in the value's own offset, with the
+ * offset named unless it is the local one. A custom `format` is given the typed value.
+ */
+export function getDateTimeDisplayValue(
+  value: DateTimeValue,
+  config?: DateTimeFormatConfig
+): string {
   if (config?.format) {
     try {
       return config.format(value);
     } catch {
-      // Custom format failed (e.g., invalid date), return raw value
-      return value;
+      // A format supplied by the application that throws falls back to the canonical string.
+      return formatDateTimeValue(value);
     }
   }
 
-  const date = parseISO(value);
-  if (!isValid(date)) return value;
-
-  // Date-only values should display without time
-  if (isDateOnlyValue(value)) {
-    return format(date, DEFAULT_DATE_VALUE_FORMAT);
-  }
-
-  return formatDateTimeWithTimezone(date, value);
+  if (value.time === undefined) return value.date;
+  const reading = `${value.date} ${value.time.slice(0, DEFAULT_DATETIME_DISPLAY_LENGTH)}`;
+  if (value.offset === undefined) return reading;
+  if (value.offset === 'Z') return `${reading} (UTC)`;
+  if (value.offset === localOffsetAt(toInstant(value))) return reading;
+  return `${reading} (${value.offset})`;
 }
 
 /**
@@ -346,54 +263,24 @@ export function isDateOrDateTimeField(fieldDef: { type: string } | undefined): b
 }
 
 /**
- * Validates date value using custom parse or default ISO parsing.
+ * Validates date value using custom parse or the strict format.
  */
 export function validateDateValue(value: string, config?: DateFormatConfig): boolean | string {
-  const trimmed = value?.trim();
-  if (!trimmed) {
-    return false;
-  }
-
-  if (config?.parse) {
-    try {
-      const result = config.parse(trimmed);
-      if (!result) return 'Invalid date format';
-      return true;
-    } catch {
-      return 'Invalid date format';
-    }
-  }
-
-  const result = defaultDateParse(trimmed);
-  if (!result) return 'Invalid date format';
-  return true;
+  if (!value?.trim()) return false;
+  const result = parseDateFieldValue(value, { type: 'date', formatConfig: config });
+  return result.ok ? true : result.error;
 }
 
 /**
- * Validates datetime value using custom parse or default ISO parsing.
+ * Validates datetime value using custom parse or the strict format.
  */
 export function validateDateTimeValue(
   value: string,
   config?: DateTimeFormatConfig
 ): boolean | string {
-  const trimmed = value?.trim();
-  if (!trimmed) {
-    return false;
-  }
-
-  if (config?.parse) {
-    try {
-      const result = config.parse(trimmed);
-      if (!result) return 'Invalid datetime format';
-      return true;
-    } catch {
-      return 'Invalid datetime format';
-    }
-  }
-
-  const result = defaultDateTimeParse(trimmed);
-  if (!result) return 'Invalid datetime format';
-  return true;
+  if (!value?.trim()) return false;
+  const result = parseDateFieldValue(value, { type: 'datetime', formatConfig: config });
+  return result.ok ? true : result.error;
 }
 
 export function createDateValidator(
@@ -406,60 +293,6 @@ export function createDateTimeValidator(
   config?: DateTimeFormatConfig
 ): (value: string) => boolean | string {
   return (value: string) => validateDateTimeValue(value, config);
-}
-
-/**
- * Normalizes user input to ISO format.
- * Uses custom parse if provided, otherwise default ISO parsing.
- * Trims whitespace before processing.
- */
-export function normalizeDateValue(value: string, config?: DateFormatConfig): string {
-  const trimmed = value?.trim();
-  if (!trimmed) return trimmed ?? '';
-
-  if (config?.parse) {
-    try {
-      const result = config.parse(trimmed);
-      return result ?? trimmed;
-    } catch {
-      return trimmed;
-    }
-  }
-
-  const result = defaultDateParse(trimmed);
-  return result ?? trimmed;
-}
-
-/**
- * Normalizes datetime input to ISO format.
- * Preserves timezone offset from original input.
- * Trims whitespace before processing.
- *
- * @param value - The datetime string to normalize
- * @param config - Optional format configuration with custom parse function
- * @param allowDateOnly - If true, date-only values (yyyy-MM-dd) are preserved as-is.
- *                        If false, date-only values are converted to datetime format.
- *                        Default is true.
- */
-export function normalizeDateTimeValue(
-  value: string,
-  config?: DateTimeFormatConfig,
-  allowDateOnly: boolean = true
-): string {
-  const trimmed = value?.trim();
-  if (!trimmed) return trimmed ?? '';
-
-  if (config?.parse) {
-    try {
-      const result = config.parse(trimmed);
-      return result ?? trimmed;
-    } catch {
-      return trimmed;
-    }
-  }
-
-  const result = defaultDateTimeParse(trimmed, allowDateOnly);
-  return result ?? trimmed;
 }
 
 /**

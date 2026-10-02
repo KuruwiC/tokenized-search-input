@@ -17,6 +17,7 @@ export type {
 // Date Picker Components
 // ============================================
 
+export type { DateTimeOffset, DateTimeValue } from './pickers/date-time-value';
 export { DefaultDatePicker } from './pickers/default-date-picker';
 export { DefaultDateTimePicker } from './pickers/default-datetime-picker';
 export { TimePicker, type TimePickerProps, type TimeValue } from './pickers/time-picker';

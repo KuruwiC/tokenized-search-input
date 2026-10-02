@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { DateTimeValue } from '../pickers/date-time-value';
 import type { Operator, OperatorLabels } from './operators';
 
 /**
@@ -208,36 +209,34 @@ export interface EnumFieldDefinition extends BaseFieldDefinition {
 
 export interface DateFormatConfig {
   /**
-   * Converts user input to ISO 8601 string for internal storage.
+   * Reads user input into a `DateTimeValue`.
    * Use this to support custom input formats (e.g., "Jan 15", "2024/1/15", Unix timestamps).
+   * A date field keeps only the `date` of what is returned.
    *
    * @param input - Raw user input string
-   * @returns ISO 8601 string (e.g., "2024-01-15") or null if invalid
+   * @returns The parsed value, or null if the input is invalid
    *
    * @example
    * // Support Unix timestamp input
    * parse: (input) => {
    *   const ts = Number(input);
-   *   if (!isNaN(ts)) return new Date(ts).toISOString();
-   *   return null;
+   *   if (Number.isNaN(ts)) return null;
+   *   return fromInstant(new Date(ts), 'Z');
    * }
    */
-  parse?: (input: string) => string | null;
+  parse?: (input: string) => DateTimeValue | null;
 
   /**
-   * Converts ISO 8601 string to display string for UI.
+   * Converts a parsed value to the display string for UI.
    *
-   * @param isoValue - ISO 8601 string from internal storage
+   * @param value - The value read from the token
    * @returns Human-readable display string
    *
    * @example
    * // Display as "January 15, 2024"
-   * format: (iso) => {
-   *   const date = parseISO(iso);
-   *   return format(date, 'MMMM d, yyyy');
-   * }
+   * format: (value) => format(parseISO(value.date), 'MMMM d, yyyy')
    */
-  format?: (isoValue: string) => string;
+  format?: (value: DateTimeValue) => string;
 }
 
 export interface DateTimeFormatConfig extends DateFormatConfig {

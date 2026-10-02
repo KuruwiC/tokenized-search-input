@@ -1,120 +1,151 @@
 /**
- * Unit tests for date and datetime value normalization.
+ * Unit tests for the stored form of a typed date or datetime.
  */
 import { describe, expect, it } from 'vitest';
-import { normalizeDateTimeValue, normalizeDateValue } from '../../pickers/date-format';
+import { normalizeDateFieldValue } from '../../pickers/date-format';
+import type { DateTimeValue } from '../../pickers/date-time-value';
+import type { DateFieldDefinition, DateTimeFieldDefinition } from '../../types';
 
-describe('normalizeDateValue', () => {
-  it('normalizes valid ISO date with single-digit month/day', () => {
-    expect(normalizeDateValue('2024-3-5')).toBe('2024-03-05');
+const dateField = (formatConfig?: DateFieldDefinition['formatConfig']): DateFieldDefinition => ({
+  key: 'due',
+  label: 'Due',
+  type: 'date',
+  operators: ['is'],
+  formatConfig,
+});
+
+const datetimeField = (extra: Partial<DateTimeFieldDefinition> = {}): DateTimeFieldDefinition => ({
+  key: 'at',
+  label: 'At',
+  type: 'datetime',
+  operators: ['is'],
+  ...extra,
+});
+
+describe('normalizeDateFieldValue for a date field', () => {
+  it('returns an already normalized date unchanged', () => {
+    expect(normalizeDateFieldValue('2024-03-05', dateField())).toBe('2024-03-05');
   });
 
-  it('normalizes valid ISO date with single-digit month', () => {
-    expect(normalizeDateValue('2024-3-15')).toBe('2024-03-15');
+  it('leaves loose and partial dates as typed', () => {
+    expect(normalizeDateFieldValue('2024-3-5', dateField())).toBe('2024-3-5');
+    expect(normalizeDateFieldValue('2024', dateField())).toBe('2024');
+    expect(normalizeDateFieldValue('2024-03', dateField())).toBe('2024-03');
   });
 
-  it('normalizes valid ISO date with single-digit day', () => {
-    expect(normalizeDateValue('2024-03-5')).toBe('2024-03-05');
+  it('leaves a date that does not exist as typed', () => {
+    expect(normalizeDateFieldValue('2024-02-31', dateField())).toBe('2024-02-31');
   });
 
-  it('returns already normalized date unchanged', () => {
-    expect(normalizeDateValue('2024-03-05')).toBe('2024-03-05');
+  it('returns an invalid string unchanged', () => {
+    expect(normalizeDateFieldValue('not-a-date', dateField())).toBe('not-a-date');
   });
 
-  it('returns invalid date string unchanged', () => {
-    expect(normalizeDateValue('not-a-date')).toBe('not-a-date');
+  it('returns an empty string unchanged', () => {
+    expect(normalizeDateFieldValue('', dateField())).toBe('');
   });
 
-  it('normalizes partial date (year only) to full date', () => {
-    // Year-only is parseable and gets normalized to Jan 1
-    expect(normalizeDateValue('2024')).toBe('2024-01-01');
+  it('trims whitespace', () => {
+    expect(normalizeDateFieldValue('  2024-03-05 ', dateField())).toBe('2024-03-05');
+    expect(normalizeDateFieldValue('  nope ', dateField())).toBe('nope');
   });
 
-  it('normalizes partial date (year-month) to full date', () => {
-    // Year-month is parseable and gets normalized to day 1
-    expect(normalizeDateValue('2024-03')).toBe('2024-03-01');
-  });
-
-  it('returns empty string unchanged', () => {
-    expect(normalizeDateValue('')).toBe('');
-  });
-
-  it('uses custom parse config', () => {
-    const config = {
-      // Custom parse: accepts dd/MM/yyyy format and returns ISO
-      parse: (input: string) => {
+  it('stores what a custom parse returns', () => {
+    const field = dateField({
+      parse: (input) => {
         const match = input.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
         if (!match) return null;
         const [, day, month, year] = match;
-        return `${year}-${month?.padStart(2, '0')}-${day?.padStart(2, '0')}`;
+        return { date: `${year}-${month?.padStart(2, '0')}-${day?.padStart(2, '0')}` };
       },
-    };
-    expect(normalizeDateValue('5/3/2024', config)).toBe('2024-03-05');
+    });
+    expect(normalizeDateFieldValue('5/3/2024', field)).toBe('2024-03-05');
+    expect(normalizeDateFieldValue('nope', field)).toBe('nope');
+  });
+
+  it('drops the time a custom parse returns for a date field', () => {
+    const value: DateTimeValue = { date: '2024-03-05', time: '14:30', offset: 'Z' };
+    expect(normalizeDateFieldValue('x', dateField({ parse: () => value }))).toBe('2024-03-05');
+  });
+
+  it('leaves the input as typed when a custom parse throws', () => {
+    const field = dateField({
+      parse: () => {
+        throw new Error('boom');
+      },
+    });
+    expect(normalizeDateFieldValue('2024-03-05', field)).toBe('2024-03-05');
   });
 });
 
-describe('normalizeDateTimeValue', () => {
-  it('normalizes valid ISO datetime', () => {
-    // Input parsed as local time, output formatted with local timezone offset
-    const result = normalizeDateTimeValue('2024-03-05T14:30:00');
-    // The output should start with the correct date/time but have timezone
-    expect(result).toMatch(/^2024-03-05T14:30:00[+-]\d{2}:\d{2}$/);
+describe('normalizeDateFieldValue for a datetime field', () => {
+  it('keeps the time of a value whose offset has no colon (a)', () => {
+    expect(normalizeDateFieldValue('2024-03-05T14:30:00+0900', datetimeField())).toBe(
+      '2024-03-05T14:30:00+09:00'
+    );
   });
 
-  it('preserves UTC mode with Z suffix', () => {
-    expect(normalizeDateTimeValue('2024-03-05T14:30:00Z')).toBe('2024-03-05T14:30:00Z');
+  it('keeps an offset as it is', () => {
+    expect(normalizeDateFieldValue('2024-03-05T14:30:00+09:00', datetimeField())).toBe(
+      '2024-03-05T14:30:00+09:00'
+    );
+    expect(normalizeDateFieldValue('2024-03-05T14:30:00-05:30', datetimeField())).toBe(
+      '2024-03-05T14:30:00-05:30'
+    );
   });
 
-  it('preserves UTC mode with +00:00 suffix', () => {
-    expect(normalizeDateTimeValue('2024-03-05T14:30:00+00:00')).toBe('2024-03-05T14:30:00Z');
+  it('keeps UTC as Z', () => {
+    expect(normalizeDateFieldValue('2024-03-05T14:30:00Z', datetimeField())).toBe(
+      '2024-03-05T14:30:00Z'
+    );
+    expect(normalizeDateFieldValue('2024-03-05T14:30:00+00:00', datetimeField())).toBe(
+      '2024-03-05T14:30:00Z'
+    );
   });
 
-  it('normalizes datetime with non-local timezone to local timezone', () => {
-    // Non-UTC timezone values are converted to local timezone during normalization
-    // because JavaScript Date objects don't preserve original timezone
-    const input = '2024-03-05T14:30:00+09:00';
-    const result = normalizeDateTimeValue(input);
-    // Output should be valid datetime with timezone offset
-    expect(result).toMatch(/^2024-03-05T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/);
+  it('keeps milliseconds', () => {
+    expect(normalizeDateFieldValue('2024-03-05T14:30:45.123Z', datetimeField())).toBe(
+      '2024-03-05T14:30:45.123Z'
+    );
   });
 
-  it('returns invalid datetime string unchanged', () => {
-    expect(normalizeDateTimeValue('not-a-datetime')).toBe('not-a-datetime');
+  it('writes a space between date and time as T', () => {
+    expect(normalizeDateFieldValue('2024-03-05 14:30', datetimeField())).toBe('2024-03-05T14:30');
   });
 
-  it('preserves date-only format by default (allowDateOnly: true)', () => {
-    const result = normalizeDateTimeValue('2024-03-05');
-    expect(result).toBe('2024-03-05');
+  it('does not add the local offset to a time without one', () => {
+    expect(normalizeDateFieldValue('2024-03-05T14:30:00', datetimeField())).toBe(
+      '2024-03-05T14:30:00'
+    );
   });
 
-  it('converts date-only to full datetime when allowDateOnly is false', () => {
-    const result = normalizeDateTimeValue('2024-03-05', undefined, false);
-    expect(result).toMatch(/^2024-03-05T00:00:00[+-]\d{2}:\d{2}$/);
+  it('returns an invalid datetime unchanged', () => {
+    expect(normalizeDateFieldValue('not-a-datetime', datetimeField())).toBe('not-a-datetime');
+    expect(normalizeDateFieldValue('2024-03-05T14', datetimeField())).toBe('2024-03-05T14');
   });
 
-  it('returns empty string unchanged', () => {
-    expect(normalizeDateTimeValue('')).toBe('');
+  it('returns an empty string unchanged', () => {
+    expect(normalizeDateFieldValue('', datetimeField())).toBe('');
   });
 
-  describe('timeRequired field config', () => {
-    it('preserves date-only when timeRequired is false', () => {
-      expect(normalizeDateTimeValue('2024-03-05', undefined, true)).toBe('2024-03-05');
+  describe('timeRequired', () => {
+    it('keeps a date alone when time is optional', () => {
+      expect(normalizeDateFieldValue('2024-03-05', datetimeField())).toBe('2024-03-05');
+      expect(normalizeDateFieldValue('2024-03-05', datetimeField({ timeRequired: false }))).toBe(
+        '2024-03-05'
+      );
     });
 
-    it('preserves date-only when timeRequired is undefined (default)', () => {
-      expect(normalizeDateTimeValue('2024-03-05')).toBe('2024-03-05');
+    it('adds local midnight to a date when time is required', () => {
+      const result = normalizeDateFieldValue('2024-03-05', datetimeField({ timeRequired: true }));
+      expect(result).toMatch(/^2024-03-05T00:00:00(Z|[+-]\d{2}:\d{2})$/);
     });
 
-    it('converts date-only to datetime when timeRequired is true', () => {
-      const result = normalizeDateTimeValue('2024-03-05', undefined, false);
-      expect(result).toMatch(/^2024-03-05T00:00:00[+-]\d{2}:\d{2}$/);
-    });
-
-    it('datetime values are unaffected by timeRequired flag', () => {
-      const datetimeInput = '2024-03-05T14:30:00+09:00';
-      const withTimeOptional = normalizeDateTimeValue(datetimeInput, undefined, true);
-      const withTimeRequired = normalizeDateTimeValue(datetimeInput, undefined, false);
-      expect(withTimeOptional).toBe(withTimeRequired);
+    it('does not change a value that has a time', () => {
+      const input = '2024-03-05T14:30:00+09:00';
+      expect(normalizeDateFieldValue(input, datetimeField({ timeRequired: true }))).toBe(
+        normalizeDateFieldValue(input, datetimeField())
+      );
     });
   });
 });

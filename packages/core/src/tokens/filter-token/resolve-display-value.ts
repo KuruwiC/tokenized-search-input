@@ -1,3 +1,5 @@
+import { parseDateFieldValue } from '../../pickers/date-format';
+import type { DateTimeValue } from '../../pickers/date-time-value';
 import type { TokenDisplayContent } from '../../plugins/shared/meta';
 import type {
   DateFormatConfig,
@@ -13,9 +15,9 @@ export interface ResolveDisplayValueInput {
   /** Display data that describes the token's current value, if any */
   display: TokenDisplayContent | undefined;
   /** Date display formatter (injected for testability) */
-  getDateDisplayValue?: (value: string, config?: DateFormatConfig) => string;
+  getDateDisplayValue?: (value: DateTimeValue, config?: DateFormatConfig) => string;
   /** DateTime display formatter (injected for testability) */
-  getDateTimeDisplayValue?: (value: string, config?: DateTimeFormatConfig) => string;
+  getDateTimeDisplayValue?: (value: DateTimeValue, config?: DateTimeFormatConfig) => string;
 }
 
 export interface ResolveDisplayValueResult {
@@ -25,45 +27,40 @@ export interface ResolveDisplayValueResult {
 }
 
 /**
+ * The text of a date or datetime token, or `null` when the field is not a date field or
+ * no formatter was given. A value that is not a valid date is shown as typed.
+ */
+function dateText(input: ResolveDisplayValueInput): string | null {
+  const { rawValue, fieldDef, getDateDisplayValue, getDateTimeDisplayValue } = input;
+  if (fieldDef?.type === 'date' && getDateDisplayValue) {
+    const parsed = parseDateFieldValue(rawValue, fieldDef);
+    return parsed.ok ? getDateDisplayValue(parsed.value, fieldDef.formatConfig) : rawValue;
+  }
+  if (fieldDef?.type === 'datetime' && getDateTimeDisplayValue) {
+    const parsed = parseDateFieldValue(rawValue, fieldDef);
+    return parsed.ok ? getDateTimeDisplayValue(parsed.value, fieldDef.formatConfig) : rawValue;
+  }
+  return null;
+}
+
+/**
  * Priority: token display data > enumValues > date/datetime formatting > raw value
  */
 export function resolveDisplayValue(input: ResolveDisplayValueInput): ResolveDisplayValueResult {
-  const { rawValue, fieldDef, display, getDateDisplayValue, getDateTimeDisplayValue } = input;
+  const { rawValue, fieldDef, display } = input;
 
-  const isEnumField = fieldDef?.type === 'enum';
-  const isDateField = fieldDef?.type === 'date';
-  const isDateTimeField = fieldDef?.type === 'datetime';
-
-  // 1. Display data takes precedence (custom suggestions, async resolvers)
+  // 1. Display data takes precedence (custom suggestions, async resolvers). For
+  // date/datetime it still adds custom startContent/endContent to the formatted text.
   if (display && (display.displayValue || display.startContent || display.endContent)) {
-    // For date/datetime, use formatted display but allow custom startContent/endContent
-    if (isDateField && fieldDef?.type === 'date' && getDateDisplayValue) {
-      const dateDisplay =
-        display.displayValue ?? getDateDisplayValue(rawValue, fieldDef.formatConfig);
-      return {
-        valueDisplayString: dateDisplay,
-        startContent: display.startContent ?? undefined,
-        endContent: display.endContent ?? undefined,
-      };
-    }
-    if (isDateTimeField && fieldDef?.type === 'datetime' && getDateTimeDisplayValue) {
-      const dateTimeDisplay =
-        display.displayValue ?? getDateTimeDisplayValue(rawValue, fieldDef.formatConfig);
-      return {
-        valueDisplayString: dateTimeDisplay,
-        startContent: display.startContent ?? undefined,
-        endContent: display.endContent ?? undefined,
-      };
-    }
     return {
-      valueDisplayString: display.displayValue ?? rawValue,
+      valueDisplayString: display.displayValue ?? dateText(input) ?? rawValue,
       startContent: display.startContent ?? undefined,
       endContent: display.endContent ?? undefined,
     };
   }
 
   // 2. enumValues lookup (for enum fields with static configuration)
-  if (isEnumField && fieldDef?.type === 'enum') {
+  if (fieldDef?.type === 'enum') {
     if (fieldDef.enumValues && fieldDef.enumValues.length > 0) {
       const matched = fieldDef.enumValues.find((ev: EnumValue) => getEnumValue(ev) === rawValue);
       if (matched) {
@@ -78,21 +75,9 @@ export function resolveDisplayValue(input: ResolveDisplayValueInput): ResolveDis
   }
 
   // 3. date/datetime formatting
-  if (isDateField && fieldDef?.type === 'date' && getDateDisplayValue) {
-    const dateDisplay = getDateDisplayValue(rawValue, fieldDef.formatConfig);
-    return {
-      valueDisplayString: dateDisplay,
-      startContent: undefined,
-      endContent: undefined,
-    };
-  }
-  if (isDateTimeField && fieldDef?.type === 'datetime' && getDateTimeDisplayValue) {
-    const dateTimeDisplay = getDateTimeDisplayValue(rawValue, fieldDef.formatConfig);
-    return {
-      valueDisplayString: dateTimeDisplay,
-      startContent: undefined,
-      endContent: undefined,
-    };
+  const formatted = dateText(input);
+  if (formatted !== null) {
+    return { valueDisplayString: formatted, startContent: undefined, endContent: undefined };
   }
 
   // 4. Fallback to raw value

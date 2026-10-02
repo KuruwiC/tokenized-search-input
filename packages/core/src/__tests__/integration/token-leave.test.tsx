@@ -15,18 +15,18 @@ import {
 } from '../../editor/tokenized-search-input';
 import { getFocusedToken } from '../../plugins/token-focus-plugin';
 import type { FieldDefinition, QuerySnapshotFilterToken } from '../../types';
-import { dateField, statusField } from '../fixtures/fields';
+import { datetimeField, statusField } from '../fixtures/fields';
 
 afterEach(() => {
   cleanup();
 });
 
-const lockedDate: FieldDefinition = { ...dateField, immutable: true };
+const lockedDatetime: FieldDefinition = { ...datetimeField, immutable: true };
 
 function renderInput(props: Partial<TokenizedSearchInputProps> = {}) {
   const ref = createRef<TokenizedSearchInputRef>();
   const rendered = render(
-    <TokenizedSearchInput ref={ref} fields={[statusField, dateField]} {...props} />
+    <TokenizedSearchInput ref={ref} fields={[statusField, datetimeField]} {...props} />
   );
   return { ref: ref as RefObject<TokenizedSearchInputRef>, ...rendered };
 }
@@ -55,16 +55,16 @@ function tokenAttrs(editor: Editor, key: string): Record<string, unknown> | unde
 
 describe('Leaving a token', () => {
   describe('confirming', () => {
-    it('confirms a typed date with Enter in one change, normalised and committed', async () => {
+    it('confirms a typed datetime with Enter in one change, normalised and committed', async () => {
       const user = userEvent.setup();
       const onChange = vi.fn();
-      const { ref } = renderInput({ fields: [statusField, lockedDate], onChange });
+      const { ref } = renderInput({ fields: [statusField, lockedDatetime], onChange });
       const editor = await editorOf(ref);
       await user.click(screen.getByRole('combobox'));
-      await user.keyboard('created:');
+      await user.keyboard('updated:');
       await waitFor(() => expect(getFocusedToken(editor.state)).not.toBeNull());
       const input = document.activeElement as HTMLInputElement;
-      await user.type(input, '2024-1-6');
+      await user.type(input, '2024-01-06T10:30:00+0900');
 
       onChange.mockClear();
       input.focus();
@@ -72,7 +72,10 @@ describe('Leaving a token', () => {
 
       expect(getFocusedToken(editor.state)).toBeNull();
       expect(onChange).toHaveBeenCalledTimes(1);
-      expect(tokenAttrs(editor, 'created')).toMatchObject({ value: '2024-01-06', immutable: true });
+      expect(tokenAttrs(editor, 'updated')).toMatchObject({
+        value: '2024-01-06T10:30:00+09:00',
+        immutable: true,
+      });
     });
 
     async function selectValue(how: 'enter' | 'click') {
@@ -147,53 +150,55 @@ describe('Leaving a token', () => {
     });
 
     it('leaves the focused token, committing it, when the editor becomes disabled', async () => {
-      const { ref, rerender } = renderInput({ defaultValue: 'created:gt:2024-1-6' });
-      const editor = await editorOf(ref);
-      const [created] = filterTokens(ref);
-      act(() => {
-        editor.commands.focusFilterToken(created.id, 'end');
+      const { ref, rerender } = renderInput({
+        defaultValue: 'updated:gt:2024-01-06T10:30:00+0900',
       });
-      expect(getFocusedToken(editor.state)?.id).toBe(created.id);
+      const editor = await editorOf(ref);
+      const [updated] = filterTokens(ref);
+      act(() => {
+        editor.commands.focusFilterToken(updated.id, 'end');
+      });
+      expect(getFocusedToken(editor.state)?.id).toBe(updated.id);
 
       rerender(
         <TokenizedSearchInput
           ref={ref}
-          fields={[statusField, dateField]}
-          defaultValue="created:gt:2024-1-6"
+          fields={[statusField, datetimeField]}
+          defaultValue="updated:gt:2024-01-06T10:30:00+0900"
           disabled
         />
       );
 
       await waitFor(() => expect(getFocusedToken(editor.state)).toBeNull());
-      expect(ref.current?.getValue()).toBe('created:gt:2024-01-06');
+      expect(ref.current?.getValue()).toBe('updated:gt:2024-01-06T10:30:00+09:00');
     });
   });
 
   describe('when focus moves to another token without a press', () => {
     it('commits the token a typed open quote moves focus away from', async () => {
       const { ref } = renderInput({
-        defaultValue: 'created:gt:2024-1-6',
+        defaultValue: 'updated:gt:2024-01-06T10:30:00+0900',
         freeTextMode: 'tokenize',
       });
       const editor = await editorOf(ref);
-      const [created] = filterTokens(ref);
+      const [updated] = filterTokens(ref);
       act(() => {
-        editor.commands.focusFilterToken(created.id, 'end');
+        editor.commands.focusFilterToken(updated.id, 'end');
       });
 
       act(() => {
         editor.commands.insertContentAt(editor.state.doc.content.size - 1, ' "abc');
       });
 
-      expect(getFocusedToken(editor.state)?.id).not.toBe(created.id);
+      expect(getFocusedToken(editor.state)?.id).not.toBe(updated.id);
       expect(getFocusedToken(editor.state)).not.toBeNull();
-      expect(tokenAttrs(editor, 'created')?.value).toBe('2024-01-06');
+      expect(tokenAttrs(editor, 'updated')?.value).toBe('2024-01-06T10:30:00+09:00');
     });
 
     it('commits the token undo moves focus away from to a restored empty token', async () => {
-      const { ref } = renderInput({ defaultValue: 'created:gt:2024-1-6' });
+      const { ref } = renderInput({ defaultValue: 'updated:gt:2024-01-06T10:30:00+0900' });
       const editor = await editorOf(ref);
-      const [created] = filterTokens(ref);
+      const [updated] = filterTokens(ref);
       const end = () => editor.state.doc.content.size - 1;
       act(() => {
         editor.commands.insertContentAt(end(), {
@@ -207,7 +212,7 @@ describe('Leaving a token', () => {
       });
       expect(tokenAttrs(editor, 'status')).toBeUndefined();
       act(() => {
-        editor.commands.focusFilterToken(created.id, 'end');
+        editor.commands.focusFilterToken(updated.id, 'end');
       });
 
       act(() => {
@@ -215,7 +220,7 @@ describe('Leaving a token', () => {
       });
 
       expect(getFocusedToken(editor.state)?.id).toBe(tokenAttrs(editor, 'status')?.id);
-      expect(tokenAttrs(editor, 'created')?.value).toBe('2024-01-06');
+      expect(tokenAttrs(editor, 'updated')?.value).toBe('2024-01-06T10:30:00+09:00');
     });
   });
 });

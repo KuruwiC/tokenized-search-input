@@ -1,6 +1,6 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Transaction } from '@tiptap/pm/state';
-import { normalizeDateTimeValue, normalizeDateValue } from '../../pickers/date-format';
+import { normalizeDateFieldValue } from '../../pickers/date-format';
 import type { FieldDefinition } from '../../types';
 import { resolveStoredValue } from '../../utils/enum-value';
 import { findTokenById } from '../../utils/find-token';
@@ -125,17 +125,16 @@ export function applyTokenAction(
   return true;
 }
 
-/** The stored form of a value typed for `field`: dates are kept in ISO form. */
+/** The stored form of a value typed for `field`: dates are kept in their canonical form. */
 function storedForm(field: FieldDefinition | null, value: string): string {
-  if (field?.type === 'date') return normalizeDateValue(value, field.formatConfig);
-  if (field?.type === 'datetime') {
-    return normalizeDateTimeValue(value, field.formatConfig, !field.timeRequired);
+  if (field?.type === 'date' || field?.type === 'datetime') {
+    return normalizeDateFieldValue(value, field);
   }
   return value;
 }
 
 /**
- * Commits a filter token the user finished editing: a typed date is stored in its ISO
+ * Commits a filter token the user finished editing: a typed date is stored in its canonical
  * form, and a token of an immutable field that has a value becomes immutable.
  *
  * @returns whether the token changed

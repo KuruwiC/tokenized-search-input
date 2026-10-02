@@ -144,3 +144,9 @@ export function fromInstant(instant: Date, offset: DateTimeOffset): DateTimeValu
 export function localOffsetAt(at: Date): DateTimeOffset {
   return offsetOfMinutes(-at.getTimezoneOffset());
 }
+
+/** Midnight at the start of `date` in the local time zone, with the offset the zone has then. */
+export function localMidnight(date: string): DateTimeValue {
+  const time = '00:00:00';
+  return { date, time, offset: localOffsetAt(toInstant({ date, time })) };
+}
