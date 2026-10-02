@@ -2,7 +2,7 @@
  * Integration tests for the requests of custom suggestions: the pagination that lives in the
  * suggestion state, the timers of a request, and what selecting a suggestion writes.
  */
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { closeHistory } from '@tiptap/pm/history';
 import { createRef } from 'react';
@@ -15,10 +15,17 @@ import { getSuggestionState } from '../../plugins/suggestion-plugin';
 import type {
   CustomSuggestion,
   CustomSuggestionConfig,
+  FieldDefinition,
   SuggestionErrorContext,
   SuggestionsConfig,
 } from '../../types';
-import { customOptions, fields, renderInput } from '../helpers/suggestion-layer';
+import {
+  customOptions,
+  fields,
+  observeIntersections,
+  page,
+  renderInput,
+} from '../helpers/suggestion-layer';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -27,38 +34,6 @@ afterEach(() => {
 });
 
 describe('pagination of custom suggestions', () => {
-  function observeIntersections() {
-    const observed = new Set<IntersectionObserverCallback>();
-    class ControlledObserver {
-      private readonly callback: IntersectionObserverCallback;
-      constructor(callback: IntersectionObserverCallback) {
-        this.callback = callback;
-      }
-      observe() {
-        observed.add(this.callback);
-      }
-      unobserve() {}
-      disconnect() {
-        observed.delete(this.callback);
-      }
-      takeRecords() {
-        return [];
-      }
-    }
-    vi.stubGlobal('IntersectionObserver', ControlledObserver);
-    return () => {
-      for (const callback of [...observed]) {
-        callback(
-          [{ isIntersecting: true } as IntersectionObserverEntry],
-          {} as IntersectionObserver
-        );
-      }
-    };
-  }
-
-  const page = (names: string[]): CustomSuggestion[] =>
-    names.map((label) => ({ label, tokens: [{ key: 'owner', operator: 'is', value: label }] }));
-
   it('starts at offset 0 when the suggestions open again after an Escape', async () => {
     const scrollToEnd = observeIntersections();
     const user = userEvent.setup();
@@ -286,5 +261,189 @@ describe('selecting a custom suggestion', () => {
     await waitFor(() =>
       expect(ref.current?.getValue()).toBe(value ? `status:is:a ${value}` : 'status:is:a')
     );
+  });
+});
+
+describe('closing the suggestions while a request is pending', () => {
+  function pendingSuggest() {
+    let resolve: (suggestions: CustomSuggestion[]) => void = () => {};
+    const suggest = vi.fn(
+      () =>
+        new Promise<CustomSuggestion[]>((done) => {
+          resolve = done;
+        })
+    );
+    return { suggest, resolve: (value: CustomSuggestion[]) => resolve(value) };
+  }
+
+  it('does not open the suggestions again when the response comes after an Escape', async () => {
+    const user = userEvent.setup();
+    const { suggest, resolve } = pendingSuggest();
+    const { editor } = await renderInput({
+      suggestions: { custom: { displayMode: 'replace', debounceMs: 0, suggest } },
+    });
+    await user.click(screen.getByRole('combobox', { name: 'Search query input' }));
+    await screen.findByRole('listbox');
+    await waitFor(() => expect(suggest).toHaveBeenCalled());
+
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument());
+    await act(async () => {
+      resolve(customOptions);
+    });
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(getSuggestionState(editor.state)?.type).toBeNull();
+  });
+
+  it('does not open the suggestions when the response comes after the focus left', async () => {
+    const user = userEvent.setup();
+    const { suggest, resolve } = pendingSuggest();
+    const { editor } = await renderInput({
+      suggestions: { custom: { displayMode: 'replace', debounceMs: 0, suggest } },
+    });
+    await user.click(screen.getByRole('combobox', { name: 'Search query input' }));
+    await waitFor(() => expect(suggest).toHaveBeenCalled());
+
+    await user.click(document.body);
+    await waitFor(() => expect(getSuggestionState(editor.state)?.dismissed).toBe(true));
+    await act(async () => {
+      resolve(customOptions);
+    });
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(getSuggestionState(editor.state)?.type).toBeNull();
+  });
+
+  it('does not add a page that arrives after an Escape', async () => {
+    const scrollToEnd = observeIntersections();
+    const user = userEvent.setup();
+    let resolve: (value: { suggestions: CustomSuggestion[]; hasMore: boolean }) => void = () => {};
+    const { editor } = await renderInput({
+      suggestions: {
+        custom: {
+          displayMode: 'replace',
+          debounceMs: 0,
+          suggest: async () => ({ suggestions: page(['one']), hasMore: true }),
+          loadMore: () =>
+            new Promise((done) => {
+              resolve = done;
+            }),
+        },
+      },
+    });
+    await user.click(screen.getByRole('combobox', { name: 'Search query input' }));
+    await screen.findByRole('option', { name: /one/ });
+    act(scrollToEnd);
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument());
+
+    await act(async () => {
+      resolve({ suggestions: page(['late']), hasMore: false });
+    });
+
+    expect(getSuggestionState(editor.state)?.type).toBeNull();
+    expect(screen.queryByRole('option', { name: /late/ })).not.toBeInTheDocument();
+  });
+
+  it('leaves no timer behind once the suggestions are closed', async () => {
+    async function timersAfterEscape(suggestions?: SuggestionsConfig) {
+      vi.useFakeTimers();
+      const ref = createRef<TokenizedSearchInputRef>();
+      await act(async () => {
+        render(<TokenizedSearchInput ref={ref} fields={fields} suggestions={suggestions} />);
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      const editor = ref.current?.getEditor();
+      if (!editor) throw new Error('editor not created');
+      act(() => {
+        editor.commands.focus();
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+      fireEvent.keyDown(editor.view.dom, { key: 'Escape' });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      const count = vi.getTimerCount();
+      cleanup();
+      vi.useRealTimers();
+      return count;
+    }
+
+    const baseline = await timersAfterEscape();
+    const suggest = vi.fn(() => new Promise<CustomSuggestion[]>(() => {}));
+    const withRequest = await timersAfterEscape({ custom: { displayMode: 'replace', suggest } });
+
+    expect(suggest).toHaveBeenCalled();
+    expect(withRequest).toBe(baseline);
+  });
+});
+
+describe('selecting a custom suggestion with onSelect', () => {
+  const tokenField: FieldDefinition = {
+    key: 'status',
+    label: 'Status',
+    type: 'string',
+    operators: ['is'],
+  };
+
+  it('removes the typed text although onSelect moved the selection', async () => {
+    const user = userEvent.setup();
+    const { ref, editor } = await renderInput({
+      fields: [tokenField],
+      defaultValue: 'status:is:a',
+      suggestions: {
+        custom: {
+          displayMode: 'replace',
+          debounceMs: 0,
+          suggest: () => customOptions,
+          onSelect: () => {
+            editor.commands.setTextSelection(1);
+            return true;
+          },
+        },
+      },
+    });
+    act(() => {
+      editor.commands.focus('end');
+      editor.commands.insertContent(' fir');
+    });
+    await user.click(await screen.findByRole('option', { name: /First/ }));
+
+    await waitFor(() => expect(ref.current?.getValue()).toBe('status:is:a'));
+  });
+
+  it('removes the typed text and the token onSelect deletes in one undo step', async () => {
+    const user = userEvent.setup();
+    const { ref, editor } = await renderInput({
+      fields: [tokenField],
+      defaultValue: 'status:is:a',
+      suggestions: {
+        custom: {
+          displayMode: 'replace',
+          debounceMs: 0,
+          suggest: () => customOptions,
+          onSelect: (_suggestion, { existingTokens, deleteToken }) => {
+            deleteToken(existingTokens[0].id);
+            return true;
+          },
+        },
+      },
+    });
+    act(() => {
+      editor.commands.focus('end');
+      editor.commands.insertContent(' fir');
+      editor.view.dispatch(closeHistory(editor.state.tr));
+    });
+    await user.click(await screen.findByRole('option', { name: /First/ }));
+    await waitFor(() => expect(ref.current?.getValue()).toBe(''));
+
+    act(() => {
+      editor.commands.undo();
+    });
+
+    expect(ref.current?.getValue()).toBe('status:is:a fir');
   });
 });

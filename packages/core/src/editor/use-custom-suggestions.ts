@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/core';
+import type { Transaction } from '@tiptap/pm/state';
 import { type MutableRefObject, useCallback, useEffect, useRef } from 'react';
 import { getEditorContext } from '../extensions/editor-context';
 import type { TokenDisplayContent } from '../plugins/shared/meta';
@@ -87,6 +88,15 @@ function startRequest(ref: MutableRefObject<AbortController | null>): AbortContr
   return controller;
 }
 
+/** Whether suggestions for the text may be shown: it is being typed in, and not dismissed. */
+function canSuggest(editor: Editor): boolean {
+  return (
+    canShowCustomSuggestion(editor.state) &&
+    editor.isFocused &&
+    !isSuggestionDismissed(editor.state)
+  );
+}
+
 function normalizeResult(result: Awaited<SuggestFnReturn>): CustomSuggestionResult {
   if (Array.isArray(result)) {
     return { suggestions: result, hasMore: false };
@@ -142,53 +152,82 @@ export function useCustomSuggestions(
   const suggestRequestRef = useRef<AbortController | null>(null);
   const loadMoreRequestRef = useRef<AbortController | null>(null);
 
-  const cancelSuggestRequest = useCallback(() => {
+  const cancelRequests = useCallback(() => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
     }
     suggestRequestRef.current?.abort();
     suggestRequestRef.current = null;
+    loadMoreRequestRef.current?.abort();
+    loadMoreRequestRef.current = null;
   }, []);
 
+  useEffect(() => cancelRequests, [cancelRequests]);
+
+  // A suggestion that closes or is dismissed has no use for what is still on its way
   useEffect(() => {
-    return () => {
-      cancelSuggestRequest();
-      loadMoreRequestRef.current?.abort();
-      loadMoreRequestRef.current = null;
+    if (!editor) return;
+    let previous = getSuggestionState(editor.state);
+    const handleTransaction = () => {
+      const current = getSuggestionState(editor.state);
+      const closed = previous?.type != null && current?.type == null;
+      const dismissed = previous?.dismissed !== true && current?.dismissed === true;
+      previous = current;
+      if (closed || dismissed) cancelRequests();
     };
-  }, [cancelSuggestRequest]);
+    editor.on('transaction', handleTransaction);
+    return () => {
+      editor.off('transaction', handleTransaction);
+    };
+  }, [editor, cancelRequests]);
 
   const handleCustomSelect = useCallback(
     (suggestion: CustomSuggestion) => {
       if (!editor) return;
 
-      const handled =
-        config?.onSelect?.(suggestion, {
-          existingTokens: collectExistingTokensWithId(editor),
-          deleteToken: (id: string) => {
-            // Find token by ID and delete it
-            let found = false;
-            editor.state.doc.descendants((node, pos) => {
-              if (!found && isFilterToken(node) && node.attrs.id === id) {
-                editor
-                  .chain()
-                  .focus()
-                  .deleteRange({ from: pos, to: pos + node.nodeSize })
-                  .run();
-                found = true;
-                return false;
-              }
-              return true;
-            });
-          },
-        }) ?? false;
+      // The text typed for the query, which follows the changes onSelect makes
+      const segment = getPlainTextSegment(editor);
+      let typed: { from: number; to: number } | null =
+        segment.text.trim().length > 0 && segment.from >= 0 && segment.from < segment.to
+          ? { from: segment.from, to: segment.to }
+          : null;
+      const followChanges = ({ transaction }: { transaction: Transaction }) => {
+        if (!typed || !transaction.docChanged) return;
+        const from = transaction.mapping.map(typed.from, 1);
+        const to = transaction.mapping.map(typed.to, -1);
+        typed = from < to ? { from, to } : null;
+      };
 
-      // The text typed for the query goes in the same step as the tokens that replace it
-      const { text, from, to } = getPlainTextSegment(editor);
+      // Tokens onSelect deletes go with the rest, so that one undo brings everything back
+      const doomedTokenIds: string[] = [];
+      let handled = false;
+      if (config?.onSelect) {
+        editor.on('transaction', followChanges);
+        try {
+          handled = config.onSelect(suggestion, {
+            existingTokens: collectExistingTokensWithId(editor),
+            deleteToken: (id: string) => {
+              doomedTokenIds.push(id);
+            },
+          });
+        } finally {
+          editor.off('transaction', followChanges);
+        }
+      }
+
+      const ranges: Array<{ from: number; to: number }> = typed ? [typed] : [];
+      editor.state.doc.descendants((node, pos) => {
+        if (isFilterToken(node) && doomedTokenIds.includes(node.attrs.id)) {
+          ranges.push({ from: pos, to: pos + node.nodeSize });
+        }
+        return true;
+      });
+
+      // Later ranges first, so that the earlier ones keep their positions
       let chain = editor.chain().focus();
-      if (text.trim().length > 0 && from >= 0 && from < to) {
-        chain = chain.deleteRange({ from, to });
+      for (const range of ranges.sort((a, b) => b.from - a.from)) {
+        chain = chain.deleteRange(range);
       }
       if (!handled) {
         for (const token of suggestion.tokens) {
@@ -213,18 +252,9 @@ export function useCustomSuggestions(
   const updateCustomSuggestions = useCallback(() => {
     if (!editor || !config) return;
 
-    const currentState = editor.state;
-
-    // Check basic guard conditions using shared guard function
-    if (!canShowCustomSuggestion(currentState)) {
-      cancelSuggestRequest();
-      return;
-    }
-
-    // Gate: not focused or dismissed. While a token is edited, DOM focus is in the
-    // token, not in the editor.
-    if (!editor.isFocused || isSuggestionDismissed(currentState)) {
-      cancelSuggestRequest();
+    // While a token is edited, DOM focus is in the token, not in the editor.
+    if (!canSuggest(editor)) {
+      cancelRequests();
       return;
     }
 
@@ -233,7 +263,7 @@ export function useCustomSuggestions(
 
     // Don't show suggestions when cursor is inside quotes
     if (isInsideQuotes(plainTextSegment)) {
-      cancelSuggestRequest();
+      cancelRequests();
       return;
     }
 
@@ -242,7 +272,7 @@ export function useCustomSuggestions(
     const query = plainTextSegment.trim();
 
     // A newer query supersedes the one waiting out its debounce or its response
-    cancelSuggestRequest();
+    cancelRequests();
     const { signal } = startRequest(suggestRequestRef);
 
     const debounceMs = config.debounceMs ?? DEFAULT_DEBOUNCE_MS;
@@ -263,7 +293,7 @@ export function useCustomSuggestions(
         );
         const rawResult = await withTimeout(suggestPromise, timeoutMs, signal);
 
-        if (signal.aborted || editor.isDestroyed) return;
+        if (signal.aborted || editor.isDestroyed || !canSuggest(editor)) return;
 
         // Normalize result to handle both array and object returns
         const result = normalizeResult(rawResult);
@@ -328,7 +358,7 @@ export function useCustomSuggestions(
         });
       }
     }, debounceMs);
-  }, [editor, config, cancelSuggestRequest]);
+  }, [editor, config, cancelRequests]);
 
   const loadMore = useCallback(async () => {
     if (!editor || !config?.loadMore) return;
