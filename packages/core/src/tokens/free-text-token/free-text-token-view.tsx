@@ -25,11 +25,12 @@ export const FreeTextTokenView: React.FC<NodeViewProps> = ({
   const handleValueChange = (newValue: string) => {
     const tr = editor.state.tr;
     // A space typed into an unquoted token turns it into a quoted one.
-    const changed = applyTokenAction(tr, id, {
-      type: 'setValue',
-      value: newValue,
-      quoted: quoted || newValue.includes(' '),
-    });
+    const changed = applyTokenAction(
+      tr,
+      id,
+      { type: 'setValue', value: newValue, quoted: quoted || newValue.includes(' ') },
+      editorContext
+    );
     if (changed) editor.view.dispatch(tr);
   };
 

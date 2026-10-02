@@ -11,6 +11,8 @@ import { getTokenMeta } from '../plugins/token-meta-plugin';
 import { applyTokenAction } from '../tokens/filter-token/token-actions';
 import { findTokenById } from '../utils/find-token';
 import { isFilterToken } from '../utils/node-predicates';
+import type { FieldResolutionSource } from '../utils/resolve-field';
+import { getEditorContext } from './editor-context';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -31,14 +33,19 @@ declare module '@tiptap/core' {
 }
 
 /** Applies a `TokenPatch` to the filter token with the given id. */
-export function applyTokenPatch(tr: Transaction, id: string, patch: TokenPatch): boolean {
+export function applyTokenPatch(
+  tr: Transaction,
+  id: string,
+  patch: TokenPatch,
+  source: FieldResolutionSource
+): boolean {
   const found = findTokenById(tr.doc, id);
   if (!found || !isFilterToken(found.node)) return false;
   if (patch.operator !== undefined) {
-    applyTokenAction(tr, id, { type: 'setOperator', operator: patch.operator });
+    applyTokenAction(tr, id, { type: 'setOperator', operator: patch.operator }, source);
   }
   if (patch.value !== undefined) {
-    applyTokenAction(tr, id, { type: 'setValue', value: patch.value });
+    applyTokenAction(tr, id, { type: 'setValue', value: patch.value }, source);
   }
   return true;
 }
@@ -105,6 +112,7 @@ export const TokenCommandsExtension = Extension.create({
   name: 'tokenCommands',
 
   addCommands() {
+    const editor = this.editor;
     return {
       replaceContent:
         (content) =>
@@ -115,7 +123,7 @@ export const TokenCommandsExtension = Extension.create({
       updateToken:
         (id, patch) =>
         ({ tr }) =>
-          applyTokenPatch(tr, id, patch),
+          applyTokenPatch(tr, id, patch, getEditorContext(editor)),
       deleteToken:
         (id) =>
         ({ tr }) =>

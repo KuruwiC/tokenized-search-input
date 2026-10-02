@@ -165,7 +165,7 @@ export function useTokenizedSearchInputRef(
       updateToken: (id: string, patch: TokenPatch) => {
         if (!editor) return;
         if (editor.isDestroyed) {
-          writePending(editor, (tr) => applyTokenPatch(tr, id, patch));
+          writePending(editor, (tr) => applyTokenPatch(tr, id, patch, getEditorContext(editor)));
           return;
         }
         editor.commands.updateToken(id, patch);

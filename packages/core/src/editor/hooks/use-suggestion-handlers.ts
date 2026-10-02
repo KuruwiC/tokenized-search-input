@@ -43,7 +43,7 @@ export function useSuggestionHandlers({
 
       // Single transaction: update value, close suggestion, and exit token
       const tr = editor.state.tr;
-      applyTokenAction(tr, node.attrs.id, { type: 'setValue', value });
+      applyTokenAction(tr, node.attrs.id, { type: 'setValue', value }, getEditorContext(editor));
       closeSuggestion(tr);
       exitTokenRight(editor, pos + node.nodeSize, tr);
     },
@@ -81,7 +81,9 @@ export function useSuggestionHandlers({
       }
 
       const tr = editor.state.tr;
-      if (applyTokenAction(tr, node.attrs.id, { type: 'setValue', value })) {
+      if (
+        applyTokenAction(tr, node.attrs.id, { type: 'setValue', value }, getEditorContext(editor))
+      ) {
         editor.view.dispatch(tr);
       }
     },
@@ -102,10 +104,7 @@ export function useSuggestionHandlers({
     if (pos !== null && pos !== undefined) {
       const node = tr.doc.nodeAt(pos);
       if (node && isFilterToken(node)) {
-        const fieldKey = node.attrs.key;
-        const fieldDef = getEditorContext(editor).fields.find((f) => f.key === fieldKey);
-
-        commitFilterToken(tr, node.attrs.id, fieldDef);
+        commitFilterToken(tr, node.attrs.id, getEditorContext(editor));
 
         exitTokenRight(editor, pos + node.nodeSize, tr);
         // Show field suggestions after exiting token for consistency

@@ -78,35 +78,22 @@ describe('validation presets', () => {
 
     const rule = RequireEnum.rule();
 
-    describe('case-insensitive exact match', () => {
-      it('accepts exact value match', () => {
-        const result = rule.validate(createContext('active'));
-        expect(result).toEqual([]);
+    describe('stored value', () => {
+      it('accepts an option value', () => {
+        expect(rule.validate(createContext('active'))).toEqual([]);
       });
 
-      it('accepts exact label match', () => {
-        const result = rule.validate(createContext('Active')) as Violation[];
-        expect(result).toEqual([]);
-      });
-
-      it('accepts case-insensitive value match', () => {
-        const result = rule.validate(createContext('ACTIVE')) as Violation[];
-        expect(result).toEqual([]);
-      });
-
-      it('accepts case-insensitive label match', () => {
-        const result = rule.validate(createContext('INACTIVE')) as Violation[];
-        expect(result).toEqual([]);
-      });
-
-      it('accepts label with spaces (case-insensitive)', () => {
-        const result = rule.validate(createContext('pending review')) as Violation[];
-        expect(result).toEqual([]);
-      });
-
-      it('accepts label with spaces (exact case)', () => {
-        const result = rule.validate(createContext('Pending Review')) as Violation[];
-        expect(result).toEqual([]);
+      // Values are stored as the option value, so a label or another case is not one.
+      it.each([
+        'Active',
+        'ACTIVE',
+        'INACTIVE',
+        'pending review',
+        'Pending Review',
+      ])('rejects %s, which is not an option value', (value) => {
+        const result = rule.validate(createContext(value));
+        expect(result).toHaveLength(1);
+        expect(result[0].reason).toBe('invalid-enum-value');
       });
     });
 
@@ -179,10 +166,9 @@ describe('validation presets', () => {
         expect(result).toEqual([]);
       });
 
-      it('accepts case-insensitive string value', () => {
+      it('rejects a string value in another case', () => {
         const ctx = createContext('LOW', [stringEnumField], 'priority');
-        const result = rule.validate(ctx) as Violation[];
-        expect(result).toEqual([]);
+        expect(rule.validate(ctx)).toHaveLength(1);
       });
 
       it('rejects partial string value', () => {

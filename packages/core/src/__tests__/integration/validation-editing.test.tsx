@@ -11,6 +11,7 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
+import { getEditorContext } from '../../extensions/editor-context';
 import { setTokenFocus } from '../../plugins/token-focus-plugin';
 import { applyTokenAction } from '../../tokens/filter-token/token-actions';
 import type { QuerySnapshotFilterToken, ValidationRule } from '../../types';
@@ -101,7 +102,12 @@ describe('Unique with onDuplicate reject', () => {
     const typed = { id: lastTokenId(editor) };
     act(() => {
       const tr = editor.state.tr;
-      applyTokenAction(tr, typed.id, { type: 'setValue', value: 'inactive' });
+      applyTokenAction(
+        tr,
+        typed.id,
+        { type: 'setValue', value: 'inactive' },
+        getEditorContext(editor)
+      );
       editor.view.dispatch(tr);
     });
     expect(filterTokens(ref)).toHaveLength(2);
@@ -121,7 +127,12 @@ describe('Unique with onDuplicate reject', () => {
     const typed = { id: lastTokenId(editor) };
     act(() => {
       const tr = editor.state.tr;
-      applyTokenAction(tr, typed.id, { type: 'setValue', value: 'inactive' });
+      applyTokenAction(
+        tr,
+        typed.id,
+        { type: 'setValue', value: 'inactive' },
+        getEditorContext(editor)
+      );
       editor.view.dispatch(tr);
     });
     act(() => editor.view.dispatch(closeHistory(editor.state.tr)));

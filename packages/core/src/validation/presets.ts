@@ -5,7 +5,7 @@ import type {
   ValidationToken,
   Violation,
 } from '../types';
-import { enumResolvers, getEnumValue, resolveEnumValue } from '../utils/enum-value';
+import { getEnumValue } from '../utils/enum-value';
 
 /** Which tokens a strategy deletes and which it only marks as invalid. */
 interface Outcome {
@@ -362,10 +362,8 @@ export const RequireEnum = {
           if (field?.type !== 'enum' || !field.enumValues) continue;
           if (!token.value) continue;
 
-          const resolver = field.valueResolver ?? enumResolvers.caseInsensitive;
-          const resolved = resolveEnumValue(field.enumValues, token.value, { resolver });
-
-          if (!field.enumValues.some((ev) => getEnumValue(ev) === resolved)) {
+          // Values are stored as the option value, so the stored value is what is checked.
+          if (!field.enumValues.some((ev) => getEnumValue(ev) === token.value)) {
             violations.push({
               ruleId,
               reason: 'invalid-enum-value',

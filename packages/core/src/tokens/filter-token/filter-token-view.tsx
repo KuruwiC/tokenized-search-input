@@ -19,7 +19,7 @@ import {
 import { getDecorationValidation } from '../../plugins/token-meta-plugin';
 import { type EnumValue, type FieldDefinition, getOperatorSelectLabel } from '../../types';
 import { isRangeSelected } from '../../utils/decoration-helpers';
-import { getEnumValue, resolveEnumValue } from '../../utils/enum-value';
+import { getEnumValue } from '../../utils/enum-value';
 import { isInsideQuotes } from '../../utils/quoted-string';
 import {
   HandlerPriority,
@@ -51,7 +51,6 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
   const classNames = editorContext.classNames;
   const fieldSource = { fields, unknownFields: editorContext.unknownFields };
   const fieldDef = resolveField(fieldSource, key) ?? undefined;
-  const isEnumField = fieldDef?.type === 'enum';
   const isDateField = fieldDef?.type === 'date';
   const isDateTimeField = fieldDef?.type === 'datetime';
   const operatorLabels = fieldDef?.operatorLabels
@@ -88,18 +87,12 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
 
   const dispatchAction = (action: FilterTokenAction) => {
     const tr = editor.state.tr;
-    if (applyTokenAction(tr, id, action)) editor.view.dispatch(tr);
+    if (applyTokenAction(tr, id, action, fieldSource)) editor.view.dispatch(tr);
   };
 
   const handleOperatorChange = (op: string) => {
     dispatchAction({ type: 'setOperator', operator: op });
   };
-
-  /** The value that the text typed into the input stands for. */
-  const toValue = (inputText: string): string =>
-    isEnumField && fieldDef?.enumValues
-      ? resolveEnumValue(fieldDef.enumValues, inputText, { resolver: fieldDef.valueResolver })
-      : inputText;
 
   return (
     <Token
@@ -113,7 +106,7 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
       dataAttrs={{ 'data-filter-token': '' }}
       onBlur={() => {
         const tr = editor.state.tr;
-        if (commitFilterToken(tr, id, fieldDef)) editor.view.dispatch(tr);
+        if (commitFilterToken(tr, id, fieldSource)) editor.view.dispatch(tr);
       }}
       immutable={isImmutable}
       rangeSelected={rangeSelected}
@@ -174,7 +167,6 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
           valueDisplayString={valueDisplayString}
           valueSuggestionsDisabled={valueSuggestionsDisabled}
           baseAllowSpaces={fieldDef?.allowSpaces || isDateField || isDateTimeField}
-          toValue={toValue}
           startContent={startContent}
           endContent={endContent}
           valueClassName={classNames?.tokenValue}
@@ -203,7 +195,6 @@ interface FilterTokenValueProps {
   valueSuggestionsDisabled: boolean;
   /** Whether spaces are allowed by field config (date/datetime/allowSpaces) */
   baseAllowSpaces: boolean;
-  toValue: (inputText: string) => string;
   /** Content to display before the value (e.g., icon) */
   startContent?: React.ReactNode;
   /** Content to display after the value */
@@ -223,13 +214,13 @@ function FilterTokenValue({
   valueDisplayString,
   valueSuggestionsDisabled,
   baseAllowSpaces,
-  toValue,
   startContent,
   endContent,
   valueClassName,
 }: FilterTokenValueProps): React.ReactElement {
   const { exitToken, currentFocusId, isFocused: tokenFocused } = useTokenFocusContext();
   const { deleteToken } = useTokenConfig();
+  const fieldSource = getEditorContext(editor);
 
   // Normalize date/datetime values (shared logic for confirm and blur)
   const normalizeValue = () => {
@@ -241,7 +232,7 @@ function FilterTokenValue({
       normalized = normalizeDateTimeValue(rawValue, fieldDef.formatConfig, allowDateOnly);
     }
     const tr = editor.state.tr;
-    if (applyTokenAction(tr, tokenId, { type: 'setValue', value: normalized })) {
+    if (applyTokenAction(tr, tokenId, { type: 'setValue', value: normalized }, fieldSource)) {
       editor.view.dispatch(tr);
     }
   };
@@ -254,7 +245,7 @@ function FilterTokenValue({
     const tr = editor.state.tr;
     closeSuggestion(tr);
     tr.setMeta('addToHistory', false);
-    commitFilterToken(tr, tokenId, fieldDef);
+    commitFilterToken(tr, tokenId, fieldSource);
     editor.view.dispatch(tr);
     exitToken();
   };
@@ -286,9 +277,8 @@ function FilterTokenValue({
 
   // The transaction that writes a typed value also shows the value suggestions for it
   const handleInputChange = (inputText: string) => {
-    const value = toValue(inputText);
     const tr = editor.state.tr;
-    if (!applyTokenAction(tr, tokenId, { type: 'setValue', value })) return;
+    if (!applyTokenAction(tr, tokenId, { type: 'setValue', value: inputText }, fieldSource)) return;
     addSuggestionQuery(tr);
     editor.view.dispatch(tr);
   };
@@ -367,7 +357,12 @@ function FilterTokenValue({
         tr.setMeta('addToHistory', false);
         const selectedItem = items[activeIndex];
         if (selectedItem) {
-          applyTokenAction(tr, tokenId, { type: 'setValue', value: getEnumValue(selectedItem) });
+          applyTokenAction(
+            tr,
+            tokenId,
+            { type: 'setValue', value: getEnumValue(selectedItem) },
+            fieldSource
+          );
         }
         editor.view.dispatch(tr);
         exitToken();
