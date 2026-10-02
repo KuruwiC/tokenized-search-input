@@ -323,8 +323,9 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
       clear:
         () =>
         ({ tr, commands, dispatch }) => {
+          if (!commands.replaceContent('')) return false;
           if (dispatch) tr.setMeta(CLEARED, true);
-          return commands.replaceContent('');
+          return true;
         },
     };
   },
