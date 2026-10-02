@@ -1,7 +1,6 @@
 // Date format utilities (public)
 export {
   DEFAULT_DATE_VALUE_FORMAT,
-  DEFAULT_DATETIME_VALUE_FORMAT,
   isDateField,
   isDateOrDateTimeField,
   isDateTimeField,

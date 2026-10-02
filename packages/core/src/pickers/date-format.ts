@@ -16,7 +16,6 @@ import {
 import { ok, type ParseResult } from './navigation-parsers';
 
 export const DEFAULT_DATE_VALUE_FORMAT = 'yyyy-MM-dd';
-export const DEFAULT_DATETIME_VALUE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssxxx";
 
 /** What the date functions need to know about a date or datetime field. */
 type DateLikeField = Pick<DateFieldDefinition | DateTimeFieldDefinition, 'type' | 'formatConfig'>;
