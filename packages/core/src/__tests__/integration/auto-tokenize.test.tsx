@@ -5,6 +5,8 @@
  */
 import { cleanup, render, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { Editor } from '@tiptap/core';
+import { TextSelection } from '@tiptap/pm/state';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -261,6 +263,55 @@ describe('Auto-tokenize - Integration Tests', () => {
       await waitFor(() => {
         expect(editor.state.doc.textContent).toContain('h');
       });
+    });
+  });
+
+  describe('finalizing input', () => {
+    async function mountTokenize(defaultValue: string) {
+      const ref = createRef<TokenizedSearchInputRef>();
+      render(
+        <TokenizedSearchInput
+          ref={ref}
+          fields={testFields}
+          freeTextMode="tokenize"
+          defaultValue={defaultValue}
+        />
+      );
+      await waitFor(() => expect(getInternalEditor(ref.current)).not.toBeNull());
+      const editor = getInternalEditor(ref.current);
+      if (!editor) throw new Error('editor is unavailable');
+      return { ref, editor };
+    }
+
+    function typeAt(editor: Editor, pos: number, text: string): void {
+      [...text].forEach((char, index) => {
+        editor.view.dispatch(editor.state.tr.insertText(char, pos + index));
+      });
+    }
+
+    it('tokenizes text the caret has moved away from', async () => {
+      const { ref, editor } = await mountTokenize('status:is:active');
+      typeAt(editor, editor.state.doc.content.size - 1, 'abc');
+      editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, 1)));
+
+      editor.commands.finalizeInput();
+
+      const types: string[] = [];
+      editor.state.doc.descendants((node) => {
+        types.push(node.isText ? `text:${node.text}` : node.type.name);
+        return true;
+      });
+      expect(types).toEqual(['paragraph', 'filterToken', 'freeTextToken']);
+      expect(ref.current?.getValue()).toBe('status:is:active abc');
+    });
+
+    it('leaves the document alone when nothing is left to tokenize', async () => {
+      const { editor } = await mountTokenize('status:is:active foo');
+      const before = editor.state.doc;
+
+      editor.commands.finalizeInput();
+
+      expect(editor.state.doc.eq(before)).toBe(true);
     });
   });
 

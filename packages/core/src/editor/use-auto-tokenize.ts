@@ -132,7 +132,6 @@ function getPlainTextSegment(editor: Editor): { text: string; from: number; to: 
 
 export {
   focusEmptyFilterToken,
-  getCurrentWord,
   getPlainTextSegment,
   getQueryFromText,
   getTextBeforeCursor,

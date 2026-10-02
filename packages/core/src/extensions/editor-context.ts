@@ -1,7 +1,7 @@
 import { Extension } from '@tiptap/core';
-import { getCurrentWord } from '../editor/use-auto-tokenize';
 import { getFreeTextStrategy } from '../plugins/auto-tokenize/free-text-strategy';
-import { createAutoTokenizePlugin } from '../plugins/auto-tokenize/plugin';
+import { autoTokenizeKey, createAutoTokenizePlugin } from '../plugins/auto-tokenize/plugin';
+import { tokenizeRange } from '../plugins/auto-tokenize/tokenize-range';
 import { createFreeTextSanitizerPlugin } from '../plugins/free-text-sanitizer-plugin';
 import {
   type ClassNames,
@@ -112,7 +112,7 @@ declare module '@tiptap/core' {
       setCallbacks: (callbacks: Partial<EditorCallbacks>) => ReturnType;
       /**
        * Applies mode-specific processing based on freeTextMode:
-       * - 'tokenize': Converts pending text to freeTextToken
+       * - 'tokenize': Reads the text left in the paragraph as a query, as a paste is read
        * - 'plain': No action (text remains as-is)
        * - 'none': Removes all text nodes from document
        */
@@ -236,7 +236,7 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
 
       finalizeInput:
         () =>
-        ({ editor, chain }) => {
+        ({ editor, tr, dispatch, chain }) => {
           const storage = getEditorContext(editor);
           const strategy = getFreeTextStrategy(storage.freeTextMode);
           const action = strategy.finalizeAction;
@@ -246,17 +246,9 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
           }
 
           if (action === 'tokenize') {
-            // Convert pending text to freeTextToken using proper word boundary detection
-            const { word, from, to } = getCurrentWord(editor);
-            const trimmedWord = word.trim();
-
-            if (!trimmedWord || from >= to) return true;
-
-            chain()
-              .deleteRange({ from, to })
-              .insertFreeTextToken({ value: trimmedWord, quoted: false })
-              .run();
-
+            if (dispatch && tokenizeRange(tr, 0, tr.doc.content.size, storage)) {
+              tr.setMeta(autoTokenizeKey, true);
+            }
             return true;
           }
 
