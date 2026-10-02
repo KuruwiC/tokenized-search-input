@@ -13,7 +13,7 @@ const allowedConsoleMessages: RegExp[] = [
   // act. Keep matching limited to this exact act
   // warning (React 18 includes the "Warning: " prefix; React 19 does not)
   // and continue failing on every other React/runtime warning.
-  /^(?:Warning: )?An update to (?:Portals|ForwardRef\(TokenizedSearchInput2\)|SuggestionAria|SuggestionOverlay|Token|TokenValue) inside a test was not wrapped in act\(\.\.\.\)/,
+  /^(?:Warning: )?An update to (?:Portals|ForwardRef\(TokenizedSearchInputImpl\)|SuggestionAria|SuggestionOverlay|Token|TokenValue) inside a test was not wrapped in act\(\.\.\.\)/,
 ];
 
 const formatConsoleCall = (args: unknown[]) => format(...args);

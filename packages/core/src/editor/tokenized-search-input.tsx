@@ -30,7 +30,7 @@ export type {
 } from './tokenized-search-input.types';
 
 export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, TokenizedSearchInputProps>(
-  function TokenizedSearchInput(props, ref) {
+  function TokenizedSearchInputImpl(props, ref) {
     const {
       fields,
       defaultValue,
