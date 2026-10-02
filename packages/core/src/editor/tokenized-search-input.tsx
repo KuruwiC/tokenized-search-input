@@ -1,9 +1,10 @@
+import type { JSONContent } from '@tiptap/core';
 import Document from '@tiptap/extension-document';
 import History from '@tiptap/extension-history';
 import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
 import type { Transaction } from '@tiptap/pm/state';
-import { EditorContent, useEditor } from '@tiptap/react';
+import { type Editor, EditorContent, useEditor } from '@tiptap/react';
 import {
   forwardRef,
   useCallback,
@@ -70,6 +71,14 @@ import type {
   TokenizedSearchInputProps,
   TokenizedSearchInputRef,
 } from './tokenized-search-input.types';
+
+function setContentAndValidate(editor: Editor, doc: JSONContent): void {
+  editor.commands.setContent(doc);
+  // Trigger validation after programmatic content change
+  const tr = editor.state.tr;
+  tr.setMeta(FORCE_VALIDATION_CHECK, true);
+  editor.view.dispatch(tr);
+}
 
 export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, TokenizedSearchInputProps>(
   function TokenizedSearchInput(
@@ -353,11 +362,16 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       },
     });
 
+    // Effects below skip a destroyed editor. useEditor destroys an instance whose
+    // render is not committed within a tick, which happens when React 19 commits a
+    // Suspense-prerendered tree late. The commit then still sees that instance, and
+    // useEditor re-renders with a fresh one right after.
+
     // Sync isEmpty state when editor becomes available
     // useIsomorphicLayoutEffect runs before paint on client, preventing placeholder flash
     // Falls back to useEffect on server for SSR compatibility
     useIsomorphicLayoutEffect(() => {
-      if (!editor) return;
+      if (!editor || editor.isDestroyed) return;
       setIsEmpty(isEditorEmpty(editor));
     }, [editor]);
 
@@ -369,7 +383,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
     // Dynamic combobox relationships must live on ProseMirror's actual
     // contenteditable element, rather than EditorContent's wrapper.
     useEffect(() => {
-      if (!editor) return;
+      if (!editor || editor.isDestroyed) return;
       const input = editor.view.dom;
       const popupRole =
         suggestionState?.type === 'date' || suggestionState?.type === 'datetime'
@@ -400,7 +414,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
 
     // Update EditorContext when props change
     useEffect(() => {
-      if (!editor) return;
+      if (!editor || editor.isDestroyed) return;
       editor.commands.setEditorContext({
         fields,
         freeTextMode,
@@ -436,7 +450,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
 
     // Update plugin state when suggestion disabled props change
     useEffect(() => {
-      if (!editor) return;
+      if (!editor || editor.isDestroyed) return;
 
       // Skip if suggestion plugin hasn't been registered yet (will be set in onCreate)
       const suggestionState = getSuggestionState(editor.view.state);
@@ -452,7 +466,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
 
     // Sync disabled state with editor.isEditable and aria-disabled
     useEffect(() => {
-      if (!editor) return;
+      if (!editor || editor.isDestroyed) return;
       editor.setEditable(!disabled);
       editor.setOptions({
         editorProps: {
@@ -469,7 +483,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
     // Re-validate when validation config changes
     const prevValidationRef = useRef(validation);
     useEffect(() => {
-      if (!editor) return;
+      if (!editor || editor.isDestroyed) return;
       const prevValidation = prevValidationRef.current;
       prevValidationRef.current = validation;
 
@@ -485,7 +499,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
     // Re-parse content when freeTextMode changes
     const prevFreeTextModeRef = useRef(freeTextMode);
     useEffect(() => {
-      if (!editor) return;
+      if (!editor || editor.isDestroyed) return;
       const prevMode = prevFreeTextModeRef.current;
       prevFreeTextModeRef.current = freeTextMode;
 
@@ -530,7 +544,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
     // This catches blur from both ProseMirror and token value inputs
     // Reference: https://danburzo.ro/focus-within/
     useEffect(() => {
-      if (!editor) return;
+      if (!editor || editor.isDestroyed) return;
       const container = containerRef.current;
       if (!container) return;
 
@@ -611,7 +625,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
 
     // Handle outside clicks to dismiss suggestions
     useEffect(() => {
-      if (!editor) return;
+      if (!editor || editor.isDestroyed) return;
 
       const handlePointerDown = (e: PointerEvent) => {
         const target = e.target as Node;
@@ -655,7 +669,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
 
     // Update suggestions on selection/update changes
     useEffect(() => {
-      if (!editor) return;
+      if (!editor || editor.isDestroyed) return;
 
       const debouncedUpdate = () => {
         if (rafIdRef.current !== null) {
@@ -709,16 +723,32 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       };
     }, [editor, singleLine, expandOnFocus, isInputFocused]);
 
+    // An ancestor's effect in the same commit can call the handle while `editor` is
+    // still the destroyed instance. Writes made then are held here, read back by the
+    // handle, and applied once the live editor renders.
+    const pendingHandleRef = useRef<{ doc: JSONContent | null; focus: boolean }>({
+      doc: null,
+      focus: false,
+    });
+    useEffect(() => {
+      if (!editor || editor.isDestroyed) return;
+      const { doc, focus } = pendingHandleRef.current;
+      pendingHandleRef.current = { doc: null, focus: false };
+      if (doc) setContentAndValidate(editor, doc);
+      if (focus) editor.commands.focus();
+    }, [editor]);
+
     // Submit execution
     const handleSubmit = useCallback(() => {
       if (!editor) return;
-      const snapshot = createQuerySnapshot(editor.getJSON(), { delimiter: delimiterRef.current });
+      const doc = pendingHandleRef.current.doc ?? editor.getJSON();
+      const snapshot = createQuerySnapshot(doc, { delimiter: delimiterRef.current });
       onSubmit?.(snapshot);
     }, [editor, onSubmit]);
 
     // Update callbacks in EditorContextExtension
     useEffect(() => {
-      if (!editor) return;
+      if (!editor || editor.isDestroyed) return;
       editor.commands.setCallbacks({
         onFieldSelect: handleFieldSelect,
         onValueSelect: handleValueSelect,
@@ -728,52 +758,63 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
     }, [editor, handleFieldSelect, handleValueSelect, handleCustomSelect, handleSubmit]);
 
     // Imperative handle
-    useImperativeHandle(
-      ref,
-      () => ({
+    useImperativeHandle(ref, () => {
+      const parseValue = (value: string) =>
+        parseQueryToDoc(value, fields, {
+          freeTextMode,
+          allowUnknownFields,
+          unknownFieldOperators,
+          delimiter: delimiterRef.current,
+        });
+      const readDoc = (ed: Editor) => pendingHandleRef.current.doc ?? ed.getJSON();
+
+      return {
         setValue: (value: string) => {
           if (!editor) return;
-          editor.commands.setContent(
-            parseQueryToDoc(value, fields, {
-              freeTextMode,
-              allowUnknownFields,
-              unknownFieldOperators,
-              delimiter: delimiterRef.current,
-            })
-          );
-          // Trigger validation after programmatic content change
-          const tr = editor.state.tr;
-          tr.setMeta(FORCE_VALIDATION_CHECK, true);
-          editor.view.dispatch(tr);
+          const doc = parseValue(value);
+          if (editor.isDestroyed) {
+            pendingHandleRef.current.doc = doc;
+            return;
+          }
+          setContentAndValidate(editor, doc);
         },
         getValue: () => {
           if (!editor) return '';
-          return serializeDocToQuery(editor.getJSON(), { delimiter: delimiterRef.current });
+          return serializeDocToQuery(readDoc(editor), { delimiter: delimiterRef.current });
         },
         getSnapshot: () => {
           if (!editor) return { segments: [], text: '' };
-          return createQuerySnapshot(editor.getJSON(), { delimiter: delimiterRef.current });
+          return createQuerySnapshot(readDoc(editor), { delimiter: delimiterRef.current });
         },
         focus: () => {
-          editor?.commands.focus();
+          if (!editor) return;
+          if (editor.isDestroyed) {
+            pendingHandleRef.current.focus = true;
+            return;
+          }
+          editor.commands.focus();
         },
         clear: () => {
-          editor?.commands.clearContent();
+          if (!editor) return;
+          if (editor.isDestroyed) {
+            pendingHandleRef.current.doc = parseValue('');
+            return;
+          }
+          editor.commands.clearContent();
         },
         submit: handleSubmit,
         // Internal access - not part of public API
         _getInternalEditor: () => editor,
-      }),
-      [
-        editor,
-        fields,
-        freeTextMode,
-        allowUnknownFields,
-        unknownFieldOperators,
-        handleSubmit,
-        // Note: delimiterRef.current is intentionally not in deps - it never changes after mount
-      ]
-    );
+      };
+    }, [
+      editor,
+      fields,
+      freeTextMode,
+      allowUnknownFields,
+      unknownFieldOperators,
+      handleSubmit,
+      // Note: delimiterRef.current is intentionally not in deps - it never changes after mount
+    ]);
 
     const containerElement = (
       <div
