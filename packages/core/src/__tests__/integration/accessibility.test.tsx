@@ -57,7 +57,7 @@ describe('search input accessibility relationships', () => {
     expect(within(listbox).getAllByRole('option').length).toBeGreaterThan(0);
   });
 
-  it('exposes a date picker as one controlled dialog', async () => {
+  it('exposes a date picker as one dialog controlled from the token input', async () => {
     const user = userEvent.setup();
     render(
       <TokenizedSearchInput
@@ -65,7 +65,6 @@ describe('search input accessibility relationships', () => {
         defaultValue="created:gt:2024-01-01"
       />
     );
-    const combobox = screen.getByRole('combobox');
     const token = await waitFor(() => {
       const element = document.querySelector('.tsi-token');
       expect(element).toBeInTheDocument();
@@ -76,8 +75,12 @@ describe('search input accessibility relationships', () => {
 
     const dialog = await screen.findByRole('dialog');
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
-    expect(combobox).toHaveAttribute('aria-haspopup', 'dialog');
-    expect(combobox).toHaveAttribute('aria-controls', dialog.id);
+    // The input that holds focus is the combobox; the editor reads as closed
+    const controlling = document.querySelectorAll(`[aria-controls="${dialog.id}"]`);
+    expect(controlling).toHaveLength(1);
+    expect(controlling[0]).toHaveAttribute('role', 'combobox');
+    expect(controlling[0]).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(controlling[0]).toBe(screen.getByLabelText('Value for created filter'));
     expect(dialog.querySelector('[data-date-picker]')).toBeInTheDocument();
   });
 });

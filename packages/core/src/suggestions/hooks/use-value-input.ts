@@ -1,6 +1,10 @@
 import type { Editor } from '@tiptap/react';
 import { type RefObject, useCallback } from 'react';
-import { findFocusedFilterToken, getContainingFilterToken } from '../../utils/dom-focus';
+import {
+  findFocusedFilterToken,
+  findValueInput,
+  getContainingFilterToken,
+} from '../../utils/dom-focus';
 
 /**
  * The value input of the token a suggestion belongs to, and a way to give it focus again,
@@ -24,7 +28,7 @@ export function useValueInput(
         return null;
       }
     }
-    return token?.querySelector<HTMLInputElement>('input[data-token-block="value"]') ?? null;
+    return findValueInput(token);
   }, [containerRef, anchorPos, editor]);
 
   const restoreFocus = useCallback(() => {

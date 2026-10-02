@@ -10,6 +10,7 @@ export const FOCUS_SELECTORS = {
   filterToken: '[data-filter-token]',
   suggestionRoot: '[data-suggestion-root]',
   focusedFilterToken: '[data-filter-token][data-focused="true"]',
+  valueInput: 'input[data-token-block="value"]',
 } as const;
 
 export const isWithinSuggestion = (el: Element | null): boolean =>
@@ -23,4 +24,10 @@ export const findFocusedFilterToken = (container: Element | null): HTMLElement |
 export const getContainingFilterToken = (el: Element | null): HTMLElement | null => {
   const token = el?.closest(FOCUS_SELECTORS.filterToken);
   return token instanceof HTMLElement ? token : null;
+};
+
+/** The input that holds the value of a token. */
+export const findValueInput = (token: Element | null): HTMLInputElement | null => {
+  const el = token?.querySelector(FOCUS_SELECTORS.valueInput);
+  return el instanceof HTMLInputElement ? el : null;
 };
