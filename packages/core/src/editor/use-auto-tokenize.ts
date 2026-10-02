@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/core';
 import { getEditorContext } from '../extensions/editor-context';
-import { parseTokenText } from '../serializer';
-import type { FieldDefinition, UnknownFieldTemplate } from '../types';
+import { autoTokenizeKey } from '../plugins/auto-tokenize/plugin';
+import { tokenizeRange } from '../plugins/auto-tokenize/tokenize-range';
 import { isFilterToken } from '../utils/node-predicates';
 import { findLastWordBoundary, isInsideQuotes } from '../utils/quoted-string';
 import { resolveField } from '../utils/resolve-field';
@@ -52,62 +52,55 @@ function getCurrentWord(editor: Editor): { word: string; from: number; to: numbe
   return { word, from, to };
 }
 
-function insertFilterToken(
+function insertEmptyFilterToken(
   editor: Editor,
   from: number,
   to: number,
   key: string,
-  operator: string,
-  value: string
+  operator: string
 ): void {
-  const chain = editor
+  // The empty token is not recorded in the history: entering its value is. When the
+  // user leaves it empty, its removal is not recorded either.
+  editor
     .chain()
     .deleteRange({ from, to })
-    .insertFilterToken({ key, operator, value });
-
-  if (!value) {
-    // Empty token creation should not be in history
-    // When value is set, that transaction IS recorded
-    // If user clicks away, emptyTokenCleanup deletes it (also not in history)
-    chain.command(({ tr }) => {
+    .insertFilterToken({ key, operator, value: '' })
+    .command(({ tr }) => {
       tr.setMeta('addToHistory', false);
       return true;
-    });
-  }
+    })
+    .run();
 
-  chain.run();
-
-  if (!value) {
-    focusEmptyFilterToken(editor, key);
-  }
+  focusEmptyFilterToken(editor, key);
 }
 
-export function tryAutoTokenize(
-  editor: Editor,
-  fields: FieldDefinition[],
-  trigger: string,
-  unknownFields?: UnknownFieldTemplate
-): boolean {
-  const { delimiter } = getEditorContext(editor);
+/**
+ * Turns the word before the caret into tokens when `trigger` ends it. The delimiter
+ * after a field key starts an empty token for that field. Space and Tab read the word
+ * as a query, as a paste of it would be read. Enter submits free text as it stands, so
+ * only a filter is put in before the submit.
+ */
+export function tryAutoTokenize(editor: Editor, trigger: string): boolean {
+  const context = getEditorContext(editor);
   const textBefore = getTextBeforeCursor(editor);
   if (isInsideQuotes(textBefore)) return false;
 
   const { word, from, to } = getCurrentWord(editor);
   if (!word) return false;
 
-  // Delimiter trigger creates an empty filter token for the field
-  if (trigger === delimiter) {
-    const field = resolveField({ fields, unknownFields }, word);
+  if (trigger === context.delimiter) {
+    const field = resolveField(context, word);
     if (!field) return false;
 
-    insertFilterToken(editor, from, to, field.key, field.operators[0], '');
+    insertEmptyFilterToken(editor, from, to, field.key, field.operators[0]);
     return true;
   }
 
-  const parsed = parseTokenText(word, fields, { unknownFields, delimiter });
-  if (!parsed) return false;
+  const freeTextMode = trigger === 'Enter' ? 'plain' : context.freeTextMode;
+  const tr = editor.state.tr;
+  if (!tokenizeRange(tr, from, to, { ...context, freeTextMode })) return false;
 
-  insertFilterToken(editor, from, to, parsed.key, parsed.operator, parsed.value);
+  editor.view.dispatch(tr.setMeta(autoTokenizeKey, true));
   return true;
 }
 

@@ -1,29 +1,7 @@
 import { closeSuggestion } from '../../../plugins/suggestion-plugin';
-import { getCurrentWord, getTextBeforeCursor, tryAutoTokenize } from '../../use-auto-tokenize';
+import { getTextBeforeCursor, tryAutoTokenize } from '../../use-auto-tokenize';
 import { canAutoTokenize, isSuggestionOpen, isTokenizeMode } from '../guards';
 import type { KeyboardContext } from '../types';
-
-/**
- * Convert current word to freeTextToken.
- * Only applicable in tokenize mode.
- */
-function tokenizeCurrentWordAsFreeText(ctx: KeyboardContext): boolean {
-  const { editor } = ctx;
-  const { word, from, to } = getCurrentWord(editor);
-  const trimmedWord = word.trim();
-  if (!trimmedWord || from >= to) return false;
-
-  editor
-    .chain()
-    .deleteRange({ from, to })
-    .insertFreeTextToken({
-      value: trimmedWord,
-      quoted: false,
-    })
-    .run();
-
-  return true;
-}
 
 function closeSuggestionIfOpen(ctx: KeyboardContext): void {
   const { editor, suggestionState } = ctx;
@@ -44,9 +22,7 @@ export function handleDelimiter(ctx: KeyboardContext): boolean {
     return false;
   }
 
-  const { editor, fields, unknownFields, delimiter } = ctx;
-
-  if (tryAutoTokenize(editor, fields, delimiter, unknownFields)) {
+  if (tryAutoTokenize(ctx.editor, ctx.delimiter)) {
     closeSuggestionIfOpen(ctx);
     return true;
   }
@@ -55,29 +31,17 @@ export function handleDelimiter(ctx: KeyboardContext): boolean {
 }
 
 /**
- * Handle space key for auto-tokenization.
- * - First tries to create a filter token from "field{delimiter}op{delimiter}value"
- * - In tokenize mode, converts current word to freeTextToken
+ * Handle space key for auto-tokenization: the word before the caret becomes a filter
+ * token, or in tokenize mode a free text token.
  */
 export function handleSpace(ctx: KeyboardContext): boolean {
   if (!canAutoTokenize(ctx.editor)) {
     return false;
   }
 
-  const { editor, fields, freeTextMode, unknownFields } = ctx;
-
-  // Try filter token first
-  if (tryAutoTokenize(editor, fields, ' ', unknownFields)) {
+  if (tryAutoTokenize(ctx.editor, ' ')) {
     closeSuggestionIfOpen(ctx);
     return true;
-  }
-
-  // In tokenize mode, convert current word to freeTextToken
-  if (isTokenizeMode(freeTextMode)) {
-    if (tokenizeCurrentWordAsFreeText(ctx)) {
-      closeSuggestionIfOpen(ctx);
-      return true;
-    }
   }
 
   return false;
@@ -97,19 +61,7 @@ export function handleTab(ctx: KeyboardContext): boolean {
     return false;
   }
 
-  const { editor, fields, freeTextMode, unknownFields } = ctx;
-
-  if (tryAutoTokenize(editor, fields, 'Tab', unknownFields)) {
-    return true;
-  }
-
-  if (isTokenizeMode(freeTextMode)) {
-    if (tokenizeCurrentWordAsFreeText(ctx)) {
-      return true;
-    }
-  }
-
-  return false;
+  return tryAutoTokenize(ctx.editor, 'Tab');
 }
 
 /**
@@ -152,12 +104,5 @@ export function handleEnterTokenize(ctx: KeyboardContext): boolean {
     return false;
   }
 
-  const { editor, fields, unknownFields } = ctx;
-
-  // Try to create filter token
-  if (tryAutoTokenize(editor, fields, 'Enter', unknownFields)) {
-    return true;
-  }
-
-  return false;
+  return tryAutoTokenize(ctx.editor, 'Enter');
 }

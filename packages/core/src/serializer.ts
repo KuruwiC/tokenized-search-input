@@ -3,7 +3,7 @@ import type { EditorState } from '@tiptap/pm/state';
 import {
   getFreeTextStrategy,
   type ParsedFreeTextToken,
-} from './editor/auto-tokenize/free-text-strategy';
+} from './plugins/auto-tokenize/free-text-strategy';
 import { getTokenMeta } from './plugins/token-meta-plugin';
 import { createFilterTokenAttrs } from './tokens/filter-token/create-attrs';
 import {

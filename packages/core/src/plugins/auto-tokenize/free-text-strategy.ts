@@ -33,16 +33,6 @@ export interface FreeTextStrategy {
   toDocContent: (token: ParsedFreeTextToken) => JSONContent | null;
 
   /**
-   * Whether to tokenize text on space/tab input.
-   */
-  tokenizeOnSpace: boolean;
-
-  /**
-   * Whether to create quoted tokens when " is pressed.
-   */
-  createQuotedTokens: boolean;
-
-  /**
    * Action to take when finalizing input (submit/blur).
    */
   finalizeAction: FinalizeAction;
@@ -60,8 +50,6 @@ const tokenizeStrategy: FreeTextStrategy = {
       quoted: token.quoted,
     },
   }),
-  tokenizeOnSpace: true,
-  createQuotedTokens: true,
   finalizeAction: 'tokenize',
 };
 
@@ -73,8 +61,6 @@ const plainStrategy: FreeTextStrategy = {
     type: 'text',
     text: token.quoted ? `"${escapeForQuotes(token.value)}"` : token.value,
   }),
-  tokenizeOnSpace: false,
-  createQuotedTokens: false,
   finalizeAction: 'none',
 };
 
@@ -83,8 +69,6 @@ const plainStrategy: FreeTextStrategy = {
  */
 const noneStrategy: FreeTextStrategy = {
   toDocContent: () => null,
-  tokenizeOnSpace: false,
-  createQuotedTokens: false,
   finalizeAction: 'remove',
 };
 

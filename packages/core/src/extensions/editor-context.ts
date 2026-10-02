@@ -1,7 +1,7 @@
 import { Extension } from '@tiptap/core';
-import { getFreeTextStrategy } from '../editor/auto-tokenize/free-text-strategy';
 import { getCurrentWord } from '../editor/use-auto-tokenize';
-import { createAutoTokenizePlugin } from '../plugins/auto-tokenize-plugin';
+import { getFreeTextStrategy } from '../plugins/auto-tokenize/free-text-strategy';
+import { createAutoTokenizePlugin } from '../plugins/auto-tokenize/plugin';
 import { createFreeTextSanitizerPlugin } from '../plugins/free-text-sanitizer-plugin';
 import {
   type ClassNames,

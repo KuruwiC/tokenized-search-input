@@ -16,7 +16,6 @@ export default defineConfig({
         'src/__tests__/**',
         // Barrel files that only re-export.
         'src/index.ts',
-        'src/editor/auto-tokenize/index.ts',
         'src/editor/hooks/index.ts',
         'src/editor/keyboard/index.ts',
         'src/editor/keyboard/strategies/index.ts',
@@ -25,7 +24,6 @@ export default defineConfig({
         'src/pickers/index.ts',
         'src/plugins/suggestion/index.ts',
         'src/plugins/token-spacing/helpers/index.ts',
-        'src/spacer/index.ts',
         'src/tokens/composition/**/index.ts',
         'src/types/index.ts',
       ],

@@ -49,7 +49,7 @@ describe('Auto-tokenize - Integration Tests', () => {
       });
 
       // Call tryAutoTokenize with colon trigger
-      const result = tryAutoTokenize(editor, testFields, ':');
+      const result = tryAutoTokenize(editor, ':');
 
       // Should create token
       expect(result).toBe(true);
@@ -86,7 +86,7 @@ describe('Auto-tokenize - Integration Tests', () => {
       // Insert unknown field name
       editor.commands.insertContent('unknown');
 
-      const result = tryAutoTokenize(editor, testFields, ':');
+      const result = tryAutoTokenize(editor, ':');
 
       // Should not create token for unknown field
       expect(result).toBe(false);
@@ -112,7 +112,7 @@ describe('Auto-tokenize - Integration Tests', () => {
       // Insert unknown field name
       editor.commands.insertContent('customfield');
 
-      const result = tryAutoTokenize(editor, testFields, ':', {});
+      const result = tryAutoTokenize(editor, ':');
 
       // Should create token for unknown field
       expect(result).toBe(true);
@@ -155,7 +155,7 @@ describe('Auto-tokenize - Integration Tests', () => {
 
       // Manually call tryAutoTokenize with Enter trigger
       // Result may be false if text was already tokenized by insertContent bulk handler
-      tryAutoTokenize(editor, testFields, 'Enter');
+      tryAutoTokenize(editor, 'Enter');
 
       // Since insertContent immediately tokenizes (bulk insert),
       // we verify the result is true if the text was parsed

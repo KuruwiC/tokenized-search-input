@@ -2,7 +2,7 @@
  * Free Text Sanitizer Plugin
  *
  * Removes free text when freeTextMode is 'none'.
- * This plugin runs AFTER auto-tokenize-plugin, which handles tokenization.
+ * This plugin runs after the auto-tokenize plugin, which handles tokenization.
  * Any remaining text nodes after tokenization are removed.
  */
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
@@ -57,7 +57,7 @@ function collectFreeTextNodes(doc: ProseMirrorNode): Array<{ from: number; to: n
 
 /**
  * Plugin that removes free text when freeTextMode is 'none'.
- * Triggers when tokens are inserted (after auto-tokenize-plugin runs).
+ * Triggers when tokens are inserted (after the auto-tokenize plugin runs).
  *
  * This plugin provides "early cleanup" - removing free text immediately when
  * tokens are created. The `finalizeInput` command provides "final cleanup"
@@ -81,7 +81,7 @@ export function createFreeTextSanitizerPlugin(getContext: () => FreeTextSanitize
         return null;
       }
 
-      // Only trigger when tokens are inserted (auto-tokenize-plugin already ran)
+      // Only trigger when tokens are inserted (the auto-tokenize plugin already ran)
       if (!hasTokenInsertion(oldState, newState)) {
         return null;
       }
