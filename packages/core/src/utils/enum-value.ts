@@ -1,6 +1,12 @@
 import type { ReactNode } from 'react';
 
-import type { EnumValue, EnumValueResolver, EnumValueWithLabel, Matcher } from '../types';
+import type {
+  EnumValue,
+  EnumValueResolver,
+  EnumValueWithLabel,
+  FieldDefinition,
+  Matcher,
+} from '../types';
 import { type FilterItemsOptions, filterItems } from './filter-items';
 
 export type { EnumValueResolver } from '../types';
@@ -158,4 +164,19 @@ export function resolveEnumValue(
   }
 
   return input;
+}
+
+/**
+ * The value a token of `field` stores for `value`. An enum token holds the value of
+ * the option the text names, by value, by label or in another case. A value that
+ * names no option, and any value of a field without static options, is stored as
+ * written.
+ */
+export function resolveStoredValue(
+  field: FieldDefinition | null | undefined,
+  value: string
+): string {
+  return field?.type === 'enum' && field.enumValues
+    ? resolveEnumValue(field.enumValues, value, { resolver: field.valueResolver })
+    : value;
 }

@@ -1,4 +1,5 @@
-import type { FieldDefinition } from '../../types';
+import { resolveStoredValue } from '../../utils/enum-value';
+import { type FieldResolutionSource, resolveField } from '../../utils/resolve-field';
 import { generateTokenId } from '../../utils/token-id';
 
 export interface CreateFilterTokenAttrsInput {
@@ -8,8 +9,8 @@ export interface CreateFilterTokenAttrsInput {
   operator: string;
   /** Value (optional) */
   value?: string;
-  /** Field definitions to lookup field metadata */
-  fields: FieldDefinition[];
+  /** Decides which field the key refers to */
+  source: FieldResolutionSource;
   /** Explicit token ID (if not provided, a new UUID will be generated) */
   id?: string;
 }
@@ -25,14 +26,16 @@ export interface NodeFilterTokenAttrs {
 
 /**
  * Creates filter token attributes from input parameters.
- * All token creation paths should use this function to ensure consistent attributes.
+ * All token creation paths should use this function to ensure consistent attributes,
+ * including the value an enum token stores.
  *
  * @param input - Token creation parameters
  * @returns Complete filter token attributes including a stable UUID
  */
 export function createFilterTokenAttrs(input: CreateFilterTokenAttrsInput): NodeFilterTokenAttrs {
-  const { key, operator, value = '', fields, id } = input;
-  const fieldDef = fields.find((f) => f.key === key);
+  const { key, operator, source, id } = input;
+  const fieldDef = resolveField(source, key);
+  const value = resolveStoredValue(fieldDef, input.value ?? '');
 
   return {
     id: id ?? generateTokenId(),

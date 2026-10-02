@@ -1,7 +1,7 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Transaction } from '@tiptap/pm/state';
 import type { FieldDefinition } from '../../types';
-import { resolveEnumValue } from '../../utils/enum-value';
+import { resolveStoredValue } from '../../utils/enum-value';
 import { findTokenById } from '../../utils/find-token';
 import { isFilterToken, isFreeTextToken } from '../../utils/node-predicates';
 import { type FieldResolutionSource, resolveField } from '../../utils/resolve-field';
@@ -59,17 +59,6 @@ export function toEditableAttrs(node: ProseMirrorNode): EditableTokenAttrs | nul
   return null;
 }
 
-/**
- * The value to store for `value` written to a token of `field`. An enum token holds
- * the value of the option the text names, by value or label. A value that names no
- * option, and any value of a field without static options, is stored as written.
- */
-function storedValue(field: FieldDefinition | null, value: string): string {
-  return field?.type === 'enum' && field.enumValues
-    ? resolveEnumValue(field.enumValues, value, { resolver: field.valueResolver })
-    : value;
-}
-
 function nextFilterAttrs(
   current: FilterTokenEditableAttrs,
   action: TokenEditAction,
@@ -81,7 +70,7 @@ function nextFilterAttrs(
     case 'setOperator':
       return { ...current, operator: action.operator };
     case 'setValue':
-      return { ...current, value: storedValue(field, action.value) };
+      return { ...current, value: resolveStoredValue(field, action.value) };
     case 'setImmutable':
       return { ...current, immutable: action.immutable };
     default: {

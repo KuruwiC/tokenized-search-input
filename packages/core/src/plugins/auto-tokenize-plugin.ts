@@ -99,7 +99,11 @@ function tokenizeAllTextNodes(
       parseResult = parseQueryStringWithInfo(text, fields, parseOptions);
     }
 
-    const content = buildContentFromTokens(parseResult.tokens, fields, freeTextMode);
+    const content = buildContentFromTokens(
+      parseResult.tokens,
+      { fields, unknownFields },
+      freeTextMode
+    );
 
     if (content.length === 0) continue;
 

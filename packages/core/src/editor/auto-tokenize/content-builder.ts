@@ -1,12 +1,13 @@
 import type { SerializedToken } from '../../serializer';
 import { createFilterTokenAttrs } from '../../tokens/filter-token/create-attrs';
-import type { FieldDefinition, FreeTextMode } from '../../types';
+import type { FreeTextMode } from '../../types';
+import type { FieldResolutionSource } from '../../utils/resolve-field';
 import { getFreeTextStrategy } from './free-text-strategy';
 import type { ContentItem } from './types';
 
 export function buildTokenContent(
   token: SerializedToken,
-  fields: FieldDefinition[],
+  source: FieldResolutionSource,
   freeTextMode: FreeTextMode
 ): ContentItem | null {
   if (token.type === 'filter') {
@@ -16,7 +17,7 @@ export function buildTokenContent(
         key: token.key,
         operator: token.operator,
         value: token.value,
-        fields,
+        source,
       }),
     };
   }
@@ -34,13 +35,13 @@ export function buildTokenContent(
 
 export function buildContentFromTokens(
   tokens: SerializedToken[],
-  fields: FieldDefinition[],
+  source: FieldResolutionSource,
   freeTextMode: FreeTextMode
 ): ContentItem[] {
   const content: ContentItem[] = [];
 
   for (const token of tokens) {
-    const item = buildTokenContent(token, fields, freeTextMode);
+    const item = buildTokenContent(token, source, freeTextMode);
     if (item) {
       content.push(item);
     }

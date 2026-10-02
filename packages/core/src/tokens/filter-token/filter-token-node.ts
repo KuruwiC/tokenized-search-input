@@ -162,7 +162,7 @@ export const FilterTokenNode = Node.create({
             key: attrs.key,
             operator: attrs.operator,
             value: attrs.value,
-            fields: getEditorContext(this.editor).fields,
+            source: getEditorContext(this.editor),
           });
           const tokenNode = schema.nodes.filterToken.create(tokenAttrs);
           if (attrs.display) {

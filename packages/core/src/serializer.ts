@@ -15,7 +15,7 @@ import {
   type QuerySnapshotSegment,
   type UnknownFieldTemplate,
 } from './types';
-import { resolveEnumValue } from './utils/enum-value';
+import { resolveStoredValue } from './utils/enum-value';
 import { NODE_TYPE_NAMES } from './utils/node-predicates';
 import { type NodeVisitor, visitDocument } from './utils/node-visitor';
 import { escapeForQuotes, parseQuotedString, quoteIfNeeded } from './utils/quoted-string';
@@ -59,7 +59,7 @@ export function parseQueryToDoc(
           key: token.key,
           operator: token.operator,
           value: token.value,
-          fields,
+          source: { fields, unknownFields: options.unknownFields },
         }),
       });
       content.push({ type: 'spacer' });
@@ -168,9 +168,7 @@ export function parseTokenText(
   const normalizeValue = (rawValue: string): string => {
     const parsedValue = parseQuotedString(rawValue);
     const value = parsedValue.wasQuoted ? parsedValue.value : rawValue;
-    return field.type === 'enum' && field.enumValues
-      ? resolveEnumValue(field.enumValues, value, { resolver: field.valueResolver })
-      : value;
+    return resolveStoredValue(field, value);
   };
 
   if (rest.length >= 2 && (field.operators as readonly string[]).includes(rest[0])) {

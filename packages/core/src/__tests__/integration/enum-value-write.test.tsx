@@ -12,6 +12,7 @@ import {
 } from '../../editor/tokenized-search-input';
 import type { FieldDefinition, QuerySnapshotFilterToken } from '../../types';
 import { enumResolvers } from '../../utils/enum-value';
+import { RequireEnum } from '../../validation/presets';
 
 afterEach(() => {
   cleanup();
@@ -101,5 +102,34 @@ describe('values written for an enum field with options', () => {
     await user.type(combobox, 'status:');
     await user.keyboard('INACTIVE');
     await waitFor(() => expect(tokens(ref).map((t) => t.value)).toEqual(['inactive']));
+  });
+});
+
+describe('values of tokens created for an enum field with options', () => {
+  it('stores the option value for a token inserted with a label, so RequireEnum accepts it', async () => {
+    const ref = createRef<TokenizedSearchInputRef>();
+    render(
+      <TokenizedSearchInput
+        ref={ref}
+        fields={[statusField]}
+        validation={{ rules: [RequireEnum.rule({ onInvalid: 'reject' })] }}
+      />
+    );
+    await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+    const editor = ref.current?.getEditor();
+
+    act(() => {
+      editor
+        ?.chain()
+        .focus()
+        .insertFilterToken({ key: 'status', operator: 'is', value: 'Active' })
+        .run();
+    });
+
+    await waitFor(() => expect(tokens(ref as RefObject<TokenizedSearchInputRef>).length).toBe(1));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(tokens(ref as RefObject<TokenizedSearchInputRef>).map((t) => t.value)).toEqual([
+      'active',
+    ]);
   });
 });
