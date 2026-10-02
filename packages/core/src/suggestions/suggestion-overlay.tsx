@@ -80,7 +80,6 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
   useSuggestionDismissal(editor, suggestionState, containerRef, suggestionRef, getValueInput);
   const datePicker = useDatePickerState(editor, suggestionState, onDateChange);
 
-  // Close suggestions when editor becomes non-editable (disabled)
   useEffect(() => {
     if (!editor.isEditable && !editor.isDestroyed && isSuggestionOpen(suggestionState)) {
       const tr = editor.state.tr;

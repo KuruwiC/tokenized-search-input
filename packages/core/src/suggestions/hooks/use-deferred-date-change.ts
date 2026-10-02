@@ -38,7 +38,7 @@ export function useDeferredDateChange(
     if (value === null) return;
     pendingValue.current = null;
 
-    // Read the latest state rather than the one a render saw
+    // The state as it is now; the one a render saw may be older
     const current = suggestionKey.getState(editor.state);
     if (!current) return;
 

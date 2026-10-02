@@ -15,7 +15,7 @@ export function useValueInput(
   containerRef: RefObject<HTMLElement | null>,
   anchorPos: number | null
 ): { getValueInput: () => HTMLInputElement | null; restoreFocus: () => void } {
-  // Resolved when asked for, not when rendered: positions and elements change under it
+  // Resolved when asked for: positions and elements change under it
   const getValueInput = useCallback((): HTMLInputElement | null => {
     let token = findFocusedFilterToken(containerRef.current);
     if (!token && anchorPos !== null) {

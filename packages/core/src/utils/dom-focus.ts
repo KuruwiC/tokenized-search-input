@@ -26,7 +26,6 @@ export const getContainingFilterToken = (el: Element | null): HTMLElement | null
   return token instanceof HTMLElement ? token : null;
 };
 
-/** The input that holds the value of a token. */
 export const findValueInput = (token: Element | null): HTMLInputElement | null => {
   const el = token?.querySelector(FOCUS_SELECTORS.valueInput);
   return el instanceof HTMLInputElement ? el : null;

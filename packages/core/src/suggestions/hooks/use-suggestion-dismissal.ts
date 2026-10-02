@@ -23,7 +23,6 @@ export function useSuggestionDismissal(
     (el: Element | null): boolean => {
       if (!el) return false;
       if (suggestionRef.current?.contains(el)) return true;
-      // The type is read when asked, not when the handler was attached
       if (interactionBoundary(suggestionKey.getState(editor.state)?.type ?? null) === 'container') {
         return containerRef.current?.contains(el) === true;
       }

@@ -7,7 +7,6 @@ interface FieldSuggestionItemProps {
   hintClassName?: string;
 }
 
-/** What an option of a field suggestion shows. */
 export const FieldSuggestionItem: React.FC<FieldSuggestionItemProps> = ({
   field,
   iconClassName,

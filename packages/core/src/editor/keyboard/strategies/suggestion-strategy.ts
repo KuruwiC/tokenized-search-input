@@ -63,7 +63,6 @@ export function handleEnterOnSuggestion(
     return true;
   }
 
-  // No entry selected (activeIndex === -1) or none to select - close suggestions
   // This provides predictable UX: first Enter closes, second Enter triggers search
   const tr = editor.state.tr;
   closeSuggestion(tr);

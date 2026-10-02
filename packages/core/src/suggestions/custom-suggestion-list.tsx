@@ -12,7 +12,6 @@ interface CustomSuggestionItemProps {
   descriptionClassName?: string;
 }
 
-/** What an option of a custom suggestion shows. */
 export const CustomSuggestionItem: React.FC<CustomSuggestionItemProps> = ({
   suggestion,
   descriptionClassName,

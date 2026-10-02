@@ -8,7 +8,6 @@ interface ValueSuggestionItemProps {
   currentValue: string;
 }
 
-/** What an option of a value suggestion shows. */
 export const ValueSuggestionItem: React.FC<ValueSuggestionItemProps> = ({ item, currentValue }) => {
   const displayValue = getEnumLabel(item);
   const icon = getEnumIcon(item);

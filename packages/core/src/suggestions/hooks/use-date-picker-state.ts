@@ -41,7 +41,6 @@ export function useDatePickerState(
   const { fields } = getEditorContext(editor);
   const onDateChange = useDeferredDateChange(editor, suggestionState, onTokenDateChange);
 
-  // The text of the token the picker belongs to, as it is typed
   const tokenInputValue = useEditorSelector(editor, (state) => {
     const current = suggestionKey.getState(state);
     if (current?.type !== 'date' && current?.type !== 'datetime') return '';
@@ -99,7 +98,6 @@ export function useDatePickerState(
       // Remembered for the time a value has none, such as after its time was removed
       setTimeControls({ isUTC: nextIsUTC });
       if (settled?.time === undefined) return;
-      // The same moment, written in UTC or in the local offset
       const instant = toInstant(settled);
       const converted = fromInstant(instant, nextIsUTC ? 'Z' : localOffsetAt(instant));
       if (converted) onDateChange(converted);
