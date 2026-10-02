@@ -7,7 +7,7 @@ import {
   getSuggestionState,
 } from '../../plugins/suggestion-plugin';
 import { createQuerySnapshot } from '../../serializer';
-import { getDismissPolicy } from '../../suggestions/dismiss-policy';
+import { interactionBoundary } from '../../suggestions/suggestion-type';
 import type { QuerySnapshot } from '../../types';
 import { isWithinSuggestion } from '../../utils/dom-focus';
 
@@ -63,9 +63,10 @@ export function useFocusWiring({
         onBlur(snapshot);
       }
 
-      // The suggestion's policy decides whether it closes when focus leaves.
+      // A suggestion that belongs to a token is closed through the token, not by focus
+      // leaving the editor.
       const type = getSuggestionState(editor.state)?.type;
-      if (type && !getDismissPolicy(type).dismissOnBlur) return;
+      if (type && interactionBoundary(type) === 'value-input') return;
       const tr = editor.state.tr;
       dismissSuggestion(tr);
       tr.setMeta('addToHistory', false);

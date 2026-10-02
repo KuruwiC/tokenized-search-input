@@ -10,7 +10,6 @@ import {
   dismissSuggestion,
   getSuggestionState,
   isSuggestionOpen,
-  type SuggestionType,
 } from '../../plugins/suggestion-plugin';
 import {
   getFocusedToken,
@@ -18,7 +17,7 @@ import {
   type TokenFocusEntry,
 } from '../../plugins/token-focus-plugin';
 import { getValidationDescriptionId } from '../../plugins/token-meta-plugin';
-import { getDismissPolicy } from '../../suggestions/dismiss-policy';
+import { isPickerType } from '../../suggestions/suggestion-type';
 import { cn } from '../../utils/cn';
 import { isHistoryShortcut } from '../history-shortcut';
 import { enterToken } from '../token-focus';
@@ -227,10 +226,8 @@ export function Token({
       if (relatedTarget && containerRef.current?.contains(relatedTarget)) return;
 
       const suggestionState = getSuggestionState(editor.state);
-      if (isSuggestionOpen(suggestionState)) {
-        const policy = getDismissPolicy(suggestionState.type as SuggestionType);
-        if (policy.requireExplicitConfirm) return;
-      }
+      // A picker stays open until the user closes it
+      if (isSuggestionOpen(suggestionState) && isPickerType(suggestionState.type)) return;
 
       editor.commands.leaveToken(id, 'right');
     },

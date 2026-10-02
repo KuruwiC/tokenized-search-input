@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/react';
-import { type RefObject, useCallback, useEffect, useMemo, useRef } from 'react';
+import { type RefObject, useCallback, useEffect, useRef } from 'react';
 import { getEditorContext } from '../extensions/editor-context';
 import { useDebouncedPickerSync } from '../hooks/use-debounced-picker-sync';
 import { useEditorContextUpdate } from '../hooks/use-editor-context-update';
@@ -27,13 +27,8 @@ import {
 import type { CustomSuggestion, FieldDefinition } from '../types';
 import { cn } from '../utils/cn';
 import { findFocusedFilterToken, getContainingFilterToken } from '../utils/dom-focus';
-import { type DismissReason, getDismissPolicy, shouldDismiss } from './dismiss-policy';
-import {
-  createBoundary,
-  createTokenBoundary,
-  createValueInputBoundary,
-} from './interaction-boundary';
 import { renderSuggestionContent } from './suggestion-content';
+import { interactionBoundary, isPickerType } from './suggestion-type';
 import { useDismissManager } from './use-dismiss-manager';
 
 export interface SuggestionOverlayProps {
@@ -104,9 +99,8 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     suggestionRef
   );
 
-  // Get dismiss policy for boundary type determination
-  const policy = getDismissPolicy(suggestionState?.type ?? null);
-  const isDatePicker = policy.requireExplicitConfirm;
+  const suggestionType = suggestionState?.type ?? null;
+  const isDatePicker = isPickerType(suggestionType);
 
   // Lazy evaluation avoids stale refs - called at contains() time, not creation time
   const getTokenElement = useCallback((): HTMLElement | null => {
@@ -137,40 +131,33 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     return tokenElement?.querySelector('input[type="text"]') as HTMLInputElement | null;
   }, [valueInputRef, getTokenElement]);
 
-  const boundary = useMemo(() => {
-    switch (policy.boundaryType) {
-      case 'token':
-        return createTokenBoundary(getTokenElement, suggestionRef);
-      case 'value-input':
-        return createValueInputBoundary(getValueInputElement, suggestionRef);
-      default:
-        return createBoundary(containerRef, suggestionRef);
-    }
-  }, [policy.boundaryType, containerRef, getTokenElement, getValueInputElement]);
-
-  // Re-check current state to avoid race conditions
-  const handleDismiss = useCallback(
-    (reason: DismissReason): boolean => {
-      const currentState = suggestionKey.getState(editor.state);
-      if (!currentState?.type) return false;
-
-      const currentPolicy = getDismissPolicy(currentState.type);
-      if (!shouldDismiss(currentPolicy, reason)) return false;
-
-      const tr = editor.state.tr;
-      closeSuggestion(tr);
-      tr.setMeta('addToHistory', false);
-      editor.view.dispatch(tr);
-      return true;
+  const isInsideBoundary = useCallback(
+    (el: Element | null): boolean => {
+      if (!el) return false;
+      if (suggestionRef.current?.contains(el)) return true;
+      if (interactionBoundary(suggestionType) === 'container') {
+        return containerRef.current?.contains(el) === true;
+      }
+      return getValueInputElement()?.contains(el) === true;
     },
-    [editor]
+    [suggestionType, containerRef, getValueInputElement]
   );
 
-  // Use dismiss manager for outside click and escape key handling
+  // Re-check current state to avoid race conditions
+  const handleDismiss = useCallback((): boolean => {
+    if (!suggestionKey.getState(editor.state)?.type) return false;
+
+    const tr = editor.state.tr;
+    closeSuggestion(tr);
+    tr.setMeta('addToHistory', false);
+    editor.view.dispatch(tr);
+    return true;
+  }, [editor]);
+
   useDismissManager(
     isSuggestionOpen(suggestionState),
-    suggestionState?.type ?? null,
-    boundary,
+    suggestionType,
+    isInsideBoundary,
     handleDismiss
   );
 
