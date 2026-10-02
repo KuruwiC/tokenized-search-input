@@ -57,6 +57,11 @@ interface PendingHandleWrites {
    */
   displays: { id: string; display: TokenDisplay; binding: DisplayBinding }[];
   focus: boolean;
+  /**
+   * `clear` was called. It clears the content before `doc` is applied; `doc` then
+   * holds only the writes made after it.
+   */
+  clear: boolean;
   /** `submit` was called; it submits the query once the writes before it are applied. */
   submit: boolean;
 }
@@ -65,6 +70,7 @@ const NO_PENDING_WRITES: PendingHandleWrites = {
   doc: null,
   displays: [],
   focus: false,
+  clear: false,
   submit: false,
 };
 
@@ -95,10 +101,13 @@ export function useTokenizedSearchInputRef(
         delimiter: context.delimiter,
       });
     };
-    const readDoc = (ed: Editor) => pendingHandleRef.current.doc ?? ed.getJSON();
+    const readDoc = (ed: Editor) => {
+      const { doc, clear } = pendingHandleRef.current;
+      return doc ?? (clear ? parseValue(ed, '') : ed.getJSON());
+    };
     const readState = (ed: Editor) => {
-      const { doc } = pendingHandleRef.current;
-      return doc ? stateFromDoc(ed, doc) : ed.state;
+      const { doc, clear } = pendingHandleRef.current;
+      return doc || clear ? stateFromDoc(ed, readDoc(ed)) : ed.state;
     };
     const replacePending = (doc: JSONContent) => {
       pendingHandleRef.current = { ...pendingHandleRef.current, doc, displays: [] };
@@ -143,10 +152,15 @@ export function useTokenizedSearchInputRef(
       clear: () => {
         if (!editor) return;
         if (editor.isDestroyed) {
-          replacePending(parseValue(editor, ''));
+          pendingHandleRef.current = {
+            ...pendingHandleRef.current,
+            doc: null,
+            displays: [],
+            clear: true,
+          };
           return;
         }
-        editor.commands.replaceContent('');
+        editor.commands.clear();
       },
       submit: () => {
         if (!editor) return;
@@ -210,8 +224,9 @@ export function useApplyPendingHandleWrites(
 ): void {
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
-    const { doc, displays, focus, submit } = pending.current;
+    const { doc, displays, focus, clear, submit } = pending.current;
     pending.current = NO_PENDING_WRITES;
+    if (clear) editor.commands.clear();
     if (doc) setContentAndValidate(editor, doc);
     for (const { id, display, binding } of displays) {
       const { tr } = editor.state;

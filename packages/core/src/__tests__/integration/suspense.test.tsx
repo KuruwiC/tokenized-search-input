@@ -108,6 +108,43 @@ describe('TokenizedSearchInput inside Suspense', () => {
     expect(onSubmit.mock.calls[0]?.[0].text).toBe('hello');
   });
 
+  it('clears through the clear command once the live editor renders', async () => {
+    const SuspendOnce = createSuspendOnce(50);
+    const ref = createRef<TokenizedSearchInputRef>();
+    const onClear = vi.fn();
+    const seenInEffect: { valueAfterClear?: string } = {};
+    function SearchPage() {
+      useEffect(() => {
+        ref.current?.clear();
+        seenInEffect.valueAfterClear = ref.current?.getValue();
+      }, []);
+      return (
+        <>
+          <TokenizedSearchInput
+            ref={ref}
+            fields={basicFields}
+            defaultValue="status:is:active"
+            onClear={onClear}
+          />
+          <SuspendOnce />
+        </>
+      );
+    }
+
+    root.render(
+      <Suspense fallback={<p>loading</p>}>
+        <SearchPage />
+      </Suspense>
+    );
+    await waitFor(() => {
+      expect(uncaughtErrors).toEqual([]);
+      expect(onClear).toHaveBeenCalledTimes(1);
+    });
+
+    expect(seenInEffect.valueAfterClear).toBe('');
+    expect(ref.current?.getValue()).toBe('');
+  });
+
   it('applies token display set from an ancestor effect once the live editor renders', async () => {
     const SuspendOnce = createSuspendOnce(50);
     const ref = createRef<TokenizedSearchInputRef>();

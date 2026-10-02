@@ -20,6 +20,7 @@ const callbacks = {
   onValueSelect: () => {},
   onCustomSelect: () => {},
   onSubmit: () => {},
+  onClear: () => {},
 };
 
 describe('useEditorConfigSync', () => {

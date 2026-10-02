@@ -39,12 +39,15 @@ export const EDITOR_CONTEXT_UPDATED = 'editorContextUpdated';
 
 /** Marks the transaction of the `submit` command; `onSubmit` reads the state it leaves. */
 const SUBMITTED = 'querySubmitted';
+/** Marks the transaction of the `clear` command. */
+const CLEARED = 'queryCleared';
 
 export interface EditorCallbacks {
   onFieldSelect: (field: FieldDefinition) => void;
   onValueSelect: (value: string) => void;
   onCustomSelect: (suggestion: CustomSuggestion) => void;
   onSubmit: (snapshot: QuerySnapshot) => void;
+  onClear: () => void;
 }
 
 /** The single owner of editor configuration; readers go through `getEditorContext`. */
@@ -89,6 +92,7 @@ export const DEFAULT_EDITOR_CONTEXT: EditorContextStorage = {
     onValueSelect: () => {},
     onCustomSelect: () => {},
     onSubmit: () => {},
+    onClear: () => {},
   },
   fieldSuggestionsDisabled: false,
   valueSuggestionsDisabled: false,
@@ -127,6 +131,11 @@ declare module '@tiptap/core' {
        * submitting goes through this command.
        */
       submit: () => ReturnType;
+      /**
+       * Removes the whole content, like `replaceContent`, and calls `onClear`. Every way
+       * of clearing goes through this command.
+       */
+      clear: () => ReturnType;
     };
   }
 }
@@ -296,13 +305,22 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
           tr.setMeta(SUBMITTED, true);
           return true;
         },
+
+      clear:
+        () =>
+        ({ tr, commands, dispatch }) => {
+          if (dispatch) tr.setMeta(CLEARED, true);
+          return commands.replaceContent('');
+        },
     };
   },
 
   onTransaction({ transaction }) {
-    if (!transaction.getMeta(SUBMITTED)) return;
     const { callbacks, delimiter } = getEditorContext(this.editor);
-    callbacks.onSubmit(createQuerySnapshot(this.editor.state, { delimiter }));
+    if (transaction.getMeta(CLEARED)) callbacks.onClear();
+    if (transaction.getMeta(SUBMITTED)) {
+      callbacks.onSubmit(createQuerySnapshot(this.editor.state, { delimiter }));
+    }
   },
 
   addProseMirrorPlugins() {

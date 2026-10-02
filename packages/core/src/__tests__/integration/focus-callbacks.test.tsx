@@ -4,8 +4,12 @@
  */
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import {
+  TokenizedSearchInput,
+  type TokenizedSearchInputRef,
+} from '../../editor/tokenized-search-input';
 import { extendedFields } from '../fixtures';
 
 afterEach(() => {
@@ -317,6 +321,27 @@ describe('Focus Callbacks', () => {
         const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
         expect(lastCall[0].text).toBe('');
       });
+    });
+
+    it('triggers onClear when the ref clears the content', async () => {
+      const ref = createRef<TokenizedSearchInputRef>();
+      const onClear = vi.fn();
+      render(
+        <TokenizedSearchInput
+          ref={ref}
+          fields={extendedFields}
+          defaultValue="status:is:active"
+          onClear={onClear}
+        />
+      );
+      await screen.findByText('active');
+
+      act(() => {
+        ref.current?.clear();
+      });
+
+      expect(ref.current?.getValue()).toBe('');
+      expect(onClear).toHaveBeenCalledTimes(1);
     });
   });
 });

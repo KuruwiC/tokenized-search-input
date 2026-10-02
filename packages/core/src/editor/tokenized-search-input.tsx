@@ -89,12 +89,14 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
     });
 
     const handleSubmit = useCallback((snapshot: QuerySnapshot) => onSubmit?.(snapshot), [onSubmit]);
+    const handleClear = useCallback(() => onClear?.(), [onClear]);
     const pending = useTokenizedSearchInputRef(ref, editor);
     useEditorConfigSync(editor, config, {
       onFieldSelect: handleFieldSelect,
       onValueSelect: handleValueSelect,
       onCustomSelect: handleCustomSelect,
       onSubmit: handleSubmit,
+      onClear: handleClear,
     });
 
     useFocusWiring({
@@ -152,10 +154,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
           <div className="tsi-end-controls">
             {clearable && (
               <ClearButton
-                onClick={() => {
-                  editor?.commands.replaceContent('');
-                  onClear?.();
-                }}
+                onClick={() => editor?.commands.clear()}
                 visible={!isEmpty}
                 disabled={disabled}
                 className={classNames?.clearButton}

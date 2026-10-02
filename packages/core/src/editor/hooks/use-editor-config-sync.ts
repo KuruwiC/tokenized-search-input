@@ -118,11 +118,11 @@ export function useEditorConfigSync(
 
   // Callbacks change with the handlers' identities, so they update the storage
   // without notifying node views.
-  const { onFieldSelect, onValueSelect, onCustomSelect, onSubmit } = callbacks;
+  const { onFieldSelect, onValueSelect, onCustomSelect, onSubmit, onClear } = callbacks;
   useEffect(() => {
     if (!editor) return;
     applyEditorContext(getEditorContext(editor), {
-      callbacks: { onFieldSelect, onValueSelect, onCustomSelect, onSubmit },
+      callbacks: { onFieldSelect, onValueSelect, onCustomSelect, onSubmit, onClear },
     });
-  }, [editor, onFieldSelect, onValueSelect, onCustomSelect, onSubmit]);
+  }, [editor, onFieldSelect, onValueSelect, onCustomSelect, onSubmit, onClear]);
 }
