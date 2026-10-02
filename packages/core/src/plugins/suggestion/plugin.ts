@@ -9,10 +9,12 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { findTokenById } from '../../utils/find-token';
 import { isToken } from '../../utils/node-predicates';
 import { getTokenFocusEvent } from '../shared/editor-events';
+import { getSuggestionQueryUpdate } from '../shared/meta';
 import { getTokenFocusMeta } from '../token-focus-plugin';
 import { createResetState } from './state-helpers';
 import type {
   CloseSuggestionMeta,
+  SetSuggestionMeta,
   SuggestionAnchor,
   SuggestionMeta,
   SuggestionState,
@@ -47,6 +49,22 @@ function followAnchor(
   const node = tr.doc.nodeAt(mapResult.pos);
   if (!node || !isToken(node)) return null;
   return mapResult.pos === anchor.pos ? anchor : { pos: mapResult.pos };
+}
+
+/** The value suggestions for a value typed into a token, as a suggestion meta. */
+function queryUpdateMeta(tr: Transaction): SetSuggestionMeta | undefined {
+  const update = getSuggestionQueryUpdate(tr);
+  if (!update) return undefined;
+  return {
+    type: 'value',
+    fieldKey: update.fieldKey,
+    query: update.query,
+    items: update.items,
+    activeIndex: -1,
+    isLoading: false,
+    anchor: { tokenId: update.tokenId },
+    dismissed: false,
+  };
 }
 
 export function getSuggestionState(state: EditorState): SuggestionState | undefined {
@@ -95,7 +113,8 @@ export function createSuggestionPlugin(): Plugin<SuggestionState> {
           }
         }
 
-        const meta = tr.getMeta(suggestionKey) as SuggestionMeta | undefined;
+        const meta =
+          (tr.getMeta(suggestionKey) as SuggestionMeta | undefined) ?? queryUpdateMeta(tr);
         if (!meta) {
           return value;
         }

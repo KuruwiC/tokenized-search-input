@@ -39,5 +39,4 @@ export {
   suggestionKey,
   updateSuggestionActiveIndex,
   updateSuggestionDateValue,
-  updateSuggestionQuery,
 } from './suggestion';

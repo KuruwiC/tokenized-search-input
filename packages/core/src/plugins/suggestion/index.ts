@@ -21,7 +21,6 @@ export {
   setSuggestionLoading,
   updateSuggestionActiveIndex,
   updateSuggestionDateValue,
-  updateSuggestionQuery,
 } from './actions';
 // Anchors
 export { isAnchoredToToken, resolveAnchorPos } from './anchor';

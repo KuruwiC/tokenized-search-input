@@ -102,16 +102,11 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
     dispatchAction({ type: 'setOperator', operator: op });
   };
 
-  const handleValueChange = (inputValue: string) => {
-    const internalValue =
-      isEnumField && fieldDef?.enumValues
-        ? resolveEnumValue(fieldDef.enumValues, inputValue, {
-            resolver: fieldDef.valueResolver,
-          })
-        : inputValue;
-
-    dispatchAction({ type: 'setValue', value: internalValue });
-  };
+  /** The value that the text typed into the input stands for. */
+  const toValue = (inputText: string): string =>
+    isEnumField && fieldDef?.enumValues
+      ? resolveEnumValue(fieldDef.enumValues, inputText, { resolver: fieldDef.valueResolver })
+      : inputText;
 
   return (
     <Token
@@ -186,7 +181,7 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
           valueDisplayString={valueDisplayString}
           valueSuggestionsDisabled={valueSuggestionsDisabled}
           baseAllowSpaces={fieldDef?.allowSpaces || isDateField || isDateTimeField}
-          onChange={handleValueChange}
+          toValue={toValue}
           startContent={startContent}
           endContent={endContent}
           valueClassName={classNames?.tokenValue}
@@ -215,7 +210,7 @@ interface FilterTokenValueProps {
   valueSuggestionsDisabled: boolean;
   /** Whether spaces are allowed by field config (date/datetime/allowSpaces) */
   baseAllowSpaces: boolean;
-  onChange: (value: string) => void;
+  toValue: (inputText: string) => string;
   /** Content to display before the value (e.g., icon) */
   startContent?: React.ReactNode;
   /** Content to display after the value */
@@ -235,7 +230,7 @@ function FilterTokenValue({
   valueDisplayString,
   valueSuggestionsDisabled,
   baseAllowSpaces,
-  onChange,
+  toValue,
   startContent,
   endContent,
   valueClassName,
@@ -291,17 +286,27 @@ function FilterTokenValue({
   const allowSpaces = baseAllowSpaces || isInsideQuotes(currentInputText);
 
   // Event-driven value suggestions management
-  // Pass inputRef so the hook can get current input text for filtering
-  const { handleValueInputFocus, handleValueInputBlur: baseSuggestionBlur } = useValueSuggestions({
+  const {
+    handleValueInputFocus,
+    handleValueInputBlur: baseSuggestionBlur,
+    addSuggestionQuery,
+  } = useValueSuggestions({
     editor,
     tokenId,
-    inputRef,
     fieldKey,
     fieldDef,
     value: rawValue,
-    valueDisplay: valueDisplayString,
     enabled: !valueSuggestionsDisabled,
   });
+
+  // The transaction that writes a typed value also updates the value suggestions for it
+  const handleInputChange = (inputText: string) => {
+    const value = toValue(inputText);
+    const tr = editor.state.tr;
+    if (!applyTokenAction(tr, tokenId, { type: 'setValue', value })) return;
+    addSuggestionQuery(tr, inputText, value);
+    editor.view.dispatch(tr);
+  };
 
   // Combine blur handling: normalize date/datetime values and handle suggestions
   const handleValueInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -405,7 +410,7 @@ function FilterTokenValue({
   return (
     <Token.Value
       value={effectiveValue}
-      onChange={onChange}
+      onChange={handleInputChange}
       allowSpaces={allowSpaces}
       containerClassName={valueClassName}
       ariaLabel={`Value for ${fieldKey} filter`}

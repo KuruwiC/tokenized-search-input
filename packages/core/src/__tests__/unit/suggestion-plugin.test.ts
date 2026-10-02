@@ -1,5 +1,6 @@
 import { EditorState } from '@tiptap/pm/state';
 import { describe, expect, it } from 'vitest';
+import { updateSuggestionQuery } from '../../plugins/shared/meta';
 import {
   clearDismissed,
   closeSuggestion,
@@ -11,7 +12,6 @@ import {
   setSuggestion,
   setSuggestionLoading,
   updateSuggestionActiveIndex,
-  updateSuggestionQuery,
 } from '../../plugins/suggestion-plugin';
 import { basicFields, basicBlockSchema as schema } from '../fixtures';
 
@@ -104,22 +104,44 @@ describe('SuggestionPlugin', () => {
   });
 
   describe('updateSuggestionQuery', () => {
-    it('updates query and items', () => {
+    it('shows the value suggestions for the value typed into a token', () => {
       const state = createEditorState();
 
-      // Open suggestions
-      const tr1 = openFieldSuggestion(state.tr, testFields, '');
+      const tr1 = openValueSuggestion(state.tr, 'status', ['active', 'inactive'], '', 'token-1');
       const state1 = state.apply(tr1);
 
-      // Update query with filtered items
-      const filteredFields = [testFields[0]];
-      const tr2 = updateSuggestionQuery(state1.tr, 'sta', filteredFields);
-      const state2 = state1.apply(tr2);
-      const suggestionState = getSuggestionState(state2);
+      const tr2 = updateSuggestionQuery(state1.tr, {
+        tokenId: 'token-1',
+        fieldKey: 'status',
+        query: 'in',
+        items: ['inactive'],
+      });
+      const suggestionState = getSuggestionState(state1.apply(tr2));
 
-      expect(suggestionState?.query).toBe('sta');
-      expect(suggestionState?.items).toEqual(filteredFields);
+      expect(suggestionState?.type).toBe('value');
+      expect(suggestionState?.query).toBe('in');
+      expect(suggestionState?.items).toEqual(['inactive']);
       expect(suggestionState?.activeIndex).toBe(-1);
+      expect(suggestionState?.anchor).toEqual({ tokenId: 'token-1' });
+    });
+
+    it('shows dismissed value suggestions again when the user types', () => {
+      const state = createEditorState();
+      const state1 = state.apply(
+        openValueSuggestion(state.tr, 'status', ['active'], '', 'token-1')
+      );
+      const state2 = state1.apply(dismissSuggestion(state1.tr));
+
+      const tr = updateSuggestionQuery(state2.tr, {
+        tokenId: 'token-1',
+        fieldKey: 'status',
+        query: 'a',
+        items: ['active'],
+      });
+      const suggestionState = getSuggestionState(state2.apply(tr));
+
+      expect(suggestionState?.type).toBe('value');
+      expect(suggestionState?.dismissed).toBe(false);
     });
   });
 
@@ -245,7 +267,7 @@ describe('SuggestionPlugin', () => {
       expect(suggestionState?.items).toEqual([]);
     });
 
-    it('merges updateSuggestionQuery and setSuggestionLoading on same transaction', () => {
+    it('merges a query update and setSuggestionLoading on same transaction', () => {
       const state = createEditorState();
 
       // Open suggestions first
@@ -254,7 +276,7 @@ describe('SuggestionPlugin', () => {
 
       // Update query and loading on the same transaction
       const tr2 = state1.tr;
-      updateSuggestionQuery(tr2, 'sta', [testFields[0]]);
+      setSuggestion(tr2, { query: 'sta', items: [testFields[0]], activeIndex: -1 });
       setSuggestionLoading(tr2, true);
 
       const newState = state1.apply(tr2);

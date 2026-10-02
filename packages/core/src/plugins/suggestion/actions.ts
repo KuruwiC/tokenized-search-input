@@ -162,14 +162,6 @@ export function clearDismissed(tr: Transaction): Transaction {
   return setSuggestion(tr, { dismissed: false });
 }
 
-export function updateSuggestionQuery(
-  tr: Transaction,
-  query: string,
-  items: Array<FieldDefinition | EnumValue>
-): Transaction {
-  return setSuggestion(tr, { query, items, activeIndex: -1 });
-}
-
 export function updateSuggestionActiveIndex(tr: Transaction, activeIndex: number): Transaction {
   return setSuggestion(tr, { activeIndex });
 }

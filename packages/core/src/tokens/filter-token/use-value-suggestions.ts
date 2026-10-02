@@ -1,7 +1,8 @@
 import type { Editor } from '@tiptap/core';
-import type { RefObject } from 'react';
+import type { Transaction } from '@tiptap/pm/state';
 import { useEffect, useRef } from 'react';
 import { parseISOToDate } from '../../pickers/date-format';
+import { updateSuggestionQuery } from '../../plugins/shared/meta';
 import {
   closeSuggestion,
   getSuggestionState,
@@ -18,17 +19,20 @@ import { filterEnumValues } from '../../utils/enum-value';
 export interface UseValueSuggestionsOptions {
   editor: Editor;
   tokenId: string;
-  inputRef: RefObject<HTMLInputElement | null>;
   fieldKey: string;
   fieldDef: FieldDefinition | undefined;
   value: string;
-  valueDisplay: string;
   enabled: boolean;
 }
 
 export interface UseValueSuggestionsReturn {
   handleValueInputFocus: () => void;
   handleValueInputBlur: (e: React.FocusEvent) => void;
+  /**
+   * Adds the value suggestions for typed text to the transaction that writes the
+   * value it stands for.
+   */
+  addSuggestionQuery: (tr: Transaction, inputText: string, value: string) => void;
 }
 
 /**
@@ -41,16 +45,14 @@ export interface UseValueSuggestionsReturn {
  * Trigger points:
  * - Open: value input receives focus (focus event)
  * - Close: value input loses focus (blur event), unless focus moved to suggestion list
- * - Update: value changes while input is focused
+ * - Update: the transaction that writes a typed value carries its suggestion query
  */
 export function useValueSuggestions({
   editor,
   tokenId,
-  inputRef,
   fieldKey,
   fieldDef,
   value,
-  valueDisplay,
   enabled,
 }: UseValueSuggestionsOptions): UseValueSuggestionsReturn {
   const isEnumField =
@@ -64,22 +66,8 @@ export function useValueSuggestions({
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      // The suggestion of this token's value input goes away with the input.
-      if (!editor.isDestroyed) {
-        const suggestionState = getSuggestionState(editor.state);
-        if (suggestionState && isAnchoredToToken(suggestionState.anchor, tokenId)) {
-          try {
-            const tr = editor.state.tr;
-            closeSuggestion(tr);
-            tr.setMeta('addToHistory', false);
-            editor.view.dispatch(tr);
-          } catch {
-            // Editor might be in an unstable state during teardown
-          }
-        }
-      }
     };
-  }, [editor, tokenId]);
+  }, []);
 
   // Open suggestions when value input receives focus
   const handleValueInputFocus = () => {
@@ -142,27 +130,15 @@ export function useValueSuggestions({
     editor.view.dispatch(tr);
   };
 
-  // Update suggestions when value changes (only while input is focused)
-  useEffect(() => {
-    if (!isMountedRef.current) return;
+  const addSuggestionQuery = (tr: Transaction, inputText: string, value: string) => {
     if (!enabled) return;
     if (!isEnumField || !fieldDef?.enumValues) return;
-
-    // Only update if value input is currently focused
-    if (document.activeElement !== inputRef.current) return;
-
-    // Use current input text for filtering (what user is actually typing)
-    // This ensures filtering works correctly even when display value differs from raw value
-    const currentInputText = inputRef.current?.value ?? valueDisplay;
-
-    const tr = editor.state.tr;
-    const filteredValues = filterEnumValues(fieldDef.enumValues, currentInputText, {
+    // Filter by the text the user is typing, which may be a label rather than the value
+    const items = filterEnumValues(fieldDef.enumValues, inputText, {
       matcher: fieldDef.suggestionMatcher,
     });
-    openValueSuggestion(tr, fieldKey, filteredValues, value, tokenId);
-    tr.setMeta('addToHistory', false);
-    editor.view.dispatch(tr);
-  }, [valueDisplay, value, editor, tokenId, fieldKey, fieldDef, enabled, isEnumField, inputRef]);
+    updateSuggestionQuery(tr, { tokenId, fieldKey, query: value, items });
+  };
 
-  return { handleValueInputFocus, handleValueInputBlur };
+  return { handleValueInputFocus, handleValueInputBlur, addSuggestionQuery };
 }
