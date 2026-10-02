@@ -76,18 +76,18 @@ const timeInput = () => document.querySelector('input[type="time"]') as HTMLInpu
 const chooseDay = (name: RegExp) => fireEvent.click(screen.getByRole('button', { name }));
 
 describe('datetime picker', () => {
-  it('keeps the offset and the time of the token when only the date is changed (d)', async () => {
+  it('keeps the offset and the time of the token when only the date is changed', async () => {
     const ref = await openPicker('updated:gt:2024-03-05T14:30:00+09:00');
     chooseDay(/March 10th, 2024/);
     await waitFor(() => expect(tokenValue(ref)).toBe('2024-03-10T14:30:00+09:00'));
   });
 
-  it('shows 14:30 for a token that has seconds, milliseconds and Z (b)', async () => {
+  it('shows 14:30 for a token that has seconds, milliseconds and Z', async () => {
     await openPicker('updated:gt:2024-03-05T14:30:45.123Z');
     expect(timeInput().value).toBe('14:30');
   });
 
-  it('shows 00:00 for a token at midnight (e)', async () => {
+  it('shows 00:00 for a token at midnight', async () => {
     await openPicker('updated:gt:2024-03-05T00:00');
     expect(timeInput().value).toBe('00:00');
   });

@@ -40,7 +40,7 @@ const day = (label: RegExp) => screen.getByRole('button', { name: label });
 
 describe('DefaultDateTimePicker', () => {
   describe('the time it shows', () => {
-    it('shows 14:30 for a value with seconds, milliseconds and Z (b)', () => {
+    it('shows 14:30 for a value with seconds, milliseconds and Z', () => {
       render(
         <DefaultDateTimePicker
           {...propsOf({ value: { date: '2024-03-05', time: '14:30:45.123', offset: 'Z' } })}
@@ -58,7 +58,7 @@ describe('DefaultDateTimePicker', () => {
       expect(timeInput().value).toBe('14:30');
     });
 
-    it('shows 00:00 when the value moves to midnight (e)', () => {
+    it('shows 00:00 when the value moves to midnight', () => {
       const props = propsOf({ value: { date: '2024-03-05', time: '14:30' } });
       const { rerender } = render(<DefaultDateTimePicker {...props} />);
       rerender(<DefaultDateTimePicker {...props} value={{ date: '2024-03-05', time: '00:00' }} />);
@@ -72,7 +72,7 @@ describe('DefaultDateTimePicker', () => {
   });
 
   describe('choosing a date', () => {
-    it('keeps the offset and the time of a +09:00 value (d)', () => {
+    it('keeps the offset and the time of a +09:00 value', () => {
       const onChange = vi.fn();
       render(
         <DefaultDateTimePicker
@@ -279,7 +279,7 @@ describe('DefaultDateTimePicker', () => {
   });
 
   describe('the days that can be chosen', () => {
-    it('leaves March 5 selectable for a maximum of 2024-03-05T15:00 (f)', () => {
+    it('leaves March 5 selectable for a maximum of 2024-03-05T15:00', () => {
       render(
         <DefaultDateTimePicker
           {...propsOf({

@@ -32,7 +32,7 @@ describe('parseDateTimeValue', () => {
     expect(parsed('2024-03-05 14:30')).toEqual({ date: '2024-03-05', time: '14:30' });
   });
 
-  it('keeps the time of a value that has an offset (a)', () => {
+  it('keeps the time of a value that has an offset', () => {
     expect(parsed('2024-03-05T14:30:00+0900')).toEqual({
       date: '2024-03-05',
       time: '14:30:00',
@@ -42,7 +42,7 @@ describe('parseDateTimeValue', () => {
     expect(parsed('2024-03-05T14:30:00-05:30').offset).toBe('-05:30');
   });
 
-  it('parses a millisecond ISO string with Z (b)', () => {
+  it('parses a millisecond ISO string with Z', () => {
     expect(parsed('2024-03-05T14:30:45.123Z')).toEqual({
       date: '2024-03-05',
       time: '14:30:45.123',
@@ -55,7 +55,7 @@ describe('parseDateTimeValue', () => {
     expect(parsed('2024-03-05T14:30:00-0000').offset).toBe('Z');
   });
 
-  it('keeps midnight as a time (e)', () => {
+  it('keeps midnight as a time', () => {
     expect(parsed('2024-03-05T00:00')).toEqual({ date: '2024-03-05', time: '00:00' });
   });
 
@@ -71,7 +71,7 @@ describe('parseDateTimeValue', () => {
     '2024-03-5',
     '2024/03/05',
     '03/05/2024',
-  ])('rejects the partial or loose date %s (c)', (input) => {
+  ])('rejects the partial or loose date %s', (input) => {
     expect(parseDateTimeValue(input, 'date').ok).toBe(false);
     expect(parseDateTimeValue(input, 'datetime').ok).toBe(false);
   });
@@ -83,7 +83,7 @@ describe('parseDateTimeValue', () => {
     '2024-13-01',
     '2024-00-10',
     '2024-03-00',
-  ])('rejects the date %s that does not exist (c)', (input) => {
+  ])('rejects the date %s that does not exist', (input) => {
     expect(parseDateTimeValue(input, 'date').ok).toBe(false);
   });
 

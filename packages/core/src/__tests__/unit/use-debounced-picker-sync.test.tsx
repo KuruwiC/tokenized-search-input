@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 describe('useDebouncedPickerSync', () => {
-  it('shows a complete value at once, with its time and offset (b)', () => {
+  it('shows a complete value at once, with its time and offset', () => {
     const { result } = renderHook(() =>
       useDebouncedPickerSync({
         inputValue: '2024-03-05T14:30:45.123Z',

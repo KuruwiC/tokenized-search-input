@@ -42,7 +42,7 @@ describe('DefaultDatePicker', () => {
     expect(screen.getByRole('button', { name: /July 4th, 2024/ })).toBeInTheDocument();
   });
 
-  it('leaves the day of the maximum selectable whatever time the maximum has (f)', () => {
+  it('leaves the day of the maximum selectable whatever time the maximum has', () => {
     render(
       <DefaultDatePicker
         value={{ date: '2024-03-05' }}

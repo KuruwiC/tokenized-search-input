@@ -44,7 +44,7 @@ describe('resolveBoundDay', () => {
 describe('createDayMatcher', () => {
   const cell = (month: number, day: number) => new Date(2024, month - 1, day);
 
-  it('leaves the day of the maximum selectable even when its time is later in the day (f)', () => {
+  it('leaves the day of the maximum selectable even when its time is later in the day', () => {
     const disabled = createDayMatcher({ maxDate: '2024-03-05T15:00' }, false);
     expect(disabled(cell(3, 5))).toBe(false);
     expect(disabled(cell(3, 4))).toBe(false);

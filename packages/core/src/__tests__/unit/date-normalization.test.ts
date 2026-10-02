@@ -79,7 +79,7 @@ describe('normalizeDateFieldValue for a date field', () => {
 });
 
 describe('normalizeDateFieldValue for a datetime field', () => {
-  it('keeps the time of a value whose offset has no colon (a)', () => {
+  it('keeps the time of a value whose offset has no colon', () => {
     expect(normalizeDateFieldValue('2024-03-05T14:30:00+0900', datetimeField())).toBe(
       '2024-03-05T14:30:00+09:00'
     );
