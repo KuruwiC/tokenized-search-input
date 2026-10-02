@@ -69,13 +69,25 @@ import { useCustomSuggestions } from './use-custom-suggestions';
 import { useFieldSuggestions } from './use-field-suggestions';
 
 export type {
+  TokenDisplay,
   TokenizedSearchInputProps,
   TokenizedSearchInputRef,
+  TokenPatch,
 } from './tokenized-search-input.types';
 
+import {
+  deleteTokenInDoc,
+  deleteTokenInEditor,
+  setTokenDisplayInDoc,
+  setTokenDisplayInEditor,
+  updateTokenInDoc,
+  updateTokenInEditor,
+} from './token-commands';
 import type {
+  TokenDisplay,
   TokenizedSearchInputProps,
   TokenizedSearchInputRef,
+  TokenPatch,
 } from './tokenized-search-input.types';
 
 function setContentAndValidate(editor: Editor, doc: JSONContent): void {
@@ -824,8 +836,31 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
           editor.commands.clearContent();
         },
         submit: handleSubmit,
-        // Internal access - not part of public API
-        _getInternalEditor: () => editor,
+        updateToken: (id: string, patch: TokenPatch) => {
+          if (!editor) return;
+          if (editor.isDestroyed) {
+            pendingHandleRef.current.doc = updateTokenInDoc(readDoc(editor), id, patch);
+            return;
+          }
+          updateTokenInEditor(editor, id, patch);
+        },
+        deleteToken: (id: string) => {
+          if (!editor) return;
+          if (editor.isDestroyed) {
+            pendingHandleRef.current.doc = deleteTokenInDoc(readDoc(editor), id);
+            return;
+          }
+          deleteTokenInEditor(editor, id);
+        },
+        setTokenDisplay: (id: string, display: TokenDisplay) => {
+          if (!editor) return;
+          if (editor.isDestroyed) {
+            pendingHandleRef.current.doc = setTokenDisplayInDoc(readDoc(editor), id, display);
+            return;
+          }
+          setTokenDisplayInEditor(editor, id, display);
+        },
+        getEditor: () => editor,
       };
     }, [
       editor,

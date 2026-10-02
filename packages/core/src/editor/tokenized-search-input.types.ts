@@ -1,8 +1,11 @@
+import type { Editor } from '@tiptap/core';
+import type { ReactNode } from 'react';
 import type {
   ClassNames,
   FieldDefinition,
   FreeTextMode,
   LabelsConfig,
+  Operator,
   PickersConfig,
   QuerySnapshot,
   SerializationConfig,
@@ -133,13 +136,35 @@ export interface TokenizedSearchInputProps {
   endAdornment?: React.ReactNode;
 }
 
+/** Changes `updateToken` applies to a filter token. Omitted members are left unchanged. */
+export interface TokenPatch {
+  operator?: Operator;
+  /** The token's internal value (for enum fields, the value rather than its label). */
+  value?: string;
+}
+
+/**
+ * Display attributes `setTokenDisplay` applies to a filter token. Omitted members
+ * are left unchanged; `null` clears a member.
+ */
+export interface TokenDisplay {
+  displayValue?: string | null;
+  startContent?: ReactNode;
+  endContent?: ReactNode;
+}
+
 export interface TokenizedSearchInputRef {
-  /** Set the input value programmatically */
+  /**
+   * Set the input value programmatically.
+   *
+   * Together with `defaultValue` this is the only way to provide a query. The
+   * component does not follow later changes to `defaultValue`.
+   */
   setValue: (value: string) => void;
   /** Get the current serialized query string */
   getValue: () => string;
   /**
-   * Get a versioned snapshot of the current query state.
+   * Get a snapshot of the current query state.
    * Includes parsed tokens with stable IDs and serialized text.
    */
   getSnapshot: () => QuerySnapshot;
@@ -149,4 +174,26 @@ export interface TokenizedSearchInputRef {
   clear: () => void;
   /** Trigger submit programmatically */
   submit: () => void;
+  /**
+   * Change the operator and/or value of the filter token with the given id
+   * (ids come from `getSnapshot`). The change is an ordinary edit: it fires
+   * `onChange` and can be undone. Unknown ids are ignored.
+   */
+  updateToken: (id: string, patch: TokenPatch) => void;
+  /** Remove the token with the given id. Unknown ids are ignored. */
+  deleteToken: (id: string) => void;
+  /**
+   * Set the display value and surrounding content of the filter token with the
+   * given id without changing the query. Not recorded in undo history. Unknown
+   * ids are ignored.
+   */
+  setTokenDisplay: (id: string, display: TokenDisplay) => void;
+  /**
+   * Escape hatch to the underlying TipTap editor, or `null` before it exists.
+   *
+   * Intended for reading and debugging. The editor's internals are outside
+   * semver, and writing through it directly is unsupported: use `setValue`,
+   * `clear`, `updateToken`, `deleteToken` and `setTokenDisplay` to change content.
+   */
+  getEditor: () => Editor | null;
 }

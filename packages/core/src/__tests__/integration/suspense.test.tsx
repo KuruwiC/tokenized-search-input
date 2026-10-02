@@ -4,9 +4,9 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
 import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
-import { getInternalEditor } from '../../internal';
 import type { QuerySnapshot } from '../../types';
 import { basicFields } from '../fixtures';
+import { getInternalEditor } from '../helpers/get-editor';
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

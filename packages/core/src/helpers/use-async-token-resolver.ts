@@ -1,24 +1,8 @@
 import type { Editor } from '@tiptap/core';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { ReactNode, RefObject } from 'react';
 import { useCallback, useRef } from 'react';
-import type { TokenizedSearchInputRef } from '../editor/tokenized-search-input';
-import { updateTokenAttrs } from '../utils/token-attrs';
-
-/**
- * Extended ref interface that includes internal editor access.
- */
-interface TokenizedSearchInputRefWithEditor extends TokenizedSearchInputRef {
-  _getInternalEditor: () => Editor | null;
-}
-
-function getEditor(ref: TokenizedSearchInputRef | null): Editor | null {
-  if (!ref) return null;
-  const refWithEditor = ref as TokenizedSearchInputRefWithEditor;
-  if (typeof refWithEditor._getInternalEditor === 'function') {
-    return refWithEditor._getInternalEditor();
-  }
-  return null;
-}
+import type { TokenDisplay, TokenizedSearchInputRef } from '../editor/tokenized-search-input';
 
 export interface ResolvedTokenData {
   displayValue: string;
@@ -29,7 +13,7 @@ export interface ResolvedTokenData {
 
 export interface AsyncTokenResolverOptions<T> {
   /** Ref to TokenizedSearchInput */
-  inputRef: RefObject<TokenizedSearchInputRef>;
+  inputRef: RefObject<TokenizedSearchInputRef | null>;
 
   /** Field key to resolve (e.g., 'country') */
   fieldKey: string;
@@ -81,8 +65,19 @@ const LOADING_MARKER = '__async_resolver_loading__';
 interface PendingToken {
   id: string;
   value: string;
-  displayValue: unknown;
-  startContent: unknown;
+  displayValue: string | null;
+  startContent: ReactNode;
+}
+
+function getEditor(ref: RefObject<TokenizedSearchInputRef | null>): Editor | null {
+  return ref.current?.getEditor() ?? null;
+}
+
+function toTokenDisplay(data: ResolvedTokenData): TokenDisplay {
+  const display: TokenDisplay = { displayValue: data.displayValue };
+  if (data.startContent !== undefined) display.startContent = data.startContent;
+  if (data.endContent !== undefined) display.endContent = data.endContent;
+  return display;
 }
 
 function collectPendingTokens(editor: Editor, fieldKey: string): PendingToken[] {
@@ -101,8 +96,8 @@ function collectPendingTokens(editor: Editor, fieldKey: string): PendingToken[] 
       tokens.push({
         id: node.attrs.id,
         value: node.attrs.value,
-        displayValue: node.attrs.displayValue,
-        startContent: node.attrs.startContent,
+        displayValue: node.attrs.displayValue ?? null,
+        startContent: node.attrs.startContent ?? null,
       });
     }
     return true;
@@ -111,16 +106,16 @@ function collectPendingTokens(editor: Editor, fieldKey: string): PendingToken[] 
   return tokens;
 }
 
-function findTokenById(editor: Editor, id: string): { pos: number; nodeSize: number } | null {
-  let match: { pos: number; nodeSize: number } | null = null;
-  editor.state.doc.descendants((node, pos) => {
+function readTokenNode(editor: Editor, id: string) {
+  let match: ProseMirrorNode | null = null;
+  editor.state.doc.descendants((node) => {
     if (node.type.name === 'filterToken' && node.attrs.id === id) {
-      match = { pos, nodeSize: node.nodeSize };
+      match = node;
       return false;
     }
     return true;
   });
-  return match;
+  return match as ProseMirrorNode | null;
 }
 
 /**
@@ -197,7 +192,7 @@ export function useAsyncTokenResolver<T>(
       while (shouldContinue) {
         rerunRequestedRef.current = false;
 
-        const editor = getEditor(inputRef.current);
+        const editor = getEditor(inputRef);
         if (!editor || editor.isDestroyed) return;
 
         const tokensToResolve = collectPendingTokens(editor, fieldKey).filter(
@@ -211,24 +206,19 @@ export function useAsyncTokenResolver<T>(
         const loadingDisplayValue = loadingContent?.displayValue ?? LOADING_MARKER;
 
         if (loadingContent) {
-          const tr = editor.state.tr;
-          for (const token of tokensToResolve) {
-            const current = findTokenById(editor, token.id);
-            const node = current ? tr.doc.nodeAt(current.pos) : null;
-            if (current && node?.attrs.value === token.value && !node.attrs.displayValue) {
-              updateTokenAttrs(tr, current.pos, {
-                displayValue: loadingDisplayValue,
-                startContent: loadingContent.startContent,
-              });
+          applyingResultRef.current = true;
+          try {
+            for (const token of tokensToResolve) {
+              const node = readTokenNode(editor, token.id);
+              if (node?.attrs.value === token.value && !node.attrs.displayValue) {
+                inputRef.current?.setTokenDisplay(token.id, {
+                  displayValue: loadingDisplayValue,
+                  startContent: loadingContent.startContent ?? null,
+                });
+              }
             }
-          }
-          if (tr.docChanged) {
-            applyingResultRef.current = true;
-            try {
-              editor.view.dispatch(tr);
-            } finally {
-              applyingResultRef.current = false;
-            }
+          } finally {
+            applyingResultRef.current = false;
           }
         }
 
@@ -238,31 +228,25 @@ export function useAsyncTokenResolver<T>(
         try {
           resolvedItems = await resolve(values);
         } catch (error) {
-          const currentEditor = getEditor(inputRef.current);
+          const currentEditor = getEditor(inputRef);
           if (loadingContent && currentEditor === editor && !editor.isDestroyed) {
-            const tr = editor.state.tr;
-            for (const token of tokensToResolve) {
-              const current = findTokenById(editor, token.id);
-              const node = current ? tr.doc.nodeAt(current.pos) : null;
-              if (
-                current &&
-                node?.attrs.key === fieldKey &&
-                node.attrs.value === token.value &&
-                node.attrs.displayValue === loadingDisplayValue
-              ) {
-                updateTokenAttrs(tr, current.pos, {
-                  displayValue: token.displayValue,
-                  startContent: token.startContent,
-                });
+            applyingResultRef.current = true;
+            try {
+              for (const token of tokensToResolve) {
+                const node = readTokenNode(editor, token.id);
+                if (
+                  node?.attrs.key === fieldKey &&
+                  node.attrs.value === token.value &&
+                  node.attrs.displayValue === loadingDisplayValue
+                ) {
+                  inputRef.current?.setTokenDisplay(token.id, {
+                    displayValue: token.displayValue,
+                    startContent: token.startContent,
+                  });
+                }
               }
-            }
-            if (tr.docChanged) {
-              applyingResultRef.current = true;
-              try {
-                editor.view.dispatch(tr);
-              } finally {
-                applyingResultRef.current = false;
-              }
+            } finally {
+              applyingResultRef.current = false;
             }
           }
           for (const token of tokensToResolve) {
@@ -273,16 +257,15 @@ export function useAsyncTokenResolver<T>(
           continue;
         }
 
-        const currentEditor = getEditor(inputRef.current);
+        const currentEditor = getEditor(inputRef);
         if (currentEditor !== editor || editor.isDestroyed) return;
 
         const itemMap = new Map(resolvedItems.map((item) => [getValue(item), item]));
-        const toUpdate: { pos: number; data: ResolvedTokenData }[] = [];
-        const toDelete: { pos: number; nodeSize: number }[] = [];
+        const toUpdate: { id: string; display: TokenDisplay }[] = [];
+        const toDelete: string[] = [];
 
         for (const token of tokensToResolve) {
-          const current = findTokenById(editor, token.id);
-          const node = current ? editor.state.doc.nodeAt(current.pos) : null;
+          const node = readTokenNode(editor, token.id);
           const stillPending =
             node?.attrs.key === fieldKey &&
             node.attrs.value === token.value &&
@@ -291,34 +274,25 @@ export function useAsyncTokenResolver<T>(
               ? node.attrs.displayValue === loadingDisplayValue
               : !node.attrs.displayValue);
 
-          if (!current || !node || !stillPending) continue;
+          if (!stillPending) continue;
 
           const item = itemMap.get(token.value);
           if (item) {
-            toUpdate.push({ pos: current.pos, data: getDisplayData(item) });
+            toUpdate.push({ id: token.id, display: toTokenDisplay(getDisplayData(item)) });
           } else if (onNotFound === 'delete') {
-            toDelete.push(current);
+            toDelete.push(token.id);
           } else {
-            toUpdate.push({ pos: current.pos, data: { displayValue: token.value } });
+            toUpdate.push({ id: token.id, display: { displayValue: token.value } });
           }
         }
 
         applyingResultRef.current = true;
         try {
-          if (toUpdate.length > 0) {
-            const tr = editor.state.tr;
-            for (const { pos, data } of toUpdate) {
-              updateTokenAttrs(tr, pos, data);
-            }
-            editor.view.dispatch(tr);
+          for (const { id, display } of toUpdate) {
+            inputRef.current?.setTokenDisplay(id, display);
           }
-
-          if (toDelete.length > 0) {
-            const tr = editor.state.tr;
-            for (const { pos, nodeSize } of [...toDelete].sort((a, b) => b.pos - a.pos)) {
-              tr.delete(pos, pos + nodeSize);
-            }
-            editor.view.dispatch(tr);
+          for (const id of toDelete) {
+            inputRef.current?.deleteToken(id);
           }
         } finally {
           applyingResultRef.current = false;

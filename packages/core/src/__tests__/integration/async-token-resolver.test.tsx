@@ -1,7 +1,8 @@
 import { act, render, waitFor } from '@testing-library/react';
-import { createRef, type RefObject } from 'react';
+import { createRef, type RefObject, useRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  type TokenDisplay,
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
@@ -10,7 +11,6 @@ import {
   useAsyncTokenResolver,
 } from '../../helpers/use-async-token-resolver';
 import type { FieldDefinition } from '../../types';
-import { getInternalEditor } from '../helpers/get-editor';
 
 interface Country {
   value: string;
@@ -37,7 +37,7 @@ function createDeferred<T>() {
 }
 
 function getCountryTokenAttrs(inputRef: RefObject<TokenizedSearchInputRef>) {
-  const editor = getInternalEditor(inputRef.current);
+  const editor = inputRef.current?.getEditor();
   const attrs: Record<string, unknown>[] = [];
   editor?.state.doc.descendants((node) => {
     if (node.type.name === 'filterToken' && node.attrs.key === 'country') {
@@ -49,10 +49,8 @@ function getCountryTokenAttrs(inputRef: RefObject<TokenizedSearchInputRef>) {
 }
 
 interface ResolverHarnessProps
-  extends Pick<
-    AsyncTokenResolverOptions<Country>,
-    'inputRef' | 'resolve' | 'loadingContent' | 'onError'
-  > {
+  extends Pick<AsyncTokenResolverOptions<Country>, 'resolve' | 'loadingContent' | 'onError'> {
+  inputRef: RefObject<TokenizedSearchInputRef>;
   defaultValue: string;
 }
 
@@ -163,5 +161,152 @@ describe('useAsyncTokenResolver', () => {
       expect(attrs?.startContent).toBeNull();
     });
     expect(resolve).toHaveBeenCalledTimes(1);
+  });
+
+  describe('writes through the ref commands', () => {
+    function spyOnCommands(realRef: RefObject<TokenizedSearchInputRef>) {
+      const setTokenDisplay = vi.fn();
+      const deleteToken = vi.fn();
+      const wrapped: RefObject<TokenizedSearchInputRef> = {
+        get current(): TokenizedSearchInputRef | null {
+          const real = realRef.current;
+          if (!real) return null;
+          return {
+            ...real,
+            setTokenDisplay: (id: string, display: TokenDisplay) => {
+              setTokenDisplay(id, display);
+              real.setTokenDisplay(id, display);
+            },
+            deleteToken: (id: string) => {
+              deleteToken(id);
+              real.deleteToken(id);
+            },
+          };
+        },
+      };
+      return { wrapped, setTokenDisplay, deleteToken };
+    }
+
+    function WrappedHarness({
+      realRef,
+      wrapped,
+      resolve,
+      defaultValue,
+      onNotFound,
+      loadingContent,
+    }: {
+      realRef: RefObject<TokenizedSearchInputRef>;
+      wrapped: RefObject<TokenizedSearchInputRef>;
+      resolve: AsyncTokenResolverOptions<Country>['resolve'];
+      defaultValue: string;
+      onNotFound?: AsyncTokenResolverOptions<Country>['onNotFound'];
+      loadingContent?: AsyncTokenResolverOptions<Country>['loadingContent'];
+    }) {
+      const { resolveTokens } = useAsyncTokenResolver({
+        inputRef: wrapped,
+        fieldKey: 'country',
+        resolve,
+        getValue: (country) => country.value,
+        getDisplayData: (country) => ({ displayValue: country.label }),
+        onNotFound,
+        loadingContent,
+      });
+      return (
+        <TokenizedSearchInput
+          ref={realRef}
+          fields={fields}
+          defaultValue={defaultValue}
+          onChange={() => {
+            void resolveTokens();
+          }}
+        />
+      );
+    }
+
+    it('applies resolved display data with setTokenDisplay', async () => {
+      const realRef = createRef<TokenizedSearchInputRef>();
+      const { wrapped, setTokenDisplay } = spyOnCommands(realRef);
+      const resolve = vi.fn().mockResolvedValue([{ value: 'jp', label: 'Japan' }]);
+
+      render(
+        <WrappedHarness
+          realRef={realRef}
+          wrapped={wrapped}
+          resolve={resolve}
+          defaultValue="country:is:jp"
+        />
+      );
+
+      await waitFor(() => expect(getCountryTokenAttrs(realRef)[0]?.displayValue).toBe('Japan'));
+      const tokenId = getCountryTokenAttrs(realRef)[0]?.id;
+      expect(setTokenDisplay).toHaveBeenCalledWith(tokenId, { displayValue: 'Japan' });
+    });
+
+    it('sets the loading decoration with setTokenDisplay', async () => {
+      const realRef = createRef<TokenizedSearchInputRef>();
+      const { wrapped, setTokenDisplay } = spyOnCommands(realRef);
+      const deferred = createDeferred<Country[]>();
+      const resolve = vi.fn().mockReturnValue(deferred.promise);
+
+      render(
+        <WrappedHarness
+          realRef={realRef}
+          wrapped={wrapped}
+          resolve={resolve}
+          defaultValue="country:is:jp"
+          loadingContent={{ displayValue: 'Loading...', startContent: 'spinner' }}
+        />
+      );
+
+      await waitFor(() =>
+        expect(getCountryTokenAttrs(realRef)[0]?.displayValue).toBe('Loading...')
+      );
+      expect(setTokenDisplay).toHaveBeenCalledWith(getCountryTokenAttrs(realRef)[0]?.id, {
+        displayValue: 'Loading...',
+        startContent: 'spinner',
+      });
+
+      await act(async () => {
+        deferred.resolve([{ value: 'jp', label: 'Japan' }]);
+        await deferred.promise;
+      });
+      await waitFor(() => expect(getCountryTokenAttrs(realRef)[0]?.displayValue).toBe('Japan'));
+    });
+
+    it('removes unresolved tokens with deleteToken', async () => {
+      const realRef = createRef<TokenizedSearchInputRef>();
+      const { wrapped, deleteToken } = spyOnCommands(realRef);
+      const resolve = vi.fn().mockResolvedValue([]);
+
+      render(
+        <WrappedHarness
+          realRef={realRef}
+          wrapped={wrapped}
+          resolve={resolve}
+          defaultValue="country:is:zz"
+        />
+      );
+
+      await waitFor(() => expect(getCountryTokenAttrs(realRef)).toHaveLength(0));
+      expect(deleteToken).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('accepts a ref created by useRef(null) typed as nullable', () => {
+    function NullableRefHarness() {
+      const ref = useRef<TokenizedSearchInputRef>(null);
+      const nullableRef: RefObject<TokenizedSearchInputRef | null> = ref;
+      useAsyncTokenResolver({
+        inputRef: nullableRef,
+        fieldKey: 'country',
+        resolve: async () => [] as Country[],
+        getValue: (country) => country.value,
+        getDisplayData: (country) => ({ displayValue: country.label }),
+      });
+      return <TokenizedSearchInput ref={ref} fields={fields} />;
+    }
+
+    render(<NullableRefHarness />);
+    expect(document.querySelector('[role="combobox"]')).not.toBeNull();
   });
 });
