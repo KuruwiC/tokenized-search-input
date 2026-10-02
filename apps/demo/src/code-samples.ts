@@ -1,5 +1,4 @@
-export const BASIC_CODE = `import { TokenizedSearchInput } from '@kuruwic/tokenized-search-input';
-import type { FieldDefinition } from '@kuruwic/tokenized-search-input/utils';
+export const BASIC_CODE = `import { type FieldDefinition, TokenizedSearchInput } from '@kuruwic/tokenized-search-input';
 import '@kuruwic/tokenized-search-input/styles';
 
 const fields: FieldDefinition[] = [

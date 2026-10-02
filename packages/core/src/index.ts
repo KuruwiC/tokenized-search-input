@@ -7,8 +7,10 @@
 export { ClearButton, type ClearButtonProps } from './editor/clear-button';
 export { TokenizedSearchInput } from './editor/tokenized-search-input';
 export type {
+  TokenDisplay,
   TokenizedSearchInputProps,
   TokenizedSearchInputRef,
+  TokenPatch,
 } from './editor/tokenized-search-input.types';
 
 // ============================================
@@ -29,3 +31,97 @@ export {
   type ResolvedTokenData,
   useAsyncTokenResolver,
 } from './helpers/use-async-token-resolver';
+
+// ============================================
+// Type Definitions and Constants
+// ============================================
+
+export type {
+  AtLeastOne,
+  BaseDatePickerRenderProps,
+  ClassNameSlot,
+  ClassNames,
+  CreateRuleOptions,
+  CustomSuggestion,
+  CustomSuggestionConfig,
+  CustomSuggestionDisplayMode,
+  CustomSuggestionResult,
+  CustomSuggestionSelectContext,
+  DateFieldDefinition,
+  DateFormatConfig,
+  DatePickerRenderProps,
+  DateTimeFieldDefinition,
+  DateTimeFormatConfig,
+  DateTimePickerRenderProps,
+  DateTimeTimeControls,
+  DefaultOperator,
+  EnumFieldDefinition,
+  EnumResolverContext,
+  EnumValue,
+  EnumValueResolver,
+  EnumValueWithLabel,
+  ExistingToken,
+  ExistingTokenWithId,
+  ExtendedValidationFn,
+  ExtendedValidationResult,
+  FieldDefinition,
+  FieldRuleOverride,
+  FieldSuggestionListProps,
+  FieldType,
+  FilterToken,
+  FilterTokenAttrs,
+  FreeTextMode,
+  FreeTextToken,
+  LabelResolver,
+  LabelResolverContext,
+  LabelsConfig,
+  Matcher,
+  Operator,
+  OperatorLabelConfig,
+  OperatorLabels,
+  PaginationLabels,
+  ParsedToken,
+  PickersConfig,
+  QuerySnapshot,
+  QuerySnapshotFilterToken,
+  QuerySnapshotFreeTextToken,
+  QuerySnapshotPlainText,
+  QuerySnapshotSegment,
+  SerializationConfig,
+  SimpleFieldDefinition,
+  SimpleToken,
+  SimpleValidationFn,
+  SimpleValidationReturn,
+  SuggestContext,
+  SuggestContextWithPagination,
+  SuggestedFilterToken,
+  SuggestFnReturn,
+  SuggestionErrorContext,
+  SuggestionsConfig,
+  TokenLabelDisplay,
+  TokenType,
+  UnknownFieldTemplate,
+  ValidationAction,
+  ValidationConfig,
+  ValidationContext,
+  ValidationResult,
+  ValidationRule,
+  ValidationRuleFn,
+  ValidationToken,
+  ValueSuggestionListProps,
+  Violation,
+  ViolationTarget,
+} from './types';
+export {
+  ALL_OPERATORS,
+  DEFAULT_OPERATOR_LABELS,
+  DEFAULT_OPERATORS,
+  DEFAULT_TOKEN_DELIMITER,
+} from './types';
+
+// ============================================
+// Callback Types
+// ============================================
+
+export type { SerializeTokenFn } from './extensions/clipboard-serializer';
+export type { DeserializeTextFn } from './extensions/editor-context';

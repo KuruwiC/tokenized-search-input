@@ -26,10 +26,6 @@ for (const required of [
   'package/dist/utils.cjs',
   'package/dist/utils.d.ts',
   'package/dist/utils.d.cts',
-  'package/dist/internal.js',
-  'package/dist/internal.cjs',
-  'package/dist/internal.d.ts',
-  'package/dist/internal.d.cts',
   'package/dist/index.css',
   'package/dist/index.css.d.ts',
 ]) {

@@ -1,6 +1,8 @@
-import type { TokenizedSearchInputRef } from '@kuruwic/tokenized-search-input';
+import type {
+  CustomSuggestionConfig,
+  TokenizedSearchInputRef,
+} from '@kuruwic/tokenized-search-input';
 import { TokenizedSearchInput } from '@kuruwic/tokenized-search-input';
-import type { CustomSuggestionConfig } from '@kuruwic/tokenized-search-input/utils';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { CodeBlock } from '../../components';
 import {

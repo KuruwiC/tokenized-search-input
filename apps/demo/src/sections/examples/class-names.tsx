@@ -1,5 +1,5 @@
+import type { FieldDefinition } from '@kuruwic/tokenized-search-input';
 import { TokenizedSearchInput } from '@kuruwic/tokenized-search-input';
-import type { FieldDefinition } from '@kuruwic/tokenized-search-input/utils';
 import { Calendar, Flag, Tag, User } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { CodeBlock } from '../../components';

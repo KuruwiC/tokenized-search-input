@@ -1,4 +1,4 @@
-import type { FieldDefinition } from '@kuruwic/tokenized-search-input/utils';
+import type { FieldDefinition } from '@kuruwic/tokenized-search-input';
 import { Calendar, Clock, FileText, Flag, Globe, Search, Tag, User } from 'lucide-react';
 
 export const createSearchFields = (): FieldDefinition[] => [

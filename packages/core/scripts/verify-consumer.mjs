@@ -31,8 +31,14 @@ const reactMatrix = [
 const rootManifest = JSON.parse(readFileSync(resolve(repositoryRoot, 'package.json'), 'utf8'));
 const typescriptSpec = rootManifest.devDependencies.typescript;
 
-const esmCheckSource = `import { TokenizedSearchInput, type TokenizedSearchInputRef } from '${packageName}';
-import { createDateValidator, type FieldDefinition, type QuerySnapshot } from '${packageName}/utils';
+const esmCheckSource = `import {
+  type FieldDefinition,
+  type QuerySnapshot,
+  TokenizedSearchInput,
+  type TokenizedSearchInputRef,
+  useAsyncTokenResolver,
+} from '${packageName}';
+import { createDateValidator } from '${packageName}/utils';
 import '${packageName}/styles';
 import { useRef } from 'react';
 
@@ -43,7 +49,22 @@ const fields: FieldDefinition[] = [
 
 export function Search({ onSearch }: { onSearch: (snapshot: QuerySnapshot) => void }) {
   const ref = useRef<TokenizedSearchInputRef>(null);
-  return <TokenizedSearchInput ref={ref} fields={fields} onSubmit={onSearch} />;
+  const { resolveTokens } = useAsyncTokenResolver({
+    inputRef: ref,
+    fieldKey: 'status',
+    resolve: async (values) => values.map((value) => ({ value, label: value.toUpperCase() })),
+    getValue: (item) => item.value,
+    getDisplayData: (item) => ({ displayValue: item.label }),
+  });
+  return (
+    <TokenizedSearchInput
+      ref={ref}
+      fields={fields}
+      unknownFields={{ operators: ['is', 'contains'] }}
+      onChange={() => void resolveTokens()}
+      onSubmit={onSearch}
+    />
+  );
 }
 `;
 

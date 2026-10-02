@@ -10,7 +10,7 @@ function copyStyles(): Plugin {
     closeBundle() {
       cpSync(resolve(__dirname, 'src/index.css'), resolve(__dirname, 'dist/index.css'));
       writeFileSync(resolve(__dirname, 'dist/index.css.d.ts'), 'export {};\n');
-      for (const entry of ['index', 'utils', 'internal']) {
+      for (const entry of ['index', 'utils']) {
         copyFileSync(
           resolve(__dirname, `dist/${entry}.d.ts`),
           resolve(__dirname, `dist/${entry}.d.cts`)
@@ -53,7 +53,6 @@ export default defineConfig({
       entry: {
         index: resolve(__dirname, 'src/index.ts'),
         utils: resolve(__dirname, 'src/utils.ts'),
-        internal: resolve(__dirname, 'src/internal.ts'),
       },
       name: 'TokenizedSearch',
       formats: ['es', 'cjs'],
@@ -68,7 +67,7 @@ export default defineConfig({
           'react/jsx-runtime': 'jsxRuntime',
         },
         banner: (chunk) => {
-          if (chunk.isEntry && (chunk.name === 'index' || chunk.name === 'internal')) {
+          if (chunk.isEntry && chunk.name === 'index') {
             return '"use client";\n';
           }
           return '';

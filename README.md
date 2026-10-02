@@ -78,7 +78,7 @@ function App() {
 ## Field Configuration
 
 ```tsx
-import type { FieldDefinition } from "@kuruwic/tokenized-search-input/utils";
+import type { FieldDefinition } from "@kuruwic/tokenized-search-input";
 
 const fields: FieldDefinition[] = [
   {

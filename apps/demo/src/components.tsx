@@ -1,5 +1,4 @@
-import type { TokenizedSearchInputRef } from '@kuruwic/tokenized-search-input';
-import type { QuerySnapshot } from '@kuruwic/tokenized-search-input/utils';
+import type { QuerySnapshot, TokenizedSearchInputRef } from '@kuruwic/tokenized-search-input';
 import { Check, Copy } from 'lucide-react';
 import { Highlight, type Language, themes } from 'prism-react-renderer';
 import { useCallback, useState } from 'react';

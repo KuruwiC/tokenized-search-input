@@ -26,10 +26,6 @@ const requiredEntryArtifacts = [
   'utils.cjs',
   'utils.d.ts',
   'utils.d.cts',
-  'internal.js',
-  'internal.cjs',
-  'internal.d.ts',
-  'internal.d.cts',
   'index.css',
   'index.css.d.ts',
 ];
@@ -42,7 +38,10 @@ const javascriptArtifacts = listFiles(distRoot).filter(
 );
 // Keep this comfortably above the correctly externalized build while catching
 // accidental rebundling of runtime dependencies (which is several times larger).
-const maxJavascriptArtifactBytes = 200_000;
+// The ceiling applies per file, and the `index` entry holds all component code in
+// one file now that no second entry shares a chunk with it (about 205 kB), so the
+// ceiling sits above that while still well below a rebundled build.
+const maxJavascriptArtifactBytes = 300_000;
 const oversizedJavascriptArtifacts = javascriptArtifacts.filter(
   (path) => statSync(resolve(distRoot, path)).size > maxJavascriptArtifactBytes
 );

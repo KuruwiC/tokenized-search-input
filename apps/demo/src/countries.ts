@@ -1,6 +1,6 @@
 /** Country records, a paginated mock API, and clipboard conversion for the country selectors. */
 
-import type { ParsedToken } from '@kuruwic/tokenized-search-input/utils';
+import type { ParsedToken } from '@kuruwic/tokenized-search-input';
 
 export interface Country {
   value: string;

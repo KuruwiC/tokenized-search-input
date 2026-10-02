@@ -1,6 +1,9 @@
-import type { TokenizedSearchInputRef } from '@kuruwic/tokenized-search-input';
+import type {
+  CustomSuggestionConfig,
+  QuerySnapshot,
+  TokenizedSearchInputRef,
+} from '@kuruwic/tokenized-search-input';
 import { TokenizedSearchInput } from '@kuruwic/tokenized-search-input';
-import type { CustomSuggestionConfig, QuerySnapshot } from '@kuruwic/tokenized-search-input/utils';
 import { createToggleSelectHandler, Unique } from '@kuruwic/tokenized-search-input/utils';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { COUNTRY_CODE } from '../code-samples';

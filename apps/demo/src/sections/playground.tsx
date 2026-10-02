@@ -1,6 +1,5 @@
-import type { TokenizedSearchInputRef } from '@kuruwic/tokenized-search-input';
+import type { QuerySnapshot, TokenizedSearchInputRef } from '@kuruwic/tokenized-search-input';
 import { TokenizedSearchInput } from '@kuruwic/tokenized-search-input';
-import type { QuerySnapshot } from '@kuruwic/tokenized-search-input/utils';
 import { useMemo, useRef, useState } from 'react';
 import { Snapshot } from '../components';
 import { createSearchFields } from '../fields';

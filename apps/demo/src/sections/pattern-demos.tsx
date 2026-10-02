@@ -1,10 +1,10 @@
-import type { TokenizedSearchInputRef } from '@kuruwic/tokenized-search-input';
-import { TokenizedSearchInput } from '@kuruwic/tokenized-search-input';
 import type {
   CustomSuggestion,
   CustomSuggestionConfig,
   QuerySnapshot,
-} from '@kuruwic/tokenized-search-input/utils';
+  TokenizedSearchInputRef,
+} from '@kuruwic/tokenized-search-input';
+import { TokenizedSearchInput } from '@kuruwic/tokenized-search-input';
 import { MaxCount, Unique } from '@kuruwic/tokenized-search-input/utils';
 import { useMemo, useRef, useState } from 'react';
 import { PresetButtons, Snapshot, setDemoValue } from '../components';
