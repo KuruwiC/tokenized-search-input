@@ -105,7 +105,7 @@ export interface CaretLocation {
   tokensBefore: number;
   tokensAfter: number;
   tokensSelected: number;
-  /** Text in the same paragraph before / after the caret, without spacers or token chrome. */
+  /** Text in the same paragraph before / after the caret, without separators or token chrome. */
   textBefore: string;
   textAfter: string;
 }
