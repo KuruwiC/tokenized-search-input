@@ -129,17 +129,51 @@ declare module '@tiptap/core' {
   }
 }
 
-function applyEditorContext(target: EditorContextStorage, update: EditorContextUpdate): void {
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+/** Same value, or plain objects and arrays whose members are the same values. */
+function isSameValue(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every((item, index) => Object.is(item, b[index]));
+  }
+  if (isPlainObject(a) && isPlainObject(b)) {
+    const keys = Object.keys(a);
+    return keys.length === Object.keys(b).length && keys.every((key) => Object.is(a[key], b[key]));
+  }
+  return false;
+}
+
+/**
+ * Writes the members present in `update` into `target` and reports whether any of
+ * them held a different value before. Members that compare equal keep the stored
+ * value, so re-applying an equal configuration changes nothing.
+ */
+export function applyEditorContext(
+  target: EditorContextStorage,
+  update: EditorContextUpdate
+): boolean {
   const { callbacks, ...config } = update;
-  const defaults: Record<string, unknown> = { ...DEFAULT_EDITOR_CONTEXT };
-  const next: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(config)) {
-    next[key] = value ?? defaults[key];
+  let changed = false;
+  for (const key of Object.keys(config) as Array<keyof EditorConfig>) {
+    const next = config[key] ?? DEFAULT_EDITOR_CONTEXT[key];
+    if (isSameValue(target[key], next)) continue;
+    Object.assign(target, { [key]: next });
+    changed = true;
   }
-  Object.assign(target, next);
   if (callbacks) {
-    target.callbacks = { ...target.callbacks, ...callbacks };
+    for (const key of Object.keys(callbacks) as Array<keyof EditorCallbacks>) {
+      const next = callbacks[key];
+      if (next === undefined || Object.is(target.callbacks[key], next)) continue;
+      target.callbacks = { ...target.callbacks, [key]: next };
+      changed = true;
+    }
   }
+  return changed;
 }
 
 /** Builds the initial editor context. Absent or `undefined` members take their defaults. */

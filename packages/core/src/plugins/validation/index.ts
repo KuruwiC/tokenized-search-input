@@ -1,5 +1,6 @@
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { getEditorContext } from '../../extensions/editor-context';
 import { buildPlan } from './action-planner';
 import { applyPlan, clearInvalidMarksIfNeeded } from './plan-executor';
 import { buildSnapshot, shouldRun } from './snapshot-builder';
@@ -27,10 +28,7 @@ export const ValidationExtension = Extension.create({
           const { run, forceCheck, isHistoryOperation } = shouldRun(transactions, validationKey);
           if (!run) return null;
 
-          // Get editor context from storage (type-safe via module augmentation)
-          const editorContext = editor.storage.editorContext;
-
-          if (!editorContext) return null;
+          const editorContext = getEditorContext(editor);
 
           // Step 2: Build unified state snapshot
           const snap = buildSnapshot(

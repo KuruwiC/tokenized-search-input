@@ -1,6 +1,8 @@
 import type { Editor } from '@tiptap/react';
 import { useEffect, useRef } from 'react';
 import {
+  applyEditorContext,
+  DEFAULT_EDITOR_CONTEXT,
   EDITOR_CONTEXT_UPDATED,
   type EditorCallbacks,
   type EditorConfig,
@@ -11,9 +13,13 @@ import { parseQueryToDoc, serializeDocToQuery } from '../../serializer';
 
 /**
  * The only place that writes configuration into the editor context storage after
- * the editor exists. It updates the storage and dispatches one
- * `EDITOR_CONTEXT_UPDATED` transaction so node views and the suggestion overlay
- * re-read it. Effects skip a destroyed editor.
+ * the editor exists. It updates the storage and, only when a member actually
+ * changed, dispatches one `EDITOR_CONTEXT_UPDATED` transaction so node views and the
+ * suggestion overlay re-read it.
+ *
+ * The storage of a destroyed editor is still written, so the imperative handle
+ * parses with current configuration until the replacement editor renders; only the
+ * dispatch is skipped for it.
  */
 export function useEditorConfigSync(
   editor: Editor | null,
@@ -37,8 +43,8 @@ export function useEditorConfigSync(
   } = config;
 
   useEffect(() => {
-    if (!editor || editor.isDestroyed) return;
-    editor.commands.setEditorContext({
+    if (!editor) return;
+    const changed = applyEditorContext(getEditorContext(editor), {
       fields,
       freeTextMode,
       unknownFields,
@@ -53,6 +59,7 @@ export function useEditorConfigSync(
       renderDateTimePicker,
       paginationLabels,
     });
+    if (!changed || editor.isDestroyed) return;
     editor.view.dispatch(
       editor.state.tr.setMeta('addToHistory', false).setMeta(EDITOR_CONTEXT_UPDATED, true)
     );
@@ -89,14 +96,15 @@ export function useEditorConfigSync(
     editor.view.dispatch(tr);
   }, [editor, validation]);
 
-  // Re-parse content when freeTextMode changes
-  const prevFreeTextModeRef = useRef(freeTextMode);
+  // Re-parse content when freeTextMode changes. An unset mode means the default.
+  const mode = freeTextMode ?? DEFAULT_EDITOR_CONTEXT.freeTextMode;
+  const prevFreeTextModeRef = useRef(mode);
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
     const prevMode = prevFreeTextModeRef.current;
-    prevFreeTextModeRef.current = freeTextMode;
+    prevFreeTextModeRef.current = mode;
 
-    if (prevMode === freeTextMode) return;
+    if (prevMode === mode) return;
 
     const context = getEditorContext(editor);
     const currentQuery = serializeDocToQuery(editor.getJSON(), { delimiter: context.delimiter });
@@ -108,13 +116,15 @@ export function useEditorConfigSync(
       delimiter: context.delimiter,
     });
     editor.commands.setContent(newDoc);
-  }, [editor, freeTextMode]);
+  }, [editor, mode]);
 
   // Callbacks change with the handlers' identities, so they update the storage
   // without notifying node views.
   const { onFieldSelect, onValueSelect, onCustomSelect, onSubmit } = callbacks;
   useEffect(() => {
-    if (!editor || editor.isDestroyed) return;
-    editor.commands.setCallbacks({ onFieldSelect, onValueSelect, onCustomSelect, onSubmit });
+    if (!editor) return;
+    applyEditorContext(getEditorContext(editor), {
+      callbacks: { onFieldSelect, onValueSelect, onCustomSelect, onSubmit },
+    });
   }, [editor, onFieldSelect, onValueSelect, onCustomSelect, onSubmit]);
 }

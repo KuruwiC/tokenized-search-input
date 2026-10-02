@@ -5,6 +5,7 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
+import { EDITOR_CONTEXT_UPDATED } from '../../extensions/editor-context';
 import type { FieldDefinition } from '../../types';
 import { extendedFields } from '../fixtures';
 import { getInternalEditor } from '../helpers/get-editor';
@@ -199,6 +200,42 @@ describe('reactive configuration', () => {
       expect(setOptions).not.toHaveBeenCalled();
     } finally {
       setOptions.mockRestore();
+    }
+  });
+
+  it('does not notify node views when the parent re-renders with equal configuration', async () => {
+    const view = render(
+      <TokenizedSearchInput
+        fields={extendedFields}
+        defaultValue="status:is:active"
+        labels={{ pagination: { loading: 'Loading' } }}
+        classNames={{ token: 'token-a' }}
+      />
+    );
+    await screen.findByText('active');
+    const editor = Editor.prototype;
+    const dispatch = vi.spyOn(editor, 'emit');
+    try {
+      view.rerender(
+        <TokenizedSearchInput
+          fields={extendedFields}
+          defaultValue="status:is:active"
+          placeholder="Other"
+          labels={{ pagination: { loading: 'Loading' } }}
+          classNames={{ token: 'token-a' }}
+        />
+      );
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      const contextUpdates = dispatch.mock.calls.filter(
+        ([event, payload]) =>
+          event === 'transaction' &&
+          (payload as { transaction: { getMeta: (key: string) => unknown } }).transaction.getMeta(
+            EDITOR_CONTEXT_UPDATED
+          )
+      );
+      expect(contextUpdates).toHaveLength(0);
+    } finally {
+      dispatch.mockRestore();
     }
   });
 });

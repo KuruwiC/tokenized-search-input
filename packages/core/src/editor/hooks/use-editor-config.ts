@@ -17,14 +17,15 @@ type ConfigProps = Pick<
 >;
 
 /**
- * Derives the editor configuration from the component props. Members built from
+ * Derives the editor configuration from the component props. Unset members stay
+ * `undefined`: the editor context owns the defaults. Members built from
  * several props keep their identity until one of those props changes, so an inline
  * `unknownFields={{ ... }}` or `validation={{ ... }}` does not re-sync the editor
  * context on every render.
  */
 export function useEditorConfig({
   fields,
-  freeTextMode = 'plain',
+  freeTextMode,
   classNames,
   unknownFields,
   validation: validationConfig,
@@ -69,8 +70,8 @@ export function useEditorConfig({
     freeTextMode,
     unknownFields: unknownFieldTemplate,
     operatorLabels: labels.operators,
-    fieldSuggestionsDisabled: suggestions.field?.disabled ?? false,
-    valueSuggestionsDisabled: suggestions.value?.disabled ?? false,
+    fieldSuggestionsDisabled: suggestions.field?.disabled,
+    valueSuggestionsDisabled: suggestions.value?.disabled,
     validation,
     deserializeText: serialization.deserializeText,
     serializeToken: serialization.serializeToken,
