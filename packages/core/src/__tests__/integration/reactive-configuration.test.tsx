@@ -18,16 +18,22 @@ describe('reactive configuration', () => {
     await waitFor(() => expect(ref.current).not.toBeNull());
     const editor = getInternalEditor(ref.current);
     expect(editor).not.toBeNull();
-    view.rerender(
-      <TokenizedSearchInput
-        ref={ref}
-        fields={extendedFields}
-        freeTextMode="tokenize"
-        defaultValue="ignored"
-      />
-    );
-    await waitFor(() => expect(ref.current?.getValue()).toContain('status:is:active'));
-    expect(getInternalEditor(ref.current)).toBe(editor);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      view.rerender(
+        <TokenizedSearchInput
+          ref={ref}
+          fields={extendedFields}
+          freeTextMode="tokenize"
+          defaultValue="ignored"
+        />
+      );
+      await waitFor(() => expect(ref.current?.getValue()).toContain('status:is:active'));
+      expect(getInternalEditor(ref.current)).toBe(editor);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('defaultValue changed'));
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('updates token class names and resets them', async () => {
@@ -86,11 +92,14 @@ describe('reactive configuration', () => {
       <TokenizedSearchInput
         ref={ref}
         fields={extendedFields}
+        defaultValue="status:is:active"
         serialization={{ serializeToken: serialize('B') }}
       />
     );
     await waitFor(() => expect(text()).toBe('B'));
-    view.rerender(<TokenizedSearchInput ref={ref} fields={extendedFields} />);
+    view.rerender(
+      <TokenizedSearchInput ref={ref} fields={extendedFields} defaultValue="status:is:active" />
+    );
     await waitFor(() => expect(text()).toBe('status:is:active'));
   });
 

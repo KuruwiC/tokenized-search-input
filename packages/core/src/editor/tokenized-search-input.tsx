@@ -20,6 +20,7 @@ import { EDITOR_CONTEXT_UPDATED, EditorContextExtension } from '../extensions/ed
 import { KeyboardShortcutsExtension } from '../extensions/keyboard-shortcuts';
 import { SpacerNode } from '../extensions/spacer-node';
 import { TokenNavigation } from '../extensions/token-navigation';
+import { useDevWarnings } from '../hooks/use-dev-warnings';
 import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
 import { usePluginState } from '../hooks/use-plugin-state';
 import { createSelectionGuardPlugin } from '../plugins/selection-guard-plugin';
@@ -46,15 +47,9 @@ import { getDismissPolicy } from '../suggestions/dismiss-policy';
 import { SuggestionOverlay } from '../suggestions/suggestion-overlay';
 import { FilterTokenNode } from '../tokens/filter-token/filter-token-node';
 import { FreeTextTokenNode } from '../tokens/free-text-token/free-text-token-node';
-import {
-  DEFAULT_TOKEN_DELIMITER,
-  type FieldDefinition,
-  type QuerySnapshot,
-  type UnknownFieldTemplate,
-} from '../types';
+import { DEFAULT_TOKEN_DELIMITER, type QuerySnapshot, type UnknownFieldTemplate } from '../types';
 import { cn } from '../utils/cn';
 import { isWithinSuggestion } from '../utils/dom-focus';
-import { isDevelopment } from '../utils/env';
 import { isToken } from '../utils/node-predicates';
 import { EMPTY_SNAPSHOT, getAllTokens } from '../utils/query-snapshot';
 import {
@@ -199,54 +194,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
     // Only updated when onTokensChange fires
     const confirmedTokensRef = useRef<ComparableToken[]>([]);
 
-    // Warn in development if delimiter prop changes after initialization
-    useEffect(() => {
-      if (isDevelopment()) {
-        const initial = delimiterRef.current;
-        const current = initialDelimiter ?? DEFAULT_TOKEN_DELIMITER;
-        if (current !== initial) {
-          console.warn(
-            '[TokenizedSearchInput] initialDelimiter changed after initialization. ' +
-              'This has no effect. initialDelimiter is frozen at mount time.'
-          );
-        }
-      }
-    }, [initialDelimiter]);
-
-    // Warn in development if any field has no operators
-    useEffect(() => {
-      if (isDevelopment()) {
-        fields.forEach((field) => {
-          if (!field.operators || field.operators.length === 0) {
-            console.warn(
-              `[TokenizedSearchInput] Field "${field.key}" has no operators defined. ` +
-                'At least one operator is required for proper functionality.'
-            );
-          }
-        });
-      }
-    }, [fields]);
-
-    // Warn in development if fields prop changes reference but content is the same
-    const prevFieldsRef = useRef(fields);
-    const fieldsRerenderCountRef = useRef(0);
-    useEffect(() => {
-      if (isDevelopment()) {
-        const keysEqual = (a: FieldDefinition[], b: FieldDefinition[]) =>
-          a.map((f) => f.key).join(',') === b.map((f) => f.key).join(',');
-
-        const isUnnecessaryRerender =
-          fields !== prevFieldsRef.current && keysEqual(fields, prevFieldsRef.current);
-
-        if (isUnnecessaryRerender && ++fieldsRerenderCountRef.current === 3) {
-          console.warn(
-            '[TokenizedSearchInput] fields prop changed reference but content is the same. ' +
-              'Consider memoizing the fields array with useMemo() to avoid unnecessary re-renders.'
-          );
-        }
-        prevFieldsRef.current = fields;
-      }
-    }, [fields]);
+    useDevWarnings({ fields, initialDelimiter, defaultValue });
 
     // Extensions must stay stable: changing them recreates the TipTap editor,
     // which would discard content and history. Mutable configuration is kept

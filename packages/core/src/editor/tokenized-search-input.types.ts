@@ -17,7 +17,11 @@ import type {
 export interface TokenizedSearchInputProps {
   /** Field definitions for tokenization */
   fields: FieldDefinition[];
-  /** Initial query value */
+  /**
+   * Initial query value, read once at mount. Later changes are ignored (a
+   * development warning is logged); use `ref.setValue()` to change the value.
+   * `defaultValue` and `ref.setValue()` are the only ways to provide a query.
+   */
   defaultValue?: string;
   /**
    * Called when the query content changes.
