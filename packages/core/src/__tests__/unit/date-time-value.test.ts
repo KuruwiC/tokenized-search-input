@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  atLocalTime,
+  checkDateTimeValue,
+  type DateTimeValue,
   formatDateTimeValue,
   fromInstant,
+  localMidnight,
   localOffsetAt,
   parseDateTimeValue,
   toInstant,
@@ -98,7 +102,6 @@ describe('parseDateTimeValue', () => {
     '2024-03-05T14',
     '2024-03-05T14:3',
     '2024-03-05T',
-    '2024-03-05T14:30:45.12',
     '2024-03-05T14:30+25:00',
     '2024-03-05T14:30+09:60',
     '2024-03-05T14:30+09',
@@ -109,8 +112,124 @@ describe('parseDateTimeValue', () => {
     expect(parseDateTimeValue(input, 'datetime').ok).toBe(false);
   });
 
-  it('rejects a time for a date field', () => {
-    expect(parseDateTimeValue('2024-03-05T14:30', 'date').ok).toBe(false);
+  it('keeps the date of a datetime given to a date field', () => {
+    expect(parsed('2024-03-05T14:30', 'date')).toEqual({ date: '2024-03-05' });
+    expect(parsed('2024-03-05 14:30:00+09:00', 'date')).toEqual({ date: '2024-03-05' });
+  });
+
+  it('still rejects a datetime that is not one for a date field', () => {
+    expect(parseDateTimeValue('2024-03-05T25:00', 'date').ok).toBe(false);
+    expect(parseDateTimeValue('2024-02-31T10:00', 'date').ok).toBe(false);
+  });
+
+  it.each([
+    '.1',
+    '.12',
+    '.123',
+    '.123456',
+    '.123456789',
+  ])('keeps the fractional second %s as written', (fraction) => {
+    const text = `2024-03-05T14:30:45${fraction}Z`;
+    expect(parsed(text).time).toBe(`14:30:45${fraction}`);
+    expect(formatDateTimeValue(parsed(text))).toBe(text);
+  });
+
+  it.each(['.', '.1234567890', '.12a'])('rejects the fractional second %s', (fraction) => {
+    expect(parseDateTimeValue(`2024-03-05T14:30:45${fraction}Z`, 'datetime').ok).toBe(false);
+  });
+
+  it('reads the millisecond of a longer fraction by truncation', () => {
+    expect(toInstant(parsed('2024-03-05T14:30:45.123987Z')).toISOString()).toBe(
+      '2024-03-05T14:30:45.123Z'
+    );
+    expect(toInstant(parsed('2024-03-05T14:30:45.5Z')).toISOString()).toBe(
+      '2024-03-05T14:30:45.500Z'
+    );
+  });
+});
+
+describe('checkDateTimeValue', () => {
+  // Values from an application are not checked by the compiler, so the table may hold bad ones
+  const check = (value: object) => checkDateTimeValue(value as DateTimeValue);
+
+  it('accepts a value in canonical form as it is', () => {
+    expect(check({ date: '2024-03-05', time: '14:30:00', offset: '+09:00' })).toEqual({
+      ok: true,
+      value: { date: '2024-03-05', time: '14:30:00', offset: '+09:00' },
+    });
+    expect(check({ date: '2024-03-05' })).toEqual({ ok: true, value: { date: '2024-03-05' } });
+  });
+
+  it('writes an offset of zero as Z', () => {
+    const result = check({ date: '2024-03-05', time: '14:30', offset: '+00:00' });
+    expect(result.ok && result.value.offset).toBe('Z');
+  });
+
+  it.each([
+    { date: '2024-3-5' },
+    { date: '2024-02-31' },
+    { date: '2024' },
+    { date: '2024-03-05', time: '25:00' },
+    { date: '2024-03-05', time: '14' },
+    { date: '2024-03-05', time: '14:30', offset: '+5' },
+    { date: '2024-03-05', time: '14:30', offset: '+99:00' },
+    { date: '12024-03-05' },
+  ])('rejects %j', (value) => {
+    expect(check(value).ok).toBe(false);
+  });
+});
+
+describe('fromInstant outside the years a date can be written in', () => {
+  it('is null for an invalid Date', () => {
+    expect(fromInstant(new Date(Number.NaN), 'Z')).toBeNull();
+  });
+
+  it('is null when the reading is not in 0000-9999', () => {
+    expect(fromInstant(new Date('+010000-01-01T00:00:00Z'), 'Z')).toBeNull();
+    expect(fromInstant(new Date('9999-12-31T23:00:00Z'), '+09:00')).toBeNull();
+    expect(fromInstant(new Date('-000001-12-31T23:59:59Z'), 'Z')).toBeNull();
+  });
+
+  it('keeps the first and the last moment of the range', () => {
+    expect(fromInstant(new Date('9999-12-31T23:59:59Z'), 'Z')?.date).toBe('9999-12-31');
+    expect(fromInstant(new Date('0000-01-01T00:00:00Z'), 'Z')?.date).toBe('0000-01-01');
+  });
+});
+
+describe('local times across a clock change', () => {
+  const instantOf = (y: number, m: number, d: number, h = 0, min = 0) =>
+    new Date(y, m - 1, d, h, min).getTime();
+
+  it.each([
+    ['2024-03-10', 3, 10],
+    ['2024-09-08', 9, 8],
+    ['2024-11-03', 11, 3],
+    ['2024-03-31', 3, 31],
+    ['2024-04-07', 4, 7],
+  ])('writes local midnight of %s as the moment it is', (date, m, d) => {
+    const value = localMidnight(date);
+    expect(toInstant(value).getTime()).toBe(instantOf(2024, m, d));
+    expect(value.offset).toBe(localOffsetAt(toInstant(value)));
+    expect(parseDateTimeValue(formatDateTimeValue(value), 'datetime').ok).toBe(true);
+  });
+
+  it.each([
+    ['2024-03-10', '02:30:00', 3, 10, 2, 30],
+    ['2024-03-31', '02:30:00', 3, 31, 2, 30],
+    ['2024-09-08', '00:30:00', 9, 8, 0, 30],
+    ['2024-11-03', '01:30:00', 11, 3, 1, 30],
+  ])('writes local %s %s as the moment the clock reads', (date, time, m, d, h, min) => {
+    const value = atLocalTime(date, time);
+    expect(toInstant(value).getTime()).toBe(instantOf(2024, m, d, h, min));
+    expect(value.offset).toBe(localOffsetAt(toInstant(value)));
+  });
+
+  it('keeps the wall time where there is no gap', () => {
+    expect(atLocalTime('2024-07-01', '09:15:00')).toEqual({
+      date: '2024-07-01',
+      time: '09:15:00',
+      offset: localOffsetAt(new Date(2024, 6, 1, 9, 15)),
+    });
   });
 });
 
@@ -176,7 +295,7 @@ describe('toInstant and fromInstant', () => {
   });
 
   it('keeps the millisecond of an instant', () => {
-    expect(fromInstant(new Date('2024-03-05T14:30:45.123Z'), 'Z').time).toBe('14:30:45.123');
+    expect(fromInstant(new Date('2024-03-05T14:30:45.123Z'), 'Z')?.time).toBe('14:30:45.123');
   });
 
   it('round-trips a value with an offset', () => {

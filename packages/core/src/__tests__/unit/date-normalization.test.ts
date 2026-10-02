@@ -50,6 +50,10 @@ describe('normalizeDateFieldValue for a date field', () => {
     expect(normalizeDateFieldValue('  nope ', dateField())).toBe('nope');
   });
 
+  it('keeps the date of a datetime typed for a date field', () => {
+    expect(normalizeDateFieldValue('2024-03-05T14:30:00+0900', dateField())).toBe('2024-03-05');
+  });
+
   it('stores what a custom parse returns', () => {
     const field = dateField({
       parse: (input) => {

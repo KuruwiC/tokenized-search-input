@@ -337,7 +337,8 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
       }
       // The same moment, written in UTC or in the local offset
       const instant = toInstant(syncedValue);
-      handleDateChangeInternal(fromInstant(instant, nextIsUTC ? 'Z' : localOffsetAt(instant)));
+      const converted = fromInstant(instant, nextIsUTC ? 'Z' : localOffsetAt(instant));
+      if (converted) handleDateChangeInternal(converted);
     },
     [syncedValue, setTimeControls, handleDateChangeInternal]
   );

@@ -82,7 +82,7 @@ describe('implicit validation of dates', () => {
     expect(rules.map((rule) => rule.id)).toContain(DATE_VALUE_RULE_ID);
   });
 
-  it.each(['2024-03-05'])('accept the date %s', (value) => {
+  it.each(['2024-03-05', '2024-03-05T10:00'])('accept the date %s', (value) => {
     expect(violationsFor(dateField, value)).toEqual([]);
   });
 
@@ -93,7 +93,6 @@ describe('implicit validation of dates', () => {
     '2024-02-31',
     '2024-3-5',
     'soon',
-    '2024-03-05T10:00',
   ])('mark the date %s', (value) => {
     expect(violationsFor(dateField, value)).toEqual([
       {
