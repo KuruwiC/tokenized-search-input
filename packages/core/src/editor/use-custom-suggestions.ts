@@ -1,13 +1,14 @@
 import type { Editor } from '@tiptap/core';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type MutableRefObject, useCallback, useEffect, useRef } from 'react';
 import { getEditorContext } from '../extensions/editor-context';
 import type { TokenDisplayContent } from '../plugins/shared/meta';
 import {
+  appendCustomSuggestions,
   closeSuggestion,
   getSuggestionState,
   openCustomSuggestion,
   openFieldWithCustomSuggestion,
-  resolveAnchorPos,
+  setCustomLoadingMore,
 } from '../plugins/suggestion-plugin';
 import { getFocusedToken } from '../plugins/token-focus-plugin';
 import { canShowCustomSuggestion, isSuggestionDismissed } from '../suggestions/suggestion-guards';
@@ -49,18 +50,42 @@ const defaultErrorHandler = (error: Error, context: SuggestionErrorContext): voi
 };
 
 /**
- * Create a promise with timeout.
+ * Settles with `task`, or rejects once `timeoutMs` has passed or `signal` is aborted. The
+ * timer and the listener go as soon as it settles.
  */
-const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, _query: string): Promise<T> =>
-  Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(
-        () => reject(new Error(`Suggestion request timed out after ${timeoutMs}ms`)),
-        timeoutMs
-      )
-    ),
-  ]);
+function withTimeout<T>(task: Promise<T>, timeoutMs: number, signal: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    function settle(finish: () => void) {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', onAbort);
+      finish();
+    }
+    function onAbort() {
+      settle(() => reject(signal.reason));
+    }
+    const timer = setTimeout(
+      () => settle(() => reject(new Error(`Suggestion request timed out after ${timeoutMs}ms`))),
+      timeoutMs
+    );
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
+    signal.addEventListener('abort', onAbort, { once: true });
+    task.then(
+      (value) => settle(() => resolve(value)),
+      (error) => settle(() => reject(error))
+    );
+  });
+}
+
+/** Aborts the request in `ref`, if any, and puts a new one there. */
+function startRequest(ref: MutableRefObject<AbortController | null>): AbortController {
+  ref.current?.abort();
+  const controller = new AbortController();
+  ref.current = controller;
+  return controller;
+}
 
 function normalizeResult(result: Awaited<SuggestFnReturn>): CustomSuggestionResult {
   if (Array.isArray(result)) {
@@ -103,11 +128,7 @@ function collectExistingTokensWithId(editor: Editor): ExistingTokenWithId[] {
 interface UseCustomSuggestionsResult {
   handleCustomSelect: (suggestion: CustomSuggestion) => void;
   updateCustomSuggestions: () => void;
-  /** Whether more suggestions can be loaded */
-  hasMore: boolean;
-  /** Whether loadMore is currently in progress */
-  isLoadingMore: boolean;
-  /** Load more suggestions (for infinite scroll) */
+  /** Load the next page of suggestions (for infinite scroll) */
   loadMore: () => void;
 }
 
@@ -116,114 +137,94 @@ export function useCustomSuggestions(
   config: CustomSuggestionConfig | undefined
 ): UseCustomSuggestionsResult {
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingRequestRef = useRef<number>(0);
+  // The request for the suggestions of the latest query, and the one for a next page. A
+  // request that was aborted has nothing to say any more.
+  const suggestRequestRef = useRef<AbortController | null>(null);
+  const loadMoreRequestRef = useRef<AbortController | null>(null);
 
-  // Pagination state
-  const [hasMore, setHasMore] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const currentQueryRef = useRef<string>('');
-  const currentOffsetRef = useRef<number>(0);
+  const cancelSuggestRequest = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    suggestRequestRef.current?.abort();
+    suggestRequestRef.current = null;
+  }, []);
 
-  // Cleanup debounce timer on unmount
   useEffect(() => {
     return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
+      cancelSuggestRequest();
+      loadMoreRequestRef.current?.abort();
+      loadMoreRequestRef.current = null;
     };
-  }, []);
+  }, [cancelSuggestRequest]);
 
   const handleCustomSelect = useCallback(
     (suggestion: CustomSuggestion) => {
       if (!editor) return;
 
-      // Delete the plain text segment (text after the last token up to cursor)
+      const handled =
+        config?.onSelect?.(suggestion, {
+          existingTokens: collectExistingTokensWithId(editor),
+          deleteToken: (id: string) => {
+            // Find token by ID and delete it
+            let found = false;
+            editor.state.doc.descendants((node, pos) => {
+              if (!found && isFilterToken(node) && node.attrs.id === id) {
+                editor
+                  .chain()
+                  .focus()
+                  .deleteRange({ from: pos, to: pos + node.nodeSize })
+                  .run();
+                found = true;
+                return false;
+              }
+              return true;
+            });
+          },
+        }) ?? false;
+
+      // The text typed for the query goes in the same step as the tokens that replace it
       const { text, from, to } = getPlainTextSegment(editor);
-      if (text.trim().length > 0 && from >= 0 && from < to) {
-        editor.chain().focus().deleteRange({ from, to }).run();
-      }
-
-      // Call onSelect if provided
-      if (config?.onSelect) {
-        const existingTokens = collectExistingTokensWithId(editor);
-        const deleteToken = (id: string) => {
-          // Find token by ID and delete it
-          let found = false;
-          editor.state.doc.descendants((node, pos) => {
-            if (!found && isFilterToken(node) && node.attrs.id === id) {
-              editor
-                .chain()
-                .focus()
-                .deleteRange({ from: pos, to: pos + node.nodeSize })
-                .run();
-              found = true;
-              return false;
-            }
-            return true;
-          });
-        };
-
-        const handled = config.onSelect(suggestion, { existingTokens, deleteToken });
-        if (handled) {
-          // Close suggestions and reset pagination state
-          const tr = editor.state.tr;
-          closeSuggestion(tr);
-          tr.setMeta('addToHistory', false);
-          editor.view.dispatch(tr);
-          setHasMore(false);
-          currentOffsetRef.current = 0;
-          return;
-        }
-      }
-
-      // Default behavior: Insert all tokens from the suggestion
       let chain = editor.chain().focus();
-      for (const token of suggestion.tokens) {
-        chain = chain.insertFilterToken({
-          key: token.key,
-          operator: token.operator,
-          value: token.value,
-          display: toDisplayContent(token),
-        });
+      if (text.trim().length > 0 && from >= 0 && from < to) {
+        chain = chain.deleteRange({ from, to });
+      }
+      if (!handled) {
+        for (const token of suggestion.tokens) {
+          chain = chain.insertFilterToken({
+            key: token.key,
+            operator: token.operator,
+            value: token.value,
+            display: toDisplayContent(token),
+          });
+        }
       }
       chain.run();
 
-      // Close suggestions and reset pagination state
       const tr = editor.state.tr;
       closeSuggestion(tr);
       tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
-      setHasMore(false);
-      currentOffsetRef.current = 0;
     },
     [editor, config]
   );
 
   const updateCustomSuggestions = useCallback(() => {
-    // Helper to cancel pending requests and invalidate in-flight responses
-    const cancelPendingRequest = () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-        debounceTimerRef.current = null;
-      }
-      // Increment to invalidate any in-flight async responses
-      pendingRequestRef.current++;
-    };
-
     if (!editor || !config) return;
 
     const currentState = editor.state;
 
     // Check basic guard conditions using shared guard function
     if (!canShowCustomSuggestion(currentState)) {
-      cancelPendingRequest();
+      cancelSuggestRequest();
       return;
     }
 
     // Gate: not focused or dismissed. While a token is edited, DOM focus is in the
     // token, not in the editor.
     if (!editor.isFocused || isSuggestionDismissed(currentState)) {
-      cancelPendingRequest();
+      cancelSuggestRequest();
       return;
     }
 
@@ -232,7 +233,7 @@ export function useCustomSuggestions(
 
     // Don't show suggestions when cursor is inside quotes
     if (isInsideQuotes(plainTextSegment)) {
-      cancelPendingRequest();
+      cancelSuggestRequest();
       return;
     }
 
@@ -240,17 +241,14 @@ export function useCustomSuggestions(
     // This ensures we only consider text between the last token and cursor
     const query = plainTextSegment.trim();
 
-    // Cancel previous debounce timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
+    // A newer query supersedes the one waiting out its debounce or its response
+    cancelSuggestRequest();
+    const { signal } = startRequest(suggestRequestRef);
 
     const debounceMs = config.debounceMs ?? DEFAULT_DEBOUNCE_MS;
-    const requestId = ++pendingRequestRef.current;
 
     debounceTimerRef.current = setTimeout(async () => {
-      // Check if this request is still the latest
-      if (requestId !== pendingRequestRef.current) return;
+      debounceTimerRef.current = null;
 
       // Re-check whether a token is being edited (may have changed during debounce)
       if (getFocusedToken(editor.state) !== null) return;
@@ -263,24 +261,15 @@ export function useCustomSuggestions(
         const suggestPromise = Promise.resolve(
           config.suggest({ query, fields: getEditorContext(editor).fields, existingTokens })
         );
-        const rawResult = await withTimeout(suggestPromise, timeoutMs, query);
+        const rawResult = await withTimeout(suggestPromise, timeoutMs, signal);
 
-        // Check again if this request is still the latest
-        if (requestId !== pendingRequestRef.current) return;
-
-        // Check if editor is still valid
-        if (!editor || editor.isDestroyed) return;
+        if (signal.aborted || editor.isDestroyed) return;
 
         // Normalize result to handle both array and object returns
         const result = normalizeResult(rawResult);
 
         const maxSuggestions = config.maxSuggestions ?? DEFAULT_MAX_SUGGESTIONS;
         const suggestions = result.suggestions.slice(0, maxSuggestions);
-
-        // Update pagination state
-        currentQueryRef.current = query;
-        currentOffsetRef.current = suggestions.length;
-        setHasMore(result.hasMore ?? false);
 
         if (suggestions.length === 0) {
           // No custom suggestions - close if custom type is open, otherwise let field suggestions show
@@ -294,6 +283,8 @@ export function useCustomSuggestions(
           return;
         }
 
+        const hasMore = result.hasMore ?? false;
+
         // Check displayMode to decide whether to show custom suggestions
         const displayMode = config.displayMode ?? 'replace';
         const anchorPos = editor.state.selection.from;
@@ -301,7 +292,7 @@ export function useCustomSuggestions(
         if (displayMode === 'replace') {
           // Replace field suggestions with custom suggestions
           const tr = editor.state.tr;
-          openCustomSuggestion(tr, suggestions, query, anchorPos);
+          openCustomSuggestion(tr, suggestions, query, anchorPos, hasMore);
           tr.setMeta('addToHistory', false);
           editor.view.dispatch(tr);
         } else {
@@ -322,92 +313,81 @@ export function useCustomSuggestions(
               suggestions,
               displayMode,
               query,
-              anchorPos
+              anchorPos,
+              hasMore
             );
             tr.setMeta('addToHistory', false);
             editor.view.dispatch(tr);
           }
         }
       } catch (error) {
+        if (signal.aborted) return;
         onError(error instanceof Error ? error : new Error(String(error)), {
           type: 'suggest',
           query,
         });
       }
     }, debounceMs);
-  }, [editor, config]);
+  }, [editor, config, cancelSuggestRequest]);
 
   const loadMore = useCallback(async () => {
-    if (!editor || !config?.loadMore || isLoadingMore || !hasMore) return;
+    if (!editor || !config?.loadMore) return;
 
-    const suggestionState = getSuggestionState(editor.state);
-    // Support both 'custom' and 'fieldWithCustom' types for pagination
-    if (suggestionState?.type !== 'custom' && suggestionState?.type !== 'fieldWithCustom') return;
+    // The pages read so far are part of the suggestion; once it closes there are none
+    const started = getSuggestionState(editor.state);
+    if (started?.type !== 'custom' && started?.type !== 'fieldWithCustom') return;
+    if (!started.custom.hasMore || started.custom.isLoadingMore) return;
 
-    // Capture query at start for race condition detection
-    const queryAtStart = currentQueryRef.current;
+    const { query } = started;
+    const { offset } = started.custom;
     const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const onError = config.onError ?? defaultErrorHandler;
 
-    setIsLoadingMore(true);
+    const { signal } = startRequest(loadMoreRequestRef);
+    const loading = editor.state.tr;
+    setCustomLoadingMore(loading, started, true);
+    loading.setMeta('addToHistory', false);
+    editor.view.dispatch(loading);
 
     try {
-      const existingTokens = collectExistingTokens(editor);
-      const maxSuggestions = config.maxSuggestions ?? DEFAULT_MAX_SUGGESTIONS;
+      const result = await withTimeout(
+        Promise.resolve(
+          config.loadMore({
+            query,
+            fields: getEditorContext(editor).fields,
+            existingTokens: collectExistingTokens(editor),
+            offset,
+            limit: config.maxSuggestions ?? DEFAULT_MAX_SUGGESTIONS,
+          })
+        ),
+        timeoutMs,
+        signal
+      );
 
-      const loadMorePromise = config.loadMore({
-        query: queryAtStart,
-        fields: getEditorContext(editor).fields,
-        existingTokens,
-        offset: currentOffsetRef.current,
-        limit: maxSuggestions,
-      });
-      const result = await withTimeout(loadMorePromise, timeoutMs, queryAtStart);
+      // The page belongs to the suggestion that asked for it: one that closed since, or a
+      // newer request, has taken that away
+      const current = editor.isDestroyed ? undefined : getSuggestionState(editor.state);
+      if (signal.aborted || !current?.custom.isLoadingMore) return;
 
-      // Check if editor is still valid
-      if (!editor || editor.isDestroyed) return;
-
-      // Check if query changed during async operation (race condition)
-      if (queryAtStart !== currentQueryRef.current) return;
-
-      // Get current state to append to existing suggestions
-      const currentState = getSuggestionState(editor.state);
-      if (currentState?.type !== 'custom' && currentState?.type !== 'fieldWithCustom') return;
-
-      const existingSuggestions = currentState.customItems;
-      const newSuggestions = [...existingSuggestions, ...result.suggestions];
-
-      // Update pagination state
-      currentOffsetRef.current += result.suggestions.length;
-      setHasMore(result.hasMore ?? false);
-
-      // Update suggestion state with appended items
-      const anchorPos = resolveAnchorPos(editor.state.doc, currentState.anchor);
       const tr = editor.state.tr;
-      if (currentState.type === 'custom') {
-        openCustomSuggestion(tr, newSuggestions, queryAtStart, anchorPos);
-      } else {
-        // fieldWithCustom: preserve field items and display mode
-        openFieldWithCustomSuggestion(
-          tr,
-          currentState.items as FieldDefinition[],
-          newSuggestions,
-          currentState.customDisplayMode ?? 'prepend',
-          queryAtStart,
-          anchorPos
-        );
-      }
+      appendCustomSuggestions(tr, current, result.suggestions, result.hasMore ?? false);
       tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
     } catch (error) {
+      if (signal.aborted) return;
       onError(error instanceof Error ? error : new Error(String(error)), {
         type: 'loadMore',
-        query: queryAtStart,
+        query,
       });
-    } finally {
-      setIsLoadingMore(false);
+      const current = editor.isDestroyed ? undefined : getSuggestionState(editor.state);
+      if (current?.custom.isLoadingMore) {
+        const tr = editor.state.tr;
+        setCustomLoadingMore(tr, current, false);
+        tr.setMeta('addToHistory', false);
+        editor.view.dispatch(tr);
+      }
     }
-  }, [editor, config, isLoadingMore, hasMore]);
+  }, [editor, config]);
 
-  return { handleCustomSelect, updateCustomSuggestions, hasMore, isLoadingMore, loadMore };
+  return { handleCustomSelect, updateCustomSuggestions, loadMore };
 }

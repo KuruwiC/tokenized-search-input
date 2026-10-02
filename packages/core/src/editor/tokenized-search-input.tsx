@@ -79,8 +79,6 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
     const {
       handleCustomSelect,
       updateCustomSuggestions,
-      hasMore: customHasMore,
-      isLoadingMore: customIsLoadingMore,
       loadMore: onCustomLoadMore,
     } = useCustomSuggestions(editor, suggestions?.custom);
     const { handleValueSelect, handleDateChange, handleDateClose } = useSuggestionHandlers({
@@ -197,8 +195,6 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
             onCustomSelect={handleCustomSelect}
             onDateChange={handleDateChange}
             onDateClose={handleDateClose}
-            customHasMore={customHasMore}
-            customIsLoadingMore={customIsLoadingMore}
             onCustomLoadMore={onCustomLoadMore}
             expandOnFocus={expandOnFocus}
             listboxId={suggestionListId}

@@ -111,7 +111,8 @@ export function openCustomSuggestion(
   tr: Transaction,
   customItems: CustomSuggestion[],
   query: string = '',
-  anchorPos: number | null = null
+  anchorPos: number | null = null,
+  hasMore: boolean = false
 ): Transaction {
   return setSuggestion(tr, {
     type: 'custom',
@@ -119,6 +120,7 @@ export function openCustomSuggestion(
     query,
     items: [],
     customItems,
+    custom: { hasMore, offset: customItems.length, isLoadingMore: false },
     activeIndex: -1,
     isLoading: false,
     anchor: positionAnchor(anchorPos),
@@ -132,7 +134,8 @@ export function openFieldWithCustomSuggestion(
   customItems: CustomSuggestion[],
   displayMode: CustomDisplayMode,
   query: string = '',
-  anchorPos: number | null = null
+  anchorPos: number | null = null,
+  hasMore: boolean = false
 ): Transaction {
   return setSuggestion(tr, {
     type: 'fieldWithCustom',
@@ -140,11 +143,34 @@ export function openFieldWithCustomSuggestion(
     query,
     items: fields,
     customItems,
+    custom: { hasMore, offset: customItems.length, isLoadingMore: false },
     activeIndex: -1,
     isLoading: false,
     anchor: positionAnchor(anchorPos),
     dismissed: false,
     customDisplayMode: displayMode,
+  });
+}
+
+/** Marks the next page of custom suggestions as asked for, or as no longer awaited. */
+export function setCustomLoadingMore(
+  tr: Transaction,
+  state: SuggestionState,
+  isLoadingMore: boolean
+): Transaction {
+  return setSuggestion(tr, { custom: { ...state.custom, isLoadingMore } });
+}
+
+/** Adds the next page to the custom suggestions, keeping what is active and where it is anchored. */
+export function appendCustomSuggestions(
+  tr: Transaction,
+  state: SuggestionState,
+  page: readonly CustomSuggestion[],
+  hasMore: boolean
+): Transaction {
+  return setSuggestion(tr, {
+    customItems: [...state.customItems, ...page],
+    custom: { hasMore, offset: state.custom.offset + page.length, isLoadingMore: false },
   });
 }
 

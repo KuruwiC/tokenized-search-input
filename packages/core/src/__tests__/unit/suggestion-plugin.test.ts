@@ -3,22 +3,26 @@ import { EditorState } from '@tiptap/pm/state';
 import { describe, expect, it } from 'vitest';
 import { updateSuggestionQuery } from '../../plugins/shared/meta';
 import {
+  appendCustomSuggestions,
   clearDismissed,
   closeSuggestion,
   createSuggestionPlugin,
   dismissSuggestion,
   getSuggestionState,
+  openCustomSuggestion,
   openDateSuggestion,
   openDateTimeSuggestion,
   openFieldSuggestion,
+  openFieldWithCustomSuggestion,
   openValueSuggestion,
+  setCustomLoadingMore,
   setSuggestion,
   setSuggestionLoading,
   updateSuggestionActiveIndex,
   updateSuggestionDateValue,
   updateSuggestionTimeControls,
 } from '../../plugins/suggestion-plugin';
-import type { FieldDefinition } from '../../types';
+import type { CustomSuggestion, FieldDefinition } from '../../types';
 import { basicFields, basicBlockSchema as schema } from '../fixtures';
 
 const testFields = basicFields;
@@ -42,6 +46,7 @@ describe('SuggestionPlugin', () => {
         query: '',
         items: [],
         customItems: [],
+        custom: { hasMore: false, offset: 0, isLoadingMore: false },
         activeIndex: -1,
         isLoading: false,
         anchor: null,
@@ -182,6 +187,84 @@ describe('SuggestionPlugin', () => {
         query: 'p',
         items: ['pending'],
         dismissed: false,
+      });
+    });
+  });
+
+  describe('pagination of custom suggestions', () => {
+    const suggestion = (label: string): CustomSuggestion => ({
+      label,
+      tokens: [{ key: 'status', operator: 'is', value: label }],
+    });
+
+    function suggestionOf(state: EditorState) {
+      const current = getSuggestionState(state);
+      if (!current) throw new Error('the plugin has no state');
+      return current;
+    }
+
+    function openWithPage() {
+      let state = createEditorState();
+      const tr = state.tr;
+      openCustomSuggestion(tr, [suggestion('a'), suggestion('b')], 'q', 1, true);
+      state = state.apply(tr);
+      return state;
+    }
+
+    it('starts from the first page when custom suggestions open', () => {
+      const current = getSuggestionState(openWithPage());
+
+      expect(current?.custom).toEqual({ hasMore: true, offset: 2, isLoadingMore: false });
+    });
+
+    it('starts from the first page when custom suggestions open with fields', () => {
+      const state = createEditorState();
+      const tr = state.tr;
+      openFieldWithCustomSuggestion(tr, testFields, [suggestion('a')], 'prepend', '', 1, true);
+
+      expect(getSuggestionState(state.apply(tr))?.custom).toEqual({
+        hasMore: true,
+        offset: 1,
+        isLoadingMore: false,
+      });
+    });
+
+    it('marks a page as awaited and appends it, keeping the active option and the anchor', () => {
+      let state = openWithPage();
+      let tr = state.tr;
+      updateSuggestionActiveIndex(tr, 1);
+      state = state.apply(tr);
+
+      tr = state.tr;
+      setCustomLoadingMore(tr, suggestionOf(state), true);
+      state = state.apply(tr);
+      expect(getSuggestionState(state)?.custom.isLoadingMore).toBe(true);
+
+      tr = state.tr;
+      appendCustomSuggestions(tr, suggestionOf(state), [suggestion('c')], false);
+      state = state.apply(tr);
+
+      const current = getSuggestionState(state);
+      expect(current?.customItems.map((item) => item.label)).toEqual(['a', 'b', 'c']);
+      expect(current?.custom).toEqual({ hasMore: false, offset: 3, isLoadingMore: false });
+      expect(current?.activeIndex).toBe(1);
+      expect(current?.anchor).toEqual({ pos: 1 });
+    });
+
+    it('goes back to the start when the suggestion closes', () => {
+      let state = openWithPage();
+      let tr = state.tr;
+      setCustomLoadingMore(tr, suggestionOf(state), true);
+      state = state.apply(tr);
+
+      tr = state.tr;
+      closeSuggestion(tr);
+      state = state.apply(tr);
+
+      expect(getSuggestionState(state)?.custom).toEqual({
+        hasMore: false,
+        offset: 0,
+        isLoadingMore: false,
       });
     });
   });

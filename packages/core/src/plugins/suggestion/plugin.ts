@@ -200,6 +200,7 @@ export function createSuggestionPlugin(
           query: meta.query ?? value.query,
           items: newItems,
           customItems: newCustomItems,
+          custom: meta.custom ?? value.custom,
           activeIndex: newActiveIndex,
           isLoading: meta.isLoading ?? value.isLoading,
           anchor: meta.anchor !== undefined ? meta.anchor : value.anchor,

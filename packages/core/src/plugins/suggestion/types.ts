@@ -12,6 +12,16 @@ export type SuggestionType =
 
 export type CustomDisplayMode = 'prepend' | 'append';
 
+/** How far the pages of custom suggestions have been read. */
+export interface CustomPagination {
+  /** Whether the source has more suggestions to give. */
+  readonly hasMore: boolean;
+  /** How many suggestions have been read, the offset of the next page. */
+  readonly offset: number;
+  /** Whether a page has been asked for and has not arrived. */
+  readonly isLoadingMore: boolean;
+}
+
 /**
  * What a suggestion list is attached to. Value, date and datetime suggestions
  * belong to a token and follow it by id, so editing or moving the token keeps
@@ -25,6 +35,8 @@ export interface SuggestionState {
   query: string;
   items: ReadonlyArray<FieldDefinition | EnumValue>;
   customItems: readonly CustomSuggestion[];
+  /** The pages of `customItems`; a suggestion that closes takes it back to the start. */
+  custom: CustomPagination;
   activeIndex: number;
   isLoading: boolean;
   anchor: SuggestionAnchor | null;
@@ -51,6 +63,7 @@ export interface SetSuggestionMeta {
   query?: string;
   items?: ReadonlyArray<FieldDefinition | EnumValue>;
   customItems?: readonly CustomSuggestion[];
+  custom?: CustomPagination;
   activeIndex?: number;
   isLoading?: boolean;
   anchor?: SuggestionAnchor | null;
@@ -73,6 +86,7 @@ export const initialSuggestionState: SuggestionState = {
   query: '',
   items: [],
   customItems: [],
+  custom: { hasMore: false, offset: 0, isLoadingMore: false },
   activeIndex: -1,
   isLoading: false,
   anchor: null,

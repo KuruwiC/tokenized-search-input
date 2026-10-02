@@ -9,6 +9,7 @@
 export type {
   CloseSuggestionMeta,
   CustomDisplayMode,
+  CustomPagination,
   SetSuggestionMeta,
   SuggestionAnchor,
   SuggestionMeta,
@@ -19,6 +20,7 @@ export type {
 // Plugin
 // Actions
 export {
+  appendCustomSuggestions,
   clearDismissed,
   closeSuggestion,
   createSuggestionPlugin,
@@ -37,6 +39,7 @@ export {
   openFieldWithCustomSuggestion,
   openValueSuggestion,
   resolveAnchorPos,
+  setCustomLoadingMore,
   setSuggestion,
   setSuggestionLoading,
   suggestionKey,

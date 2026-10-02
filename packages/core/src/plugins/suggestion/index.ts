@@ -6,6 +6,7 @@
 
 // Actions
 export {
+  appendCustomSuggestions,
   clearDismissed,
   closeSuggestion,
   dismissSuggestion,
@@ -17,6 +18,7 @@ export {
   openFieldSuggestion,
   openFieldWithCustomSuggestion,
   openValueSuggestion,
+  setCustomLoadingMore,
   setSuggestion,
   setSuggestionLoading,
   updateSuggestionActiveIndex,
@@ -38,6 +40,7 @@ export { createResetState, type ResetStateOptions } from './state-helpers';
 export type {
   CloseSuggestionMeta,
   CustomDisplayMode,
+  CustomPagination,
   SetSuggestionMeta,
   SuggestionAnchor,
   SuggestionMeta,

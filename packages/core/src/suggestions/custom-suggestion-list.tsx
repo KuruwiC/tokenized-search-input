@@ -54,22 +54,13 @@ export const CustomSuggestionLoadMore: React.FC<CustomSuggestionLoadMoreProps> =
 }) => {
   const text = { ...DEFAULT_PAGINATION_LABELS, ...labels };
   const rowRef = useRef<HTMLDivElement>(null);
-  const triggeredRef = useRef(false);
-
-  useEffect(() => {
-    if (!isLoadingMore) triggeredRef.current = false;
-  }, [isLoadingMore]);
-
   useEffect(() => {
     const row = rowRef.current;
     if (isLoadingMore || !row) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && !triggeredRef.current) {
-          triggeredRef.current = true;
-          onLoadMore();
-        }
+        if (entries[0]?.isIntersecting) onLoadMore();
       },
       { threshold: 0.1 }
     );

@@ -30,10 +30,6 @@ export interface SuggestionOverlayProps {
   onCustomSelect?: (suggestion: CustomSuggestion) => void;
   onDateChange?: (value: DateTimeValue | null, fieldKey: string) => void;
   onDateClose?: () => void;
-  /** Whether more custom suggestions can be loaded */
-  customHasMore?: boolean;
-  /** Whether loadMore is currently in progress */
-  customIsLoadingMore?: boolean;
   /** Callback to load more custom suggestions */
   onCustomLoadMore?: () => void;
   /** Whether expandOnFocus mode is enabled */
@@ -55,8 +51,6 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
   onCustomSelect,
   onDateChange,
   onDateClose,
-  customHasMore,
-  customIsLoadingMore,
   onCustomLoadMore,
   expandOnFocus = false,
   listboxId,
@@ -115,7 +109,7 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     return null;
   }
 
-  const { items, customItems, activeIndex, query, fieldKey, dateValue, customDisplayMode } =
+  const { items, customItems, custom, activeIndex, query, fieldKey, dateValue, customDisplayMode } =
     suggestionState;
   if ((type === 'custom' || type === 'fieldWithCustom') && !onCustomSelect) return null;
   if (isPicker && !fields.some((field) => field.key === fieldKey)) return null;
@@ -135,8 +129,8 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     onValueSelect,
     onCustomSelect,
     onActiveChange: handleActiveChange,
-    customHasMore,
-    customIsLoadingMore,
+    customHasMore: custom.hasMore,
+    customIsLoadingMore: custom.isLoadingMore,
     onCustomLoadMore,
     paginationLabels,
     listboxId,
