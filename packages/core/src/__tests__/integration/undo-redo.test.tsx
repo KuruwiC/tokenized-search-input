@@ -150,6 +150,37 @@ describe('Undo/Redo', () => {
       expect(ref.current?.getValue()).toBe('tag:is:reactx');
     });
 
+    it('undoes and redoes the last value change of a free text token from its input', async () => {
+      const user = userEvent.setup();
+      const ref = createRef<TokenizedSearchInputRef>();
+      render(
+        <TokenizedSearchInput
+          ref={ref}
+          fields={tagFields}
+          freeTextMode="tokenize"
+          defaultValue="hello"
+        />
+      );
+      await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+      const editor = getInternalEditor(ref.current);
+      if (!editor) throw new Error('editor not created');
+      const freeText = () => screen.getByRole('group', { name: /Free text/i });
+
+      await user.click(await screen.findByRole('group', { name: /Free text/i }));
+      await user.type(await screen.findByLabelText('Free text value'), 'x');
+      await user.keyboard('{Tab}');
+      expect(ref.current?.getValue()).toBe('hellox');
+      endUndoStep(editor);
+
+      await user.click(freeText());
+      await screen.findByLabelText('Free text value');
+      await user.keyboard('{Control>}z{/Control}');
+      expect(ref.current?.getValue()).toBe('hello');
+
+      await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+      expect(ref.current?.getValue()).toBe('hellox');
+    });
+
     it('keeps a token emptied by undo when there is nothing left to undo', async () => {
       const user = userEvent.setup();
       const { ref, editor } = await renderTagInput();

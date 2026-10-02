@@ -9,6 +9,7 @@ import {
 import { isFreeTextToken } from '../../utils/node-predicates';
 import { escapeForQuotes } from '../../utils/quoted-string';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
+import { isHistoryShortcut } from '../composition/keyboard';
 import { updateTokenNodeView } from '../composition/node-view-update';
 import { FreeTextTokenView } from './free-text-token-view';
 
@@ -98,6 +99,11 @@ export const FreeTextTokenNode = Node.create({
       stopEvent: ({ event }) => {
         // When disabled, let all events flow to ProseMirror (don't handle in NodeView)
         if (!editor.isEditable) {
+          return false;
+        }
+
+        // Undo and redo go to the editor, which owns the history of token edits
+        if (event instanceof KeyboardEvent && isHistoryShortcut(event)) {
           return false;
         }
 
