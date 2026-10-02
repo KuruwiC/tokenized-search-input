@@ -55,7 +55,7 @@ jobs:
       - name: Build demo
         run: pnpm build:demo
 
-  browser-smoke:
+  browser:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,9 +69,9 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Install Chromium
-        run: pnpm --filter @kuruwic/tokenized-search-input exec playwright install --with-deps chromium
-      - name: Run browser smoke test
+      - name: Install Chromium and WebKit
+        run: pnpm --filter @kuruwic/tokenized-search-input exec playwright install --with-deps chromium webkit
+      - name: Run browser tests
         run: pnpm --filter @kuruwic/tokenized-search-input test:browser
 
   react-peer-compatibility:
