@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getEditorContext } from '../../../../extensions/editor-context';
+import { useTextWidth } from '../../../../hooks/use-text-width';
 import { Check } from '../../../../icons/check';
 import type { FieldDefinition, LabelResolver, Matcher } from '../../../../types';
 import { cn } from '../../../../utils/cn';
@@ -14,18 +15,6 @@ import {
   handleInputOnlyOpenKeyDown,
   handleOpenKeyDown,
 } from './token-label-keyboard-handlers';
-
-// Module-level singleton for text width measurement
-let measureCanvas: HTMLCanvasElement | null = null;
-let measureCtx: CanvasRenderingContext2D | null = null;
-
-function getTextMeasureContext(): CanvasRenderingContext2D | null {
-  if (!measureCanvas) {
-    measureCanvas = document.createElement('canvas');
-    measureCtx = measureCanvas.getContext('2d');
-  }
-  return measureCtx;
-}
 
 export interface TokenLabelComboboxProps {
   field?: FieldDefinition;
@@ -81,7 +70,6 @@ export function TokenLabelCombobox({
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(
     null
   );
-  const [inputWidth, setInputWidth] = useState(20);
   const [hasUserEdited, setHasUserEdited] = useState(false);
 
   const label = field?.label || fallback || '';
@@ -155,25 +143,7 @@ export function TokenLabelCombobox({
 
   const hasTextInput = displayMode === 'dropdown-with-input' || displayMode === 'input-only';
   const showInput = isOpen && hasTextInput;
-  useEffect(() => {
-    if (!showInput) return;
-
-    const input = inputRef.current;
-    if (!input) return;
-
-    const ctx = getTextMeasureContext();
-    if (!ctx) return;
-
-    const computedStyle = window.getComputedStyle(input);
-    const font = `${computedStyle.fontStyle} ${computedStyle.fontWeight} ${computedStyle.fontSize} ${computedStyle.fontFamily}`;
-    const text = inputValue || label || 'a';
-
-    ctx.font = font;
-    const textWidth = ctx.measureText(text).width;
-    const paddingLeft = Number.parseFloat(computedStyle.paddingLeft) || 0;
-
-    setInputWidth(Math.max(20, Math.ceil(textWidth + paddingLeft + 4)));
-  }, [inputValue, showInput, label]);
+  const inputWidth = useTextWidth(inputRef, inputValue || label || 'a', showInput);
 
   useEffect(() => {
     if (isOpen && hasTextInput && inputRef.current) {
@@ -409,7 +379,7 @@ export function TokenLabelCombobox({
           }}
           onClick={(e) => e.stopPropagation()}
           className="tsi-token-label-combobox__input"
-          style={{ width: `${inputWidth}px` }}
+          style={{ width: inputWidth }}
           autoComplete="off"
           spellCheck={false}
         />

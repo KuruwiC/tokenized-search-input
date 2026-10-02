@@ -812,6 +812,7 @@
   }
 
   :where(.tsi-token-label-combobox__input) {
+    field-sizing: content;
     min-width: 20px;
     background: transparent;
     border: none;
@@ -952,6 +953,7 @@
   :where(.tsi-token-value__input) {
     padding-left: 0.25rem;
     color: inherit;
+    field-sizing: content;
   }
 
   /* === Icon Slot === */

@@ -73,6 +73,17 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     }),
   });
 
+  // jsdom has no canvas: text measures 8px per character
+  Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+    configurable: true,
+    writable: true,
+    value: () => ({
+      font: '',
+      letterSpacing: '',
+      measureText: (text: string) => ({ width: text.length * 8 }),
+    }),
+  });
+
   // Mock ResizeObserver for tests
   class MockResizeObserver {
     observe() {}

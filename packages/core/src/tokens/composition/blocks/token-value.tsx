@@ -1,4 +1,5 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
+import { useTextWidth } from '../../../hooks/use-text-width';
 import { cn } from '../../../utils/cn';
 import { type CursorPosition, useTokenFocusContext } from '../contexts';
 import { useFocusableBlock } from '../focus';
@@ -65,7 +66,6 @@ export function TokenValue({
     currentFocusId,
     dispatchKeyDown,
   } = useTokenFocusContext();
-  const [inputWidth, setInputWidth] = useState<number>(20);
 
   const focusInput = useCallback((position?: CursorPosition) => {
     const input = inputRef.current;
@@ -199,44 +199,7 @@ export function TokenValue({
 
   useBlockKeyboardContribution('value', keyboardHandlers);
 
-  // Update input width based on value using temporary DOM measurement span
-  // This is more accurate than Canvas API as it uses the same rendering engine
-  useLayoutEffect(() => {
-    // Only measure when focused (input is visible)
-    if (!tokenFocused) return;
-
-    const input = inputRef.current;
-    if (!input) return;
-
-    // Create temporary measurement span with same styles as input
-    const measureSpan = document.createElement('span');
-    measureSpan.style.cssText = `
-      position: absolute;
-      visibility: hidden;
-      white-space: pre;
-      pointer-events: none;
-    `;
-
-    // Copy computed styles from input for accurate measurement
-    // Note: computedStyle.font can return empty string in some browsers,
-    // so we copy individual font properties instead
-    const computedStyle = window.getComputedStyle(input);
-    measureSpan.style.fontFamily = computedStyle.fontFamily;
-    measureSpan.style.fontSize = computedStyle.fontSize;
-    measureSpan.style.fontWeight = computedStyle.fontWeight;
-    measureSpan.style.fontStyle = computedStyle.fontStyle;
-    measureSpan.style.letterSpacing = computedStyle.letterSpacing;
-    measureSpan.style.paddingLeft = computedStyle.paddingLeft;
-
-    measureSpan.textContent = value || placeholder;
-
-    // Append to body, measure, then remove
-    document.body.appendChild(measureSpan);
-    const textWidth = measureSpan.offsetWidth;
-    document.body.removeChild(measureSpan);
-
-    setInputWidth(Math.max(20, textWidth));
-  }, [value, placeholder, tokenFocused]);
+  const inputWidth = useTextWidth(inputRef, value || placeholder, tokenFocused);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
@@ -268,7 +231,7 @@ export function TokenValue({
         onFocus={handleFocus}
         className={cn('tsi-token-value__input', className)}
         style={{
-          width: tokenFocused ? `${inputWidth}px` : 0,
+          width: tokenFocused ? inputWidth : 0,
           maxWidth: tokenFocused ? '100%' : undefined,
           opacity: tokenFocused ? 1 : 0,
           position: tokenFocused ? 'relative' : 'absolute',
