@@ -5,6 +5,11 @@ import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect';
 
 export interface SuggestionPosition {
   left: number;
+  /**
+   * The offset below the top of the container when the container expands on focus and
+   * has focus, else undefined: the suggestion then sits under the whole of the input.
+   */
+  top: number | undefined;
 }
 
 /**
@@ -14,19 +19,28 @@ export interface SuggestionPosition {
  * For value suggestions: position aligns with token left edge
  *
  * When overflow would occur, shifts left to stay within container.
+ *
+ * Measured after every commit: the width of the suggestion and the height of the input
+ * change without the anchor moving.
  */
 export function useSuggestionPosition(
   editor: Editor | null,
   anchorPos: number | null,
   suggestionType: SuggestionType,
   containerRef: RefObject<HTMLElement | null>,
-  suggestionRef: RefObject<HTMLElement | null>
+  suggestionRef: RefObject<HTMLElement | null>,
+  expandOnFocus: boolean
 ): SuggestionPosition | null {
   const [position, setPosition] = useState<SuggestionPosition | null>(null);
 
   useIsomorphicLayoutEffect(() => {
+    const place = (next: SuggestionPosition | null) =>
+      setPosition((current) =>
+        current?.left === next?.left && current?.top === next?.top ? current : next
+      );
+
     if (!editor || anchorPos === null || !suggestionType || !containerRef.current) {
-      setPosition(null);
+      place(null);
       return;
     }
 
@@ -38,7 +52,7 @@ export function useSuggestionPosition(
       coords = editor.view.coordsAtPos(anchorPos);
     } catch {
       // Position might be invalid after document changes
-      setPosition(null);
+      place(null);
       return;
     }
 
@@ -52,8 +66,12 @@ export function useSuggestionPosition(
       left = Math.max(0, Math.min(left, maxLeft));
     }
 
-    setPosition({ left });
-  }, [editor, anchorPos, suggestionType, containerRef, suggestionRef]);
+    // Focus within the container is what the expanded layout follows in CSS
+    const expanded = expandOnFocus && container.matches(':focus-within');
+    const top = expanded ? container.querySelector('.tsi-input')?.scrollHeight : undefined;
+
+    place({ left, top });
+  });
 
   return position;
 }
