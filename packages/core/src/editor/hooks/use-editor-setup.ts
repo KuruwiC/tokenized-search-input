@@ -28,12 +28,12 @@ import { FilterTokenNode } from '../../tokens/filter-token/filter-token-node';
 import { FreeTextTokenNode } from '../../tokens/free-text-token/free-text-token-node';
 import type { QuerySnapshot } from '../../types';
 import { getAllTokens } from '../../utils/query-snapshot';
-import {
-  areTokenListsEqual,
-  areTokenListsEqualExcludingFocused,
-  type ComparableToken,
-} from '../../utils/token-events';
+import { areConfirmedTokensEqual, type ComparableToken } from '../../utils/token-events';
 import { isEditorEmpty } from '../editor-state';
+
+function readSnapshot(editor: Editor): QuerySnapshot {
+  return createQuerySnapshot(editor.state, { delimiter: getEditorContext(editor).delimiter });
+}
 
 export interface UseEditorSetupOptions {
   /** Read once: the configuration the editor starts with. Later changes go through `useEditorConfigSync`. */
@@ -66,6 +66,15 @@ export function useEditorSetup({
   const [isEmpty, setIsEmpty] = useState(true);
 
   const confirmedTokensRef = useRef<ComparableToken[]>([]);
+  /** Calls onTokensChange when the tokens no longer being edited differ from the last report. */
+  const reportConfirmedTokens = (ed: Editor, snapshot: QuerySnapshot) => {
+    if (!onTokensChange) return;
+    const tokens = getAllTokens(snapshot);
+    const focusedId = getFocusedToken(ed.state)?.id ?? null;
+    if (areConfirmedTokensEqual(confirmedTokensRef.current, tokens, focusedId)) return;
+    confirmedTokensRef.current = tokens;
+    onTokensChange(snapshot);
+  };
 
   // Changing the extensions recreates the TipTap editor, which would discard the
   // content and the history. They are built once from the mount-time configuration;
@@ -123,57 +132,31 @@ export function useEditorSetup({
     content: initialContent,
     editable: !disabled,
     editorProps,
+    // The initial content counts as entered at once when the editor is created, so it
+    // is reported as a change from an empty input.
     onCreate: ({ editor: ed }) => {
       const tr = ed.state.tr;
       markContentEntered(tr);
       ed.view.dispatch(tr);
+      const snapshot = readSnapshot(ed);
+      reportConfirmedTokens(ed, snapshot);
+      if (!isEditorEmpty(ed)) onChange?.(snapshot);
     },
-    onUpdate: ({ editor: ed }) => {
-      const snapshot = createQuerySnapshot(ed.state, {
-        delimiter: getEditorContext(ed).delimiter,
-      });
+    // Callbacks follow how the state changed, whatever dispatched the change: onChange
+    // when the document differs, after the plugins' appended transactions as well;
+    // onTokensChange when the confirmed tokens differ from the ones last reported.
+    onTransaction: ({ editor: ed, transaction, appendedTransactions }) => {
+      const docChanged = !transaction.before.eq(ed.state.doc);
+      const focusChanged = [transaction, ...appendedTransactions].some(
+        (tr) => getTokenFocusMeta(tr) !== undefined
+      );
+      if (!docChanged && !focusChanged) return;
 
-      if (onTokensChange) {
-        const focusedTokenId = getFocusedToken(ed.state)?.id ?? null;
-        const currentTokens = getAllTokens(snapshot);
-
-        // The focused token is excluded from both lists only for the comparison.
-        const isEqual = areTokenListsEqualExcludingFocused(
-          confirmedTokensRef.current,
-          currentTokens,
-          focusedTokenId
-        );
-
-        if (!isEqual) {
-          onTokensChange(snapshot);
-          confirmedTokensRef.current = currentTokens;
-        }
-      }
-
-      onChange?.(snapshot);
-      setIsEmpty(isEditorEmpty(ed));
-    },
-    onTransaction: ({ editor: ed, transaction }) => {
-      // onUpdate only fires on document changes; this covers focus leaving a token.
-      if (!onTokensChange) return;
-
-      const meta = getTokenFocusMeta(transaction);
-      if (!meta || meta.focused !== null) return;
-
-      // onUpdate handles document changes; running both would create two snapshots.
-      if (transaction.docChanged) return;
-
-      // Validation can change without a document change, so the snapshot is read fresh.
-      const snapshot = createQuerySnapshot(ed.state, {
-        delimiter: getEditorContext(ed).delimiter,
-      });
-      const currentTokens = getAllTokens(snapshot);
-
-      const isEqual = areTokenListsEqual(confirmedTokensRef.current, currentTokens);
-
-      if (!isEqual) {
-        onTokensChange(snapshot);
-        confirmedTokensRef.current = currentTokens;
+      const snapshot = readSnapshot(ed);
+      reportConfirmedTokens(ed, snapshot);
+      if (docChanged) {
+        onChange?.(snapshot);
+        setIsEmpty(isEditorEmpty(ed));
       }
     },
   });
@@ -189,10 +172,11 @@ export function useEditorSetup({
     setIsEmpty(isEditorEmpty(editor));
   }, [editor]);
 
-  // aria-disabled follows from editorProps; this only toggles editability.
+  // aria-disabled follows from editorProps; this only toggles editability, which
+  // leaves the document as it is.
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
-    editor.setEditable(!disabled);
+    editor.setEditable(!disabled, false);
   }, [editor, disabled]);
 
   return { editor, isEmpty };

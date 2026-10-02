@@ -1,39 +1,28 @@
 import type { QuerySnapshotFilterToken, QuerySnapshotFreeTextToken } from '../types';
 
-/**
- * Union type for tokens that can be compared in onTokensChange.
- */
+/** A token as `onTokensChange` compares it. */
 export type ComparableToken = QuerySnapshotFilterToken | QuerySnapshotFreeTextToken;
 
-/**
- * Compare two token lists to determine if there are changes.
- * Compares type, id, value, and operator (for filter tokens only).
- */
-export function areTokenListsEqual(prev: ComparableToken[], next: ComparableToken[]): boolean {
-  if (prev.length !== next.length) return false;
-  for (let i = 0; i < prev.length; i++) {
-    const p = prev[i];
-    const n = next[i];
-    if (p.type !== n.type) return false;
-    if (p.id !== n.id) return false;
-    if (p.value !== n.value) return false;
-    if (p.type === 'filter' && n.type === 'filter') {
-      if (p.operator !== n.operator) return false;
-    }
+function isSameToken(a: ComparableToken, b: ComparableToken): boolean {
+  if (a.type === 'filter' && b.type === 'filter') {
+    return a.id === b.id && a.key === b.key && a.operator === b.operator && a.value === b.value;
   }
-  return true;
+  return a.type === b.type && a.id === b.id && a.value === b.value;
 }
 
 /**
- * Compare two token lists, excluding the focused token from both lists.
- * Handles token creation/editing (fires on blur) and deletion (fires immediately).
+ * Whether two token lists confirm the same tokens: the same type, id, key, operator
+ * and value in the same order. The focused token is still being edited, so it is left
+ * out of both lists.
  */
-export function areTokenListsEqualExcludingFocused(
-  prev: ComparableToken[],
-  next: ComparableToken[],
-  focusedTokenId: string | null
+export function areConfirmedTokensEqual(
+  prev: readonly ComparableToken[],
+  next: readonly ComparableToken[],
+  focusedId: string | null
 ): boolean {
-  const prevFiltered = focusedTokenId ? prev.filter((t) => t.id !== focusedTokenId) : prev;
-  const nextFiltered = focusedTokenId ? next.filter((t) => t.id !== focusedTokenId) : next;
-  return areTokenListsEqual(prevFiltered, nextFiltered);
+  const confirmed = (tokens: readonly ComparableToken[]) =>
+    focusedId === null ? tokens : tokens.filter((token) => token.id !== focusedId);
+  const a = confirmed(prev);
+  const b = confirmed(next);
+  return a.length === b.length && a.every((token, index) => isSameToken(token, b[index]));
 }
