@@ -72,16 +72,33 @@ describe('mobile touch', () => {
   });
 
   it('places the caret between tokens on a wrapped second row', async () => {
-    const m = await mountEditor('status:is:open owner:is:bob lock:is:x status:is:closed');
-    const rows = new Set(
-      tokenElements(m).map((token) => Math.round(token.getBoundingClientRect().top))
-    );
-    expect(rows.size).toBeGreaterThan(1);
+    const tokens = [
+      'status:is:open',
+      'owner:is:bob',
+      'lock:is:x',
+      'status:is:closed',
+      'owner:is:alice',
+    ];
+    const m = await mountEditor(tokens.join(' '));
+    const tops = tokenElements(m).map((token) => Math.round(token.getBoundingClientRect().top));
+    const firstRow = Math.min(...tops);
+    expect(Math.max(...tops)).toBeGreaterThan(firstRow);
 
-    await userEvent.click(m.pm, { position: gapBetween(m, 2) });
-    await expectCaretBetween(m, { tokensBefore: 3, tokensAfter: 1 });
+    // The last pair of neighbours that share a row below the first one.
+    let index = -1;
+    tops.forEach((top, i) => {
+      if (top > firstRow && tops[i + 1] === top) index = i;
+    });
+    expect(index).toBeGreaterThan(-1);
+    await userEvent.click(m.pm, { position: gapBetween(m, index) });
+    await expectCaretBetween(m, {
+      tokensBefore: index + 1,
+      tokensAfter: tokens.length - index - 1,
+    });
 
     await userEvent.keyboard('wrap');
-    expect(m.value()).toBe('status:is:open owner:is:bob lock:is:x wrap status:is:closed');
+    expect(m.value()).toBe(
+      [...tokens.slice(0, index + 1), 'wrap', ...tokens.slice(index + 1)].join(' ')
+    );
   });
 });
