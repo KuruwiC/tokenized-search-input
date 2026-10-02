@@ -30,7 +30,7 @@ import { FilterTokenNode } from '../../tokens/filter-token/filter-token-node';
 import { FreeTextTokenNode } from '../../tokens/free-text-token/free-text-token-node';
 import type { QuerySnapshot } from '../../types';
 import { isToken } from '../../utils/node-predicates';
-import { EMPTY_SNAPSHOT, getAllTokens } from '../../utils/query-snapshot';
+import { getAllTokens } from '../../utils/query-snapshot';
 import {
   areTokenListsEqual,
   areTokenListsEqualExcludingFocused,
@@ -67,8 +67,6 @@ export function useEditorSetup({
   onTokensChange,
 }: UseEditorSetupOptions): UseEditorSetupResult {
   const [isEmpty, setIsEmpty] = useState(true);
-
-  const prevSnapshotRef = useRef<QuerySnapshot>(EMPTY_SNAPSHOT);
 
   const confirmedTokensRef = useRef<ComparableToken[]>([]);
 
@@ -165,7 +163,6 @@ export function useEditorSetup({
         }
       }
 
-      prevSnapshotRef.current = snapshot;
       onChange?.(snapshot);
       setIsEmpty(isEditorEmpty(ed));
     },
@@ -179,9 +176,10 @@ export function useEditorSetup({
       // onUpdate handles document changes; running both would create two snapshots.
       if (transaction.docChanged) return;
 
-      const snapshot =
-        prevSnapshotRef.current ??
-        createQuerySnapshot(ed.state, { delimiter: getEditorContext(ed).delimiter });
+      // Validation can change without a document change, so the snapshot is read fresh.
+      const snapshot = createQuerySnapshot(ed.state, {
+        delimiter: getEditorContext(ed).delimiter,
+      });
       const currentTokens = getAllTokens(snapshot);
 
       const isEqual = areTokenListsEqual(confirmedTokensRef.current, currentTokens);

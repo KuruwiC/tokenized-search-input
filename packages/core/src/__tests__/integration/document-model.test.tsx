@@ -594,6 +594,47 @@ describe('Document model', () => {
     });
   });
 
+  describe('onTokensChange on blur', () => {
+    it('reports validation that changed without a document change', async () => {
+      const user = userEvent.setup();
+      const onTokensChange = vi.fn<(snapshot: QuerySnapshot) => void>();
+      const flag = { on: false };
+      const rule: ValidationRule = {
+        id: 'flagged',
+        validate: (ctx) =>
+          flag.on
+            ? ctx.tokens.map((t) => ({
+                ruleId: 'flagged',
+                reason: 'flagged',
+                action: 'mark' as const,
+                targets: [{ tokenId: t.id, pos: t.pos }],
+              }))
+            : [],
+      };
+      const { editor } = await renderWithRef(statusFields, {
+        defaultValue: 'status:is:ok',
+        validation: { rules: [rule] },
+        onTokensChange,
+      });
+
+      await user.click(screen.getByRole('group', { name: /Filter: status/i }));
+      await user.type(await screen.findByPlaceholderText('...'), 'x');
+      flag.on = true;
+      act(() => {
+        editor.view.dispatch(requestValidationCheck(editor.state.tr));
+      });
+      await user.keyboard('{Tab}');
+
+      await waitFor(() => expect(onTokensChange).toHaveBeenCalled());
+      const last = onTokensChange.mock.lastCall?.[0];
+      expect(last && filterSegments(last)[0]).toMatchObject({
+        value: 'okx',
+        invalid: true,
+        invalidReason: 'flagged',
+      });
+    });
+  });
+
   describe('meta-only transactions', () => {
     it('re-renders the token for a validation or display change without a document change', async () => {
       const { ref, editor } = await renderWithRef(statusFields, {
