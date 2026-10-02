@@ -315,6 +315,25 @@ describe('Auto-tokenize - Integration Tests', () => {
     });
   });
 
+  describe('a filter without a value', () => {
+    it.each(['plain', 'tokenize'] as const)('stays text on Space in %s mode', async (mode) => {
+      const ref = createRef<TokenizedSearchInputRef>();
+      render(<TokenizedSearchInput ref={ref} fields={testFields} freeTextMode={mode} />);
+      await waitFor(() => expect(getInternalEditor(ref.current)).not.toBeNull());
+      const editor = getInternalEditor(ref.current);
+      if (!editor) return;
+      for (const char of 'status:is:') {
+        editor.view.dispatch(editor.state.tr.insertText(char));
+      }
+
+      const result = tryAutoTokenize(editor, ' ');
+
+      expect(result).toBe(false);
+      expect(editor.state.doc.firstChild?.childCount).toBe(1);
+      expect(editor.state.doc.textContent).toBe('status:is:');
+    });
+  });
+
   describe('Document structure', () => {
     it('puts only the token in the paragraph, with no separator nodes around it', async () => {
       const ref = createRef<TokenizedSearchInputRef>();

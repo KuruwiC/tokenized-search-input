@@ -4,6 +4,7 @@ import type { DeserializeTextFn } from '../../extensions/editor-context';
 import {
   type ParseQueryStringResult,
   parseQueryStringWithInfo,
+  parseTokenText,
   type SerializedToken,
 } from '../../serializer';
 import { createFilterTokenAttrs } from '../../tokens/filter-token/create-attrs';
@@ -34,6 +35,16 @@ function parse(text: string, ctx: TokenizeContext): ParseQueryStringResult {
   });
 }
 
+/** A field key and delimiter still waiting for a value: the start of a filter, not free text. */
+function isFilterWithoutValue(token: SerializedToken, ctx: TokenizeContext): boolean {
+  if (token.type !== 'freeText' || token.quoted) return false;
+  const parsed = parseTokenText(token.value, ctx.fields, {
+    unknownFields: ctx.unknownFields,
+    delimiter: ctx.delimiter,
+  });
+  return parsed !== null && !parsed.value;
+}
+
 function toNodes(
   tokens: SerializedToken[],
   schema: Schema,
@@ -51,6 +62,8 @@ function toNodes(
         source: { fields: ctx.fields, unknownFields: ctx.unknownFields },
       });
       node = schema.nodes.filterToken.create(attrs);
+    } else if (isFilterWithoutValue(token, ctx)) {
+      node = schema.text(token.value);
     } else if (token.value.trim()) {
       const content = strategy.toDocContent(token);
       node = content ? schema.nodeFromJSON(content) : null;
