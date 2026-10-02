@@ -1,5 +1,5 @@
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vitest/config';
+import { coverageConfigDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
@@ -11,6 +11,24 @@ export default defineConfig({
     exclude: ['src/__tests__/browser/**'],
     coverage: {
       provider: 'v8',
+      exclude: [
+        ...coverageConfigDefaults.exclude,
+        'src/__tests__/**',
+        // Barrel files that only re-export.
+        'src/index.ts',
+        'src/editor/auto-tokenize/index.ts',
+        'src/editor/hooks/index.ts',
+        'src/editor/keyboard/index.ts',
+        'src/editor/keyboard/strategies/index.ts',
+        'src/helpers/index.ts',
+        'src/keyboard/index.ts',
+        'src/pickers/index.ts',
+        'src/plugins/suggestion/index.ts',
+        'src/plugins/token-spacing/helpers/index.ts',
+        'src/spacer/index.ts',
+        'src/tokens/composition/**/index.ts',
+        'src/types/index.ts',
+      ],
       reporter: ['text', 'html', 'json-summary'],
       thresholds: {
         statements: 65,
