@@ -26,9 +26,7 @@ export const fields: FieldDefinition[] = [
 export interface MountedEditor {
   ref: RefObject<TokenizedSearchInputRef | null>;
   editor: Editor;
-  /** The contenteditable element. */
   pm: HTMLElement;
-  /** Serialized query as the host application sees it. */
   value: () => string;
 }
 
@@ -69,13 +67,11 @@ export interface Point {
   y: number;
 }
 
-/** A point relative to the contenteditable element, for `userEvent` position options. */
 function relativeToEditor(m: MountedEditor, clientX: number, clientY: number): Point {
   const box = m.pm.getBoundingClientRect();
   return { x: clientX - box.left, y: clientY - box.top };
 }
 
-/** The middle of the visual gap between token `index` and token `index + 1`. */
 export function gapBetween(m: MountedEditor, index: number): Point {
   const tokens = tokenElements(m);
   const left = tokens[index]?.getBoundingClientRect();
@@ -84,7 +80,6 @@ export function gapBetween(m: MountedEditor, index: number): Point {
   return relativeToEditor(m, (left.right + right.left) / 2, left.top + left.height / 2);
 }
 
-/** A point on the token's row just right of the last token. */
 export function afterLastToken(m: MountedEditor): Point {
   const tokens = tokenElements(m);
   const last = tokens[tokens.length - 1]?.getBoundingClientRect();
@@ -98,7 +93,6 @@ export function afterLastToken(m: MountedEditor): Point {
   );
 }
 
-/** A point just left of the first token. */
 export function beforeFirstToken(m: MountedEditor): Point {
   const first = tokenElements(m)[0]?.getBoundingClientRect();
   if (!first) throw new Error('no tokens');
@@ -108,18 +102,14 @@ export function beforeFirstToken(m: MountedEditor): Point {
 export interface CaretLocation {
   /** The selection is a caret (not a range) in the text flow, not inside a token. */
   collapsed: boolean;
-  /** How many tokens lie entirely before the caret. */
   tokensBefore: number;
-  /** How many tokens lie entirely after the caret. */
   tokensAfter: number;
-  /** How many tokens lie entirely inside a non-empty selection. */
   tokensSelected: number;
   /** Text in the same paragraph before / after the caret, without spacers or token chrome. */
   textBefore: string;
   textAfter: string;
 }
 
-/** Where the caret is, described without reference to how the gap between tokens is built. */
 export function caretLocation(m: MountedEditor): CaretLocation {
   const { selection, doc } = m.editor.state;
   const { $from } = selection;
@@ -155,12 +145,9 @@ async function frame(pm: HTMLElement): Promise<string> {
 }
 
 /**
- * Asserts that the browser paints a text caret for the current selection.
- *
- * `Range.getClientRects()` is empty for a caret that sits at an element boundary,
- * even though the browser draws it, so the check compares screenshots instead:
- * a frame taken with `caret-color: transparent` against frames taken with an opaque
- * caret. The caret blinks, so frames are sampled until one differs.
+ * `Range.getClientRects()` is empty for a caret at an element boundary even though the
+ * browser draws it, so this compares a frame with `caret-color: transparent` against
+ * frames with an opaque caret. The caret blinks, so frames are sampled until one differs.
  */
 export async function expectCaretPainted(m: MountedEditor): Promise<void> {
   await waitForAnimations();
@@ -183,16 +170,10 @@ export async function expectCaretPainted(m: MountedEditor): Promise<void> {
   }
 }
 
-/** Index of the token being edited, or -1 when no token is. */
 export function editingTokenIndex(m: MountedEditor): number {
   return tokenElements(m).findIndex((token) => token.dataset.focused === 'true');
 }
 
-/**
- * Asserts a collapsed caret in the editor's text flow with the given number of tokens on
- * each side, and that the browser paints it. The position is described by the tokens around
- * it, so it holds however the gap between adjacent tokens is built.
- */
 export async function expectCaretBetween(
   m: MountedEditor,
   expected: { tokensBefore: number; tokensAfter: number }
@@ -204,11 +185,7 @@ export async function expectCaretBetween(
   await expectCaretPainted(m);
 }
 
-/**
- * Presses `key` until `reached` holds, failing if it takes more than `limit` presses.
- * Arrow keys step through a token's own controls before they leave it, so crossing a
- * token takes a variable number of presses.
- */
+/** Arrow keys step through a token's own controls before leaving it, so crossing takes several presses. */
 export async function pressUntil(key: string, reached: () => boolean, limit = 20): Promise<number> {
   for (let presses = 1; presses <= limit; presses += 1) {
     await userEvent.keyboard(key);

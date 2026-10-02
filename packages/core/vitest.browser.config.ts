@@ -46,12 +46,11 @@ export default defineConfig({
         },
       ],
       commands: {
-        // Types text into the focused element the way an input method commits it: as a
-        // single insertion, not as key presses. Works on every engine.
+        // One insertion, as an input method commits text.
         insertText: async ({ page }, text: string) => {
           await page.keyboard.insertText(text);
         },
-        // A real touch tap on the editor. Needs a context created with touch support.
+        // Needs a context created with touch support.
         tapEditor: async ({ iframe }, position: { x: number; y: number }) => {
           await iframe.locator('.ProseMirror').tap({ position });
         },

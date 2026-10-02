@@ -33,7 +33,6 @@ function expectRangeOverTokens(m: MountedEditor, tokensSelected: number): void {
   expect(window.getSelection()?.isCollapsed).toBe(false);
 }
 
-/** Mouse behaviour around tokens, expressed through selection, focus and the resulting query. */
 export function registerPointerCases(): void {
   describe('pointer', () => {
     it('puts the caret in the gap between two tokens when the gap is clicked', async () => {

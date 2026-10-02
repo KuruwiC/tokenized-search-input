@@ -21,7 +21,6 @@ describe('mobile environment', () => {
   });
 });
 
-// The desktop expectations hold unchanged on a phone-sized viewport.
 registerCaretCases();
 registerPointerCases();
 
@@ -84,7 +83,6 @@ describe('mobile touch', () => {
     const firstRow = Math.min(...tops);
     expect(Math.max(...tops)).toBeGreaterThan(firstRow);
 
-    // The last pair of neighbours that share a row below the first one.
     let index = -1;
     tops.forEach((top, i) => {
       if (top > firstRow && tops[i + 1] === top) index = i;

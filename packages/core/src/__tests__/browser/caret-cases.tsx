@@ -20,7 +20,6 @@ const caretIsBetween = (m: MountedEditor, tokensBefore: number) => () => {
   return document.activeElement === m.pm && caret.collapsed && caret.tokensBefore === tokensBefore;
 };
 
-/** Caret placement and typing next to tokens, expressed through the query the host reads. */
 export function registerCaretCases(): void {
   describe('caret', () => {
     it('sits between two adjacent tokens and types there', async () => {
