@@ -21,8 +21,6 @@ export interface SuggestionState {
   isLoading: boolean;
   anchorPos: number | null;
   dateValue: Date | null;
-  fieldSuggestionsDisabled: boolean;
-  valueSuggestionsDisabled: boolean;
   dismissed: boolean;
   /** Display mode for fieldWithCustom type */
   customDisplayMode: CustomDisplayMode | null;
@@ -38,8 +36,6 @@ export interface SetSuggestionMeta {
   isLoading?: boolean;
   anchorPos?: number | null;
   dateValue?: Date | null;
-  fieldSuggestionsDisabled?: boolean;
-  valueSuggestionsDisabled?: boolean;
   dismissed?: boolean;
   customDisplayMode?: CustomDisplayMode | null;
 }
@@ -60,8 +56,6 @@ export const initialSuggestionState: SuggestionState = {
   isLoading: false,
   anchorPos: null,
   dateValue: null,
-  fieldSuggestionsDisabled: false,
-  valueSuggestionsDisabled: false,
   dismissed: false,
   customDisplayMode: null,
 };

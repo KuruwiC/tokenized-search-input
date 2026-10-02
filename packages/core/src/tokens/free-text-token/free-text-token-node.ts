@@ -11,10 +11,6 @@ import { escapeForQuotes } from '../../utils/quoted-string';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
 import { FreeTextTokenView } from './free-text-token-view';
 
-export interface FreeTextTokenOptions {
-  enabled: boolean;
-}
-
 export interface InsertFreeTextTokenAttrs {
   value?: string;
   quoted?: boolean;
@@ -31,7 +27,7 @@ declare module '@tiptap/core' {
   }
 }
 
-export const FreeTextTokenNode = Node.create<FreeTextTokenOptions>({
+export const FreeTextTokenNode = Node.create({
   name: 'freeTextToken',
 
   group: 'inline',
@@ -43,12 +39,6 @@ export const FreeTextTokenNode = Node.create<FreeTextTokenOptions>({
   content: '',
 
   selectable: true,
-
-  addOptions() {
-    return {
-      enabled: true,
-    };
-  },
 
   addAttributes() {
     return {

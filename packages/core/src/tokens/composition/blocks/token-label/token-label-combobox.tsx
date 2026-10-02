@@ -1,16 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { getEditorContext } from '../../../../extensions/editor-context';
 import { Check } from '../../../../icons/check';
-import {
-  DEFAULT_TOKEN_DELIMITER,
-  type FieldDefinition,
-  type LabelResolver,
-  type Matcher,
-} from '../../../../types';
+import type { FieldDefinition, LabelResolver, Matcher } from '../../../../types';
 import { cn } from '../../../../utils/cn';
 import { resolveLabel } from '../../../../utils/label-resolve';
 import { scrollIntoViewNearest } from '../../../../utils/scroll-into-view';
-import { useTokenFocusContext } from '../../contexts';
+import { useTokenConfig, useTokenFocusContext } from '../../contexts';
 import { useFocusableBlock } from '../../focus';
 import { getSortedFields } from './field-compatibility';
 import {
@@ -102,6 +98,7 @@ export function TokenLabelCombobox({
     return hasMultipleFields ? 'dropdown' : 'static';
   }, [selectableFields.length, allowUnknownFields]);
 
+  const { editor } = useTokenConfig();
   const { isFocused: tokenFocused, isEditable, focusRegistry, immutable } = useTokenFocusContext();
   const { navigateLeft, navigateRight, navigateLeftEntry, navigateRightEntry, tabIndex } =
     useFocusableBlock({
@@ -339,13 +336,17 @@ export function TokenLabelCombobox({
     ]
   );
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value;
-    const sanitized = rawValue.split(DEFAULT_TOKEN_DELIMITER).join('').replace(/\s/g, '');
-    setInputValue(sanitized);
-    setHasUserEdited(true);
-    setActiveIndex(0);
-  }, []);
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const rawValue = e.target.value;
+      const { delimiter } = getEditorContext(editor);
+      const sanitized = rawValue.split(delimiter).join('').replace(/\s/g, '');
+      setInputValue(sanitized);
+      setHasUserEdited(true);
+      setActiveIndex(0);
+    },
+    [editor]
+  );
 
   const handleBlur = useCallback(
     (e: React.FocusEvent) => {

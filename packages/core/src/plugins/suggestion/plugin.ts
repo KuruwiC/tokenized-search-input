@@ -152,8 +152,6 @@ export function createSuggestionPlugin(): Plugin<SuggestionState> {
           isLoading: meta.isLoading ?? value.isLoading,
           anchorPos: meta.anchorPos !== undefined ? meta.anchorPos : value.anchorPos,
           dateValue: meta.dateValue !== undefined ? meta.dateValue : value.dateValue,
-          fieldSuggestionsDisabled: meta.fieldSuggestionsDisabled ?? value.fieldSuggestionsDisabled,
-          valueSuggestionsDisabled: meta.valueSuggestionsDisabled ?? value.valueSuggestionsDisabled,
           dismissed: meta.dismissed ?? value.dismissed,
           customDisplayMode:
             meta.customDisplayMode !== undefined ? meta.customDisplayMode : value.customDisplayMode,

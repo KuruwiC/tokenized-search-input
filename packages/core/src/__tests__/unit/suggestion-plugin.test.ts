@@ -40,8 +40,6 @@ describe('SuggestionPlugin', () => {
         isLoading: false,
         anchorPos: null,
         dateValue: null,
-        fieldSuggestionsDisabled: false,
-        valueSuggestionsDisabled: false,
         dismissed: false,
         customDisplayMode: null,
       });

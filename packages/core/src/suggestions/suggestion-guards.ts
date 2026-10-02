@@ -5,7 +5,9 @@
  * These functions centralize the logic that was previously duplicated across multiple hooks.
  */
 
+import type { Editor } from '@tiptap/core';
 import type { EditorState } from '@tiptap/pm/state';
+import { getEditorContext } from '../extensions/editor-context';
 import { getSuggestionState } from '../plugins/suggestion-plugin';
 import { getTokenFocusState } from '../plugins/token-focus-plugin';
 
@@ -17,12 +19,13 @@ import { getTokenFocusState } from '../plugins/token-focus-plugin';
  * - No token is currently focused
  * - Not already showing value/date/datetime suggestions
  */
-export function canShowFieldSuggestion(state: EditorState): boolean {
+export function canShowFieldSuggestion(editor: Editor): boolean {
+  const { state } = editor;
   const suggestionState = getSuggestionState(state);
   const tokenFocusState = getTokenFocusState(state);
 
   // Field suggestions must not be disabled
-  if (suggestionState?.fieldSuggestionsDisabled) return false;
+  if (getEditorContext(editor).fieldSuggestionsDisabled) return false;
 
   // Cannot show when a token is focused
   if (tokenFocusState?.focusedPos != null) return false;
@@ -44,12 +47,13 @@ export function canShowFieldSuggestion(state: EditorState): boolean {
  * - A token is currently focused
  * - Not already showing field suggestions
  */
-export function canShowValueSuggestion(state: EditorState): boolean {
+export function canShowValueSuggestion(editor: Editor): boolean {
+  const { state } = editor;
   const suggestionState = getSuggestionState(state);
   const tokenFocusState = getTokenFocusState(state);
 
   // Value suggestions must not be disabled
-  if (suggestionState?.valueSuggestionsDisabled) return false;
+  if (getEditorContext(editor).valueSuggestionsDisabled) return false;
 
   // Must have a focused token
   if (tokenFocusState?.focusedPos == null) return false;

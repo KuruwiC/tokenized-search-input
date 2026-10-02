@@ -7,12 +7,15 @@ import { createFreeTextSanitizerPlugin } from '../plugins/free-text-sanitizer-pl
 import {
   type ClassNames,
   type CustomSuggestion,
+  type DatePickerRenderProps,
+  type DateTimePickerRenderProps,
   DEFAULT_OPERATOR_LABELS,
   DEFAULT_TOKEN_DELIMITER,
   type FieldDefinition,
   type FilterTokenAttrs,
   type FreeTextMode,
   type OperatorLabels,
+  type PaginationLabels,
   type ParsedToken,
   type UnknownFieldTemplate,
   type ValidationConfig,
@@ -40,6 +43,10 @@ export interface EditorCallbacks {
   onSubmit: () => void;
 }
 
+/**
+ * The single owner of editor configuration. Every reader goes through
+ * `getEditorContext(editor)`; nothing else keeps a copy.
+ */
 export interface EditorContextStorage {
   fields: FieldDefinition[];
   freeTextMode: FreeTextMode;
@@ -52,30 +59,46 @@ export interface EditorContextStorage {
   validation: ValidationConfig | undefined;
   deserializeText: DeserializeTextFn | undefined;
   serializeToken: ((token: FilterTokenAttrs) => string | null) | undefined;
+  /** A single character, fixed when the editor is created. */
   delimiter: string;
   classNames: ClassNames | undefined;
+  renderDatePicker: ((props: DatePickerRenderProps) => React.ReactNode) | undefined;
+  renderDateTimePicker: ((props: DateTimePickerRenderProps) => React.ReactNode) | undefined;
+  paginationLabels: PaginationLabels | undefined;
 }
 
-const defaultCallbacks: EditorCallbacks = {
-  onFieldSelect: () => {},
-  onValueSelect: () => {},
-  onCustomSelect: () => {},
-  onSubmit: () => {},
+/** The members of the editor context that can change after the editor is created. */
+export type EditorConfig = Omit<EditorContextStorage, 'callbacks' | 'delimiter'>;
+
+export type EditorContextUpdate = {
+  [K in keyof EditorConfig]?: EditorConfig[K] | undefined;
+} & { callbacks?: Partial<EditorCallbacks> };
+
+/** What `createEditorContext` accepts: the updatable members plus the delimiter. */
+export type EditorContextOptions = EditorContextUpdate & { delimiter?: string | undefined };
+
+export const DEFAULT_EDITOR_CONTEXT: EditorContextStorage = {
+  fields: [],
+  freeTextMode: 'plain',
+  unknownFields: undefined,
+  operatorLabels: DEFAULT_OPERATOR_LABELS,
+  callbacks: {
+    onFieldSelect: () => {},
+    onValueSelect: () => {},
+    onCustomSelect: () => {},
+    onSubmit: () => {},
+  },
+  fieldSuggestionsDisabled: false,
+  valueSuggestionsDisabled: false,
+  validation: undefined,
+  deserializeText: undefined,
+  serializeToken: undefined,
+  delimiter: DEFAULT_TOKEN_DELIMITER,
+  classNames: undefined,
+  renderDatePicker: undefined,
+  renderDateTimePicker: undefined,
+  paginationLabels: undefined,
 };
-
-export interface EditorContextUpdate {
-  fields?: FieldDefinition[] | undefined;
-  freeTextMode?: FreeTextMode | undefined;
-  unknownFields?: UnknownFieldTemplate | undefined;
-  operatorLabels?: OperatorLabels | undefined;
-  callbacks?: Partial<EditorCallbacks>;
-  fieldSuggestionsDisabled?: boolean | undefined;
-  valueSuggestionsDisabled?: boolean | undefined;
-  validation?: ValidationConfig | undefined;
-  deserializeText?: DeserializeTextFn | undefined;
-  serializeToken?: ((token: FilterTokenAttrs) => string | null) | undefined;
-  classNames?: ClassNames | undefined;
-}
 
 declare module '@tiptap/core' {
   interface Storage {
@@ -84,9 +107,11 @@ declare module '@tiptap/core' {
 
   interface Commands<ReturnType> {
     editorContext: {
+      /**
+       * Updates the members present in `context`. An `undefined` value restores
+       * that member's default.
+       */
       setEditorContext: (context: EditorContextUpdate) => ReturnType;
-      setFields: (fields: FieldDefinition[]) => ReturnType;
-      setFreeTextMode: (mode: FreeTextMode) => ReturnType;
       setCallbacks: (callbacks: Partial<EditorCallbacks>) => ReturnType;
       /**
        * Applies mode-specific processing based on freeTextMode:
@@ -99,116 +124,91 @@ declare module '@tiptap/core' {
   }
 }
 
-export interface EditorContextOptions {
-  fields?: FieldDefinition[];
-  freeTextMode?: FreeTextMode;
-  unknownFields?: UnknownFieldTemplate;
-  operatorLabels?: OperatorLabels;
-  callbacks?: Partial<EditorCallbacks>;
-  fieldSuggestionsDisabled?: boolean;
-  valueSuggestionsDisabled?: boolean;
-  validation?: ValidationConfig;
-  deserializeText?: DeserializeTextFn;
-  serializeToken?: (token: FilterTokenAttrs) => string | null;
-  /** Must be a single character. Cannot be changed after editor initialization. */
-  delimiter?: string;
-  /** Custom class names for styling component parts. */
-  classNames?: ClassNames;
+function applyEditorContext(target: EditorContextStorage, update: EditorContextUpdate): void {
+  const { callbacks, ...config } = update;
+  const defaults: Record<string, unknown> = { ...DEFAULT_EDITOR_CONTEXT };
+  const next: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(config)) {
+    next[key] = value ?? defaults[key];
+  }
+  Object.assign(target, next);
+  if (callbacks) {
+    target.callbacks = { ...target.callbacks, ...callbacks };
+  }
+}
+
+/** Builds the initial editor context. Absent or `undefined` members take their defaults. */
+export function createEditorContext(options: EditorContextOptions = {}): EditorContextStorage {
+  const { delimiter, ...update } = options;
+  if (delimiter !== undefined && delimiter.length !== 1) {
+    throw new Error(
+      `[TokenizedSearchInput] initialDelimiter must be a single character, got "${delimiter}"`
+    );
+  }
+  const context: EditorContextStorage = {
+    ...DEFAULT_EDITOR_CONTEXT,
+    delimiter: delimiter ?? DEFAULT_EDITOR_CONTEXT.delimiter,
+  };
+  applyEditorContext(context, update);
+  return context;
+}
+
+/**
+ * Tiptap clears an editor's `storage` when it is destroyed, yet React can keep
+ * rendering with a destroyed editor until `useEditor` swaps in a new one. The
+ * context object is therefore indexed by editor so readers never lose it.
+ */
+const contextsByEditor = new WeakMap<object, EditorContextStorage>();
+
+/**
+ * The single reader of editor configuration. Throws when `EditorContextExtension`
+ * is not registered: there is no meaningful configuration to fall back to.
+ */
+export function getEditorContext(editor: object): EditorContextStorage {
+  const context = contextsByEditor.get(editor);
+  if (!context) {
+    throw new Error(
+      '[TokenizedSearchInput] EditorContextExtension is not registered on the editor'
+    );
+  }
+  return context;
 }
 
 export const EditorContextExtension = Extension.create<EditorContextOptions, EditorContextStorage>({
   name: 'editorContext',
 
   addOptions() {
-    return {
-      fields: [],
-      freeTextMode: 'plain' as FreeTextMode,
-      unknownFields: undefined,
-      operatorLabels: undefined,
-      callbacks: defaultCallbacks,
-      fieldSuggestionsDisabled: false,
-      valueSuggestionsDisabled: false,
-      validation: undefined,
-      deserializeText: undefined,
-      serializeToken: undefined,
-      delimiter: DEFAULT_TOKEN_DELIMITER,
-      classNames: undefined,
-    };
+    return {};
   },
 
   addStorage() {
-    return {
-      fields: this.options.fields || [],
-      freeTextMode: this.options.freeTextMode || 'plain',
-      unknownFields: this.options.unknownFields,
-      operatorLabels: this.options.operatorLabels ?? DEFAULT_OPERATOR_LABELS,
-      callbacks: { ...defaultCallbacks, ...this.options.callbacks },
-      fieldSuggestionsDisabled: this.options.fieldSuggestionsDisabled ?? false,
-      valueSuggestionsDisabled: this.options.valueSuggestionsDisabled ?? false,
-      validation: this.options.validation,
-      deserializeText: this.options.deserializeText,
-      serializeToken: this.options.serializeToken,
-      delimiter: this.options.delimiter ?? DEFAULT_TOKEN_DELIMITER,
-      classNames: this.options.classNames,
-    };
+    return createEditorContext(this.options);
+  },
+
+  onBeforeCreate() {
+    contextsByEditor.set(this.editor, this.storage);
   },
 
   addCommands() {
-    const getStorage = (editor: { storage: unknown }) =>
-      (editor.storage as Record<string, EditorContextStorage>).editorContext;
-
     return {
       setEditorContext:
         (context) =>
         ({ editor }) => {
-          const storage = getStorage(editor);
-          if ('fields' in context) storage.fields = context.fields ?? [];
-          if ('freeTextMode' in context) storage.freeTextMode = context.freeTextMode ?? 'plain';
-          if ('unknownFields' in context) storage.unknownFields = context.unknownFields;
-          if ('operatorLabels' in context)
-            storage.operatorLabels = context.operatorLabels ?? DEFAULT_OPERATOR_LABELS;
-          if (context.callbacks !== undefined) {
-            storage.callbacks = { ...storage.callbacks, ...context.callbacks };
-          }
-          if ('fieldSuggestionsDisabled' in context)
-            storage.fieldSuggestionsDisabled = context.fieldSuggestionsDisabled ?? false;
-          if ('valueSuggestionsDisabled' in context)
-            storage.valueSuggestionsDisabled = context.valueSuggestionsDisabled ?? false;
-          if ('validation' in context) {
-            storage.validation = context.validation;
-          }
-          if ('deserializeText' in context) storage.deserializeText = context.deserializeText;
-          if ('serializeToken' in context) storage.serializeToken = context.serializeToken;
-          if ('classNames' in context) storage.classNames = context.classNames;
-          return true;
-        },
-
-      setFields:
-        (fields) =>
-        ({ editor }) => {
-          getStorage(editor).fields = fields;
-          return true;
-        },
-
-      setFreeTextMode:
-        (mode) =>
-        ({ editor }) => {
-          getStorage(editor).freeTextMode = mode;
+          applyEditorContext(getEditorContext(editor), context);
           return true;
         },
 
       setCallbacks:
         (callbacks) =>
         ({ editor }) => {
-          const storage = getStorage(editor);
-          storage.callbacks = { ...storage.callbacks, ...callbacks };
+          applyEditorContext(getEditorContext(editor), { callbacks });
           return true;
         },
 
       finalizeInput:
         () =>
         ({ editor, chain }) => {
-          const storage = getStorage(editor);
+          const storage = getEditorContext(editor);
           const strategy = getFreeTextStrategy(storage.freeTextMode);
           const action = strategy.finalizeAction;
 
@@ -278,46 +278,3 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
     ];
   },
 });
-
-export function getEditorContext(editor: {
-  storage: { editorContext?: EditorContextStorage };
-}): EditorContextStorage {
-  return (
-    editor.storage.editorContext || {
-      fields: [],
-      freeTextMode: 'plain',
-      unknownFields: undefined,
-      operatorLabels: DEFAULT_OPERATOR_LABELS,
-      callbacks: defaultCallbacks,
-      fieldSuggestionsDisabled: false,
-      valueSuggestionsDisabled: false,
-      validation: undefined,
-      deserializeText: undefined,
-      serializeToken: undefined,
-      delimiter: DEFAULT_TOKEN_DELIMITER,
-      classNames: undefined,
-    }
-  );
-}
-
-// Accepts any object with storage property (works with @tiptap/core and @tiptap/react)
-export function getEditorContextFromEditor(editor: { storage: unknown }): EditorContextStorage {
-  const storage = editor.storage as { editorContext?: EditorContextStorage } | undefined;
-  if (!storage) {
-    return {
-      fields: [],
-      freeTextMode: 'plain',
-      unknownFields: undefined,
-      operatorLabels: DEFAULT_OPERATOR_LABELS,
-      callbacks: defaultCallbacks,
-      fieldSuggestionsDisabled: false,
-      valueSuggestionsDisabled: false,
-      validation: undefined,
-      deserializeText: undefined,
-      serializeToken: undefined,
-      delimiter: DEFAULT_TOKEN_DELIMITER,
-      classNames: undefined,
-    };
-  }
-  return getEditorContext({ storage });
-}

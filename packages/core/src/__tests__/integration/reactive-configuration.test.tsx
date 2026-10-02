@@ -4,6 +4,7 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
+import type { FieldDefinition } from '../../types';
 import { extendedFields } from '../fixtures';
 import { getInternalEditor } from '../helpers/get-editor';
 
@@ -144,5 +145,23 @@ describe('reactive configuration', () => {
       editor.commands.insertContent('status:is:active');
     });
     await waitFor(() => expect(ref.current?.getValue()).toContain('status:is:active'));
+  });
+  it('resolves existing tokens as unknown fields once fields no longer define them', async () => {
+    const labeledFields: FieldDefinition[] = [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'enum',
+        operators: ['is'],
+        enumValues: [{ value: 'active', label: 'Currently Active' }],
+      },
+    ];
+    const view = render(
+      <TokenizedSearchInput fields={labeledFields} defaultValue="status:is:active" />
+    );
+    expect(await screen.findByText('Currently Active')).toBeInTheDocument();
+    view.rerender(<TokenizedSearchInput fields={[]} defaultValue="status:is:active" />);
+    await waitFor(() => expect(screen.queryByText('Currently Active')).not.toBeInTheDocument());
+    expect(screen.getByText('active')).toBeInTheDocument();
   });
 });

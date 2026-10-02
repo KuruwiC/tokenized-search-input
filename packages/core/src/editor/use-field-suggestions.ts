@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/core';
 import { useCallback } from 'react';
+import { getEditorContext } from '../extensions/editor-context';
 import {
   closeSuggestion,
   getSuggestionState,
@@ -28,7 +29,6 @@ function closeSuggestionAndDispatch(editor: Editor): void {
 
 export function useFieldSuggestions(
   editor: Editor | null,
-  fields: FieldDefinition[],
   options?: UseFieldSuggestionsOptions
 ): {
   handleFieldSelect: (field: FieldDefinition) => void;
@@ -90,7 +90,7 @@ export function useFieldSuggestions(
       const currentType = getCurrentSuggestionType(currentState);
 
       // Check basic guard conditions using shared guard function
-      if (!canShowFieldSuggestion(currentState)) {
+      if (!canShowFieldSuggestion(editor)) {
         // Only close if current type is 'field' (don't interfere with other suggestions)
         if (currentType === 'field') {
           closeSuggestionAndDispatch(editor);
@@ -113,9 +113,14 @@ export function useFieldSuggestions(
       }
 
       const query = getQueryFromText(textBefore);
-      const filtered = filterItems(fields, query, (f) => [f.key, f.label], {
-        matcher: options?.matcher,
-      });
+      const filtered = filterItems(
+        getEditorContext(editor).fields,
+        query,
+        (f) => [f.key, f.label],
+        {
+          matcher: options?.matcher,
+        }
+      );
       const anchorPos = currentState.selection.from;
 
       const tr = currentState.tr;
@@ -123,7 +128,7 @@ export function useFieldSuggestions(
       tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
     },
-    [editor, fields, options?.matcher]
+    [editor, options?.matcher]
   );
 
   return { handleFieldSelect, updateSuggestions };

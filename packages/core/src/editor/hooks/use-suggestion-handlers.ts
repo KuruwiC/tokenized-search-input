@@ -1,17 +1,17 @@
 import type { Editor } from '@tiptap/core';
 import { useCallback } from 'react';
+import { getEditorContext } from '../../extensions/editor-context';
 import { getDateInternalValue, getDateTimeInternalValue } from '../../pickers/date-format';
 import { closeSuggestion } from '../../plugins/suggestion-plugin';
 import { getTokenFocusState } from '../../plugins/token-focus-plugin';
 import { exitTokenRight } from '../../tokens/composition';
 import { commitFilterToken } from '../../tokens/filter-token/commit-token';
-import type { DateTimeFieldDefinition, FieldDefinition } from '../../types';
+import type { DateTimeFieldDefinition } from '../../types';
 import { isFilterToken } from '../../utils/node-predicates';
 import { updateTokenAttrs } from '../../utils/token-attrs';
 
 export interface UseSuggestionHandlersOptions {
   editor: Editor | null;
-  fields: FieldDefinition[];
   updateSuggestions: () => void;
 }
 
@@ -28,7 +28,6 @@ export interface UseSuggestionHandlersResult {
 
 export function useSuggestionHandlers({
   editor,
-  fields,
   updateSuggestions,
 }: UseSuggestionHandlersOptions): UseSuggestionHandlersResult {
   // Value selection from suggestions
@@ -73,7 +72,7 @@ export function useSuggestionHandlers({
       if (!node || !isFilterToken(node)) return;
 
       // Find field definition to get format config
-      const fieldDef = fields.find((f) => f.key === fieldKey);
+      const fieldDef = getEditorContext(editor).fields.find((f) => f.key === fieldKey);
       if (!fieldDef) return;
 
       let value: string;
@@ -101,7 +100,7 @@ export function useSuggestionHandlers({
       });
       editor.view.dispatch(tr);
     },
-    [editor, fields]
+    [editor]
   );
 
   // Close picker and exit token
@@ -120,7 +119,7 @@ export function useSuggestionHandlers({
       if (node && isFilterToken(node)) {
         // Get field definition for immutable/validate check
         const fieldKey = node.attrs.key;
-        const fieldDef = fields.find((f) => f.key === fieldKey);
+        const fieldDef = getEditorContext(editor).fields.find((f) => f.key === fieldKey);
 
         // Commit token (confirm + immutable + validation)
         commitFilterToken({
@@ -140,7 +139,7 @@ export function useSuggestionHandlers({
     // Fallback: just dispatch if no valid position
     editor.view.dispatch(tr);
     updateSuggestions();
-  }, [editor, fields, updateSuggestions]);
+  }, [editor, updateSuggestions]);
 
   return { handleValueSelect, handleDateChange, handleDateClose };
 }

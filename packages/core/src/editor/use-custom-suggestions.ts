@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { getEditorContext } from '../extensions/editor-context';
 import {
   closeSuggestion,
   getSuggestionState,
@@ -101,7 +102,6 @@ interface UseCustomSuggestionsResult {
 
 export function useCustomSuggestions(
   editor: Editor | null,
-  fields: FieldDefinition[],
   config: CustomSuggestionConfig | undefined
 ): UseCustomSuggestionsResult {
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -166,6 +166,7 @@ export function useCustomSuggestions(
       }
 
       // Default behavior: Insert all tokens from the suggestion
+      const { fields } = getEditorContext(editor);
       let chain = editor.chain().focus();
       for (const token of suggestion.tokens) {
         const fieldDef = fields.find((f) => f.key === token.key);
@@ -189,7 +190,7 @@ export function useCustomSuggestions(
       setHasMore(false);
       currentOffsetRef.current = 0;
     },
-    [editor, fields, config]
+    [editor, config]
   );
 
   const updateCustomSuggestions = useCallback(() => {
@@ -258,7 +259,9 @@ export function useCustomSuggestions(
 
       try {
         const existingTokens = collectExistingTokens(editor);
-        const suggestPromise = Promise.resolve(config.suggest({ query, fields, existingTokens }));
+        const suggestPromise = Promise.resolve(
+          config.suggest({ query, fields: getEditorContext(editor).fields, existingTokens })
+        );
         const rawResult = await withTimeout(suggestPromise, timeoutMs, query);
 
         // Check again if this request is still the latest
@@ -331,7 +334,7 @@ export function useCustomSuggestions(
         });
       }
     }, debounceMs);
-  }, [editor, fields, config]);
+  }, [editor, config]);
 
   const loadMore = useCallback(async () => {
     if (!editor || !config?.loadMore || isLoadingMore || !hasMore) return;
@@ -353,7 +356,7 @@ export function useCustomSuggestions(
 
       const loadMorePromise = config.loadMore({
         query: queryAtStart,
-        fields,
+        fields: getEditorContext(editor).fields,
         existingTokens,
         offset: currentOffsetRef.current,
         limit: maxSuggestions,
@@ -402,7 +405,7 @@ export function useCustomSuggestions(
     } finally {
       setIsLoadingMore(false);
     }
-  }, [editor, fields, config, isLoadingMore, hasMore]);
+  }, [editor, config, isLoadingMore, hasMore]);
 
   return { handleCustomSelect, updateCustomSuggestions, hasMore, isLoadingMore, loadMore };
 }

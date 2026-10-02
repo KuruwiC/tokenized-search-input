@@ -14,8 +14,7 @@ import {
   handleTab,
 } from '../editor/keyboard';
 import { getSuggestionState } from '../plugins/suggestion-plugin';
-import { DEFAULT_TOKEN_DELIMITER } from '../types';
-import { getEditorContextFromEditor } from './editor-context';
+import { getEditorContext } from './editor-context';
 
 const delimiterKeyPluginKey = new PluginKey('delimiterKey');
 
@@ -27,16 +26,11 @@ export const KeyboardShortcutsExtension = Extension.create({
   priority: 1000,
 
   addKeyboardShortcuts() {
-    const getEditorContextSafe = () => getEditorContextFromEditor(this.editor);
-
-    const getCallbacks = () => {
-      const ctx = getEditorContextSafe();
-      return ctx.callbacks;
-    };
+    const getCallbacks = () => getEditorContext(this.editor).callbacks;
 
     const getContext = () => {
       const suggestionState = getSuggestionState(this.editor.state);
-      const ctx = getEditorContextSafe();
+      const ctx = getEditorContext(this.editor);
       return buildContext(
         this.editor,
         ctx.fields,
@@ -82,8 +76,8 @@ export const KeyboardShortcutsExtension = Extension.create({
           handleKeyDown(view, event) {
             if (!editor.isEditable) return false;
 
-            const ctx = getEditorContextFromEditor(editor);
-            const delimiter = ctx.delimiter ?? DEFAULT_TOKEN_DELIMITER;
+            const ctx = getEditorContext(editor);
+            const { delimiter } = ctx;
 
             if (event.key !== delimiter || delimiter.length !== 1) {
               return false;

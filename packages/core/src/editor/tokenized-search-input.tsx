@@ -16,7 +16,12 @@ import {
   useState,
 } from 'react';
 import { ClipboardSerializer } from '../extensions/clipboard-serializer';
-import { EDITOR_CONTEXT_UPDATED, EditorContextExtension } from '../extensions/editor-context';
+import {
+  createEditorContext,
+  EDITOR_CONTEXT_UPDATED,
+  EditorContextExtension,
+  getEditorContext,
+} from '../extensions/editor-context';
 import { KeyboardShortcutsExtension } from '../extensions/keyboard-shortcuts';
 import { SpacerNode } from '../extensions/spacer-node';
 import { TokenNavigation } from '../extensions/token-navigation';
@@ -29,7 +34,6 @@ import {
   createSuggestionPlugin,
   dismissSuggestion,
   getSuggestionState,
-  setSuggestion,
   suggestionKey,
 } from '../plugins/suggestion-plugin';
 import {
@@ -47,7 +51,7 @@ import { getDismissPolicy } from '../suggestions/dismiss-policy';
 import { SuggestionOverlay } from '../suggestions/suggestion-overlay';
 import { FilterTokenNode } from '../tokens/filter-token/filter-token-node';
 import { FreeTextTokenNode } from '../tokens/free-text-token/free-text-token-node';
-import { DEFAULT_TOKEN_DELIMITER, type QuerySnapshot, type UnknownFieldTemplate } from '../types';
+import type { QuerySnapshot, UnknownFieldTemplate } from '../types';
 import { cn } from '../utils/cn';
 import { isWithinSuggestion } from '../utils/dom-focus';
 import { isToken } from '../utils/node-predicates';
@@ -178,15 +182,6 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
     const suggestionListId = `tsi-suggestions-${instanceId}`;
     const suggestionOptionIdPrefix = `tsi-suggestion-option-${instanceId}`;
 
-    // Store initial delimiter value - cannot be changed after mount
-    const delimiterValue = initialDelimiter ?? DEFAULT_TOKEN_DELIMITER;
-    if (delimiterValue.length !== 1) {
-      throw new Error(
-        `[TokenizedSearchInput] initialDelimiter must be a single character, got "${delimiterValue}"`
-      );
-    }
-    const delimiterRef = useRef(delimiterValue);
-
     // Track previous snapshot for onChange
     const prevSnapshotRef = useRef<QuerySnapshot>(EMPTY_SNAPSHOT);
 
@@ -196,53 +191,53 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
 
     useDevWarnings({ fields, initialDelimiter, defaultValue });
 
-    // Extensions must stay stable: changing them recreates the TipTap editor,
-    // which would discard content and history. Mutable configuration is kept
-    // in EditorContextStorage and synchronized below.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: dynamic props are intentionally stored in editor context
-    const extensions = useMemo(
-      () => [
-        Document,
-        Paragraph,
-        Text,
-        History,
-        SpacerNode,
-        FilterTokenNode.configure({
-          fields,
-          delimiter: delimiterRef.current,
-        }),
-        FreeTextTokenNode.configure({ enabled: freeTextMode === 'tokenize' }),
-        TokenNavigation,
-        ClipboardSerializer.configure({ serializeToken, delimiter: delimiterRef.current }),
-        ValidationExtension,
-        TokenSpacingExtension,
-        SelectionInvariantExtension,
-        EditorContextExtension.configure({
-          fields,
-          freeTextMode,
-          unknownFields: unknownFieldTemplate,
-          operatorLabels,
-          fieldSuggestionsDisabled,
-          valueSuggestionsDisabled,
-          validation,
-          deserializeText,
-          serializeToken,
-          delimiter: delimiterRef.current,
-          classNames,
-        }),
-        KeyboardShortcutsExtension,
-      ],
-      []
+    // Mount-time configuration. Extensions must stay stable: changing them
+    // recreates the TipTap editor, which would discard content and history. The
+    // editor context storage seeded here is the single owner of configuration and
+    // is kept current by the sync effect below.
+    const [initialContext] = useState(() =>
+      createEditorContext({
+        fields,
+        freeTextMode,
+        unknownFields: unknownFieldTemplate,
+        operatorLabels,
+        fieldSuggestionsDisabled,
+        valueSuggestionsDisabled,
+        validation,
+        deserializeText,
+        serializeToken,
+        delimiter: initialDelimiter,
+        classNames,
+        renderDatePicker,
+        renderDateTimePicker,
+        paginationLabels,
+      })
     );
+    const [extensions] = useState(() => [
+      Document,
+      Paragraph,
+      Text,
+      History,
+      SpacerNode,
+      FilterTokenNode,
+      FreeTextTokenNode,
+      TokenNavigation,
+      ClipboardSerializer,
+      ValidationExtension,
+      TokenSpacingExtension,
+      SelectionInvariantExtension,
+      EditorContextExtension.configure(initialContext),
+      KeyboardShortcutsExtension,
+    ]);
 
     const editor = useEditor({
       immediatelyRender,
       extensions,
       content: defaultValue
-        ? parseQueryToDoc(defaultValue, fields, {
-            freeTextMode,
-            unknownFields: unknownFieldTemplate,
-            delimiter: delimiterRef.current,
+        ? parseQueryToDoc(defaultValue, initialContext.fields, {
+            freeTextMode: initialContext.freeTextMode,
+            unknownFields: initialContext.unknownFields,
+            delimiter: initialContext.delimiter,
           })
         : '',
       editable: !disabled,
@@ -270,18 +265,16 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
           })
         );
 
-        // Set initial suggestion disabled states and force validation check
+        // Force validation check
         // IMPORTANT: Use ed.view.state.tr (not ed.state.tr) because plugins were added to view.state
         const tr = ed.view.state.tr;
-        setSuggestion(tr, {
-          fieldSuggestionsDisabled,
-          valueSuggestionsDisabled,
-        });
         tr.setMeta(FORCE_VALIDATION_CHECK, true);
         ed.view.dispatch(tr);
       },
       onUpdate: ({ editor: ed }) => {
-        const snapshot = createQuerySnapshot(ed.getJSON(), { delimiter: delimiterRef.current });
+        const snapshot = createQuerySnapshot(ed.getJSON(), {
+          delimiter: getEditorContext(ed).delimiter,
+        });
 
         // Detect changes in confirmed (non-focused) filter tokens for onTokensChange
         if (onTokensChange) {
@@ -336,7 +329,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
         // Reuse prevSnapshotRef to avoid redundant snapshot creation
         const snapshot =
           prevSnapshotRef.current ??
-          createQuerySnapshot(ed.getJSON(), { delimiter: delimiterRef.current });
+          createQuerySnapshot(ed.getJSON(), { delimiter: getEditorContext(ed).delimiter });
         const currentTokens = getAllTokens(snapshot);
 
         // Compare full lists (no exclusion since focus is leaving)
@@ -413,6 +406,9 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
         deserializeText,
         serializeToken,
         classNames,
+        renderDatePicker,
+        renderDateTimePicker,
+        paginationLabels,
       });
       editor.view.dispatch(
         editor.state.tr.setMeta('addToHistory', false).setMeta(EDITOR_CONTEXT_UPDATED, true)
@@ -429,23 +425,10 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       deserializeText,
       serializeToken,
       classNames,
+      renderDatePicker,
+      renderDateTimePicker,
+      paginationLabels,
     ]);
-
-    // Update plugin state when suggestion disabled props change
-    useEffect(() => {
-      if (!editor || editor.isDestroyed) return;
-
-      // Skip if suggestion plugin hasn't been registered yet (will be set in onCreate)
-      const suggestionState = getSuggestionState(editor.view.state);
-      if (!suggestionState) return;
-
-      const tr = editor.view.state.tr;
-      setSuggestion(tr, {
-        fieldSuggestionsDisabled,
-        valueSuggestionsDisabled,
-      });
-      editor.view.dispatch(tr);
-    }, [editor, fieldSuggestionsDisabled, valueSuggestionsDisabled]);
 
     // Sync disabled state with editor.isEditable and aria-disabled
     useEffect(() => {
@@ -488,21 +471,20 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
 
       if (prevMode === freeTextMode) return;
 
-      const currentQuery = serializeDocToQuery(editor.getJSON(), {
-        delimiter: delimiterRef.current,
-      });
+      const context = getEditorContext(editor);
+      const currentQuery = serializeDocToQuery(editor.getJSON(), { delimiter: context.delimiter });
       if (!currentQuery) return;
 
-      const newDoc = parseQueryToDoc(currentQuery, fields, {
-        freeTextMode,
-        unknownFields: unknownFieldTemplate,
-        delimiter: delimiterRef.current,
+      const newDoc = parseQueryToDoc(currentQuery, context.fields, {
+        freeTextMode: context.freeTextMode,
+        unknownFields: context.unknownFields,
+        delimiter: context.delimiter,
       });
       editor.commands.setContent(newDoc);
-    }, [editor, freeTextMode, fields, unknownFieldTemplate]);
+    }, [editor, freeTextMode]);
 
     // Field suggestions handling
-    const { handleFieldSelect, updateSuggestions } = useFieldSuggestions(editor, fields, {
+    const { handleFieldSelect, updateSuggestions } = useFieldSuggestions(editor, {
       matcher: fieldSuggestionMatcher,
     });
 
@@ -513,12 +495,11 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       hasMore: customHasMore,
       isLoadingMore: customIsLoadingMore,
       loadMore: onCustomLoadMore,
-    } = useCustomSuggestions(editor, fields, customSuggestionConfig);
+    } = useCustomSuggestions(editor, customSuggestionConfig);
 
     // Value/date suggestion handlers
     const { handleValueSelect, handleDateChange, handleDateClose } = useSuggestionHandlers({
       editor,
-      fields,
       updateSuggestions,
     });
 
@@ -564,7 +545,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
 
         if (onBlur) {
           const snapshot = createQuerySnapshot(editor.getJSON(), {
-            delimiter: delimiterRef.current,
+            delimiter: getEditorContext(editor).delimiter,
           });
           onBlur(snapshot);
         }
@@ -583,7 +564,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
 
         if (onFocus) {
           const snapshot = createQuerySnapshot(editor.getJSON(), {
-            delimiter: delimiterRef.current,
+            delimiter: getEditorContext(editor).delimiter,
           });
           onFocus(snapshot);
         }
@@ -724,7 +705,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
     const handleSubmit = useCallback(() => {
       if (!editor) return;
       const doc = pendingHandleRef.current.doc ?? editor.getJSON();
-      const snapshot = createQuerySnapshot(doc, { delimiter: delimiterRef.current });
+      const snapshot = createQuerySnapshot(doc, { delimiter: getEditorContext(editor).delimiter });
       onSubmit?.(snapshot);
     }, [editor, onSubmit]);
 
@@ -741,18 +722,20 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
 
     // Imperative handle
     useImperativeHandle(ref, () => {
-      const parseValue = (value: string) =>
-        parseQueryToDoc(value, fields, {
-          freeTextMode,
-          unknownFields: unknownFieldTemplate,
-          delimiter: delimiterRef.current,
+      const parseValue = (ed: Editor, value: string) => {
+        const context = getEditorContext(ed);
+        return parseQueryToDoc(value, context.fields, {
+          freeTextMode: context.freeTextMode,
+          unknownFields: context.unknownFields,
+          delimiter: context.delimiter,
         });
+      };
       const readDoc = (ed: Editor) => pendingHandleRef.current.doc ?? ed.getJSON();
 
       return {
         setValue: (value: string) => {
           if (!editor) return;
-          const doc = parseValue(value);
+          const doc = parseValue(editor, value);
           if (editor.isDestroyed) {
             pendingHandleRef.current.doc = doc;
             return;
@@ -761,11 +744,15 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
         },
         getValue: () => {
           if (!editor) return '';
-          return serializeDocToQuery(readDoc(editor), { delimiter: delimiterRef.current });
+          return serializeDocToQuery(readDoc(editor), {
+            delimiter: getEditorContext(editor).delimiter,
+          });
         },
         getSnapshot: () => {
           if (!editor) return { segments: [], text: '' };
-          return createQuerySnapshot(readDoc(editor), { delimiter: delimiterRef.current });
+          return createQuerySnapshot(readDoc(editor), {
+            delimiter: getEditorContext(editor).delimiter,
+          });
         },
         focus: () => {
           if (!editor) return;
@@ -778,7 +765,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
         clear: () => {
           if (!editor) return;
           if (editor.isDestroyed) {
-            pendingHandleRef.current.doc = parseValue('');
+            pendingHandleRef.current.doc = parseValue(editor, '');
             return;
           }
           editor.commands.clearContent();
@@ -810,14 +797,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
         },
         getEditor: () => editor,
       };
-    }, [
-      editor,
-      fields,
-      freeTextMode,
-      unknownFieldTemplate,
-      handleSubmit,
-      // Note: delimiterRef.current is intentionally not in deps - it never changes after mount
-    ]);
+    }, [editor, handleSubmit]);
 
     const containerElement = (
       <div
@@ -888,20 +868,15 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
           <SuggestionOverlay
             editor={editor}
             containerRef={containerRef}
-            fields={fields}
             onFieldSelect={handleFieldSelect}
             onValueSelect={handleValueSelect}
             onCustomSelect={handleCustomSelect}
             onDateChange={handleDateChange}
             onDateClose={handleDateClose}
-            classNames={classNames}
             customHasMore={customHasMore}
             customIsLoadingMore={customIsLoadingMore}
             onCustomLoadMore={onCustomLoadMore}
             expandOnFocus={expandOnFocus}
-            renderDatePicker={renderDatePicker}
-            renderDateTimePicker={renderDateTimePicker}
-            paginationLabels={paginationLabels}
             listboxId={suggestionListId}
             optionIdPrefix={suggestionOptionIdPrefix}
           />

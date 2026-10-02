@@ -1,26 +1,16 @@
-import { mergeAttributes, Node } from '@tiptap/core';
+import { type Editor, mergeAttributes, Node } from '@tiptap/core';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 import { ReactNodeViewRenderer } from '@tiptap/react';
-import { getEditorContextFromEditor } from '../../extensions/editor-context';
+import { getEditorContext } from '../../extensions/editor-context';
 import {
   type CursorPosition,
   setTokenFocus,
   tokenFocusKey,
 } from '../../plugins/token-focus-plugin';
-import { DEFAULT_TOKEN_DELIMITER, type FieldDefinition } from '../../types';
 import { isFilterToken } from '../../utils/node-predicates';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
 import { createFilterTokenAttrs } from './create-attrs';
 import { FilterTokenView } from './filter-token-view';
-
-export interface FilterTokenOptions {
-  fields: FieldDefinition[];
-  /**
-   * Delimiter character used to separate field, operator, and value in tokens.
-   * @default ':'
-   */
-  delimiter?: string;
-}
 
 export interface InsertFilterTokenAttrs {
   key: string;
@@ -45,7 +35,15 @@ declare module '@tiptap/core' {
   }
 }
 
-export const FilterTokenNode = Node.create<FilterTokenOptions>({
+/** The delimiter lives in the editor context, so rendering needs the editor the schema was built for. */
+function getDelimiter(editor: Editor | undefined): string {
+  if (!editor) {
+    throw new Error('[TokenizedSearchInput] filterToken can only be rendered inside an editor');
+  }
+  return getEditorContext(editor).delimiter;
+}
+
+export const FilterTokenNode = Node.create({
   name: 'filterToken',
 
   group: 'inline',
@@ -55,13 +53,6 @@ export const FilterTokenNode = Node.create<FilterTokenOptions>({
   atom: true,
 
   selectable: true,
-
-  addOptions() {
-    return {
-      fields: [],
-      delimiter: DEFAULT_TOKEN_DELIMITER,
-    };
-  },
 
   addAttributes() {
     return {
@@ -120,7 +111,7 @@ export const FilterTokenNode = Node.create<FilterTokenOptions>({
 
   renderHTML({ node, HTMLAttributes }) {
     const { key, operator, value } = node.attrs;
-    const d = this.options.delimiter ?? DEFAULT_TOKEN_DELIMITER;
+    const d = getDelimiter(this.editor);
 
     return [
       'span',
@@ -138,7 +129,7 @@ export const FilterTokenNode = Node.create<FilterTokenOptions>({
   renderText({ node }) {
     const { key, operator, value } = node.attrs;
     if (!value) return '';
-    const d = this.options.delimiter ?? DEFAULT_TOKEN_DELIMITER;
+    const d = getDelimiter(this.editor);
     return `${key}${d}${operator}${d}${value}`;
   },
 
@@ -198,7 +189,7 @@ export const FilterTokenNode = Node.create<FilterTokenOptions>({
               key: attrs.key,
               operator: attrs.operator,
               value: attrs.value,
-              fields: getEditorContextFromEditor(this.editor).fields,
+              fields: getEditorContext(this.editor).fields,
               overrides,
             })
           );

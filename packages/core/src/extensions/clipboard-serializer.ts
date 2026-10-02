@@ -1,10 +1,10 @@
 import { Extension } from '@tiptap/core';
 import type { Fragment, Slice } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
-import { DEFAULT_TOKEN_DELIMITER, type FilterTokenAttrs } from '../types';
+import type { FilterTokenAttrs } from '../types';
 import { NODE_TYPE_NAMES } from '../utils/node-predicates';
 import { escapeForQuotes, quoteIfNeeded } from '../utils/quoted-string';
-import { getEditorContextFromEditor } from './editor-context';
+import { getEditorContext } from './editor-context';
 
 /** Return null to use default serialization for that token. */
 export type SerializeTokenFn = (token: FilterTokenAttrs) => string | null;
@@ -115,33 +115,18 @@ function serializeSliceToText(slice: Slice, options: SerializeOptions): string {
   return serializeFragment(slice.content, options);
 }
 
-export interface ClipboardSerializerOptions {
-  serializeToken?: SerializeTokenFn;
-  delimiter?: string;
-}
-
 /**
  * Writes only plain text to clipboard on copy/cut when token nodes are present.
  * This prevents ProseMirror from restoring tokens from HTML on paste,
  * ensuring paste goes through useAutoTokenize for proper parsing.
  */
-export const ClipboardSerializer = Extension.create<ClipboardSerializerOptions>({
+export const ClipboardSerializer = Extension.create({
   name: 'clipboardSerializer',
 
-  addOptions() {
-    return {
-      serializeToken: undefined,
-      delimiter: DEFAULT_TOKEN_DELIMITER,
-    };
-  },
-
   addProseMirrorPlugins() {
-    const getSerializeOptions = () => {
-      const context = getEditorContextFromEditor(this.editor);
-      return {
-        serializeToken: context.serializeToken,
-        delimiter: context.delimiter ?? this.options.delimiter ?? DEFAULT_TOKEN_DELIMITER,
-      };
+    const getSerializeOptions = (): SerializeOptions => {
+      const { serializeToken, delimiter } = getEditorContext(this.editor);
+      return { serializeToken, delimiter };
     };
 
     return [

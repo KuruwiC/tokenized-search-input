@@ -1,6 +1,6 @@
 import type { NodeViewProps } from '@tiptap/react';
 import { useMemo, useRef } from 'react';
-import { getEditorContextFromEditor, resolveField } from '../../extensions/editor-context';
+import { getEditorContext, resolveField } from '../../extensions/editor-context';
 import { useEditorContextUpdate } from '../../hooks/use-editor-context-update';
 import {
   getDateDisplayValue,
@@ -37,18 +37,14 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
   deleteNode,
   editor,
   getPos,
-  extension,
   decorations,
 }) => {
   useEditorContextUpdate(editor);
   const { key, operator, value, invalid: storedInvalid } = node.attrs;
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const editorContext = getEditorContextFromEditor(editor);
-  const fields =
-    editorContext.fields.length > 0
-      ? editorContext.fields
-      : (extension.options.fields as FieldDefinition[]);
+  const editorContext = getEditorContext(editor);
+  const { fields } = editorContext;
   const globalOperatorLabels = editorContext.operatorLabels;
   const valueSuggestionsDisabled = editorContext.valueSuggestionsDisabled;
   const classNames = editorContext.classNames;

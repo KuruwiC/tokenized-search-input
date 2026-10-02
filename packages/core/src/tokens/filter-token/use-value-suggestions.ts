@@ -91,7 +91,7 @@ export function useValueSuggestions({
     if (!isMountedRef.current) return;
     if (!enabled) return;
 
-    if (!canShowValueSuggestion(editor.state)) return;
+    if (!canShowValueSuggestion(editor)) return;
 
     const pos = getPos();
     const anchorPos = typeof pos === 'number' ? pos : null;

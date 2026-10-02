@@ -1,6 +1,7 @@
 import type { Editor } from '@tiptap/core';
+import { getEditorContext } from '../extensions/editor-context';
 import { parseTokenText } from '../serializer';
-import { DEFAULT_TOKEN_DELIMITER, type FieldDefinition, type UnknownFieldTemplate } from '../types';
+import type { FieldDefinition, UnknownFieldTemplate } from '../types';
 import { isFilterToken } from '../utils/node-predicates';
 import { findLastWordBoundary, isInsideQuotes } from '../utils/quoted-string';
 import { resolveField } from '../utils/resolve-field';
@@ -88,9 +89,9 @@ export function tryAutoTokenize(
   editor: Editor,
   fields: FieldDefinition[],
   trigger: string,
-  unknownFields?: UnknownFieldTemplate,
-  delimiter: string = DEFAULT_TOKEN_DELIMITER
+  unknownFields?: UnknownFieldTemplate
 ): boolean {
+  const { delimiter } = getEditorContext(editor);
   const textBefore = getTextBeforeCursor(editor);
   if (isInsideQuotes(textBefore)) return false;
 

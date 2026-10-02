@@ -1,6 +1,8 @@
 import type { Editor } from '@tiptap/react';
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getEditorContext } from '../extensions/editor-context';
 import { useDebouncedPickerSync } from '../hooks/use-debounced-picker-sync';
+import { useEditorContextUpdate } from '../hooks/use-editor-context-update';
 import { usePluginState } from '../hooks/use-plugin-state';
 import { useSuggestionPosition } from '../hooks/use-suggestion-position';
 import { useVisualViewport } from '../hooks/use-visual-viewport';
@@ -13,14 +15,7 @@ import {
   updateSuggestionActiveIndex,
   updateSuggestionDateValue,
 } from '../plugins/suggestion-plugin';
-import type {
-  ClassNames,
-  CustomSuggestion,
-  DatePickerRenderProps,
-  DateTimePickerRenderProps,
-  FieldDefinition,
-  PaginationLabels,
-} from '../types';
+import type { CustomSuggestion, FieldDefinition } from '../types';
 import { cn } from '../utils/cn';
 import { findFocusedFilterToken, getContainingFilterToken } from '../utils/dom-focus';
 import { type DismissReason, getDismissPolicy, shouldDismiss } from './dismiss-policy';
@@ -35,7 +30,6 @@ import { useDismissManager } from './use-dismiss-manager';
 export interface SuggestionOverlayProps {
   editor: Editor;
   containerRef: RefObject<HTMLElement | null>;
-  fields: FieldDefinition[];
   onFieldSelect: (field: FieldDefinition) => void;
   onValueSelect: (value: string) => void;
   onCustomSelect?: (suggestion: CustomSuggestion) => void;
@@ -47,8 +41,6 @@ export interface SuggestionOverlayProps {
   ) => void;
   onDateClose?: () => void;
   valueInputRef?: RefObject<HTMLInputElement | null>;
-  /** Custom class names for styling component parts */
-  classNames?: ClassNames;
   /** Whether more custom suggestions can be loaded */
   customHasMore?: boolean;
   /** Whether loadMore is currently in progress */
@@ -57,18 +49,6 @@ export interface SuggestionOverlayProps {
   onCustomLoadMore?: () => void;
   /** Whether expandOnFocus mode is enabled */
   expandOnFocus?: boolean;
-  /**
-   * Custom date picker component for all date fields.
-   * Field-level renderPicker takes precedence if defined.
-   */
-  renderDatePicker?: (props: DatePickerRenderProps) => React.ReactNode;
-  /**
-   * Custom datetime picker component for all datetime fields.
-   * Field-level renderPicker takes precedence if defined.
-   */
-  renderDateTimePicker?: (props: DateTimePickerRenderProps) => React.ReactNode;
-  /** Labels for pagination UI in custom suggestion list */
-  paginationLabels?: PaginationLabels;
   /** Stable ids shared by the combobox and its active options. */
   listboxId: string;
   optionIdPrefix: string;
@@ -77,26 +57,24 @@ export interface SuggestionOverlayProps {
 export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
   editor,
   containerRef,
-  fields,
   onFieldSelect,
   onValueSelect,
   onCustomSelect,
   onDateChange,
   onDateClose,
   valueInputRef,
-  classNames,
   customHasMore,
   customIsLoadingMore,
   onCustomLoadMore,
   expandOnFocus = false,
-  renderDatePicker,
-  renderDateTimePicker,
-  paginationLabels,
   listboxId,
   optionIdPrefix,
 }) => {
   const suggestionRef = useRef<HTMLDivElement>(null);
   const suggestionState = usePluginState(editor, suggestionKey);
+  useEditorContextUpdate(editor);
+  const { fields, classNames, renderDatePicker, renderDateTimePicker, paginationLabels } =
+    getEditorContext(editor);
   const [isUTC, setIsUTC] = useState(false);
 
   // Close suggestions when editor becomes non-editable (disabled)

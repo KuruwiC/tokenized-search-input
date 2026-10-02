@@ -48,7 +48,7 @@ export function handleDelimiter(ctx: KeyboardContext): boolean {
 
   const { editor, fields, unknownFields, delimiter } = ctx;
 
-  if (tryAutoTokenize(editor, fields, delimiter, unknownFields, delimiter)) {
+  if (tryAutoTokenize(editor, fields, delimiter, unknownFields)) {
     closeSuggestionIfOpen(ctx);
     return true;
   }
@@ -66,10 +66,10 @@ export function handleSpace(ctx: KeyboardContext): boolean {
     return false;
   }
 
-  const { editor, fields, freeTextMode, unknownFields, delimiter } = ctx;
+  const { editor, fields, freeTextMode, unknownFields } = ctx;
 
   // Try filter token first
-  if (tryAutoTokenize(editor, fields, ' ', unknownFields, delimiter)) {
+  if (tryAutoTokenize(editor, fields, ' ', unknownFields)) {
     closeSuggestionIfOpen(ctx);
     return true;
   }
@@ -99,9 +99,9 @@ export function handleTab(ctx: KeyboardContext): boolean {
     return false;
   }
 
-  const { editor, fields, freeTextMode, unknownFields, delimiter } = ctx;
+  const { editor, fields, freeTextMode, unknownFields } = ctx;
 
-  if (tryAutoTokenize(editor, fields, 'Tab', unknownFields, delimiter)) {
+  if (tryAutoTokenize(editor, fields, 'Tab', unknownFields)) {
     return true;
   }
 
@@ -154,10 +154,10 @@ export function handleEnterTokenize(ctx: KeyboardContext): boolean {
     return false;
   }
 
-  const { editor, fields, unknownFields, delimiter } = ctx;
+  const { editor, fields, unknownFields } = ctx;
 
   // Try to create filter token
-  if (tryAutoTokenize(editor, fields, 'Enter', unknownFields, delimiter)) {
+  if (tryAutoTokenize(editor, fields, 'Enter', unknownFields)) {
     return true;
   }
 

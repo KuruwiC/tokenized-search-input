@@ -1,11 +1,10 @@
 import type { Editor } from '@tiptap/core';
 import type { SuggestionState } from '../../plugins/suggestion-plugin';
-import {
-  type CustomSuggestion,
-  DEFAULT_TOKEN_DELIMITER,
-  type FieldDefinition,
-  type FreeTextMode,
-  type UnknownFieldTemplate,
+import type {
+  CustomSuggestion,
+  FieldDefinition,
+  FreeTextMode,
+  UnknownFieldTemplate,
 } from '../../types';
 
 export interface KeyboardContext {
@@ -33,7 +32,7 @@ export function buildContext(
   freeTextMode: FreeTextMode,
   unknownFields: UnknownFieldTemplate | undefined,
   suggestionState: SuggestionState | null | undefined,
-  delimiter: string = DEFAULT_TOKEN_DELIMITER
+  delimiter: string
 ): KeyboardContext {
   return {
     editor,

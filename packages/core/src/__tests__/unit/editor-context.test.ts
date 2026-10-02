@@ -4,16 +4,16 @@ import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  DEFAULT_EDITOR_CONTEXT,
   EditorContextExtension,
   type EditorContextStorage,
   getEditorContext,
-  getEditorContextFromEditor,
 } from '../../extensions/editor-context';
 import type { FieldDefinition } from '../../types';
 
 // Type-safe helper using the exported function
 function getStorage(editor: Editor): EditorContextStorage {
-  return getEditorContextFromEditor(editor);
+  return getEditorContext(editor);
 }
 
 describe('EditorContextExtension', () => {
@@ -36,6 +36,18 @@ describe('EditorContextExtension', () => {
       expect(storage.callbacks.onSubmit).toBeDefined();
 
       editor.destroy();
+    });
+
+    it('keeps the delimiter from the options', () => {
+      const editor = createEditor({ delimiter: '=' });
+
+      expect(getStorage(editor).delimiter).toBe('=');
+
+      editor.destroy();
+    });
+
+    it('rejects a delimiter that is not a single character', () => {
+      expect(() => createEditor({ delimiter: '::' })).toThrow('single character');
     });
 
     it('initializes with provided options', () => {
@@ -98,6 +110,36 @@ describe('EditorContextExtension', () => {
       editor.destroy();
     });
 
+    it('leaves members that are absent from the update untouched', () => {
+      const fields: FieldDefinition[] = [
+        { key: 'status', label: 'Status', type: 'string', operators: ['is'] },
+      ];
+      const editor = createEditor({ fields, freeTextMode: 'tokenize' });
+
+      editor.commands.setEditorContext({ freeTextMode: 'none' });
+
+      const storage = getStorage(editor);
+      expect(storage.fields).toEqual(fields);
+      expect(storage.freeTextMode).toBe('none');
+
+      editor.destroy();
+    });
+
+    it('restores the default of a member updated to undefined', () => {
+      const editor = createEditor({ freeTextMode: 'tokenize', fieldSuggestionsDisabled: true });
+
+      editor.commands.setEditorContext({
+        freeTextMode: undefined,
+        fieldSuggestionsDisabled: undefined,
+      });
+
+      const storage = getStorage(editor);
+      expect(storage.freeTextMode).toBe(DEFAULT_EDITOR_CONTEXT.freeTextMode);
+      expect(storage.fieldSuggestionsDisabled).toBe(false);
+
+      editor.destroy();
+    });
+
     it('updates callbacks partially', () => {
       const originalOnSearch = vi.fn();
       const newOnFieldSelect = vi.fn();
@@ -139,37 +181,7 @@ describe('EditorContextExtension', () => {
     });
   });
 
-  describe('individual setters', () => {
-    it('setFields updates only fields', () => {
-      const editor = createEditor({ freeTextMode: 'tokenize' });
-      const newFields: FieldDefinition[] = [
-        { key: 'assignee', label: 'Assignee', type: 'string', operators: ['is', 'is_not'] },
-      ];
-
-      editor.commands.setFields(newFields);
-
-      const storage = getStorage(editor);
-      expect(storage.fields).toEqual(newFields);
-      expect(storage.freeTextMode).toBe('tokenize');
-
-      editor.destroy();
-    });
-
-    it('setFreeTextMode updates only mode', () => {
-      const fields: FieldDefinition[] = [
-        { key: 'status', label: 'Status', type: 'string', operators: ['is'] },
-      ];
-      const editor = createEditor({ fields });
-
-      editor.commands.setFreeTextMode('none');
-
-      const storage = getStorage(editor);
-      expect(storage.fields).toEqual(fields);
-      expect(storage.freeTextMode).toBe('none');
-
-      editor.destroy();
-    });
-
+  describe('setCallbacks', () => {
     it('setCallbacks merges with existing callbacks', () => {
       const onSubmit = vi.fn();
       const onFieldSelect = vi.fn();
@@ -192,7 +204,7 @@ describe('EditorContextExtension', () => {
       ];
       const editor = createEditor({ fields, freeTextMode: 'tokenize' });
 
-      const context = getEditorContext({ storage: { editorContext: getStorage(editor) } });
+      const context = getEditorContext(editor);
 
       expect(context.fields).toEqual(fields);
       expect(context.freeTextMode).toBe('tokenize');
@@ -200,16 +212,28 @@ describe('EditorContextExtension', () => {
       editor.destroy();
     });
 
-    it('returns defaults if extension not configured', () => {
-      const editorWithoutExtension = {
-        storage: {},
-      };
+    it('keeps the context readable after the editor is destroyed', () => {
+      const fields: FieldDefinition[] = [
+        { key: 'status', label: 'Status', type: 'string', operators: ['is'] },
+      ];
+      const editor = createEditor({ fields });
 
-      const context = getEditorContext(editorWithoutExtension);
+      editor.destroy();
 
-      expect(context.fields).toEqual([]);
-      expect(context.freeTextMode).toBe('plain');
-      expect(context.callbacks.onFieldSelect).toBeDefined();
+      expect(getEditorContext(editor).fields).toEqual(fields);
+    });
+
+    it('throws if the extension is not registered', () => {
+      const editorWithoutExtension = new Editor({
+        extensions: [Document, Paragraph, Text],
+        content: '',
+      });
+
+      expect(() => getEditorContext(editorWithoutExtension)).toThrow(
+        'EditorContextExtension is not registered'
+      );
+
+      editorWithoutExtension.destroy();
     });
   });
 
