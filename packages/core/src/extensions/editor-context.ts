@@ -67,12 +67,17 @@ export interface EditorContextStorage {
   paginationLabels: PaginationLabels | undefined;
 }
 
-/** The members of the editor context that can change after the editor is created. */
-export type EditorConfig = Omit<EditorContextStorage, 'callbacks' | 'delimiter'>;
+/**
+ * The members of the editor context that can change after the editor is created.
+ * An `undefined` member means its default.
+ */
+export type EditorConfig = {
+  [K in keyof Omit<EditorContextStorage, 'callbacks' | 'delimiter'>]?:
+    | EditorContextStorage[K]
+    | undefined;
+};
 
-export type EditorContextUpdate = {
-  [K in keyof EditorConfig]?: EditorConfig[K] | undefined;
-} & { callbacks?: Partial<EditorCallbacks> };
+export type EditorContextUpdate = EditorConfig & { callbacks?: Partial<EditorCallbacks> };
 
 /** What `createEditorContext` accepts: the updatable members plus the delimiter. */
 export type EditorContextOptions = EditorContextUpdate & { delimiter?: string | undefined };

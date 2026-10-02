@@ -1,0 +1,82 @@
+import { useMemo } from 'react';
+import type { EditorConfig } from '../../extensions/editor-context';
+import type { UnknownFieldTemplate } from '../../types';
+import type { TokenizedSearchInputProps } from '../tokenized-search-input.types';
+
+type ConfigProps = Pick<
+  TokenizedSearchInputProps,
+  | 'fields'
+  | 'freeTextMode'
+  | 'classNames'
+  | 'unknownFields'
+  | 'validation'
+  | 'suggestions'
+  | 'serialization'
+  | 'labels'
+  | 'pickers'
+>;
+
+/**
+ * Derives the editor configuration from the component props. Members built from
+ * several props keep their identity until one of those props changes, so an inline
+ * `unknownFields={{ ... }}` or `validation={{ ... }}` does not re-sync the editor
+ * context on every render.
+ */
+export function useEditorConfig({
+  fields,
+  freeTextMode = 'plain',
+  classNames,
+  unknownFields,
+  validation: validationConfig,
+  suggestions = {},
+  serialization = {},
+  labels = {},
+  pickers = {},
+}: ConfigProps): EditorConfig {
+  const hasUnknownFields = unknownFields !== undefined;
+  const unknownOperators = unknownFields?.operators;
+  const unknownHideSingleOperator = unknownFields?.hideSingleOperator;
+  const unknownAllowSpaces = unknownFields?.allowSpaces;
+  const unknownValidate = unknownFields?.validate;
+  const unknownSanitize = unknownFields?.sanitize;
+  const unknownFieldTemplate = useMemo<UnknownFieldTemplate | undefined>(
+    () =>
+      hasUnknownFields
+        ? {
+            operators: unknownOperators,
+            hideSingleOperator: unknownHideSingleOperator,
+            allowSpaces: unknownAllowSpaces,
+            validate: unknownValidate,
+            sanitize: unknownSanitize,
+          }
+        : undefined,
+    [
+      hasUnknownFields,
+      unknownOperators,
+      unknownHideSingleOperator,
+      unknownAllowSpaces,
+      unknownValidate,
+      unknownSanitize,
+    ]
+  );
+  const validation = useMemo(
+    () => (validationConfig?.rules ? { rules: validationConfig.rules } : undefined),
+    [validationConfig?.rules]
+  );
+
+  return {
+    fields,
+    freeTextMode,
+    unknownFields: unknownFieldTemplate,
+    operatorLabels: labels.operators,
+    fieldSuggestionsDisabled: suggestions.field?.disabled ?? false,
+    valueSuggestionsDisabled: suggestions.value?.disabled ?? false,
+    validation,
+    deserializeText: serialization.deserializeText,
+    serializeToken: serialization.serializeToken,
+    classNames,
+    renderDatePicker: pickers.renderDate,
+    renderDateTimePicker: pickers.renderDateTime,
+    paginationLabels: labels.pagination,
+  };
+}
