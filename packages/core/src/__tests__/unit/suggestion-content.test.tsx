@@ -27,7 +27,7 @@ const baseProps: SuggestionContentProps = {
   onValueSelect: () => {},
   onActiveChange: () => {},
   optionIdPrefix: 'test-option',
-  syncedDate: undefined,
+  syncedValue: undefined,
   onDateChange: () => {},
   onDateClose: () => {},
   restoreFocus: () => {},

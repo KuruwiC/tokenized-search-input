@@ -8,11 +8,15 @@ import {
   createSuggestionPlugin,
   dismissSuggestion,
   getSuggestionState,
+  openDateSuggestion,
+  openDateTimeSuggestion,
   openFieldSuggestion,
   openValueSuggestion,
   setSuggestion,
   setSuggestionLoading,
   updateSuggestionActiveIndex,
+  updateSuggestionDateValue,
+  updateSuggestionTimeControls,
 } from '../../plugins/suggestion-plugin';
 import type { FieldDefinition } from '../../types';
 import { basicFields, basicBlockSchema as schema } from '../fixtures';
@@ -42,6 +46,8 @@ describe('SuggestionPlugin', () => {
         isLoading: false,
         anchor: null,
         dateValue: null,
+        isUTC: false,
+        includeTime: false,
         dismissed: false,
         customDisplayMode: null,
       });
@@ -399,6 +405,119 @@ describe('SuggestionPlugin', () => {
 
       expect(suggestionState?.type).toBe('field');
       expect(suggestionState?.dismissed).toBe(false);
+    });
+  });
+
+  describe('date and datetime suggestions', () => {
+    it('holds the typed value of the token the datetime picker opened for', () => {
+      const state = createEditorState();
+      const value = { date: '2024-03-05', time: '14:30:00', offset: '+09:00' } as const;
+      const next = state.apply(openDateTimeSuggestion(state.tr, 'updated', value, 'token-1'));
+      const suggestion = getSuggestionState(next);
+
+      expect(suggestion?.type).toBe('datetime');
+      expect(suggestion?.dateValue).toEqual(value);
+      expect(suggestion?.anchor).toEqual({ tokenId: 'token-1' });
+    });
+
+    it('opens in UTC for a value that is in UTC, and with the time for a value that has one', () => {
+      const state = createEditorState();
+      const utc = { date: '2024-03-05', time: '14:30:00', offset: 'Z' } as const;
+      const suggestion = getSuggestionState(
+        state.apply(openDateTimeSuggestion(state.tr, 'updated', utc, 'token-1'))
+      );
+
+      expect(suggestion?.isUTC).toBe(true);
+      expect(suggestion?.includeTime).toBe(true);
+    });
+
+    it('opens outside UTC for a value in another offset', () => {
+      const state = createEditorState();
+      const tokyo = { date: '2024-03-05', time: '14:30:00', offset: '+09:00' } as const;
+      const suggestion = getSuggestionState(
+        state.apply(openDateTimeSuggestion(state.tr, 'updated', tokyo, 'token-1'))
+      );
+
+      expect(suggestion?.isUTC).toBe(false);
+      expect(suggestion?.includeTime).toBe(true);
+    });
+
+    it('opens without a time for a date, and for no value', () => {
+      const state = createEditorState();
+      const dateOnly = getSuggestionState(
+        state.apply(openDateTimeSuggestion(state.tr, 'updated', { date: '2024-03-05' }, 't'))
+      );
+      const empty = getSuggestionState(
+        state.apply(openDateTimeSuggestion(state.tr, 'updated', null, 't'))
+      );
+
+      expect(dateOnly?.includeTime).toBe(false);
+      expect(empty?.includeTime).toBe(false);
+      expect(empty?.isUTC).toBe(false);
+    });
+
+    it('opens a date suggestion without the time controls', () => {
+      const state = createEditorState();
+      const withUtc = state.apply(
+        openDateTimeSuggestion(
+          state.tr,
+          'updated',
+          { date: '2024-03-05', time: '10:00', offset: 'Z' },
+          't'
+        )
+      );
+      const suggestion = getSuggestionState(
+        withUtc.apply(openDateSuggestion(withUtc.tr, 'created', { date: '2024-03-05' }, 't'))
+      );
+
+      expect(suggestion?.type).toBe('date');
+      expect(suggestion?.isUTC).toBe(false);
+      expect(suggestion?.includeTime).toBe(false);
+    });
+
+    it('updates the committed value without touching the time controls', () => {
+      const state = createEditorState();
+      const opened = state.apply(openDateTimeSuggestion(state.tr, 'updated', null, 't'));
+      const controls = opened.apply(
+        updateSuggestionTimeControls(opened.tr, { isUTC: true, includeTime: true })
+      );
+      const updated = controls.apply(
+        updateSuggestionDateValue(controls.tr, { date: '2024-03-05', time: '10:00', offset: 'Z' })
+      );
+      const suggestion = getSuggestionState(updated);
+
+      expect(suggestion?.dateValue).toEqual({ date: '2024-03-05', time: '10:00', offset: 'Z' });
+      expect(suggestion?.isUTC).toBe(true);
+      expect(suggestion?.includeTime).toBe(true);
+    });
+
+    it('changes one time control and keeps the other', () => {
+      const state = createEditorState();
+      const opened = state.apply(openDateTimeSuggestion(state.tr, 'updated', null, 't'));
+      const utc = opened.apply(updateSuggestionTimeControls(opened.tr, { isUTC: true }));
+      const suggestion = getSuggestionState(
+        utc.apply(updateSuggestionTimeControls(utc.tr, { includeTime: true }))
+      );
+
+      expect(suggestion?.isUTC).toBe(true);
+      expect(suggestion?.includeTime).toBe(true);
+    });
+
+    it('forgets the time controls when the suggestion closes', () => {
+      const state = createEditorState();
+      const opened = state.apply(
+        openDateTimeSuggestion(
+          state.tr,
+          'updated',
+          { date: '2024-03-05', time: '10:00', offset: 'Z' },
+          't'
+        )
+      );
+      const closed = getSuggestionState(opened.apply(closeSuggestion(opened.tr)));
+
+      expect(closed?.dateValue).toBeNull();
+      expect(closed?.isUTC).toBe(false);
+      expect(closed?.includeTime).toBe(false);
     });
   });
 });

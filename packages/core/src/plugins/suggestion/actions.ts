@@ -1,4 +1,5 @@
 import type { Transaction } from '@tiptap/pm/state';
+import type { DateTimeValue } from '../../pickers/date-time-value';
 import type { CustomSuggestion, EnumValue, FieldDefinition } from '../../types';
 import { positionAnchor, tokenAnchor } from './anchor';
 import { suggestionKey } from './plugin';
@@ -67,7 +68,7 @@ export function openValueSuggestion(
 export function openDateSuggestion(
   tr: Transaction,
   fieldKey: string,
-  currentValue: Date | null = null,
+  currentValue: DateTimeValue | null = null,
   tokenId: string | null = null
 ): Transaction {
   return setSuggestion(tr, {
@@ -79,6 +80,8 @@ export function openDateSuggestion(
     isLoading: false,
     anchor: tokenAnchor(tokenId),
     dateValue: currentValue,
+    isUTC: false,
+    includeTime: false,
     dismissed: false,
   });
 }
@@ -86,7 +89,7 @@ export function openDateSuggestion(
 export function openDateTimeSuggestion(
   tr: Transaction,
   fieldKey: string,
-  currentValue: Date | null = null,
+  currentValue: DateTimeValue | null = null,
   tokenId: string | null = null
 ): Transaction {
   return setSuggestion(tr, {
@@ -98,6 +101,8 @@ export function openDateTimeSuggestion(
     isLoading: false,
     anchor: tokenAnchor(tokenId),
     dateValue: currentValue,
+    isUTC: currentValue?.offset === 'Z',
+    includeTime: currentValue?.time !== undefined,
     dismissed: false,
   });
 }
@@ -143,8 +148,19 @@ export function openFieldWithCustomSuggestion(
   });
 }
 
-export function updateSuggestionDateValue(tr: Transaction, dateValue: Date | null): Transaction {
+export function updateSuggestionDateValue(
+  tr: Transaction,
+  dateValue: DateTimeValue | null
+): Transaction {
   return setSuggestion(tr, { dateValue });
+}
+
+/** Sets the datetime picker mode for as long as there is no value to read it from. */
+export function updateSuggestionTimeControls(
+  tr: Transaction,
+  controls: { isUTC?: boolean; includeTime?: boolean }
+): Transaction {
+  return setSuggestion(tr, controls);
 }
 
 export function closeSuggestion(tr: Transaction): Transaction {

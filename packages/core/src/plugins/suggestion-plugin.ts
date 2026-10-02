@@ -42,4 +42,5 @@ export {
   suggestionKey,
   updateSuggestionActiveIndex,
   updateSuggestionDateValue,
+  updateSuggestionTimeControls,
 } from './suggestion';

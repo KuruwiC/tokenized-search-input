@@ -1,11 +1,11 @@
 import type { Editor } from '@tiptap/core';
 import { useCallback } from 'react';
 import { getEditorContext, getFocusContext } from '../../extensions/editor-context';
-import { getDateInternalValue, getDateTimeInternalValue } from '../../pickers/date-format';
+import { toStoredValue } from '../../pickers/date-format';
+import type { DateTimeValue } from '../../pickers/date-time-value';
 import { closeSuggestion } from '../../plugins/suggestion-plugin';
 import { getFocusedToken, leaveTokenIn } from '../../plugins/token-focus-plugin';
 import { applyTokenAction } from '../../tokens/filter-token/token-actions';
-import type { DateTimeFieldDefinition } from '../../types';
 import { findTokenById } from '../../utils/find-token';
 import { isFilterToken } from '../../utils/node-predicates';
 
@@ -24,12 +24,7 @@ export interface UseSuggestionHandlersOptions {
 
 export interface UseSuggestionHandlersResult {
   handleValueSelect: (value: string) => void;
-  handleDateChange: (
-    date: Date | null,
-    fieldKey: string,
-    isUTC?: boolean,
-    includeTime?: boolean
-  ) => void;
+  handleDateChange: (value: DateTimeValue | null, fieldKey: string) => void;
   handleDateClose: () => void;
 }
 
@@ -56,32 +51,18 @@ export function useSuggestionHandlers({
 
   // Date/datetime change from picker (real-time update)
   const handleDateChange = useCallback(
-    (date: Date | null, fieldKey: string, isUTC?: boolean, includeTime?: boolean) => {
-      if (!editor || !date) return;
+    (value: DateTimeValue | null, fieldKey: string) => {
+      if (!editor || !value) return;
 
       const id = focusedFilterTokenId(editor);
       if (id === null) return;
 
-      // Find field definition to get format config
       const fieldDef = getEditorContext(editor).fields.find((f) => f.key === fieldKey);
-      if (!fieldDef) return;
-
-      let value: string;
-      if (fieldDef.type === 'datetime') {
-        const dtFieldDef = fieldDef as DateTimeFieldDefinition;
-        // When timeRequired is true, always use datetime format regardless of includeTime
-        const shouldIncludeTime = dtFieldDef.timeRequired || includeTime !== false;
-        if (shouldIncludeTime) {
-          value = getDateTimeInternalValue(date, dtFieldDef.formatConfig, isUTC);
-        } else {
-          value = getDateInternalValue(date);
-        }
-      } else {
-        value = getDateInternalValue(date);
-      }
+      if (fieldDef?.type !== 'date' && fieldDef?.type !== 'datetime') return;
 
       const tr = editor.state.tr;
-      if (applyTokenAction(tr, id, { type: 'setValue', value }, getEditorContext(editor))) {
+      const action = { type: 'setValue', value: toStoredValue(value, fieldDef) } as const;
+      if (applyTokenAction(tr, id, action, getEditorContext(editor))) {
         editor.view.dispatch(tr);
       }
     },

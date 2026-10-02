@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/react';
-import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useMemo, useRef } from 'react';
 import { getEditorContext } from '../extensions/editor-context';
 import { useDebouncedPickerSync } from '../hooks/use-debounced-picker-sync';
 import { useEditorContextUpdate } from '../hooks/use-editor-context-update';
@@ -7,15 +7,22 @@ import { useEditorSelector } from '../hooks/use-editor-store';
 import { usePluginState } from '../hooks/use-plugin-state';
 import { useSuggestionPosition } from '../hooks/use-suggestion-position';
 import { useVisualViewport } from '../hooks/use-visual-viewport';
-import { isDateOnlyValue, isUTCValue } from '../pickers/date-format';
+import { parseDateFieldValue } from '../pickers/date-format';
+import {
+  type DateTimeValue,
+  fromInstant,
+  localMidnight,
+  localOffsetAt,
+  toInstant,
+} from '../pickers/date-time-value';
 import {
   closeSuggestion,
   isSuggestionOpen,
   resolveAnchorPos,
-  type SuggestionType,
   suggestionKey,
   updateSuggestionActiveIndex,
   updateSuggestionDateValue,
+  updateSuggestionTimeControls,
 } from '../plugins/suggestion-plugin';
 import type { CustomSuggestion, FieldDefinition } from '../types';
 import { cn } from '../utils/cn';
@@ -35,12 +42,7 @@ export interface SuggestionOverlayProps {
   onFieldSelect: (field: FieldDefinition) => void;
   onValueSelect: (value: string) => void;
   onCustomSelect?: (suggestion: CustomSuggestion) => void;
-  onDateChange?: (
-    date: Date | null,
-    fieldKey: string,
-    isUTC?: boolean,
-    includeTime?: boolean
-  ) => void;
+  onDateChange?: (value: DateTimeValue | null, fieldKey: string) => void;
   onDateClose?: () => void;
   valueInputRef?: RefObject<HTMLInputElement | null>;
   /** Whether more custom suggestions can be loaded */
@@ -77,7 +79,6 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
   useEditorContextUpdate(editor);
   const { fields, classNames, renderDatePicker, renderDateTimePicker, paginationLabels } =
     getEditorContext(editor);
-  const [isUTC, setIsUTC] = useState(false);
 
   // Close suggestions when editor becomes non-editable (disabled)
   useEffect(() => {
@@ -198,35 +199,14 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     });
   }, [getValueInputElement]);
 
-  const pendingDateChange = useRef<Date | null>(null);
+  const pendingDateChange = useRef<DateTimeValue | null>(null);
   const rafId = useRef<number | null>(null);
 
-  const isUTCRef = useRef(isUTC);
-  useEffect(() => {
-    isUTCRef.current = isUTC;
-  }, [isUTC]);
-
-  // Track includeTime state from datetime picker
-  const [includeTime, setIncludeTime] = useState(false);
-  const includeTimeRef = useRef(includeTime);
-  useEffect(() => {
-    includeTimeRef.current = includeTime;
-  }, [includeTime]);
-
-  // Track the previous suggestion state for use after picker closes
-  const prevSuggestionStateForFlushRef = useRef<{
-    type: SuggestionType;
-    fieldKey: string | null;
-  }>({
-    type: suggestionState?.type ?? null,
-    fieldKey: suggestionState?.fieldKey ?? null,
-  });
+  // The field of the picker, for the flush that follows the picker closing
+  const prevFieldKeyRef = useRef<string | null>(suggestionState?.fieldKey ?? null);
   useEffect(() => {
     if (suggestionState?.type) {
-      prevSuggestionStateForFlushRef.current = {
-        type: suggestionState.type,
-        fieldKey: suggestionState.fieldKey,
-      };
+      prevFieldKeyRef.current = suggestionState.fieldKey;
     }
   }, [suggestionState?.type, suggestionState?.fieldKey]);
 
@@ -236,8 +216,8 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
       rafId.current = null;
     }
 
-    const dateToUpdate = pendingDateChange.current;
-    if (dateToUpdate === null) return;
+    const valueToUpdate = pendingDateChange.current;
+    if (valueToUpdate === null) return;
 
     pendingDateChange.current = null;
 
@@ -245,30 +225,25 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     const currentSuggestionState = suggestionKey.getState(editor.state);
     if (!currentSuggestionState) return;
 
-    // Use previous values if current values are null (picker just closed)
-    const fieldKeyToUse =
-      currentSuggestionState.fieldKey ?? prevSuggestionStateForFlushRef.current.fieldKey;
-    const suggestionType =
-      currentSuggestionState.type ?? prevSuggestionStateForFlushRef.current.type;
+    // Use the previous field if there is none now (picker just closed)
+    const fieldKeyToUse = currentSuggestionState.fieldKey ?? prevFieldKeyRef.current;
 
     // Update suggestion state
     const tr = editor.state.tr;
-    updateSuggestionDateValue(tr, dateToUpdate);
+    updateSuggestionDateValue(tr, valueToUpdate);
     tr.setMeta('addToHistory', false);
     editor.view.dispatch(tr);
 
     // Update token in real-time
     if (fieldKeyToUse) {
-      const useUTC = suggestionType === 'datetime' ? isUTCRef.current : undefined;
-      const useIncludeTime = suggestionType === 'datetime' ? includeTimeRef.current : undefined;
-      onDateChange?.(dateToUpdate, fieldKeyToUse, useUTC, useIncludeTime);
+      onDateChange?.(valueToUpdate, fieldKeyToUse);
     }
   }, [editor, onDateChange]);
 
   const handleDateChangeInternal = useCallback(
-    (date: Date | null) => {
-      // Store latest date for throttled update
-      pendingDateChange.current = date;
+    (value: DateTimeValue | null) => {
+      // Store latest value for throttled update
+      pendingDateChange.current = value;
 
       // Throttle updates via requestAnimationFrame
       if (rafId.current === null) {
@@ -301,91 +276,88 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     };
   }, [flushAndCancelPendingDateChange]);
 
-  // useEffect + state because ProseMirror doc reference doesn't change (useMemo won't work)
-  const [tokenInputValue, setTokenInputValue] = useState('');
+  // The text of the token the picker belongs to, as it is typed
+  const tokenInputValue = useEditorSelector(editor, (state) => {
+    const current = suggestionKey.getState(state);
+    if (current?.type !== 'date' && current?.type !== 'datetime') return '';
+    const pos = resolveAnchorPos(state.doc, current.anchor);
+    return pos === null ? '' : String(state.doc.nodeAt(pos)?.attrs.value ?? '');
+  });
 
-  useEffect(() => {
-    // Only monitor when date/datetime suggestion is open
-    const isDateOrDateTime =
-      suggestionState?.type === 'date' || suggestionState?.type === 'datetime';
-    if (!isDateOrDateTime) {
-      setTokenInputValue('');
-      // Reset UTC and includeTime state when leaving datetime mode
-      setIsUTC(false);
-      setIncludeTime(false);
-      return;
-    }
-
-    const tokenValueAt = (pos: number | null): string | null =>
-      pos === null ? null : String(editor.state.doc.nodeAt(pos)?.attrs.value ?? '');
-
-    const updateValue = ({ transaction }: { transaction: { docChanged: boolean } }) => {
-      // Skip if document wasn't changed (performance optimization)
-      if (!transaction.docChanged) return;
-
-      // Read the anchor from plugin state directly to avoid stale closure
-      const currentAnchor = suggestionKey.getState(editor.state)?.anchor ?? null;
-      setTokenInputValue(tokenValueAt(resolveAnchorPos(editor.state.doc, currentAnchor)) ?? '');
-    };
-
-    // Set initial value and UTC state
-    const initialValue = tokenValueAt(anchorPos);
-    if (initialValue !== null) {
-      setTokenInputValue(initialValue);
-      // Initialize UTC checkbox based on value (default to false for empty values)
-      if (suggestionState?.type === 'datetime') {
-        setIsUTC(initialValue ? isUTCValue(initialValue) : false);
-        // Initialize includeTime: true if value contains time, or if timeRequired is set
-        const fieldDef = suggestionState.fieldKey
-          ? fields.find((f) => f.key === suggestionState.fieldKey)
-          : undefined;
-        if (fieldDef?.type === 'datetime') {
-          const valueHasTime = !!initialValue && !isDateOnlyValue(initialValue);
-          setIncludeTime(fieldDef.timeRequired === true || valueHasTime);
-        }
-      }
-    } else if (suggestionState?.type === 'datetime') {
-      setIsUTC(false);
-      setIncludeTime(false);
-    }
-
-    editor.on('transaction', updateValue);
-    return () => {
-      editor.off('transaction', updateValue);
-    };
-  }, [editor, anchorPos, suggestionState?.type, suggestionState?.fieldKey, fields]);
-
-  const { date: syncedDate } = useDebouncedPickerSync({
-    inputValue: tokenInputValue,
-    selectedDate: suggestionState?.dateValue ?? null,
-    type: (suggestionState?.type === 'date' || suggestionState?.type === 'datetime'
+  const pickerType =
+    suggestionState?.type === 'date' || suggestionState?.type === 'datetime'
       ? suggestionState.type
-      : null) as 'date' | 'datetime' | null,
-    isUTC,
+      : null;
+  const pickerField = suggestionState?.fieldKey
+    ? fields.find((field) => field.key === suggestionState.fieldKey)
+    : undefined;
+  const parseTyped = useCallback(
+    (input: string): DateTimeValue | null => {
+      if (pickerField?.type !== 'date' && pickerField?.type !== 'datetime') return null;
+      const parsed = parseDateFieldValue(input, pickerField);
+      return parsed.ok ? parsed.value : null;
+    },
+    [pickerField]
+  );
+
+  const { value: syncedValue } = useDebouncedPickerSync({
+    inputValue: tokenInputValue,
+    selectedValue: suggestionState?.dateValue ?? null,
+    type: pickerType,
+    parse: parseTyped,
     delay: 200,
   });
 
-  const handleUTCChangeInternal = useCallback(
-    (newIsUTC: boolean) => {
-      setIsUTC(newIsUTC);
+  // The value says whether it has a time and in which offset; the state only says
+  // so while there is no value yet.
+  const timeRequired = pickerField?.type === 'datetime' && pickerField.timeRequired === true;
+  const isUTC =
+    syncedValue?.time !== undefined
+      ? syncedValue.offset === 'Z'
+      : (suggestionState?.isUTC ?? false);
+  const includeTime =
+    timeRequired ||
+    (syncedValue ? syncedValue.time !== undefined : (suggestionState?.includeTime ?? false));
 
-      // Recalculate token value with new UTC setting
-      // Use synced date from input if available, otherwise fall back to committed value
-      const fieldKeyToUse = suggestionState?.fieldKey;
-      const currentDate = syncedDate ?? suggestionState?.dateValue;
-
-      if (currentDate && fieldKeyToUse) {
-        onDateChange?.(currentDate, fieldKeyToUse, newIsUTC, includeTimeRef.current);
-      }
+  const setTimeControls = useCallback(
+    (controls: { isUTC?: boolean; includeTime?: boolean }) => {
+      const tr = editor.state.tr;
+      updateSuggestionTimeControls(tr, controls);
+      tr.setMeta('addToHistory', false);
+      editor.view.dispatch(tr);
     },
-    [suggestionState?.fieldKey, suggestionState?.dateValue, syncedDate, onDateChange]
+    [editor]
   );
 
-  const handleIncludeTimeChangeInternal = useCallback((newIncludeTime: boolean) => {
-    setIncludeTime(newIncludeTime);
-    // Don't call onDateChange here - the picker component will handle
-    // restoring localTime when includeTime is toggled back on.
-  }, []);
+  const handleUTCChangeInternal = useCallback(
+    (nextIsUTC: boolean) => {
+      if (syncedValue?.time === undefined) {
+        setTimeControls({ isUTC: nextIsUTC });
+        return;
+      }
+      // The same moment, written in UTC or in the local offset
+      const instant = toInstant(syncedValue);
+      handleDateChangeInternal(fromInstant(instant, nextIsUTC ? 'Z' : localOffsetAt(instant)));
+    },
+    [syncedValue, setTimeControls, handleDateChangeInternal]
+  );
+
+  const handleIncludeTimeChangeInternal = useCallback(
+    (nextIncludeTime: boolean) => {
+      if (!syncedValue) {
+        setTimeControls({ includeTime: nextIncludeTime });
+        return;
+      }
+      if (!nextIncludeTime) {
+        handleDateChangeInternal({ date: syncedValue.date });
+        return;
+      }
+      if (syncedValue.time !== undefined) return;
+      const midnight = localMidnight(syncedValue.date);
+      handleDateChangeInternal(isUTC ? { ...midnight, offset: 'Z' } : midnight);
+    },
+    [syncedValue, isUTC, setTimeControls, handleDateChangeInternal]
+  );
 
   const handleDateCloseInternal = useCallback(() => {
     onDateClose?.();
@@ -424,7 +396,7 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     onCustomLoadMore,
     paginationLabels,
     optionIdPrefix,
-    syncedDate,
+    syncedValue,
     renderDatePicker,
     renderDateTimePicker,
     onDateChange: handleDateChangeInternal,

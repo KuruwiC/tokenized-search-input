@@ -1,5 +1,4 @@
-import { format, isValid, parse, parseISO } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz';
+import { isValid, parse, parseISO } from 'date-fns';
 import type {
   DateFieldDefinition,
   DateFormatConfig,
@@ -39,22 +38,6 @@ export function parseISOToDate(isoValue: string): Date | null {
   if (isValid(parsed)) return parsed;
 
   return null;
-}
-
-/**
- * Formats Date to ISO 8601 string for date fields.
- */
-function formatDateToISO(date: Date): string {
-  if (!date || !isValid(date)) return '';
-  return format(date, DEFAULT_DATE_VALUE_FORMAT);
-}
-
-/**
- * Formats Date to ISO 8601 datetime string with local timezone.
- */
-function formatDateTimeToISO(date: Date): string {
-  if (!date || !isValid(date)) return '';
-  return format(date, DEFAULT_DATETIME_VALUE_FORMAT);
 }
 
 /**
@@ -126,84 +109,11 @@ export function getDateDisplayValue(value: DateTimeValue, config?: DateFormatCon
 }
 
 /**
- * Converts Date to internal ISO value for date fields.
- */
-export function getDateInternalValue(date: Date | null): string {
-  if (!date) return '';
-  return formatDateToISO(date);
-}
-
-/**
  * UTC mode is supported when no custom parse is provided.
  * Custom parse may not preserve timezone information.
  */
 export function supportsUTCMode(config?: DateTimeFormatConfig): boolean {
   return !config?.parse;
-}
-
-export function extractTimezone(value: string): string | null {
-  if (!value) return null;
-
-  const timezonePattern = /(Z|[+-]\d{2}:?\d{2})$/;
-  const match = value.match(timezonePattern);
-
-  if (!match) return null;
-
-  const tz = match[1];
-  if (tz === 'Z') return 'Z';
-  if (tz.includes(':')) {
-    return tz;
-  }
-  return `${tz.slice(0, 3)}:${tz.slice(3)}`;
-}
-
-/**
- * JavaScript Date objects don't preserve timezone information after parsing.
- * We must extract timezone from the original string to determine if it's UTC.
- */
-export function isUTCValue(value: string): boolean {
-  const tz = extractTimezone(value);
-  if (!tz) return false;
-  if (tz === 'Z') return true;
-  return tz === '+00:00' || tz === '-00:00';
-}
-
-/**
- * Checks if a value contains a time component.
- * Uses the same logic as navigation-parsers.ts extractTime for consistency.
- * Matches: "2024-03-05T14:30", "2024-03-05 14:30", "2024-03-05T14", etc.
- * Also handles milliseconds: "2024-03-05T14:30:45.123Z"
- */
-export function hasTimeComponent(value: string): boolean {
-  const trimmed = value.trim();
-  if (!trimmed) return false;
-
-  // Full time: [T or space] followed by HH:MM (with optional :SS, milliseconds, and timezone)
-  // Supports: T14:30, T14:30:45, T14:30:45.123, T14:30:45Z, T14:30:45.123Z, T14:30:45+09:00
-  if (/[T\s]\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/.test(trimmed)) {
-    return true;
-  }
-  // Partial time with colon: [T or space] followed by HH: or HH:M
-  if (/[T\s]\d{1,2}:\d{0,1}$/.test(trimmed)) {
-    return true;
-  }
-  // Hour only: [T or space] followed by HH
-  if (/[T\s]\d{1,2}$/.test(trimmed)) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * Checks if a value is date-only format (yyyy-MM-dd without time component).
- * Returns true for strict date-only format and partial date inputs.
- * Returns false if the value contains time indicators.
- */
-export function isDateOnlyValue(value: string): boolean {
-  const trimmed = value.trim();
-  if (!trimmed) return false;
-
-  return !hasTimeComponent(trimmed);
 }
 
 const DEFAULT_DATETIME_DISPLAY_LENGTH = 'HH:mm'.length;
@@ -231,23 +141,6 @@ export function getDateTimeDisplayValue(
   if (value.offset === 'Z') return `${reading} (UTC)`;
   if (value.offset === localOffsetAt(toInstant(value))) return reading;
   return `${reading} (${value.offset})`;
-}
-
-/**
- * Converts Date to internal ISO value for datetime fields.
- */
-export function getDateTimeInternalValue(
-  date: Date | null,
-  _config?: DateTimeFormatConfig,
-  isUTC?: boolean
-): string {
-  if (!date) return '';
-
-  if (isUTC) {
-    return formatInTimeZone(date, 'UTC', "yyyy-MM-dd'T'HH:mm:ssXXX");
-  }
-
-  return formatDateTimeToISO(date);
 }
 
 export function isDateField(fieldDef: { type: string } | undefined): boolean {

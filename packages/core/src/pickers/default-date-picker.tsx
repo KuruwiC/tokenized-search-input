@@ -4,6 +4,7 @@ import { Check } from '../icons/check';
 import { ChevronLeft } from '../icons/chevron-left';
 import { ChevronRight } from '../icons/chevron-right';
 import type { DatePickerRenderProps } from '../types';
+import { calendarDayToDate, toCalendarDay } from './calendar-days';
 import { calendarClassNames, closeButtonClassName } from './calendar-styles';
 import { isSameMonth, parseISOToDate } from './date-format';
 
@@ -22,17 +23,20 @@ export const DefaultDatePicker: FC<DatePickerRenderProps> = ({
   defaultMonth,
   restoreFocus,
 }) => {
+  const day = value?.date;
+  const selectedDate = useMemo(() => (day ? calendarDayToDate(day) : undefined), [day]);
+
   // Internal month state for calendar navigation
-  const [month, setMonth] = useState<Date>(defaultMonth ?? value ?? new Date());
+  const [month, setMonth] = useState<Date>(defaultMonth ?? selectedDate ?? new Date());
   const monthRef = useRef(month);
   monthRef.current = month;
 
   // Auto-sync calendar to value when value changes ("last action wins")
   useEffect(() => {
-    if (value && !isSameMonth(value, monthRef.current)) {
-      setMonth(value);
+    if (selectedDate && !isSameMonth(selectedDate, monthRef.current)) {
+      setMonth(selectedDate);
     }
-  }, [value]);
+  }, [selectedDate]);
 
   const minDate = useMemo(() => {
     if (!fieldDef.minDate) return undefined;
@@ -59,7 +63,7 @@ export const DefaultDatePicker: FC<DatePickerRenderProps> = ({
 
   const handleSelect = (date: Date | undefined) => {
     if (date) {
-      onChange(date);
+      onChange({ date: toCalendarDay(date) });
       // Restore focus to value input and scroll into view
       restoreFocus?.();
     }
@@ -69,7 +73,7 @@ export const DefaultDatePicker: FC<DatePickerRenderProps> = ({
     <div className="tsi-picker-body" data-date-picker>
       <DayPicker
         mode="single"
-        selected={value ?? undefined}
+        selected={selectedDate}
         onSelect={handleSelect}
         month={month}
         onMonthChange={setMonth}

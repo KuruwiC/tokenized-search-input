@@ -204,6 +204,8 @@ export function createSuggestionPlugin(
           isLoading: meta.isLoading ?? value.isLoading,
           anchor: meta.anchor !== undefined ? meta.anchor : value.anchor,
           dateValue: meta.dateValue !== undefined ? meta.dateValue : value.dateValue,
+          isUTC: meta.isUTC ?? value.isUTC,
+          includeTime: meta.includeTime ?? value.includeTime,
           dismissed: meta.dismissed ?? value.dismissed,
           customDisplayMode:
             meta.customDisplayMode !== undefined ? meta.customDisplayMode : value.customDisplayMode,

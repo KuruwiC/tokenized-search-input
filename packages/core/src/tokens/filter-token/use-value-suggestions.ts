@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/core';
 import type { Transaction } from '@tiptap/pm/state';
 import { useEffect, useRef } from 'react';
-import { parseISOToDate } from '../../pickers/date-format';
+import { parseDateFieldValue } from '../../pickers/date-format';
 import { updateSuggestionQuery } from '../../plugins/shared/meta';
 import {
   getSuggestionState,
@@ -54,8 +54,6 @@ export function useValueSuggestions({
 }: UseValueSuggestionsOptions): UseValueSuggestionsReturn {
   const isEnumField =
     fieldDef?.type === 'enum' && fieldDef.enumValues && fieldDef.enumValues.length > 0;
-  const isDateField = fieldDef?.type === 'date';
-  const isDateTimeField = fieldDef?.type === 'datetime';
 
   // Track whether we should manage suggestions (to avoid updates after unmount)
   const isMountedRef = useRef(true);
@@ -90,16 +88,16 @@ export function useValueSuggestions({
       openValueSuggestion(tr, fieldKey, fieldDef.enumValues, value, tokenId);
       tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
-    } else if (isDateField) {
-      // Date field: show date picker
-      const currentDate = value ? parseISOToDate(value) : null;
-      openDateSuggestion(tr, fieldKey, currentDate, tokenId);
-      tr.setMeta('addToHistory', false);
-      editor.view.dispatch(tr);
-    } else if (isDateTimeField) {
-      // DateTime field: show datetime picker
-      const currentDate = value ? parseISOToDate(value) : null;
-      openDateTimeSuggestion(tr, fieldKey, currentDate, tokenId);
+    } else if (fieldDef?.type === 'date' || fieldDef?.type === 'datetime') {
+      const parsed = value ? parseDateFieldValue(value, fieldDef) : null;
+      const current = parsed?.ok ? parsed.value : null;
+      if (fieldDef.type === 'date') {
+        // Date field: show date picker
+        openDateSuggestion(tr, fieldKey, current, tokenId);
+      } else {
+        // DateTime field: show datetime picker
+        openDateTimeSuggestion(tr, fieldKey, current, tokenId);
+      }
       tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
     }

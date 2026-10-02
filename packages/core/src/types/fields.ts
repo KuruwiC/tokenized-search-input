@@ -304,13 +304,15 @@ export interface BaseDatePickerRenderProps<
   /**
    * Date/DateTime to display. Reflects keyboard input in realtime, falls back to last valid value.
    * Use this as the single source of truth for what to show in the picker.
+   * `date` and `time` are the reading in the value's own `offset`, which is the offset
+   * to give a changed value too.
    */
-  value: Date | null;
+  value: DateTimeValue | null;
 
   /**
    * Called when user selects a date/time. Pass null to clear.
    */
-  onChange: (date: Date | null) => void;
+  onChange: (value: DateTimeValue | null) => void;
 
   /**
    * Called when user wants to close the picker (e.g., clicking close button).
@@ -328,7 +330,7 @@ export interface BaseDatePickerRenderProps<
   restoreFocus?: () => void;
 
   /**
-   * Initial calendar month hint. Picker can manage its own navigation state after mount.
+   * Initial calendar month hint (any day in the month). Picker can manage its own navigation state after mount.
    */
   defaultMonth?: Date;
 
@@ -336,7 +338,7 @@ export interface BaseDatePickerRenderProps<
    * Last confirmed/committed value (before current input changes).
    * Useful for pickers that need to distinguish between preview and committed states.
    */
-  confirmedValue?: Date | null;
+  confirmedValue?: DateTimeValue | null;
 }
 
 /**
@@ -348,13 +350,13 @@ export interface DatePickerRenderProps extends BaseDatePickerRenderProps<DateFie
  * Time zone controls for datetime pickers.
  */
 export interface DateTimeTimeControls {
-  /** Current UTC mode state */
+  /** Whether the value is in UTC */
   isUTC: boolean;
-  /** Toggle UTC mode */
+  /** Toggle UTC mode: the same moment is written in UTC, or in the local offset */
   onUTCChange: (isUTC: boolean) => void;
-  /** Current include time state (only when timeRequired is false) */
+  /** Whether the value includes a time (only when timeRequired is false) */
   includeTime: boolean;
-  /** Toggle include time */
+  /** Toggle include time: a time is added to the date at midnight, or removed from it */
   onIncludeTimeChange: (includeTime: boolean) => void;
 }
 

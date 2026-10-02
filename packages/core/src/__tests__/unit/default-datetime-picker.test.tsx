@@ -1,0 +1,280 @@
+/**
+ * Unit tests for DefaultDateTimePicker: the picker reads and writes DateTimeValue, so the
+ * offset and the time of the value survive every change made from the picker.
+ */
+import { fireEvent, render, screen } from '@testing-library/react';
+import type { ComponentProps } from 'react';
+import { describe, expect, it, vi } from 'vitest';
+import { localOffsetAt } from '../../pickers/date-time-value';
+import { DefaultDateTimePicker } from '../../pickers/default-datetime-picker';
+import type { DateTimeFieldDefinition } from '../../types';
+
+type Props = ComponentProps<typeof DefaultDateTimePicker>;
+
+const field = (extra: Partial<DateTimeFieldDefinition> = {}): DateTimeFieldDefinition => ({
+  key: 'at',
+  label: 'At',
+  type: 'datetime',
+  operators: ['is'],
+  ...extra,
+});
+
+function propsOf(over: Partial<Props> = {}): Props {
+  return {
+    value: null,
+    onChange: vi.fn(),
+    onClose: vi.fn(),
+    fieldDef: field(),
+    timeControls: {
+      isUTC: false,
+      onUTCChange: vi.fn(),
+      includeTime: true,
+      onIncludeTimeChange: vi.fn(),
+    },
+    ...over,
+  };
+}
+
+const timeInput = () => document.querySelector('input[type="time"]') as HTMLInputElement;
+const day = (label: RegExp) => screen.getByRole('button', { name: label });
+
+describe('DefaultDateTimePicker', () => {
+  describe('the time it shows', () => {
+    it('shows 14:30 for a value with seconds, milliseconds and Z (b)', () => {
+      render(
+        <DefaultDateTimePicker
+          {...propsOf({ value: { date: '2024-03-05', time: '14:30:45.123', offset: 'Z' } })}
+        />
+      );
+      expect(timeInput().value).toBe('14:30');
+    });
+
+    it('shows the time of a value with an offset as written, not converted', () => {
+      render(
+        <DefaultDateTimePicker
+          {...propsOf({ value: { date: '2024-03-05', time: '14:30:00', offset: '+09:00' } })}
+        />
+      );
+      expect(timeInput().value).toBe('14:30');
+    });
+
+    it('shows 00:00 when the value moves to midnight (e)', () => {
+      const props = propsOf({ value: { date: '2024-03-05', time: '14:30' } });
+      const { rerender } = render(<DefaultDateTimePicker {...props} />);
+      rerender(<DefaultDateTimePicker {...props} value={{ date: '2024-03-05', time: '00:00' }} />);
+      expect(timeInput().value).toBe('00:00');
+    });
+
+    it('shows no time for a date', () => {
+      render(<DefaultDateTimePicker {...propsOf({ value: { date: '2024-03-05' } })} />);
+      expect(timeInput().value).toBe('');
+    });
+  });
+
+  describe('choosing a date', () => {
+    it('keeps the offset and the time of a +09:00 value (d)', () => {
+      const onChange = vi.fn();
+      render(
+        <DefaultDateTimePicker
+          {...propsOf({
+            onChange,
+            value: { date: '2024-03-05', time: '14:30:00', offset: '+09:00' },
+          })}
+        />
+      );
+      fireEvent.click(day(/March 10th, 2024/));
+      expect(onChange).toHaveBeenCalledWith({
+        date: '2024-03-10',
+        time: '14:30:00',
+        offset: '+09:00',
+      });
+    });
+
+    it('keeps the seconds and milliseconds of the value', () => {
+      const onChange = vi.fn();
+      render(
+        <DefaultDateTimePicker
+          {...propsOf({
+            onChange,
+            value: { date: '2024-03-05', time: '14:30:45.123', offset: 'Z' },
+          })}
+        />
+      );
+      fireEvent.click(day(/March 10th, 2024/));
+      expect(onChange).toHaveBeenCalledWith({
+        date: '2024-03-10',
+        time: '14:30:45.123',
+        offset: 'Z',
+      });
+    });
+
+    it('starts a new value at midnight in UTC when UTC is on', () => {
+      const onChange = vi.fn();
+      render(
+        <DefaultDateTimePicker
+          {...propsOf({
+            onChange,
+            defaultMonth: new Date(2024, 2, 1),
+            timeControls: {
+              isUTC: true,
+              onUTCChange: vi.fn(),
+              includeTime: true,
+              onIncludeTimeChange: vi.fn(),
+            },
+          })}
+        />
+      );
+      fireEvent.click(day(/March 10th, 2024/));
+      expect(onChange).toHaveBeenCalledWith({ date: '2024-03-10', time: '00:00:00', offset: 'Z' });
+    });
+
+    it('starts a new value at local midnight with the local offset', () => {
+      const onChange = vi.fn();
+      render(
+        <DefaultDateTimePicker {...propsOf({ onChange, defaultMonth: new Date(2024, 2, 1) })} />
+      );
+      fireEvent.click(day(/March 10th, 2024/));
+      expect(onChange).toHaveBeenCalledWith({
+        date: '2024-03-10',
+        time: '00:00:00',
+        offset: localOffsetAt(new Date(2024, 2, 10)),
+      });
+    });
+
+    it('writes a date alone while the time is not included', () => {
+      const onChange = vi.fn();
+      render(
+        <DefaultDateTimePicker
+          {...propsOf({
+            onChange,
+            value: { date: '2024-03-05' },
+            timeControls: {
+              isUTC: false,
+              onUTCChange: vi.fn(),
+              includeTime: false,
+              onIncludeTimeChange: vi.fn(),
+            },
+          })}
+        />
+      );
+      fireEvent.click(day(/March 10th, 2024/));
+      expect(onChange).toHaveBeenCalledWith({ date: '2024-03-10' });
+    });
+
+    it('selects the cell of the date of the value in its own offset', () => {
+      render(
+        <DefaultDateTimePicker
+          {...propsOf({ value: { date: '2024-03-05', time: '23:30:00', offset: '-08:00' } })}
+        />
+      );
+      expect(screen.getByRole('gridcell', { selected: true })).toContainElement(
+        day(/March 5th, 2024/)
+      );
+    });
+  });
+
+  describe('choosing a time', () => {
+    it('keeps the date and the offset', () => {
+      const onChange = vi.fn();
+      render(
+        <DefaultDateTimePicker
+          {...propsOf({
+            onChange,
+            value: { date: '2024-03-05', time: '14:30:00', offset: '+09:00' },
+          })}
+        />
+      );
+      fireEvent.change(timeInput(), { target: { value: '09:15' } });
+      expect(onChange).toHaveBeenCalledWith({
+        date: '2024-03-05',
+        time: '09:15:00',
+        offset: '+09:00',
+      });
+    });
+
+    it('uses the first day of the displayed month when there is no value yet', () => {
+      const onChange = vi.fn();
+      render(
+        <DefaultDateTimePicker {...propsOf({ onChange, defaultMonth: new Date(2024, 2, 20) })} />
+      );
+      fireEvent.change(timeInput(), { target: { value: '09:15' } });
+      expect(onChange).toHaveBeenCalledWith({
+        date: '2024-03-01',
+        time: '09:15:00',
+        offset: localOffsetAt(new Date(2024, 2, 1, 9, 15)),
+      });
+    });
+
+    it('is disabled while the time is not included', () => {
+      render(
+        <DefaultDateTimePicker
+          {...propsOf({
+            timeControls: {
+              isUTC: false,
+              onUTCChange: vi.fn(),
+              includeTime: false,
+              onIncludeTimeChange: vi.fn(),
+            },
+          })}
+        />
+      );
+      expect(timeInput()).toBeDisabled();
+    });
+
+    it('is enabled when the field requires a time', () => {
+      render(
+        <DefaultDateTimePicker
+          {...propsOf({
+            fieldDef: field({ timeRequired: true }),
+            timeControls: {
+              isUTC: false,
+              onUTCChange: vi.fn(),
+              includeTime: false,
+              onIncludeTimeChange: vi.fn(),
+            },
+          })}
+        />
+      );
+      expect(timeInput()).toBeEnabled();
+      expect(screen.queryByLabelText(/include time/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('the controls', () => {
+    it('reports a change of the include time checkbox', () => {
+      const onIncludeTimeChange = vi.fn();
+      render(
+        <DefaultDateTimePicker
+          {...propsOf({
+            timeControls: {
+              isUTC: false,
+              onUTCChange: vi.fn(),
+              includeTime: false,
+              onIncludeTimeChange,
+            },
+          })}
+        />
+      );
+      fireEvent.click(screen.getByLabelText(/include time/i));
+      expect(onIncludeTimeChange).toHaveBeenCalledWith(true);
+    });
+
+    it('reports a change of the UTC checkbox', () => {
+      const onUTCChange = vi.fn();
+      render(
+        <DefaultDateTimePicker
+          {...propsOf({
+            timeControls: {
+              isUTC: false,
+              onUTCChange,
+              includeTime: true,
+              onIncludeTimeChange: vi.fn(),
+            },
+          })}
+        />
+      );
+      fireEvent.click(screen.getByLabelText('UTC'));
+      expect(onUTCChange).toHaveBeenCalledWith(true);
+    });
+  });
+});

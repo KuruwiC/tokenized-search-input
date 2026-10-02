@@ -1,3 +1,5 @@
+import { calendarDayToDate } from '../pickers/calendar-days';
+import type { DateTimeValue } from '../pickers/date-time-value';
 import { DefaultDatePicker } from '../pickers/default-date-picker';
 import { DefaultDateTimePicker } from '../pickers/default-datetime-picker';
 import type { SuggestionType } from '../plugins/suggestion-plugin';
@@ -24,7 +26,7 @@ export interface SuggestionContentProps {
   activeIndex: number;
   query: string;
   fieldKey: string | null;
-  dateValue: Date | null;
+  dateValue: DateTimeValue | null;
   customDisplayMode: 'prepend' | 'append' | null;
   fields: FieldDefinition[];
   classNames?: ClassNames;
@@ -37,10 +39,11 @@ export interface SuggestionContentProps {
   onCustomLoadMore?: () => void;
   paginationLabels?: PaginationLabels;
   optionIdPrefix: string;
-  syncedDate: Date | null | undefined;
+  /** What the input says the picker should show, ahead of `dateValue` */
+  syncedValue: DateTimeValue | null | undefined;
   renderDatePicker?: (props: DatePickerRenderProps) => React.ReactNode;
   renderDateTimePicker?: (props: DateTimePickerRenderProps) => React.ReactNode;
-  onDateChange: (date: Date | null) => void;
+  onDateChange: (value: DateTimeValue | null) => void;
   onDateClose: () => void;
   restoreFocus: () => void;
   isUTC: boolean;
@@ -69,7 +72,7 @@ export function renderSuggestionContent({
   onCustomLoadMore,
   paginationLabels,
   optionIdPrefix,
-  syncedDate,
+  syncedValue,
   renderDatePicker,
   renderDateTimePicker,
   onDateChange,
@@ -80,6 +83,9 @@ export function renderSuggestionContent({
   includeTime,
   onIncludeTimeChange,
 }: SuggestionContentProps) {
+  const shown = syncedValue ?? dateValue;
+  const defaultMonth = shown ? calendarDayToDate(shown.date) : new Date();
+
   switch (type) {
     case 'field':
       return (
@@ -198,12 +204,12 @@ export function renderSuggestionContent({
       const field = fields.find((f) => f.key === fieldKey) as DateFieldDefinition | undefined;
       if (!field) return null;
       const props: DatePickerRenderProps = {
-        value: syncedDate ?? dateValue,
+        value: shown,
         onChange: onDateChange,
         onClose: onDateClose,
         fieldDef: field,
         restoreFocus,
-        defaultMonth: syncedDate ?? dateValue ?? new Date(),
+        defaultMonth,
         confirmedValue: dateValue,
       };
       if (field.renderPicker) {
@@ -218,13 +224,13 @@ export function renderSuggestionContent({
       const field = fields.find((f) => f.key === fieldKey) as DateTimeFieldDefinition | undefined;
       if (!field) return null;
       const props: DateTimePickerRenderProps = {
-        value: syncedDate ?? dateValue,
+        value: shown,
         onChange: onDateChange,
         onClose: onDateClose,
         fieldDef: field,
         timeControls: { isUTC, onUTCChange, includeTime, onIncludeTimeChange },
         restoreFocus,
-        defaultMonth: syncedDate ?? dateValue ?? new Date(),
+        defaultMonth,
         confirmedValue: dateValue,
       };
       if (field.renderPicker) {

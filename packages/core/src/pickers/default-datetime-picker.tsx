@@ -4,9 +4,22 @@ import { Check } from '../icons/check';
 import { ChevronLeft } from '../icons/chevron-left';
 import { ChevronRight } from '../icons/chevron-right';
 import type { DateTimePickerRenderProps } from '../types';
+import { calendarDayToDate, toCalendarDay } from './calendar-days';
 import { calendarClassNames, closeButtonClassName } from './calendar-styles';
 import { isSameMonth, parseISOToDate, supportsUTCMode } from './date-format';
+import { type DateTimeValue, localOffsetAt, toInstant } from './date-time-value';
 import { TimePicker, type TimeValue } from './time-picker';
+
+const START_OF_DAY = '00:00:00';
+
+function toTimeValue(time: string | undefined): TimeValue | null {
+  if (time === undefined) return null;
+  return { hours: Number(time.slice(0, 2)), minutes: Number(time.slice(3, 5)) };
+}
+
+function toTimeString({ hours, minutes }: TimeValue): string {
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+}
 
 /**
  * Default datetime picker component using react-day-picker with time selection.
@@ -14,7 +27,9 @@ import { TimePicker, type TimeValue } from './time-picker';
  *
  * The picker manages its own calendar month state internally.
  * When `value` changes from external input, the calendar auto-syncs to show that month.
- * Time is derived directly from `value`.
+ * The calendar day and the time are read from `value` as they are written, and a change
+ * keeps the offset of `value`; a value that does not exist yet starts in UTC or in the
+ * local offset, as `timeControls.isUTC` says.
  */
 export const DefaultDateTimePicker: FC<DateTimePickerRenderProps> = ({
   value,
@@ -32,26 +47,22 @@ export const DefaultDateTimePicker: FC<DateTimePickerRenderProps> = ({
   const showIncludeTimeCheckbox = !fieldDef.timeRequired;
   const isTimeEnabled = fieldDef.timeRequired || includeTime;
 
-  // Convert value to local date for calendar display (UTC mode aware)
-  const valueAsLocalDate = useMemo(() => {
-    if (!value) return null;
-    if (isUTC) {
-      return new Date(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate());
-    }
-    return value;
-  }, [value, isUTC]);
+  const day = value?.date;
+  const selectedDate = useMemo(() => (day ? calendarDayToDate(day) : undefined), [day]);
+  const time = value?.time;
+  const currentTime = useMemo(() => toTimeValue(time), [time]);
 
   // Internal month state for calendar navigation
-  const [month, setMonth] = useState<Date>(defaultMonth ?? valueAsLocalDate ?? new Date());
+  const [month, setMonth] = useState<Date>(defaultMonth ?? selectedDate ?? new Date());
   const monthRef = useRef(month);
   monthRef.current = month;
 
   // Auto-sync calendar to value when value changes ("last action wins")
   useEffect(() => {
-    if (valueAsLocalDate && !isSameMonth(valueAsLocalDate, monthRef.current)) {
-      setMonth(valueAsLocalDate);
+    if (selectedDate && !isSameMonth(selectedDate, monthRef.current)) {
+      setMonth(selectedDate);
     }
-  }, [valueAsLocalDate]);
+  }, [selectedDate]);
 
   const hour24 = fieldDef.timeOptions?.hour24 ?? true;
 
@@ -78,106 +89,27 @@ export const DefaultDateTimePicker: FC<DateTimePickerRenderProps> = ({
     };
   }, [minDate, maxDate, fieldDef.disabledDates]);
 
-  const handleDateSelect = (date: Date | undefined) => {
-    if (date) {
-      let newDate: Date;
-      if (isUTC) {
-        // Calendar returns a Date in local timezone (e.g., "Jan 15 00:00 JST").
-        // Extract the visible year/month/day and construct a UTC Date directly.
-        const year = date.getFullYear();
-        const month = date.getMonth();
-        const day = date.getDate();
-        // Use localTime when time is enabled, otherwise 00:00:00
-        const hours = isTimeEnabled ? (localTime?.hours ?? 0) : 0;
-        const minutes = isTimeEnabled ? (localTime?.minutes ?? 0) : 0;
-        newDate = new Date(Date.UTC(year, month, day, hours, minutes, 0, 0));
-      } else {
-        newDate = new Date(date);
-        // Use localTime when time is enabled, otherwise 00:00:00
-        newDate.setHours(isTimeEnabled ? (localTime?.hours ?? 0) : 0);
-        newDate.setMinutes(isTimeEnabled ? (localTime?.minutes ?? 0) : 0);
-        newDate.setSeconds(0);
-        newDate.setMilliseconds(0);
-      }
-      onChange(newDate);
-      // Restore focus to value input and scroll into view
-      restoreFocus?.();
-    }
-  };
-
-  const handleTimeChange = (time: TimeValue) => {
-    // Update local time state
-    setLocalTime(time);
-
-    // Use current value, or fall back to the displayed calendar month (first day)
-    // This prevents unexpected "today" when user adjusts time before selecting a date
-    let newDate: Date;
-    if (isUTC) {
-      // Extract UTC date parts from value, or use calendar month's visible date
-      const baseYear = value ? value.getUTCFullYear() : month.getFullYear();
-      const baseMonth = value ? value.getUTCMonth() : month.getMonth();
-      const baseDay = value ? value.getUTCDate() : 1;
-      newDate = new Date(Date.UTC(baseYear, baseMonth, baseDay, time.hours, time.minutes, 0, 0));
-    } else {
-      newDate = value ? new Date(value) : new Date(month.getFullYear(), month.getMonth(), 1);
-      newDate.setHours(time.hours);
-      newDate.setMinutes(time.minutes);
-      newDate.setSeconds(0);
-      newDate.setMilliseconds(0);
-    }
-    onChange(newDate);
-  };
-
-  // Local time state - preserved even when includeTime is unchecked
-  const [localTime, setLocalTime] = useState<TimeValue | null>(() => {
-    if (!value) return null;
-    if (isUTC) {
-      return { hours: value.getUTCHours(), minutes: value.getUTCMinutes() };
-    }
-    return { hours: value.getHours(), minutes: value.getMinutes() };
+  /** The value for `date` at `at`: the offset of the current value, else UTC or the local one. */
+  const valueAt = (date: string, at: string): DateTimeValue => ({
+    date,
+    time: at,
+    offset: value?.offset ?? (isUTC ? 'Z' : localOffsetAt(toInstant({ date, time: at }))),
   });
 
-  // Sync localTime when value changes with time (datetime format)
-  useEffect(() => {
-    if (!value) return;
-    const newTime = isUTC
-      ? { hours: value.getUTCHours(), minutes: value.getUTCMinutes() }
-      : { hours: value.getHours(), minutes: value.getMinutes() };
-    // Only update if the time actually changed (avoid resetting when date-only value comes in)
-    if (newTime.hours !== 0 || newTime.minutes !== 0) {
-      setLocalTime(newTime);
-    }
-  }, [value, isUTC]);
+  const handleDateSelect = (cell: Date | undefined) => {
+    if (!cell) return;
+    const date = toCalendarDay(cell);
+    onChange(isTimeEnabled ? valueAt(date, time ?? START_OF_DAY) : { date });
+    // Restore focus to value input and scroll into view
+    restoreFocus?.();
+  };
 
-  // Track previous includeTime to detect checkbox toggle
-  const prevIncludeTimeRef = useRef(includeTime);
-  useEffect(() => {
-    const wasIncludeTime = prevIncludeTimeRef.current;
-    prevIncludeTimeRef.current = includeTime;
-
-    // When includeTime is toggled, update value with localTime
-    if (wasIncludeTime !== includeTime && value) {
-      let newDate: Date;
-      if (isUTC) {
-        const year = value.getUTCFullYear();
-        const m = value.getUTCMonth();
-        const day = value.getUTCDate();
-        const hours = includeTime ? (localTime?.hours ?? 0) : 0;
-        const minutes = includeTime ? (localTime?.minutes ?? 0) : 0;
-        newDate = new Date(Date.UTC(year, m, day, hours, minutes, 0, 0));
-      } else {
-        newDate = new Date(value);
-        newDate.setHours(includeTime ? (localTime?.hours ?? 0) : 0);
-        newDate.setMinutes(includeTime ? (localTime?.minutes ?? 0) : 0);
-        newDate.setSeconds(0);
-        newDate.setMilliseconds(0);
-      }
-      onChange(newDate);
-    }
-  }, [includeTime, value, isUTC, localTime, onChange]);
-
-  // Use localTime for display (preserved even when includeTime is off)
-  const currentTime = localTime;
+  const handleTimeChange = (next: TimeValue) => {
+    // Use the current value's day, or fall back to the displayed calendar month (first day)
+    // This prevents unexpected "today" when user adjusts time before selecting a date
+    const date = day ?? toCalendarDay(new Date(month.getFullYear(), month.getMonth(), 1));
+    onChange(valueAt(date, toTimeString(next)));
+  };
 
   // Restore focus when leaving TimePicker (blur to outside of TimePicker container)
   const handleTimePickerBlur = (e: React.FocusEvent) => {
@@ -198,7 +130,7 @@ export const DefaultDateTimePicker: FC<DateTimePickerRenderProps> = ({
     <div className="tsi-picker-body" data-datetime-picker>
       <DayPicker
         mode="single"
-        selected={valueAsLocalDate ?? undefined}
+        selected={selectedDate}
         onSelect={handleDateSelect}
         month={month}
         onMonthChange={setMonth}
