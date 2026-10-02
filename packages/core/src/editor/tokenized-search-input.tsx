@@ -28,12 +28,10 @@ import { SpacerNode } from '../extensions/spacer-node';
 import { TokenNavigation } from '../extensions/token-navigation';
 import { useDevWarnings } from '../hooks/use-dev-warnings';
 import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
-import { usePluginState } from '../hooks/use-plugin-state';
 import {
   clearDismissed,
   dismissSuggestion,
   getSuggestionState,
-  suggestionKey,
 } from '../plugins/suggestion-plugin';
 import { getTokenFocusState, tokenFocusKey } from '../plugins/token-focus-plugin';
 import {
@@ -59,6 +57,7 @@ import {
 import { ClearButton } from './clear-button';
 import { isEditorEmpty } from './editor-state';
 import { useSuggestionHandlers } from './hooks/use-suggestion-handlers';
+import { SuggestionAria } from './suggestion-aria';
 import { useCustomSuggestions } from './use-custom-suggestions';
 import { useFieldSuggestions } from './use-field-suggestions';
 
@@ -226,26 +225,36 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       CorePluginsExtension,
     ]);
 
-    const editor = useEditor({
-      immediatelyRender,
-      extensions,
-      content: defaultValue
+    // useEditor compares these with the editor's options on every render and calls
+    // setOptions when they differ, so both keep their identity: the content is read
+    // once, and the attributes change only with `disabled`. The combobox
+    // relationships that follow the suggestion state are written by SuggestionAria.
+    const [initialContent] = useState(() =>
+      defaultValue
         ? parseQueryToDoc(defaultValue, initialContext.fields, {
             freeTextMode: initialContext.freeTextMode,
             unknownFields: initialContext.unknownFields,
             delimiter: initialContext.delimiter,
           })
-        : '',
-      editable: !disabled,
-      editorProps: {
+        : ''
+    );
+    const editorProps = useMemo(
+      () => ({
         attributes: {
           'aria-label': 'Search query input',
           role: 'combobox',
-          'aria-haspopup': 'listbox',
+          ...(disabled ? { 'aria-disabled': 'true' } : {}),
         },
-        // Touch/pointer events flow to ProseMirror (not blocked by stopEvent).
-        // Browser synthesizes click from touch, which is handled by React onClick.
-      },
+      }),
+      [disabled]
+    );
+
+    const editor = useEditor({
+      immediatelyRender,
+      extensions,
+      content: initialContent,
+      editable: !disabled,
+      editorProps,
       onCreate: ({ editor: ed }) => {
         const tr = ed.state.tr;
         tr.setMeta(FORCE_VALIDATION_CHECK, true);
@@ -335,43 +344,6 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       setIsEmpty(isEditorEmpty(editor));
     }, [editor]);
 
-    // Subscribe to suggestion state for ARIA
-    const suggestionState = usePluginState(editor, suggestionKey);
-    const isSuggestionOpen =
-      suggestionState && suggestionState.type !== null && !suggestionState.dismissed;
-
-    // Dynamic combobox relationships must live on ProseMirror's actual
-    // contenteditable element, rather than EditorContent's wrapper.
-    useEffect(() => {
-      if (!editor || editor.isDestroyed) return;
-      const input = editor.view.dom;
-      const popupRole =
-        suggestionState?.type === 'date' || suggestionState?.type === 'datetime'
-          ? 'dialog'
-          : 'listbox';
-      input.setAttribute('aria-expanded', isSuggestionOpen ? 'true' : 'false');
-      input.setAttribute('aria-haspopup', popupRole);
-      if (isSuggestionOpen) {
-        input.setAttribute('aria-controls', suggestionListId);
-      } else {
-        input.removeAttribute('aria-controls');
-      }
-      const activeIndex = suggestionState?.activeIndex ?? -1;
-      const hasActiveOption = activeIndex >= 0 && isSuggestionOpen && popupRole === 'listbox';
-      if (hasActiveOption) {
-        input.setAttribute('aria-activedescendant', `${suggestionOptionIdPrefix}-${activeIndex}`);
-      } else {
-        input.removeAttribute('aria-activedescendant');
-      }
-    }, [
-      editor,
-      isSuggestionOpen,
-      suggestionState?.activeIndex,
-      suggestionState?.type,
-      suggestionListId,
-      suggestionOptionIdPrefix,
-    ]);
-
     // Update EditorContext when props change
     useEffect(() => {
       if (!editor || editor.isDestroyed) return;
@@ -410,20 +382,10 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       paginationLabels,
     ]);
 
-    // Sync disabled state with editor.isEditable and aria-disabled
+    // Sync disabled state with editor.isEditable. aria-disabled follows from editorProps.
     useEffect(() => {
       if (!editor || editor.isDestroyed) return;
       editor.setEditable(!disabled);
-      editor.setOptions({
-        editorProps: {
-          attributes: {
-            'aria-label': 'Search query input',
-            role: 'combobox',
-            'aria-haspopup': 'listbox',
-            ...(disabled ? { 'aria-disabled': 'true' } : {}),
-          },
-        },
-      });
     }, [editor, disabled]);
 
     // Re-validate when validation config changes
@@ -842,6 +804,14 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
           <div className={cn('tsi-placeholder', classNames?.placeholder)} aria-hidden="true">
             {placeholder}
           </div>
+        )}
+
+        {editor && (
+          <SuggestionAria
+            editor={editor}
+            listboxId={suggestionListId}
+            optionIdPrefix={suggestionOptionIdPrefix}
+          />
         )}
 
         {editor && (

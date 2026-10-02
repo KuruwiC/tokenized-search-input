@@ -1,4 +1,5 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { Editor } from '@tiptap/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   TokenizedSearchInput,
@@ -163,5 +164,41 @@ describe('reactive configuration', () => {
     view.rerender(<TokenizedSearchInput fields={[]} defaultValue="status:is:active" />);
     await waitFor(() => expect(screen.queryByText('Currently Active')).not.toBeInTheDocument());
     expect(screen.getByText('active')).toBeInTheDocument();
+  });
+
+  it('keeps aria-disabled while disabled is toggled and other props change', async () => {
+    const props = { fields: extendedFields, defaultValue: 'status:is:active' };
+    const view = render(<TokenizedSearchInput {...props} disabled />);
+    const combobox = screen.getByRole('combobox');
+    await waitFor(() => expect(combobox).toHaveAttribute('aria-disabled', 'true'));
+    view.rerender(<TokenizedSearchInput {...props} disabled={false} />);
+    await waitFor(() => expect(combobox).not.toHaveAttribute('aria-disabled'));
+    view.rerender(<TokenizedSearchInput {...props} disabled />);
+    await waitFor(() => expect(combobox).toHaveAttribute('aria-disabled', 'true'));
+    view.rerender(<TokenizedSearchInput {...props} disabled placeholder="Other" />);
+    view.rerender(<TokenizedSearchInput {...props} disabled placeholder="Another" />);
+    expect(combobox).toHaveAttribute('aria-disabled', 'true');
+    expect(combobox).toHaveAttribute('aria-haspopup', 'listbox');
+    expect(combobox).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('does not reapply editor options when unrelated props change', async () => {
+    const props = { fields: extendedFields, defaultValue: 'status:is:active' };
+    const view = render(<TokenizedSearchInput {...props} />);
+    await screen.findByRole('combobox');
+    // useEditor re-applies its options once shortly after mount.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const setOptions = vi.spyOn(Editor.prototype, 'setOptions');
+    try {
+      view.rerender(<TokenizedSearchInput {...props} placeholder="One" />);
+      view.rerender(
+        <TokenizedSearchInput {...props} placeholder="Two" classNames={{ root: 'x' }} />
+      );
+      view.rerender(<TokenizedSearchInput {...props} placeholder="Three" singleLine />);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(setOptions).not.toHaveBeenCalled();
+    } finally {
+      setOptions.mockRestore();
+    }
   });
 });
