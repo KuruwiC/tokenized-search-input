@@ -3,7 +3,7 @@
  * the one block that holds focus, and a block's dropdown owns the keys it uses.
  */
 
-import { cleanup, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { applyTokenAction } from '../../tokens/filter-token/token-actions';
@@ -165,19 +165,18 @@ describe('Token keyboard handling', () => {
       const user = userEvent.setup();
       await renderInput('status:is:active', { unknownFields: {} });
       const group = screen.getByRole('group', { name: /status/i });
-      const label = await focusBlock(user, group, 'Select field');
+      await focusBlock(user, group, 'Select field');
 
       await user.keyboard('{Enter}');
 
-      await waitFor(() => expect(label).toHaveAttribute('aria-expanded', 'true'));
+      const input = await within(group).findByRole('combobox', { name: 'Select field' });
+      expect(input).toHaveAttribute('aria-expanded', 'true');
       expect(document.querySelector('button input')).toBeNull();
-      expect(label).toHaveAttribute('role', 'combobox');
-      expect(document.getElementById(label.getAttribute('aria-controls') ?? '')).toHaveAttribute(
+      expect(document.getElementById(input.getAttribute('aria-controls') ?? '')).toHaveAttribute(
         'role',
         'listbox'
       );
-      expect(within(group).getByRole('textbox', { name: 'Field' })).toBeInTheDocument();
-      expect(label.contains(document.activeElement)).toBe(true);
+      expect(input).toHaveFocus();
     });
 
     it('changes the field once when Tab picks the text of a combobox without a list', async () => {

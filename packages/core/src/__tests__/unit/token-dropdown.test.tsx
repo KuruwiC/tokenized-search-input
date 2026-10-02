@@ -197,3 +197,54 @@ describe('useTokenDropdown', () => {
     expect(result.current.holdsFocus(null)).toBe(false);
   });
 });
+
+describe('useTokenDropdown placement', () => {
+  afterEach(() => {
+    document.body.replaceChildren();
+  });
+
+  it('does not render again when the page scrolls without moving the trigger', () => {
+    const container = document.createElement('div');
+    container.className = 'tsi-container';
+    const anchor = document.createElement('button');
+    container.appendChild(anchor);
+    document.body.appendChild(container);
+    const anchorRef = { current: anchor };
+    let renders = 0;
+    const { result } = renderHook(() => {
+      renders += 1;
+      return useTokenDropdown(anchorRef);
+    });
+    act(() => result.current.open(0));
+    const rendersWhenOpen = renders;
+
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+      window.dispatchEvent(new Event('resize'));
+    });
+
+    expect(result.current.placement).not.toBeNull();
+    expect(renders).toBe(rendersWhenOpen);
+  });
+
+  it('follows the trigger when it moves', () => {
+    const container = document.createElement('div');
+    container.className = 'tsi-container';
+    const anchor = document.createElement('button');
+    container.appendChild(anchor);
+    document.body.appendChild(container);
+    let top = 10;
+    anchor.getBoundingClientRect = () => new DOMRect(5, top, 20, 20);
+    const anchorRef = { current: anchor };
+    const { result } = renderHook(() => useTokenDropdown(anchorRef));
+    act(() => result.current.open(0));
+    expect(result.current.placement).toMatchObject({ top: 34, left: 5 });
+
+    top = 50;
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+    });
+
+    expect(result.current.placement).toMatchObject({ top: 74, left: 5 });
+  });
+});

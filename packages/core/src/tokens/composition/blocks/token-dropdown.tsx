@@ -41,6 +41,10 @@ export interface TokenDropdownState {
   open: (activeIndex?: number) => void;
   close: () => void;
   setActiveIndex: (index: number) => void;
+  /** The id of option `index`, which the trigger names as active through aria-activedescendant. */
+  optionId: (index: number) => string;
+  /** The id of the active option while the list is open and has such an option, else undefined. */
+  activeOptionId: (optionCount: number) => string | undefined;
   /** Whether `target` is the trigger, something inside it, or the list. */
   holdsFocus: (target: EventTarget | null) => boolean;
   /**
@@ -72,9 +76,17 @@ export function useTokenDropdown(
     const container = anchor?.closest<HTMLElement>('.tsi-container');
     if (!anchor || !container) return;
 
+    // A scroll inside the list, or of something else, leaves the trigger where it was
+    let placedTop: number | undefined;
+    let placedLeft: number | undefined;
     const place = () => {
       const rect = anchor.getBoundingClientRect();
-      setPlacement({ container, top: rect.bottom + LIST_OFFSET, left: rect.left });
+      const top = rect.bottom + LIST_OFFSET;
+      const left = rect.left;
+      if (top === placedTop && left === placedLeft) return;
+      placedTop = top;
+      placedLeft = left;
+      setPlacement({ container, top, left });
     };
     place();
     window.addEventListener('scroll', place, true);
@@ -92,6 +104,11 @@ export function useTokenDropdown(
   };
 
   const close = () => setIsOpen(false);
+
+  const optionId = (index: number) => `${listId}-${index}`;
+
+  const activeOptionId = (optionCount: number) =>
+    isOpen && activeIndex >= 0 && activeIndex < optionCount ? optionId(activeIndex) : undefined;
 
   const holdsFocus = (target: EventTarget | null) =>
     target instanceof Node &&
@@ -127,6 +144,8 @@ export function useTokenDropdown(
     open,
     close,
     setActiveIndex,
+    optionId,
+    activeOptionId,
     holdsFocus,
     handleListKey,
   };
@@ -203,6 +222,7 @@ export function TokenDropdown({
   return createPortal(
     <DropdownList
       id={dropdown.listId}
+      optionId={dropdown.optionId}
       listRef={dropdown.listRef}
       label={label}
       options={options}
@@ -221,6 +241,7 @@ export function TokenDropdown({
 
 interface DropdownListProps {
   id: string;
+  optionId: (index: number) => string;
   listRef: RefObject<HTMLDivElement>;
   label: string;
   options: readonly TokenDropdownOption[];
@@ -237,6 +258,7 @@ interface DropdownListProps {
 // Mounted only while the list is shown, so the active option is scrolled into view on open
 function DropdownList({
   id,
+  optionId,
   listRef,
   label,
   options,
@@ -268,6 +290,7 @@ function DropdownList({
             if (element) optionRefs.current.set(index, element);
             else optionRefs.current.delete(index);
           }}
+          id={optionId(index)}
           role="option"
           tabIndex={-1}
           aria-selected={option.selected}

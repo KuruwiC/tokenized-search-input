@@ -257,21 +257,36 @@ export function TokenLabelCombobox({
     );
   }
 
+  // The combobox is the element that takes the text, so it is the input while there is one and
+  // the trigger otherwise. A text field that offers no list is not a combobox at all.
+  const comboboxProps = {
+    role: 'combobox',
+    'aria-label': 'Select field',
+    'aria-haspopup': 'listbox',
+    'aria-expanded': dropdown.isOpen,
+    'aria-controls': dropdown.isOpen ? dropdown.listId : undefined,
+    'aria-activedescendant': dropdown.activeOptionId(filteredFields.length),
+  } as const;
+  // A press on the trigger keeps focus where it is; a press in the input places the caret
+  const keepFocus = (e: React.MouseEvent) => e.preventDefault();
+  const triggerProps = showInput
+    ? {}
+    : hasList
+      ? { ...comboboxProps, onMouseDown: keepFocus, onBlur: handleBlur }
+      : ({
+          role: 'button',
+          'aria-label': 'Select field',
+          onMouseDown: keepFocus,
+          onBlur: handleBlur,
+        } as const);
+
   return (
     <span
       ref={triggerRef}
-      role="combobox"
-      onMouseDown={(e) => {
-        if (!dropdown.isOpen) e.preventDefault();
-      }}
+      {...triggerProps}
       {...blockProps}
       tabIndex={tabIndex}
-      onBlur={handleBlur}
       className={cn('tsi-token-label-combobox', className)}
-      aria-haspopup={hasList ? 'listbox' : undefined}
-      aria-expanded={dropdown.isOpen}
-      aria-controls={hasList && dropdown.isOpen ? dropdown.listId : undefined}
-      aria-label="Select field"
       data-state={dropdown.isOpen ? 'open' : 'closed'}
       data-editable={isEditable}
     >
@@ -282,10 +297,12 @@ export function TokenLabelCombobox({
           type="text"
           value={hasUserEdited ? inputValue : inputValue || label}
           onChange={handleInputChange}
+          onBlur={handleBlur}
           className="tsi-token-label-combobox__input"
           style={{ width: inputWidth }}
-          aria-label="Field"
-          aria-autocomplete={hasList ? 'list' : 'none'}
+          {...(hasList
+            ? { ...comboboxProps, 'aria-autocomplete': 'list' }
+            : { 'aria-label': 'Field' })}
           autoComplete="off"
           spellCheck={false}
         />

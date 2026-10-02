@@ -110,9 +110,11 @@ export function TokenOperator({
         if (!dropdown.holdsFocus(e.relatedTarget)) dropdown.close();
       }}
       className={cn('tsi-token-operator--interactive', className)}
+      role="combobox"
       aria-haspopup="listbox"
       aria-expanded={dropdown.isOpen}
       aria-controls={dropdown.isOpen ? dropdown.listId : undefined}
+      aria-activedescendant={dropdown.activeOptionId(operators.length)}
       aria-label="Select operator"
       data-state={dropdown.isOpen ? 'open' : 'closed'}
       data-editable={isEditable}
