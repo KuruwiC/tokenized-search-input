@@ -564,6 +564,36 @@ describe('Document model', () => {
     });
   });
 
+  describe('free text validation in the snapshot', () => {
+    it('reports invalid free text tokens like filter tokens', async () => {
+      const rule: ValidationRule = {
+        id: 'no-free-text',
+        validate: (ctx) =>
+          ctx.tokens
+            .filter((t) => t.type === 'freeText')
+            .map((t) => ({
+              ruleId: 'no-free-text',
+              reason: 'free-text-not-allowed',
+              action: 'mark' as const,
+              targets: [{ tokenId: t.id, pos: t.pos }],
+            })),
+      };
+      const { ref } = await renderWithRef(statusFields, {
+        defaultValue: '"free text"',
+        freeTextMode: 'tokenize',
+        validation: { rules: [rule] },
+      });
+
+      await waitFor(() =>
+        expect(document.querySelectorAll('.node-freeTextToken [data-invalid="true"]')).toHaveLength(
+          1
+        )
+      );
+      const [segment] = freeTextSegments(ref.current?.getSnapshot() ?? { segments: [], text: '' });
+      expect(segment).toMatchObject({ invalid: true, invalidReason: 'free-text-not-allowed' });
+    });
+  });
+
   describe('meta-only transactions', () => {
     it('re-renders the token for a validation or display change without a document change', async () => {
       const { ref, editor } = await renderWithRef(statusFields, {

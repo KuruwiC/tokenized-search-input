@@ -92,6 +92,10 @@ export interface QuerySnapshotFreeTextToken {
   readonly type: 'freeText';
   /** Token value */
   readonly value: string;
+  /** Whether the token failed validation */
+  readonly invalid?: boolean;
+  /** Reason for validation failure */
+  readonly invalidReason?: string;
 }
 
 /**

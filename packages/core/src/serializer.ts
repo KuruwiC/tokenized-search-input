@@ -365,10 +365,14 @@ export function createQuerySnapshot(
     freeTextToken: (node, ctx) => {
       const value = node.attrs?.value || '';
       if (value.trim()) {
+        const id = ensureTokenId(node.attrs?.id);
+        const validation = getTokenMeta(state, id)?.validation;
         ctx.segments.push({
-          id: ensureTokenId(node.attrs?.id),
+          id,
           type: 'freeText',
           value,
+          invalid: validation ? true : undefined,
+          invalidReason: validation?.reason,
         });
       }
     },
