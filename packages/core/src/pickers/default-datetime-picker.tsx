@@ -7,7 +7,7 @@ import type { DateTimePickerRenderProps } from '../types';
 import { calendarDayToDate, createDayMatcher, toCalendarDay } from './calendar-days';
 import { calendarClassNames, closeButtonClassName } from './calendar-styles';
 import { isSameMonth, supportsUTCMode } from './date-format';
-import { type DateTimeValue, localOffsetAt, toInstant } from './date-time-value';
+import { atLocalTime, type DateTimeValue } from './date-time-value';
 import { TimePicker, type TimeValue } from './time-picker';
 
 const START_OF_DAY = '00:00:00';
@@ -70,12 +70,14 @@ export const DefaultDateTimePicker: FC<DateTimePickerRenderProps> = ({
     [minDate, maxDate, disabledDates, isUTC]
   );
 
-  /** The value for `date` at `at`: the offset of the current value, else UTC or the local one. */
-  const valueAt = (date: string, at: string): DateTimeValue => ({
-    date,
-    time: at,
-    offset: value?.offset ?? (isUTC ? 'Z' : localOffsetAt(toInstant({ date, time: at }))),
-  });
+  /**
+   * The value for `date` at `at`: in the offset of the current value, else in UTC or in
+   * the local zone, where the offset is the one the zone has at that moment.
+   */
+  const valueAt = (date: string, at: string): DateTimeValue => {
+    if (value?.offset !== undefined) return { date, time: at, offset: value.offset };
+    return isUTC ? { date, time: at, offset: 'Z' } : atLocalTime(date, at);
+  };
 
   const handleDateSelect = (cell: Date | undefined) => {
     if (!cell) return;

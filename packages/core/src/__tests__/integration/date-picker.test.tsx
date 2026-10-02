@@ -120,6 +120,35 @@ describe('datetime picker', () => {
     expect(new Date(tokenValue(ref)).toISOString()).toBe('2024-03-05T14:30:00.000Z');
   });
 
+  it('keeps the UTC choice when the time is removed and added again', async () => {
+    const ref = await openPicker('updated:gt:2024-03-05T14:30:00+09:00');
+    fireEvent.click(screen.getByLabelText('UTC'));
+    await waitFor(() => expect(tokenValue(ref)).toBe('2024-03-05T05:30:00Z'));
+
+    fireEvent.click(screen.getByLabelText(/include time/i));
+    await waitFor(() => expect(tokenValue(ref)).toBe('2024-03-05'));
+
+    fireEvent.click(screen.getByLabelText(/include time/i));
+    await waitFor(() => expect(tokenValue(ref)).toBe('2024-03-05T00:00:00Z'));
+  });
+
+  it('keeps the UTC and time controls while partial input is typed', async () => {
+    const user = userEvent.setup();
+    await openPicker('updated:gt:2024-03-05T14:30:00Z');
+    expect(screen.getByLabelText('UTC')).toBeChecked();
+
+    const input = document.activeElement as HTMLInputElement;
+    await user.clear(input);
+    await user.type(input, '2024-07-04T1');
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    });
+
+    expect(screen.getByLabelText('UTC')).toBeChecked();
+    expect(screen.getByLabelText(/include time/i)).toBeChecked();
+    expect(timeInput()).toBeEnabled();
+  });
+
   it('shows UTC as on only for a token in UTC', async () => {
     await openPicker('updated:gt:2024-03-05T14:30:00+09:00');
     expect(screen.getByLabelText('UTC')).not.toBeChecked();

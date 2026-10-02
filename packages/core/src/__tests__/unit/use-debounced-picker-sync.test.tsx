@@ -135,4 +135,31 @@ describe('useDebouncedPickerSync', () => {
     );
     expect(result.current.value).toEqual({ date: '2024-01-15' });
   });
+
+  it('says which value is complete, as opposed to where partial input points', () => {
+    const complete = renderHook(() =>
+      useDebouncedPickerSync({
+        inputValue: '2024-03-05T14:30:00Z',
+        selectedValue: null,
+        type: 'datetime',
+        parse: parse('datetime'),
+      })
+    );
+    expect(complete.result.current.complete).toEqual({
+      date: '2024-03-05',
+      time: '14:30:00',
+      offset: 'Z',
+    });
+
+    const partial = renderHook(() =>
+      useDebouncedPickerSync({
+        inputValue: '2024-07-04T11:3',
+        selectedValue: { date: '2024-03-05', time: '10:00', offset: 'Z' },
+        type: 'datetime',
+        parse: parse('datetime'),
+      })
+    );
+    expect(partial.result.current.complete).toBeNull();
+    expect(partial.result.current.value).toEqual({ date: '2024-07-04', time: '11:30' });
+  });
 });

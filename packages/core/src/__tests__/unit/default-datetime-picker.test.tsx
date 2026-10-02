@@ -5,7 +5,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { localOffsetAt } from '../../pickers/date-time-value';
+import { type DateTimeValue, localOffsetAt, toInstant } from '../../pickers/date-time-value';
 import { DefaultDateTimePicker } from '../../pickers/default-datetime-picker';
 import type { DateTimeFieldDefinition } from '../../types';
 
@@ -322,6 +322,31 @@ describe('DefaultDateTimePicker', () => {
       );
       expect(day(/March 5th, 2024/)).toBeEnabled();
       expect(day(/March 6th, 2024/)).toBeDisabled();
+    });
+  });
+
+  describe('across a clock change', () => {
+    const lastValue = (onChange: ReturnType<typeof vi.fn>): DateTimeValue =>
+      onChange.mock.calls[onChange.mock.calls.length - 1]?.[0];
+
+    it('writes a time the clock skips as the moment the clock moves to', () => {
+      const onChange = vi.fn();
+      render(<DefaultDateTimePicker {...propsOf({ onChange, value: { date: '2024-03-10' } })} />);
+      fireEvent.change(timeInput(), { target: { value: '02:30' } });
+      const written = lastValue(onChange);
+      expect(toInstant(written).getTime()).toBe(new Date(2024, 2, 10, 2, 30).getTime());
+      expect(written.offset).toBe(localOffsetAt(toInstant(written)));
+    });
+
+    it('writes local midnight of a day whose midnight the clock skips as the moment it is', () => {
+      const onChange = vi.fn();
+      render(
+        <DefaultDateTimePicker {...propsOf({ onChange, defaultMonth: new Date(2024, 8, 1) })} />
+      );
+      fireEvent.click(day(/September 8th, 2024/));
+      const written = lastValue(onChange);
+      expect(toInstant(written).getTime()).toBe(new Date(2024, 8, 8).getTime());
+      expect(written.offset).toBe(localOffsetAt(toInstant(written)));
     });
   });
 });

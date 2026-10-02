@@ -300,7 +300,7 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     [pickerField]
   );
 
-  const { value: syncedValue } = useDebouncedPickerSync({
+  const { value: syncedValue, complete } = useDebouncedPickerSync({
     inputValue: tokenInputValue,
     selectedValue: suggestionState?.dateValue ?? null,
     type: pickerType,
@@ -308,16 +308,16 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     delay: 200,
   });
 
-  // The value says whether it has a time and in which offset; the state only says
-  // so while there is no value yet.
+  // The picker mode comes from the value the token holds in full, or else the one the
+  // picker last committed: partial input only moves the calendar. While there is no
+  // value, the state is all there is to go by.
+  const settled = complete ?? suggestionState?.dateValue ?? null;
   const timeRequired = pickerField?.type === 'datetime' && pickerField.timeRequired === true;
   const isUTC =
-    syncedValue?.time !== undefined
-      ? syncedValue.offset === 'Z'
-      : (suggestionState?.isUTC ?? false);
+    settled?.time !== undefined ? settled.offset === 'Z' : (suggestionState?.isUTC ?? false);
   const includeTime =
     timeRequired ||
-    (syncedValue ? syncedValue.time !== undefined : (suggestionState?.includeTime ?? false));
+    (settled ? settled.time !== undefined : (suggestionState?.includeTime ?? false));
 
   const setTimeControls = useCallback(
     (controls: { isUTC?: boolean; includeTime?: boolean }) => {
@@ -331,33 +331,33 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
 
   const handleUTCChangeInternal = useCallback(
     (nextIsUTC: boolean) => {
-      if (syncedValue?.time === undefined) {
-        setTimeControls({ isUTC: nextIsUTC });
-        return;
-      }
+      // Remembered for the time a value has none, such as after its time was removed
+      setTimeControls({ isUTC: nextIsUTC });
+      if (settled?.time === undefined) return;
       // The same moment, written in UTC or in the local offset
-      const instant = toInstant(syncedValue);
+      const instant = toInstant(settled);
       const converted = fromInstant(instant, nextIsUTC ? 'Z' : localOffsetAt(instant));
       if (converted) handleDateChangeInternal(converted);
     },
-    [syncedValue, setTimeControls, handleDateChangeInternal]
+    [settled, setTimeControls, handleDateChangeInternal]
   );
 
   const handleIncludeTimeChangeInternal = useCallback(
     (nextIncludeTime: boolean) => {
-      if (!syncedValue) {
+      if (!settled) {
         setTimeControls({ includeTime: nextIncludeTime });
         return;
       }
       if (!nextIncludeTime) {
-        handleDateChangeInternal({ date: syncedValue.date });
+        handleDateChangeInternal({ date: settled.date });
         return;
       }
-      if (syncedValue.time !== undefined) return;
-      const midnight = localMidnight(syncedValue.date);
-      handleDateChangeInternal(isUTC ? { ...midnight, offset: 'Z' } : midnight);
+      if (settled.time !== undefined) return;
+      handleDateChangeInternal(
+        isUTC ? { date: settled.date, time: '00:00:00', offset: 'Z' } : localMidnight(settled.date)
+      );
     },
-    [syncedValue, isUTC, setTimeControls, handleDateChangeInternal]
+    [settled, isUTC, setTimeControls, handleDateChangeInternal]
   );
 
   const handleDateCloseInternal = useCallback(() => {

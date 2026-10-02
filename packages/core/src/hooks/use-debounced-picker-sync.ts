@@ -9,6 +9,8 @@ import { parseDateForNavigation, parseDateTimeForNavigation } from '../pickers/n
 export interface PickerSyncResult {
   /** The value the picker shows, or undefined when there is nothing to show */
   value: DateTimeValue | undefined;
+  /** The value the input spells out in full, or null while it is partial or not a value */
+  complete: DateTimeValue | null;
 }
 
 /**
@@ -87,5 +89,5 @@ export function useDebouncedPickerSync({
     [type, debouncedValue]
   );
 
-  return { value: complete ?? partial ?? selectedValue ?? undefined };
+  return { value: complete ?? partial ?? selectedValue ?? undefined, complete };
 }
