@@ -595,6 +595,36 @@ describe('Document model', () => {
       });
       expect(screen.queryByText('Shown active')).not.toBeInTheDocument();
     });
+
+    it('replays handle calls made while the editor is destroyed in call order', async () => {
+      const ref = createRef<TokenizedSearchInputRef>();
+      const calls: string[] = [];
+      const element = () => (
+        <TokenizedSearchInput
+          ref={ref}
+          fields={statusFields}
+          defaultValue="status:is:active"
+          onSubmit={(snapshot) => calls.push(`submit:${snapshot.text}`)}
+          onClear={() => calls.push('clear')}
+        />
+      );
+      const { rerender } = render(element());
+      await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+      const destroyed = ref.current?.getEditor();
+      destroyed?.destroy();
+
+      ref.current?.submit();
+      ref.current?.clear();
+      ref.current?.submit();
+      expect(calls).toEqual([]);
+      rerender(element());
+
+      await waitFor(() => {
+        const live = ref.current?.getEditor();
+        expect(live && live !== destroyed && !live.isDestroyed).toBe(true);
+        expect(calls).toEqual(['submit:status:is:active', 'clear', 'submit:']);
+      });
+    });
   });
 
   describe('free text validation in the snapshot', () => {

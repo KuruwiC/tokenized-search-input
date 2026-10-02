@@ -58,48 +58,41 @@ function transformDoc(
   return tr.doc.toJSON() as JSONContent;
 }
 
-interface PendingHandleWrites {
-  doc: JSONContent | null;
-  /**
-   * `setTokenDisplay` calls for tokens of `doc`, applied in order after it, each
-   * bound to the key and value its token had when the call was made.
-   */
-  displays: { id: string; display: TokenDisplay; binding: DisplayBinding }[];
-  focus: boolean;
-  /**
-   * `clear` was called. It clears the content before `doc` is applied; `doc` then
-   * holds only the writes made after it.
-   */
-  clear: boolean;
-  /** `submit` was called; it submits the query once the writes before it are applied. */
-  submit: boolean;
+/** A handle call made while the editor was destroyed, held to run on the live editor. */
+type PendingCall =
+  | { type: 'setValue'; doc: JSONContent }
+  | { type: 'clear' }
+  | { type: 'updateToken'; id: string; patch: TokenPatch }
+  | { type: 'deleteToken'; id: string }
+  /** Bound to the key and value its token had when the call was made. */
+  | { type: 'setTokenDisplay'; id: string; display: TokenDisplay; binding: DisplayBinding }
+  | { type: 'focus' }
+  | { type: 'submit' };
+
+interface PendingHandleCalls {
+  /** The destroyed editor's document, which the calls were made against. */
+  base: JSONContent | null;
+  /** In call order. */
+  calls: PendingCall[];
 }
 
-const NO_PENDING_WRITES: PendingHandleWrites = {
-  doc: null,
-  displays: [],
-  focus: false,
-  clear: false,
-  submit: false,
-};
+const NO_PENDING_CALLS: PendingHandleCalls = { base: null, calls: [] };
 
 /**
  * Builds the imperative handle.
  *
  * An ancestor's effect in the same commit can call the handle while `editor` is
- * still a destroyed instance. Writes made then are held as a pending document, read
- * back by `getValue` and `getSnapshot`, and applied by `useApplyPendingHandleWrites`
- * once the live editor renders, which then runs a held `submit` as well. Display data has no
- * place in the document, so `setTokenDisplay` calls are held next to it and applied
- * after it; replacing the content with `setValue` or `clear` discards them, as it
- * discards token meta in a live editor. Validation runs once the document is
- * applied, so snapshots read in the meantime carry no validation.
+ * still a destroyed instance. Calls made then are held in call order and run by
+ * `useApplyPendingHandleWrites` on the live editor, through the same commands as on a
+ * live editor, starting from the document the destroyed editor had. `getValue` and
+ * `getSnapshot` read the document the held calls produce; validation runs once they
+ * are applied, so snapshots read in the meantime carry no validation.
  */
 export function useTokenizedSearchInputRef(
   ref: ForwardedRef<TokenizedSearchInputRef>,
   editor: Editor | null
-): MutableRefObject<PendingHandleWrites> {
-  const pendingHandleRef = useRef<PendingHandleWrites>(NO_PENDING_WRITES);
+): MutableRefObject<PendingHandleCalls> {
+  const pendingHandleRef = useRef<PendingHandleCalls>(NO_PENDING_CALLS);
 
   useImperativeHandle(ref, () => {
     const parseValue = (ed: Editor, value: string) => {
@@ -110,22 +103,31 @@ export function useTokenizedSearchInputRef(
         delimiter: context.delimiter,
       });
     };
-    const readDoc = (ed: Editor) => {
-      const { doc, clear } = pendingHandleRef.current;
-      return doc ?? (clear ? parseValue(ed, '') : ed.getJSON());
+    /** The document after the held calls. */
+    const readDoc = (ed: Editor): JSONContent => {
+      const { base, calls } = pendingHandleRef.current;
+      return calls.reduce<JSONContent>((doc, call) => {
+        switch (call.type) {
+          case 'setValue':
+            return call.doc;
+          case 'clear':
+            return parseValue(ed, '');
+          case 'updateToken':
+            return transformDoc(ed, doc, (tr) =>
+              applyTokenPatch(tr, call.id, call.patch, getEditorContext(ed))
+            );
+          case 'deleteToken':
+            return transformDoc(ed, doc, (tr) => deleteTokenById(tr, call.id));
+          default:
+            return doc;
+        }
+      }, base ?? ed.getJSON());
     };
-    const readState = (ed: Editor) => {
-      const { doc, clear } = pendingHandleRef.current;
-      return doc || clear ? stateFromDoc(ed, readDoc(ed)) : ed.state;
-    };
-    const replacePending = (doc: JSONContent) => {
-      pendingHandleRef.current = { ...pendingHandleRef.current, doc, displays: [] };
-    };
-    const writePending = (ed: Editor, write: (tr: Transaction) => void) => {
-      pendingHandleRef.current = {
-        ...pendingHandleRef.current,
-        doc: transformDoc(ed, readDoc(ed), write),
-      };
+    const readState = (ed: Editor) =>
+      pendingHandleRef.current.calls.length > 0 ? stateFromDoc(ed, readDoc(ed)) : ed.state;
+    const hold = (ed: Editor, call: PendingCall) => {
+      const { base, calls } = pendingHandleRef.current;
+      pendingHandleRef.current = { base: base ?? ed.getJSON(), calls: [...calls, call] };
     };
 
     return {
@@ -133,7 +135,7 @@ export function useTokenizedSearchInputRef(
         if (!editor) return;
         const doc = parseValue(editor, value);
         if (editor.isDestroyed) {
-          replacePending(doc);
+          hold(editor, { type: 'setValue', doc });
           return;
         }
         setContentAndValidate(editor, doc);
@@ -153,7 +155,7 @@ export function useTokenizedSearchInputRef(
       focus: () => {
         if (!editor) return;
         if (editor.isDestroyed) {
-          pendingHandleRef.current = { ...pendingHandleRef.current, focus: true };
+          hold(editor, { type: 'focus' });
           return;
         }
         editor.commands.focus();
@@ -161,12 +163,7 @@ export function useTokenizedSearchInputRef(
       clear: () => {
         if (!editor) return;
         if (editor.isDestroyed) {
-          pendingHandleRef.current = {
-            ...pendingHandleRef.current,
-            doc: null,
-            displays: [],
-            clear: true,
-          };
+          hold(editor, { type: 'clear' });
           return;
         }
         editor.commands.clear();
@@ -174,7 +171,7 @@ export function useTokenizedSearchInputRef(
       submit: () => {
         if (!editor) return;
         if (editor.isDestroyed) {
-          pendingHandleRef.current = { ...pendingHandleRef.current, submit: true };
+          hold(editor, { type: 'submit' });
           return;
         }
         editor.commands.submit();
@@ -182,7 +179,7 @@ export function useTokenizedSearchInputRef(
       updateToken: (id: string, patch: TokenPatch) => {
         if (!editor) return;
         if (editor.isDestroyed) {
-          writePending(editor, (tr) => applyTokenPatch(tr, id, patch, getEditorContext(editor)));
+          hold(editor, { type: 'updateToken', id, patch });
           return;
         }
         editor.commands.updateToken(id, patch);
@@ -190,7 +187,7 @@ export function useTokenizedSearchInputRef(
       deleteToken: (id: string) => {
         if (!editor) return;
         if (editor.isDestroyed) {
-          writePending(editor, (tr) => deleteTokenById(tr, id));
+          hold(editor, { type: 'deleteToken', id });
           return;
         }
         editor.commands.deleteToken(id);
@@ -198,18 +195,10 @@ export function useTokenizedSearchInputRef(
       setTokenDisplay: (id: string, display: TokenDisplay) => {
         if (!editor) return;
         if (editor.isDestroyed) {
-          // The display belongs to the tokens of the destroyed editor's document, so
-          // that document is what the live editor has to start from.
-          const doc = readDoc(editor);
-          const found = findTokenById(stateFromDoc(editor, doc).doc, id);
+          const found = findTokenById(stateFromDoc(editor, readDoc(editor)).doc, id);
           if (!found || !isFilterToken(found.node)) return;
           const binding = { key: found.node.attrs.key, value: found.node.attrs.value };
-          const { displays } = pendingHandleRef.current;
-          pendingHandleRef.current = {
-            ...pendingHandleRef.current,
-            doc,
-            displays: [...displays, { id, display, binding }],
-          };
+          hold(editor, { type: 'setTokenDisplay', id, display, binding });
           return;
         }
         editor.commands.setTokenDisplay(id, display);
@@ -221,27 +210,59 @@ export function useTokenizedSearchInputRef(
   return pendingHandleRef;
 }
 
+function runPendingCall(editor: Editor, call: PendingCall): void {
+  switch (call.type) {
+    case 'setValue':
+      setContentAndValidate(editor, call.doc);
+      return;
+    case 'clear':
+      editor.commands.clear();
+      return;
+    case 'updateToken':
+      editor.commands.updateToken(call.id, call.patch);
+      return;
+    case 'deleteToken':
+      editor.commands.deleteToken(call.id);
+      return;
+    case 'setTokenDisplay': {
+      const { tr } = editor.state;
+      if (setTokenDisplayById(editor.state, tr, call.id, call.display, call.binding)) {
+        editor.view.dispatch(tr);
+      }
+      return;
+    }
+    case 'focus':
+      editor.commands.focus();
+      return;
+    case 'submit':
+      editor.commands.submit();
+      return;
+    default: {
+      const unhandled: never = call;
+      throw new Error(`Unhandled pending handle call: ${JSON.stringify(unhandled)}`);
+    }
+  }
+}
+
 /**
- * Applies the writes held while the editor was destroyed. Call it after every other
- * hook that attaches to the editor: the write sets content, validates, sets token
- * display, focuses and submits, so it has to see the configuration synced from the current props, the focus
- * listeners and the suggestion scheduling already in place.
+ * Runs the handle calls held while the editor was destroyed, in call order. Call it
+ * after every other hook that attaches to the editor: the calls set content, validate,
+ * set token display, focus and submit, so they have to see the configuration synced
+ * from the current props, the focus listeners and the suggestion scheduling already in
+ * place.
  */
 export function useApplyPendingHandleWrites(
   editor: Editor | null,
-  pending: MutableRefObject<PendingHandleWrites>
+  pending: MutableRefObject<PendingHandleCalls>
 ): void {
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
-    const { doc, displays, focus, clear, submit } = pending.current;
-    pending.current = NO_PENDING_WRITES;
-    if (clear) editor.commands.clear();
-    if (doc) setContentAndValidate(editor, doc);
-    for (const { id, display, binding } of displays) {
-      const { tr } = editor.state;
-      if (setTokenDisplayById(editor.state, tr, id, display, binding)) editor.view.dispatch(tr);
+    const { base, calls } = pending.current;
+    pending.current = NO_PENDING_CALLS;
+    // The calls were made against the destroyed editor's document.
+    if (base && !editor.state.doc.eq(editor.schema.nodeFromJSON(base))) {
+      setContentAndValidate(editor, base);
     }
-    if (focus) editor.commands.focus();
-    if (submit) editor.commands.submit();
+    for (const call of calls) runPendingCall(editor, call);
   }, [editor, pending]);
 }
