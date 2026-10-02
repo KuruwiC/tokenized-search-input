@@ -137,13 +137,34 @@ describe('implicit validation of dates', () => {
     expect(violationsFor(dateField, '')).toEqual([]);
   });
 
-  it('use the parse of the field', () => {
+  describe('with the parse of the field', () => {
     const field: FieldDefinition = {
       ...dateField,
-      formatConfig: { parse: (input) => (input === 'today' ? { date: '2024-03-05' } : null) },
+      formatConfig: {
+        parse: (input) => {
+          if (input === 'today') return { date: '2024-03-05' };
+          if (input === 'broken') return { date: '2024-3-5' };
+          return null;
+        },
+      },
     };
-    expect(violationsFor(field, 'today')).toEqual([]);
-    expect(violationsFor(field, '2024-03-05')).toHaveLength(1);
+
+    it('accept a value in canonical form, which the parse does not have to read', () => {
+      expect(violationsFor(field, '2024-03-05')).toEqual([]);
+    });
+
+    it('accept text the parse reads, which is stored in canonical form when it is committed', () => {
+      expect(violationsFor(field, 'today')).toEqual([]);
+    });
+
+    it('mark text neither reads', () => {
+      expect(violationsFor(field, 'tomorrow')).toHaveLength(1);
+      expect(violationsFor(field, '2024-02-31')).toHaveLength(1);
+    });
+
+    it('mark text the parse reads into a value that cannot be written', () => {
+      expect(violationsFor(field, 'broken')).toHaveLength(1);
+    });
   });
 
   it('do not check a string field', () => {

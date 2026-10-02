@@ -72,6 +72,40 @@ describe('normalizeDateFieldValue for a date field', () => {
     expect(normalizeDateFieldValue('x', dateField({ parse: () => value }))).toBe('2024-03-05');
   });
 
+  describe('with a custom parse that reads day/month/year only', () => {
+    const field = dateField({
+      parse: (input) => {
+        const match = input.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (!match) return null;
+        const [, day, month, year] = match;
+        return { date: `${year}-${month?.padStart(2, '0')}-${day?.padStart(2, '0')}` };
+      },
+    });
+
+    it('stores the typed form in canonical form', () => {
+      expect(normalizeDateFieldValue('5/3/2024', field)).toBe('2024-03-05');
+    });
+
+    it('keeps a value that is already in canonical form, which the parse rejects', () => {
+      expect(normalizeDateFieldValue('2024-03-05', field)).toBe('2024-03-05');
+    });
+  });
+
+  it('leaves the input as typed when a custom parse returns a value that cannot be written', () => {
+    const malformed = [
+      { date: '2024-3-5' },
+      { date: '2024-02-31' },
+      { date: '2024-03-05', time: '25:00' },
+    ];
+    for (const value of malformed) {
+      expect(normalizeDateFieldValue('x', dateField({ parse: () => value }))).toBe('x');
+    }
+    const badOffset = datetimeField({
+      formatConfig: { parse: () => ({ date: '2024-03-05', time: '10:00', offset: '+5' }) },
+    });
+    expect(normalizeDateFieldValue('x', badOffset)).toBe('x');
+  });
+
   it('leaves the input as typed when a custom parse throws', () => {
     const field = dateField({
       parse: () => {

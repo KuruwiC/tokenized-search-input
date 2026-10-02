@@ -5,6 +5,7 @@ import type {
   DateTimeFormatConfig,
 } from '../types';
 import {
+  checkDateTimeValue,
   type DateTimeValue,
   formatDateTimeValue,
   localMidnight,
@@ -12,7 +13,7 @@ import {
   parseDateTimeValue,
   toInstant,
 } from './date-time-value';
-import { err, ok, type ParseResult } from './navigation-parsers';
+import { ok, type ParseResult } from './navigation-parsers';
 
 export const DEFAULT_DATE_VALUE_FORMAT = 'yyyy-MM-dd';
 export const DEFAULT_DATETIME_VALUE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssxxx";
@@ -21,28 +22,32 @@ export const DEFAULT_DATETIME_VALUE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssxxx";
 type DateLikeField = Pick<DateFieldDefinition | DateTimeFieldDefinition, 'type' | 'formatConfig'>;
 
 /**
- * Reads `input` as a value of `field`: with the field's custom parse when it has one,
- * otherwise as the one strict format. This is the only way a typed date enters the
- * library, so validation, storage and display all agree on what a date is.
+ * Reads `input` as a value of `field`. A stored value is in canonical form, which the
+ * one strict format reads; only text that is not in that form, such as what the user
+ * is typing, goes to the field's custom parse. What a custom parse returns has to
+ * survive being written and read again, or the text is rejected. This is the only way
+ * a date enters the library, so validation, storage and display agree on what a date is.
  */
 export function parseDateFieldValue(
   input: string,
   field: DateLikeField
 ): ParseResult<DateTimeValue> {
   const trimmed = input.trim();
-  const message = field.type === 'date' ? 'Invalid date format' : 'Invalid datetime format';
+  const strict = parseDateTimeValue(trimmed, field.type);
   const parseConfig = field.formatConfig?.parse;
-  if (!parseConfig) return parseDateTimeValue(trimmed, field.type);
+  if (strict.ok || !parseConfig) return strict;
 
-  let parsed: DateTimeValue | null;
+  let custom: DateTimeValue | null;
   try {
-    parsed = parseConfig(trimmed);
+    custom = parseConfig(trimmed);
   } catch {
     // A parse supplied by the application that throws rejects the input like one that returns null.
-    parsed = null;
+    custom = null;
   }
-  if (!parsed) return err(message);
-  return ok(field.type === 'date' ? { date: parsed.date } : parsed);
+  if (!custom) return strict;
+  const checked = checkDateTimeValue(custom);
+  if (!checked.ok) return strict;
+  return ok(field.type === 'date' ? { date: checked.value.date } : checked.value);
 }
 
 /**
