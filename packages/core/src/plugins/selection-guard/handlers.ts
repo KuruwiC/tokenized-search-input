@@ -11,11 +11,9 @@ import type { KeyHandlerFn } from '../../keyboard';
 import { nearestValidCaret } from '../../utils/caret';
 import { isToken } from '../../utils/node-predicates';
 import { safeResolve } from '../../utils/safe-resolve';
-import { setTokenFocus } from '../token-focus-plugin';
+import { setTokenFocus, type TokenFocusEntry } from '../token-focus-plugin';
 import type { SelectionGuardContext } from './types';
 import { markAsGuarded } from './utils';
-
-type EntryDirection = 'from-left' | 'from-right';
 
 /**
  * Handle token entry for Delete/Backspace keys.
@@ -30,7 +28,7 @@ function handleTokenEntry(
   view: EditorView,
   tokenNode: ProseMirrorNode,
   tokenPos: number,
-  direction: EntryDirection
+  position: TokenFocusEntry['position']
 ): boolean {
   const tr = view.state.tr;
   const isImmutable = tokenNode.attrs.immutable === true;
@@ -48,8 +46,8 @@ function handleTokenEntry(
 
   // Normal token: enter editing mode
   setTokenFocus(tr, {
-    focusedPos: tokenPos,
-    cursorPosition: { direction, policy: 'entry' },
+    id: String(tokenNode.attrs.id),
+    entry: { source: 'keyboard', position, target: 'all' },
   });
   view.dispatch(markAsGuarded(tr));
   return true;
@@ -97,8 +95,8 @@ export const handleArrowMove: KeyHandlerFn<SelectionGuardContext> = (ctx) => {
   ctx.event.preventDefault();
   const tr = ctx.view.state.tr;
   setTokenFocus(tr, {
-    focusedPos: direction > 0 ? ctx.selection.from : ctx.selection.from - token.nodeSize,
-    cursorPosition: { direction: direction > 0 ? 'from-left' : 'from-right', policy: 'all' },
+    id: String(token.attrs.id),
+    entry: { source: 'keyboard', position: direction > 0 ? 'start' : 'end', target: 'entry' },
   });
   ctx.view.dispatch(markAsGuarded(tr));
   return true;
@@ -106,19 +104,19 @@ export const handleArrowMove: KeyHandlerFn<SelectionGuardContext> = (ctx) => {
 
 /**
  * Handle Delete when cursor is directly before a token.
- * Uses 'entry' policy to skip non-entry-focusable elements.
+ * The token is entered as a whole, at its first entry-focusable block.
  * For immutable tokens, creates a TextSelection (same as drag selection).
  */
 export const handleDeleteFromToken: KeyHandlerFn<SelectionGuardContext> = (ctx) => {
   if (!ctx.nodeAfter || !isToken(ctx.nodeAfter)) return false;
 
   ctx.event.preventDefault();
-  return handleTokenEntry(ctx.view, ctx.nodeAfter, ctx.selection.from, 'from-left');
+  return handleTokenEntry(ctx.view, ctx.nodeAfter, ctx.selection.from, 'start');
 };
 
 /**
  * Handle Backspace when cursor is directly after a token.
- * Uses 'entry' policy to skip non-entry-focusable elements (like delete button).
+ * The token is entered as a whole, at its last entry-focusable block.
  * For immutable tokens, creates a TextSelection (same as drag selection).
  */
 export const handleBackspaceFromToken: KeyHandlerFn<SelectionGuardContext> = (ctx) => {
@@ -126,5 +124,5 @@ export const handleBackspaceFromToken: KeyHandlerFn<SelectionGuardContext> = (ct
 
   ctx.event.preventDefault();
   const tokenPos = ctx.selection.from - ctx.nodeBefore.nodeSize;
-  return handleTokenEntry(ctx.view, ctx.nodeBefore, tokenPos, 'from-right');
+  return handleTokenEntry(ctx.view, ctx.nodeBefore, tokenPos, 'end');
 };

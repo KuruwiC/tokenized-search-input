@@ -5,7 +5,7 @@
 import { TextSelection } from '@tiptap/pm/state';
 import type { Predicate } from '../../keyboard';
 import { isToken } from '../../utils/node-predicates';
-import { tokenFocusKey } from '../token-focus-plugin';
+import { getFocusedToken } from '../token-focus-plugin';
 import type { SelectionGuardContext } from './types';
 
 /**
@@ -39,7 +39,5 @@ export const nodeAfterIsToken: Predicate<SelectionGuardContext> = (ctx) =>
 /**
  * True if no token is currently focused (edit mode).
  */
-export const tokenNotFocused: Predicate<SelectionGuardContext> = (ctx) => {
-  const focusState = tokenFocusKey.getState(ctx.view.state);
-  return focusState?.focusedPos === null || focusState?.focusedPos === undefined;
-};
+export const tokenNotFocused: Predicate<SelectionGuardContext> = (ctx) =>
+  getFocusedToken(ctx.view.state) === null;

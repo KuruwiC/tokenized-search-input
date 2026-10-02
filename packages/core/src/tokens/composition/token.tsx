@@ -1,25 +1,21 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
-import { TextSelection, type Transaction } from '@tiptap/pm/state';
+import { TextSelection } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
 import { NodeViewWrapper } from '@tiptap/react';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTokenFocus } from '../../hooks/use-editor-store';
 import type { TokenValidation } from '../../plugins/shared/meta';
 import {
-  closeSuggestion,
   dismissSuggestion,
   getSuggestionState,
   isSuggestionOpen,
   type SuggestionType,
 } from '../../plugins/suggestion-plugin';
-import {
-  getTokenFocusState,
-  isTokenEntry,
-  type CursorPosition as PluginCursorPosition,
-  setTokenFocus,
-} from '../../plugins/token-focus-plugin';
+import { getFocusedToken, type TokenFocusEntry } from '../../plugins/token-focus-plugin';
 import { getValidationDescriptionId } from '../../plugins/token-meta-plugin';
 import { getDismissPolicy } from '../../suggestions/dismiss-policy';
 import { cn } from '../../utils/cn';
+import { enterToken, type LeaveDirection } from '../token-focus';
 import { TokenDeleteButton } from './blocks/token-delete-button';
 import { TokenLabel, TokenLabelCombobox } from './blocks/token-label';
 import { TokenOperator } from './blocks/token-operator';
@@ -31,22 +27,15 @@ import {
   TokenFocusContext,
   type TokenFocusContextValue,
 } from './contexts';
-import {
-  createInitialState,
-  executePendingFocus,
-  getCurrentFocusId,
-  getEntryDirection,
-  getPendingFocus,
-  isFocused as isFocusedState,
-  type TokenEntry,
-  tokenFocusReducer,
-  useFocusRegistry,
-} from './focus';
+import { focusEntryBlock, useFocusRegistry } from './focus';
 import {
   isHistoryShortcut,
   KeyboardHandlersContext,
   useKeyboardHandlersRegistry,
 } from './keyboard';
+
+/** A press on a token edits it as a whole. */
+const CLICK_ENTRY: TokenFocusEntry = { source: 'click', position: 'end', target: 'all' };
 
 interface ClickContext {
   event: React.MouseEvent;
@@ -147,8 +136,6 @@ export interface TokenProps {
   /** The token's validation failure, as computed by the validation plugin. */
   validation?: TokenValidation;
   dataAttrs?: Record<string, string>;
-  /** Callback when token loses focus (blur). Called after internal blur handling. */
-  onBlur?: () => void;
   /** Make token immutable (only deletable via X button or 2-stage Backspace). Default: false */
   immutable?: boolean;
   /** Whether this token is part of a range selection */
@@ -156,56 +143,9 @@ export interface TokenProps {
 }
 
 /**
- * Exit token to the right and clear focus.
- *
- * @param editor - The editor instance
- * @param afterTokenPos - Position right after the token
- * @param existingTr - Optional existing transaction to append to (for atomic operations)
- */
-export function exitTokenRight(
-  editor: Editor,
-  afterTokenPos: number,
-  existingTr?: Transaction
-): void {
-  const tr = existingTr ?? editor.state.tr;
-
-  setTokenFocus(tr, { focusedPos: null });
-  closeSuggestion(tr);
-  tr.setMeta('exitingToken', true);
-
-  if (!existingTr) {
-    tr.setMeta('addToHistory', false);
-  }
-
-  tr.setSelection(TextSelection.create(tr.doc, afterTokenPos));
-
-  editor.view.dispatch(tr);
-  editor.view.focus();
-}
-
-function exitTokenLeft(editor: Editor, beforeTokenPos: number): void {
-  const tr = editor.state.tr;
-  setTokenFocus(tr, { focusedPos: null });
-  closeSuggestion(tr);
-  tr.setMeta('exitingToken', true);
-  tr.setMeta('addToHistory', false);
-
-  tr.setSelection(TextSelection.create(tr.doc, beforeTokenPos));
-  editor.view.dispatch(tr);
-  editor.view.focus();
-}
-
-function toTokenEntry(cursorPosition: PluginCursorPosition): TokenEntry {
-  if (isTokenEntry(cursorPosition)) {
-    const { direction, policy } = cursorPosition;
-    return { direction, policy };
-  }
-  return { type: 'click' };
-}
-
-/**
  * Token container component using Compound Components pattern.
- * Manages focus, keyboard navigation, and provides context to child blocks.
+ * Whether the token is focused is derived from the editor's token focus; the token
+ * gives DOM focus to the block focus entered at and keeps track of which block holds it.
  */
 export function Token({
   editor,
@@ -217,39 +157,24 @@ export function Token({
   ariaLabel,
   validation,
   dataAttrs,
-  onBlur: onBlurCallback,
   immutable = false,
   rangeSelected = false,
 }: TokenProps): React.ReactElement {
   const containerRef = useRef<HTMLSpanElement>(null);
-  const [focusState, dispatch] = useReducer(tokenFocusReducer, undefined, createInitialState);
-  // Ref to track exiting state synchronously (dispatch is async, but blur fires sync)
-  const isExitingRef = useRef(false);
+  const id = String(node.attrs.id);
+  const entry = useTokenFocus(editor, id);
+  const isFocused = entry !== null;
+  const [currentFocusId, setCurrentFocusId] = useState<string | null>(null);
 
-  const isFocused = isFocusedState(focusState);
-  const currentFocusId = getCurrentFocusId(focusState);
-  const entryDirection = getEntryDirection(focusState);
-  const pendingFocus = getPendingFocus(focusState);
-
-  const handleExitLeft = useCallback(() => {
-    const pos = getPos();
-    if (typeof pos === 'number') {
-      isExitingRef.current = true;
-      dispatch({ type: 'EXIT_REQUESTED', direction: 'left' });
-      exitTokenLeft(editor, pos);
-      dispatch({ type: 'EXIT_COMPLETED' });
-    }
-  }, [editor, getPos]);
-
-  const handleExitRight = useCallback(() => {
-    const pos = getPos();
-    if (typeof pos === 'number') {
-      isExitingRef.current = true;
-      dispatch({ type: 'EXIT_REQUESTED', direction: 'right' });
-      exitTokenRight(editor, pos + node.nodeSize);
-      dispatch({ type: 'EXIT_COMPLETED' });
-    }
-  }, [editor, getPos, node.nodeSize]);
+  const leave = useCallback(
+    (direction: LeaveDirection) => {
+      editor.commands.leaveToken(id, direction);
+      editor.view.focus();
+    },
+    [editor, id]
+  );
+  const handleExitLeft = useCallback(() => leave('left'), [leave]);
+  const handleExitRight = useCallback(() => leave('right'), [leave]);
 
   const focusRegistry = useFocusRegistry({
     onExitLeft: handleExitLeft,
@@ -258,65 +183,19 @@ export function Token({
 
   const keyboardHandlersRegistry = useKeyboardHandlersRegistry();
 
-  const setFocus = useCallback((focused: boolean) => {
-    if (!focused) {
-      dispatch({ type: 'PLUGIN_FOCUS_LOST' });
-    }
-  }, []);
-
-  const setCurrentFocusIdCallback = useCallback((id: string | null) => {
-    if (id !== null) {
-      dispatch({ type: 'CHILD_FOCUSED', id });
-    }
-  }, []);
-
-  useEffect(() => {
-    const checkFocus = () => {
-      const pos = getPos();
-      const pluginFocusState = getTokenFocusState(editor.state);
-
-      if (typeof pos === 'number' && pluginFocusState?.focusedPos === pos) {
-        if (!isFocused) {
-          const entry = toTokenEntry(pluginFocusState.cursorPosition);
-          dispatch({ type: 'PLUGIN_FOCUS_GAINED', entry });
-        }
-      } else if (pluginFocusState?.focusedPos !== pos && isFocused) {
-        dispatch({ type: 'PLUGIN_FOCUS_LOST' });
-      }
-    };
-
-    checkFocus();
-    editor.on('transaction', checkFocus);
-    return () => {
-      editor.off('transaction', checkFocus);
-    };
-  }, [editor, getPos, isFocused]);
-
+  // Focus entering the token moves DOM focus to the block it entered at.
   useLayoutEffect(() => {
-    if (!pendingFocus) return;
-    if (!editor.isEditable) {
-      dispatch({ type: 'EDITOR_DISABLED' });
-      return;
-    }
-
-    executePendingFocus(focusRegistry, pendingFocus);
-    dispatch({ type: 'PENDING_FOCUS_EXECUTED', focusId: 'pending' });
-  }, [pendingFocus, focusRegistry, editor.isEditable]);
+    setCurrentFocusId(null);
+    if (entry && editor.isEditable) focusEntryBlock(focusRegistry, entry);
+  }, [entry, editor, focusRegistry]);
 
   const handleActivate = useCallback(() => {
-    if (!isFocused) {
-      const pos = getPos();
-      if (typeof pos === 'number') {
-        editor.view.focus();
-        const tr = editor.state.tr;
-        setTokenFocus(tr, { focusedPos: pos, cursorPosition: 'end' });
-        tr.setMeta('addToHistory', false);
-        editor.view.dispatch(tr);
-      }
-    } else {
+    if (getFocusedToken(editor.state)?.id === id) {
       focusRegistry.focusFirstEntryFocusable('end');
+      return;
     }
-  }, [editor, getPos, isFocused, focusRegistry]);
+    enterToken(editor, id, CLICK_ENTRY);
+  }, [editor, id, focusRegistry]);
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -336,68 +215,29 @@ export function Token({
 
   const handleContainerFocus = useCallback(
     (e: React.FocusEvent) => {
-      if (!editor.isEditable) return;
-
-      if (e.target === containerRef.current && !isFocused) {
-        const pos = getPos();
-        if (typeof pos === 'number') {
-          const tr = editor.state.tr;
-          setTokenFocus(tr, { focusedPos: pos, cursorPosition: 'end' });
-          tr.setMeta('addToHistory', false);
-          editor.view.dispatch(tr);
-        }
-      }
+      if (!editor.isEditable || e.target !== containerRef.current) return;
+      if (getFocusedToken(editor.state)?.id === id) return;
+      enterToken(editor, id, CLICK_ENTRY);
     },
-    [editor, getPos, isFocused]
+    [editor, id]
   );
 
   const handleBlur = useCallback(
     (e: React.FocusEvent) => {
-      const wasExiting = isExitingRef.current;
-      isExitingRef.current = false;
-
-      if (wasExiting) {
-        onBlurCallback?.();
-        return;
-      }
-
-      const container = containerRef.current;
-      if (!container) return;
+      if (getFocusedToken(editor.state)?.id !== id) return;
 
       const relatedTarget = e.relatedTarget as Node | null;
-      if (relatedTarget && container.contains(relatedTarget)) {
-        return;
-      }
+      if (relatedTarget && containerRef.current?.contains(relatedTarget)) return;
 
       const suggestionState = getSuggestionState(editor.state);
       if (isSuggestionOpen(suggestionState)) {
         const policy = getDismissPolicy(suggestionState.type as SuggestionType);
-        if (policy.requireExplicitConfirm) {
-          return;
-        }
+        if (policy.requireExplicitConfirm) return;
       }
 
-      dispatch({ type: 'PLUGIN_FOCUS_LOST' });
-
-      const pos = getPos();
-      if (typeof pos === 'number') {
-        const tr = editor.state.tr;
-        const tokenNode = editor.state.doc.nodeAt(pos);
-
-        if (tokenNode) {
-          const afterTokenPos = pos + tokenNode.nodeSize;
-
-          setTokenFocus(tr, { focusedPos: null });
-          closeSuggestion(tr);
-          tr.setMeta('exitingToken', true);
-          tr.setSelection(TextSelection.create(tr.doc, afterTokenPos));
-          tr.setMeta('addToHistory', false);
-          editor.view.dispatch(tr);
-          onBlurCallback?.();
-        }
-      }
+      editor.commands.leaveToken(id, 'right');
     },
-    [editor, getPos, onBlurCallback]
+    [editor, id]
   );
 
   const handleKeyDown = useCallback(
@@ -470,11 +310,9 @@ export function Token({
   const focusContextValue: TokenFocusContextValue = useMemo(
     () => ({
       isFocused,
-      setFocus,
-      entryDirection,
       focusRegistry,
       currentFocusId,
-      setCurrentFocusId: setCurrentFocusIdCallback,
+      setCurrentFocusId,
       exitToken: handleExitRight,
       dispatchKeyDown,
       isEditable: editor.isEditable,
@@ -482,11 +320,8 @@ export function Token({
     }),
     [
       isFocused,
-      setFocus,
-      entryDirection,
       focusRegistry,
       currentFocusId,
-      setCurrentFocusIdCallback,
       handleExitRight,
       dispatchKeyDown,
       editor.isEditable,

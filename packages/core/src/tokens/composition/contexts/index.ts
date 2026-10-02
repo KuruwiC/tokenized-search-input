@@ -6,7 +6,6 @@ export {
 
 export {
   type CursorPosition,
-  type EntryDirection,
   type FocusableElement,
   type FocusDirection,
   type FocusFilter,

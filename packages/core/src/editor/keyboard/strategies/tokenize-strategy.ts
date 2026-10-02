@@ -88,7 +88,7 @@ export function handleQuote(ctx: KeyboardContext): boolean {
   editor.commands.insertFreeTextToken({
     value: '',
     quoted: true,
-    cursorPosition: 'end',
+    position: 'end',
   });
 
   closeSuggestionIfOpen(ctx);

@@ -2,29 +2,34 @@ import { type Editor, mergeAttributes, Node } from '@tiptap/core';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import {
-  type CursorPosition,
-  setTokenFocus,
-  tokenFocusKey,
+  canFocusToken,
+  getFocusedToken,
+  programEntry,
+  type TokenFocusEntry,
 } from '../../plugins/token-focus-plugin';
+import { findTokenById } from '../../utils/find-token';
 import { isFreeTextToken } from '../../utils/node-predicates';
 import { escapeForQuotes } from '../../utils/quoted-string';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
 import { isHistoryShortcut } from '../composition/keyboard';
 import { TOKEN_NODE_CLASS, updateTokenNodeView } from '../composition/node-view-update';
+import { enterToken, enterTokenIn } from '../token-focus';
 import { FreeTextTokenView } from './free-text-token-view';
 
 export interface InsertFreeTextTokenAttrs {
   value?: string;
   quoted?: boolean;
   focus?: boolean;
-  cursorPosition?: CursorPosition;
+  /** Where the caret goes in the value of a quoted token that receives focus. */
+  position?: TokenFocusEntry['position'];
 }
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     freeTextToken: {
       insertFreeTextToken: (attrs: InsertFreeTextTokenAttrs) => ReturnType;
-      focusFreeTextToken: (pos: number, cursorPosition?: CursorPosition) => ReturnType;
+      /** Focuses the free text token `id` with the caret at `position` in its value. */
+      focusFreeTextToken: (id: string, position?: TokenFocusEntry['position']) => ReturnType;
     };
   }
 }
@@ -147,8 +152,9 @@ export const FreeTextTokenNode = Node.create({
           editor: Editor;
         }) => {
           const { schema, selection } = state;
+          const id = generateTokenId();
           const tokenNode = schema.nodes.freeTextToken.create({
-            id: generateTokenId(),
+            id,
             value: attrs.value ?? '',
             quoted: attrs.quoted ?? false,
           });
@@ -164,25 +170,7 @@ export const FreeTextTokenNode = Node.create({
             requestAnimationFrame(() => {
               // Guard: check if editor is still available and editable
               if (editor.isDestroyed || !editor.isEditable) return;
-
-              let tokenPos: number | null = null;
-              editor.state.doc.descendants((node, pos) => {
-                if (isFreeTextToken(node) && node.attrs.quoted) {
-                  tokenPos = pos;
-                  return false;
-                }
-                return true;
-              });
-
-              if (tokenPos !== null) {
-                const focusTr = editor.state.tr;
-                setTokenFocus(focusTr, {
-                  focusedPos: tokenPos,
-                  cursorPosition: attrs.cursorPosition ?? 'end',
-                });
-                focusTr.setMeta('addToHistory', false);
-                editor.view.dispatch(focusTr);
-              }
+              enterToken(editor, id, programEntry(attrs.position ?? 'end'));
             });
           }
 
@@ -190,25 +178,11 @@ export const FreeTextTokenNode = Node.create({
         },
 
       focusFreeTextToken:
-        (pos: number, cursorPosition: CursorPosition = 'end') =>
-        ({
-          tr,
-          state,
-          dispatch,
-        }: {
-          tr: Transaction;
-          state: EditorState;
-          dispatch?: (tr: Transaction) => void;
-        }) => {
-          const node = state.doc.nodeAt(pos);
-          if (!node || !isFreeTextToken(node)) return false;
-
-          if (dispatch) {
-            setTokenFocus(tr, { focusedPos: pos, cursorPosition });
-            tr.setMeta('addToHistory', false);
-            dispatch(tr);
-          }
-
+        (id: string, position: TokenFocusEntry['position'] = 'end') =>
+        ({ tr, dispatch, editor }) => {
+          const found = findTokenById(tr.doc, id);
+          if (!found || !isFreeTextToken(found.node) || !canFocusToken(tr.doc, id)) return false;
+          if (dispatch) enterTokenIn(tr, editor, id, programEntry(position));
           return true;
         },
     };
@@ -223,12 +197,8 @@ export const FreeTextTokenNode = Node.create({
         const { selection } = editor.state;
         const node = editor.state.doc.nodeAt(selection.from);
 
-        if (node && isFreeTextToken(node)) {
-          const focusState = tokenFocusKey.getState(editor.state);
-          if (focusState?.focusedPos === null) {
-            editor.commands.focusFreeTextToken(selection.from, 'end');
-            return true;
-          }
+        if (node && isFreeTextToken(node) && getFocusedToken(editor.state) === null) {
+          return editor.commands.focusFreeTextToken(String(node.attrs.id), 'end');
         }
 
         return false;

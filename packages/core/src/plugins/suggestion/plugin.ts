@@ -10,7 +10,6 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EnumValue, FieldDefinition } from '../../types';
 import { findTokenById } from '../../utils/find-token';
 import { isFilterToken, isToken } from '../../utils/node-predicates';
-import { getTokenFocusEvent } from '../shared/editor-events';
 import { getSuggestionQueryUpdate } from '../shared/meta';
 import { getTokenFocusMeta } from '../token-focus-plugin';
 import { createResetState } from './state-helpers';
@@ -114,14 +113,13 @@ export function createSuggestionPlugin(
         return { ...initialSuggestionState };
       },
       apply(tr, value): SuggestionState {
-        // Get token focus state from Meta (preferred) or fallback to direct Meta access
-        const tokenFocusEvent = getTokenFocusEvent(tr);
-        const tokenFocusMeta = tokenFocusEvent ?? getTokenFocusMeta(tr);
+        const tokenFocusMeta = getTokenFocusMeta(tr);
 
         // Rule: Field/custom suggestions are only valid in plain text areas, not inside tokens.
         // When a token gains focus, automatically close any open field, custom, or fieldWithCustom suggestion.
         if (
-          tokenFocusMeta?.focusedPos != null &&
+          tokenFocusMeta !== undefined &&
+          tokenFocusMeta.focused !== null &&
           (value.type === 'field' || value.type === 'custom' || value.type === 'fieldWithCustom')
         ) {
           return createResetState(value);
@@ -130,7 +128,7 @@ export function createSuggestionPlugin(
         // Rule: Value/date/datetime suggestions are only valid inside tokens.
         // When token focus is cleared, automatically close any open value suggestion.
         if (
-          tokenFocusMeta?.focusedPos === null &&
+          tokenFocusMeta?.focused === null &&
           (value.type === 'value' || value.type === 'date' || value.type === 'datetime')
         ) {
           return createResetState(value);

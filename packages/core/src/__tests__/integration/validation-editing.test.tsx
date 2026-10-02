@@ -5,6 +5,7 @@
  */
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
+import type { Transaction } from '@tiptap/pm/state';
 import { createRef, type RefObject } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -12,7 +13,7 @@ import {
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
 import { getEditorContext } from '../../extensions/editor-context';
-import { setTokenFocus } from '../../plugins/token-focus-plugin';
+import { programEntry, setTokenFocus } from '../../plugins/token-focus-plugin';
 import { applyTokenAction } from '../../tokens/filter-token/token-actions';
 import type { QuerySnapshotFilterToken, ValidationRule } from '../../types';
 import { findTokenById } from '../../utils/find-token';
@@ -62,8 +63,16 @@ function lastTokenId(editor: Editor): string {
   return id;
 }
 
-function focusToken(editor: Editor, pos: number | null) {
-  editor.view.dispatch(setTokenFocus(editor.state.tr, { focusedPos: pos }));
+function focusToken(editor: Editor, id: string | null) {
+  const tr = editor.state.tr;
+  setTokenFocus(tr, id === null ? null : { id, entry: programEntry() });
+  editor.view.dispatch(tr);
+}
+
+/** Puts the user in the token at `pos` of `tr` and dispatches `tr`. */
+function dispatchFocusingTokenAt(editor: Editor, tr: Transaction, pos: number) {
+  setTokenFocus(tr, { id: String(tr.doc.nodeAt(pos)?.attrs.id), entry: programEntry() });
+  editor.view.dispatch(tr);
 }
 
 /** A transaction that inserts a status token (with an id, as the editor creates them) at `pos`. */
@@ -97,7 +106,7 @@ describe('Unique with onDuplicate reject', () => {
     // A token is created empty with the user in it, and they type a value.
     act(() => {
       const tr = insertStatus(editor, end, '');
-      editor.view.dispatch(setTokenFocus(tr, { focusedPos: end }));
+      dispatchFocusingTokenAt(editor, tr, end);
     });
     const typed = { id: lastTokenId(editor) };
     act(() => {
@@ -122,7 +131,7 @@ describe('Unique with onDuplicate reject', () => {
     const end = editor.state.doc.content.size - 1;
     act(() => {
       const tr = insertStatus(editor, end, '');
-      editor.view.dispatch(setTokenFocus(tr, { focusedPos: end }));
+      dispatchFocusingTokenAt(editor, tr, end);
     });
     const typed = { id: lastTokenId(editor) };
     act(() => {
@@ -146,7 +155,7 @@ describe('Unique with onDuplicate reject', () => {
     const values = filterTokens(ref).map((t) => t.value);
 
     // Entering a token and leaving it again edits neither.
-    act(() => focusToken(editor, tokenPos(editor, filterTokens(ref)[0].id)));
+    act(() => focusToken(editor, filterTokens(ref)[0].id));
     act(() => focusToken(editor, null));
 
     expect(filterTokens(ref).map((t) => t.value)).toEqual(values);
@@ -155,13 +164,13 @@ describe('Unique with onDuplicate reject', () => {
   it('deletes the added duplicate when an edit before the focused token shifts positions', async () => {
     const { ref, editor } = await renderWithRules('status:is:active priority:is:high', rejecting());
     const [status, priority] = filterTokens(ref);
-    act(() => focusToken(editor, tokenPos(editor, priority.id)));
+    act(() => focusToken(editor, priority.id));
 
     // One transaction inserts a duplicate before the status token, which moves it onto
     // the position the focused priority token had, and blurs the priority token.
     act(() => {
       const tr = insertStatus(editor, tokenPos(editor, status.id), 'inactive');
-      setTokenFocus(tr, { focusedPos: null });
+      setTokenFocus(tr, null);
       editor.view.dispatch(tr);
     });
 

@@ -104,10 +104,6 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
       ariaLabel={`Filter: ${key} ${operator} ${valueDisplayString}`}
       className={classNames?.token}
       dataAttrs={{ 'data-filter-token': '' }}
-      onBlur={() => {
-        const tr = editor.state.tr;
-        if (commitFilterToken(tr, id, fieldSource)) editor.view.dispatch(tr);
-      }}
       immutable={isImmutable}
       rangeSelected={rangeSelected}
     >

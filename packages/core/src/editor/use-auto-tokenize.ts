@@ -9,10 +9,10 @@ import { resolveField } from '../utils/resolve-field';
 function focusEmptyFilterToken(editor: Editor, fieldKey: string, onFocused?: () => void): void {
   if (editor.isDestroyed) return;
 
-  let tokenPos: number | null = null;
-  editor.state.doc.descendants((node, pos) => {
+  let tokenId: string | null = null;
+  editor.state.doc.descendants((node) => {
     if (isFilterToken(node) && node.attrs.key === fieldKey && !node.attrs.value) {
-      tokenPos = pos;
+      tokenId = String(node.attrs.id);
       return false;
     }
     return true;
@@ -21,8 +21,8 @@ function focusEmptyFilterToken(editor: Editor, fieldKey: string, onFocused?: () 
   // Set the plugin focus state synchronously. Deferring this until the next
   // animation frame leaves a window where subsequent keystrokes are inserted
   // into the editor instead of the newly-created token input.
-  if (tokenPos !== null) {
-    editor.commands.focusFilterToken(tokenPos, 'end');
+  if (tokenId !== null) {
+    editor.commands.focusFilterToken(tokenId, 'end');
     onFocused?.();
   }
 }

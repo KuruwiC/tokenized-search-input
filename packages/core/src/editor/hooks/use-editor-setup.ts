@@ -20,14 +20,13 @@ import { useIsomorphicLayoutEffect } from '../../hooks/use-isomorphic-layout-eff
 import { DocumentRepairExtension } from '../../plugins/document-repair';
 import { SelectionInvariantExtension } from '../../plugins/selection-invariant-plugin';
 import { markContentEntered } from '../../plugins/shared/meta';
-import { getTokenFocusState, tokenFocusKey } from '../../plugins/token-focus-plugin';
+import { getFocusedToken, getTokenFocusMeta } from '../../plugins/token-focus-plugin';
 import { TokenGapExtension } from '../../plugins/token-gap-decorations';
 import { ValidationExtension } from '../../plugins/validation-plugin';
 import { createQuerySnapshot, parseQueryToDoc } from '../../serializer';
 import { FilterTokenNode } from '../../tokens/filter-token/filter-token-node';
 import { FreeTextTokenNode } from '../../tokens/free-text-token/free-text-token-node';
 import type { QuerySnapshot } from '../../types';
-import { isToken } from '../../utils/node-predicates';
 import { getAllTokens } from '../../utils/query-snapshot';
 import {
   areTokenListsEqual,
@@ -135,17 +134,7 @@ export function useEditorSetup({
       });
 
       if (onTokensChange) {
-        const focusState = getTokenFocusState(ed.state);
-        const focusedPos = focusState?.focusedPos ?? null;
-
-        let focusedTokenId: string | null = null;
-        if (focusedPos !== null) {
-          const node = ed.state.doc.nodeAt(focusedPos);
-          if (node && isToken(node)) {
-            focusedTokenId = (node.attrs as { id?: string }).id ?? null;
-          }
-        }
-
+        const focusedTokenId = getFocusedToken(ed.state)?.id ?? null;
         const currentTokens = getAllTokens(snapshot);
 
         // The focused token is excluded from both lists only for the comparison.
@@ -168,8 +157,8 @@ export function useEditorSetup({
       // onUpdate only fires on document changes; this covers focus leaving a token.
       if (!onTokensChange) return;
 
-      const meta = transaction.getMeta(tokenFocusKey);
-      if (!meta || meta.focusedPos !== null) return;
+      const meta = getTokenFocusMeta(transaction);
+      if (!meta || meta.focused !== null) return;
 
       // onUpdate handles document changes; running both would create two snapshots.
       if (transaction.docChanged) return;

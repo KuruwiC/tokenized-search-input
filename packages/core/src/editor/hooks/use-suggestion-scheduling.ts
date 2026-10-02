@@ -1,6 +1,7 @@
 import type { Transaction } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
 import { useEffect, useRef } from 'react';
+import { getTokenFocusMeta } from '../../plugins/token-focus-plugin';
 
 export interface UseSuggestionSchedulingOptions {
   editor: Editor | null;
@@ -65,7 +66,8 @@ export function useSuggestionScheduling({
     };
 
     const handleTransaction = ({ transaction }: { transaction: Transaction }) => {
-      if (transaction.getMeta('exitingToken')) {
+      // Leaving a token returns to the text, where other suggestions apply.
+      if (getTokenFocusMeta(transaction)?.focused === null) {
         requestAnimationFrame(() => {
           updateSuggestionsRef.current();
           updateCustomSuggestionsRef.current();

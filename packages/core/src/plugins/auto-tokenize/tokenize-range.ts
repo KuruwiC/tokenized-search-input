@@ -10,7 +10,7 @@ import {
 import { createFilterTokenAttrs } from '../../tokens/filter-token/create-attrs';
 import type { FieldDefinition, FreeTextMode, UnknownFieldTemplate } from '../../types';
 import { isFreeTextToken, isToken } from '../../utils/node-predicates';
-import { setTokenFocus } from '../token-focus-plugin';
+import { programEntry, setTokenFocus } from '../token-focus-plugin';
 import { getFreeTextStrategy } from './free-text-strategy';
 
 export interface TokenizeContext {
@@ -87,12 +87,14 @@ function keepEdgeWhitespace(nodes: ProseMirrorNode[], text: string, schema: Sche
 }
 
 function focusLastQuotedToken(tr: Transaction, from: number, to: number): void {
-  let focusedPos: number | null = null;
-  tr.doc.nodesBetween(from, to, (node, pos) => {
-    if (isFreeTextToken(node) && node.attrs.quoted) focusedPos = pos;
+  let id: string | null = null;
+  tr.doc.nodesBetween(from, to, (node) => {
+    if (isFreeTextToken(node) && node.attrs.quoted) id = String(node.attrs.id);
     return true;
   });
-  if (focusedPos !== null) setTokenFocus(tr, { focusedPos, cursorPosition: 'end' });
+  if (id !== null) {
+    setTokenFocus(tr, { id, entry: programEntry() });
+  }
 }
 
 interface TextRun {

@@ -2,6 +2,7 @@ import type { Editor } from '@tiptap/core';
 import type { EditorState } from '@tiptap/pm/state';
 import { useRef, useSyncExternalStore } from 'react';
 import type { TokenMeta } from '../plugins/shared/meta';
+import { getFocusedToken, type TokenFocusEntry } from '../plugins/token-focus-plugin';
 import { getTokenMeta } from '../plugins/token-meta-plugin';
 
 interface EditorStore {
@@ -64,4 +65,15 @@ export function useEditorSelector<T>(
 
 export function useTokenMeta(editor: Editor, id: string): TokenMeta | undefined {
   return useEditorSelector(editor, (state) => getTokenMeta(state, id));
+}
+
+/**
+ * How focus entered the token `id` while it is the focused token, otherwise null. A
+ * token re-renders only when focus enters or leaves it, not when it moves elsewhere.
+ */
+export function useTokenFocus(editor: Editor, id: string): TokenFocusEntry | null {
+  return useEditorSelector(editor, (state) => {
+    const focused = getFocusedToken(state);
+    return focused?.id === id ? focused.entry : null;
+  });
 }

@@ -20,7 +20,7 @@ import { handleShiftClickSelection } from './selection-guard/shift-click-handler
 import { selectionGuardKeySpecs } from './selection-guard/specs';
 import { buildSelectionGuardContext } from './selection-guard/types';
 import { markAsGuarded } from './selection-guard/utils';
-import { setTokenFocus, tokenFocusKey } from './token-focus-plugin';
+import { getFocusedToken, setTokenFocus } from './token-focus-plugin';
 
 export type { SelectionGuardState } from './selection-guard/plugin-key';
 export { selectionGuardKey } from './selection-guard/plugin-key';
@@ -98,7 +98,7 @@ function placeCaretAtPress(view: EditorView): void {
   const pressPos = selectionGuardKey.getState(view.state)?.pressPos;
   if (pressPos == null) return;
   const tr = view.state.tr;
-  setTokenFocus(tr, { focusedPos: null });
+  setTokenFocus(tr, null);
   tr.setSelection(TextSelection.create(tr.doc, nearestValidCaret(tr.doc, pressPos, 1)));
   view.dispatch(markAsGuarded(tr));
   view.focus();
@@ -138,7 +138,7 @@ export function createSelectionGuardPlugin(): Plugin<SelectionGuardState> {
             : mapped(pluginState.prefocusClickPos);
         const next = { editorHasFocus, pressPos, prefocusClickPos };
 
-        if (!editorHasFocus || tokenFocusKey.getState(newState)?.focusedPos !== null) {
+        if (!editorHasFocus || getFocusedToken(newState) !== null) {
           return { decorations: DecorationSet.empty, ...next };
         }
 
@@ -211,7 +211,7 @@ export function createSelectionGuardPlugin(): Plugin<SelectionGuardState> {
               const $first = doc.resolve(1);
               const targetPos = $first.end();
               const tr = view.state.tr;
-              setTokenFocus(tr, { focusedPos: null });
+              setTokenFocus(tr, null);
               tr.setSelection(TextSelection.create(doc, targetPos));
               view.dispatch(markAsGuarded(tr));
               view.focus();
@@ -280,10 +280,7 @@ export function createSelectionGuardPlugin(): Plugin<SelectionGuardState> {
       handleKeyDown(view, event) {
         if (event.isComposing) return false;
 
-        const focusState = tokenFocusKey.getState(view.state);
-        if (focusState?.focusedPos !== null) {
-          return false;
-        }
+        if (getFocusedToken(view.state) !== null) return false;
 
         const ctx = buildSelectionGuardContext(view, event);
         return runKeyHandlers(selectionGuardKeySpecs, event.key, ctx);

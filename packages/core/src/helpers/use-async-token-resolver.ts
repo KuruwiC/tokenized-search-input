@@ -3,7 +3,7 @@ import type { ReactNode, RefObject } from 'react';
 import { useCallback, useRef } from 'react';
 import type { TokenDisplay, TokenizedSearchInputRef } from '../editor/tokenized-search-input';
 import { getApplicableDisplay } from '../plugins/shared/meta';
-import { getTokenFocusState } from '../plugins/token-focus-plugin';
+import { getFocusedToken } from '../plugins/token-focus-plugin';
 import { getTokenMeta } from '../plugins/token-meta-plugin';
 import { findTokenById } from '../utils/find-token';
 import { isFilterToken } from '../utils/node-predicates';
@@ -94,8 +94,8 @@ function toTokenDisplay(data: ResolvedTokenData): TokenDisplay {
 }
 
 /** A token is confirmed while the user is not editing it. */
-function isConfirmed(editor: Editor, pos: number): boolean {
-  return getTokenFocusState(editor.state)?.focusedPos !== pos;
+function isConfirmed(editor: Editor, id: string): boolean {
+  return getFocusedToken(editor.state)?.id !== id;
 }
 
 function readToken(editor: Editor, id: string): TokenView | null {
@@ -108,14 +108,14 @@ function readToken(editor: Editor, id: string): TokenView | null {
     value,
     displayValue: display?.displayValue,
     startContent: display?.startContent ?? null,
-    confirmed: isConfirmed(editor, found.pos),
+    confirmed: isConfirmed(editor, id),
   };
 }
 
 function collectPendingTokens(editor: Editor, fieldKey: string): PendingToken[] {
   const tokens: PendingToken[] = [];
 
-  editor.state.doc.descendants((node, pos) => {
+  editor.state.doc.descendants((node) => {
     if (!isFilterToken(node)) return true;
     const { id, key, value } = node.attrs;
     if (
@@ -124,7 +124,7 @@ function collectPendingTokens(editor: Editor, fieldKey: string): PendingToken[] 
       id.length > 0 &&
       value &&
       !getApplicableDisplay(getTokenMeta(editor.state, id)?.display, key, value)?.displayValue &&
-      isConfirmed(editor, pos)
+      isConfirmed(editor, id)
     ) {
       tokens.push({ id, value, displayValue: null, startContent: null });
     }

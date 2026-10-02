@@ -3,11 +3,20 @@ import { useCallback } from 'react';
 import { getEditorContext } from '../../extensions/editor-context';
 import { getDateInternalValue, getDateTimeInternalValue } from '../../pickers/date-format';
 import { closeSuggestion } from '../../plugins/suggestion-plugin';
-import { getTokenFocusState } from '../../plugins/token-focus-plugin';
-import { exitTokenRight } from '../../tokens/composition';
-import { applyTokenAction, commitFilterToken } from '../../tokens/filter-token/token-actions';
+import { getFocusedToken } from '../../plugins/token-focus-plugin';
+import { applyTokenAction } from '../../tokens/filter-token/token-actions';
+import { leaveTokenIn } from '../../tokens/token-focus';
 import type { DateTimeFieldDefinition } from '../../types';
+import { findTokenById } from '../../utils/find-token';
 import { isFilterToken } from '../../utils/node-predicates';
+
+/** The id of the filter token being edited, if one is. */
+function focusedFilterTokenId(editor: Editor): string | null {
+  const id = getFocusedToken(editor.state)?.id;
+  if (id === undefined) return null;
+  const found = findTokenById(editor.state.doc, id);
+  return found && isFilterToken(found.node) ? id : null;
+}
 
 export interface UseSuggestionHandlersOptions {
   editor: Editor | null;
@@ -34,18 +43,15 @@ export function useSuggestionHandlers({
     (value: string) => {
       if (!editor) return;
 
-      const focusState = getTokenFocusState(editor.state);
-      if (focusState?.focusedPos === null || focusState?.focusedPos === undefined) return;
+      const id = focusedFilterTokenId(editor);
+      if (id === null) return;
 
-      const pos = focusState.focusedPos;
-      const node = editor.state.doc.nodeAt(pos);
-      if (!node || !isFilterToken(node)) return;
-
-      // Single transaction: update value, close suggestion, and exit token
+      // Single transaction: update the value and leave the token
       const tr = editor.state.tr;
-      applyTokenAction(tr, node.attrs.id, { type: 'setValue', value }, getEditorContext(editor));
-      closeSuggestion(tr);
-      exitTokenRight(editor, pos + node.nodeSize, tr);
+      applyTokenAction(tr, id, { type: 'setValue', value }, getEditorContext(editor));
+      leaveTokenIn(tr, editor, id, 'right');
+      editor.view.dispatch(tr);
+      editor.view.focus();
     },
     [editor]
   );
@@ -55,12 +61,8 @@ export function useSuggestionHandlers({
     (date: Date | null, fieldKey: string, isUTC?: boolean, includeTime?: boolean) => {
       if (!editor || !date) return;
 
-      const focusState = getTokenFocusState(editor.state);
-      if (focusState?.focusedPos === null || focusState?.focusedPos === undefined) return;
-
-      const pos = focusState.focusedPos;
-      const node = editor.state.doc.nodeAt(pos);
-      if (!node || !isFilterToken(node)) return;
+      const id = focusedFilterTokenId(editor);
+      if (id === null) return;
 
       // Find field definition to get format config
       const fieldDef = getEditorContext(editor).fields.find((f) => f.key === fieldKey);
@@ -81,9 +83,7 @@ export function useSuggestionHandlers({
       }
 
       const tr = editor.state.tr;
-      if (
-        applyTokenAction(tr, node.attrs.id, { type: 'setValue', value }, getEditorContext(editor))
-      ) {
+      if (applyTokenAction(tr, id, { type: 'setValue', value }, getEditorContext(editor))) {
         editor.view.dispatch(tr);
       }
     },
@@ -94,27 +94,15 @@ export function useSuggestionHandlers({
   const handleDateClose = useCallback(() => {
     if (!editor) return;
 
-    const focusState = getTokenFocusState(editor.state);
-    const pos = focusState?.focusedPos;
+    const id = focusedFilterTokenId(editor);
 
-    // Single transaction: close suggestion and exit token
+    // Single transaction: close suggestion and leave the token
     const tr = editor.state.tr;
     closeSuggestion(tr);
-
-    if (pos !== null && pos !== undefined) {
-      const node = tr.doc.nodeAt(pos);
-      if (node && isFilterToken(node)) {
-        commitFilterToken(tr, node.attrs.id, getEditorContext(editor));
-
-        exitTokenRight(editor, pos + node.nodeSize, tr);
-        // Show field suggestions after exiting token for consistency
-        updateSuggestions();
-        return;
-      }
-    }
-
-    // Fallback: just dispatch if no valid position
+    if (id !== null) leaveTokenIn(tr, editor, id, 'right');
     editor.view.dispatch(tr);
+    if (id !== null) editor.view.focus();
+    // Show field suggestions after leaving the token for consistency
     updateSuggestions();
   }, [editor, updateSuggestions]);
 

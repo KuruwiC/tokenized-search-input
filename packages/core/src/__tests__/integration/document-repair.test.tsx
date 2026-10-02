@@ -43,20 +43,20 @@ describe('DocumentRepairExtension - Integration Tests', () => {
       });
 
       // Find the inserted token and focus it
-      let tokenPos: number | null = null;
+      let tokenId: string | null = null;
       await waitFor(() => {
-        editor.state.doc.descendants((node, pos) => {
-          if (node.type.name === 'filterToken' && !node.attrs.value && tokenPos === null) {
-            tokenPos = pos;
+        editor.state.doc.descendants((node) => {
+          if (node.type.name === 'filterToken' && !node.attrs.value && tokenId === null) {
+            tokenId = String(node.attrs.id);
           }
           return true;
         });
-        expect(tokenPos).not.toBeNull();
+        expect(tokenId).not.toBeNull();
       });
 
       // Focus the empty token explicitly
-      if (tokenPos !== null) {
-        editor.commands.focusFilterToken(tokenPos, 'end');
+      if (tokenId !== null) {
+        editor.commands.focusFilterToken(tokenId, 'end');
       }
 
       await waitFor(() => {
@@ -70,8 +70,8 @@ describe('DocumentRepairExtension - Integration Tests', () => {
         expect(hasEmptyToken).toBe(true);
       });
 
-      // Clear token focus using blurFilterToken command
-      editor.commands.blurFilterToken();
+      // Leave the token without moving the caret
+      if (tokenId !== null) editor.commands.leaveToken(tokenId, 'none');
 
       // Wait for empty token to be cleaned up
       await waitFor(() => {
@@ -103,19 +103,19 @@ describe('DocumentRepairExtension - Integration Tests', () => {
       if (!editor) return;
 
       // Verify token exists with value
-      let tokenPos: number | null = null;
-      editor.state.doc.descendants((node, pos) => {
-        if (node.type.name === 'filterToken' && tokenPos === null) {
-          tokenPos = pos;
+      let tokenId: string | null = null;
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === 'filterToken' && tokenId === null) {
+          tokenId = String(node.attrs.id);
         }
         return true;
       });
 
-      expect(tokenPos).not.toBeNull();
+      expect(tokenId).not.toBeNull();
 
       // Focus the token
-      if (tokenPos !== null) {
-        editor.commands.focusFilterToken(tokenPos, 'end');
+      if (tokenId !== null) {
+        editor.commands.focusFilterToken(tokenId, 'end');
       }
 
       // Wait for focus
@@ -130,8 +130,8 @@ describe('DocumentRepairExtension - Integration Tests', () => {
         expect(hasFilterToken).toBe(true);
       });
 
-      // Clear token focus using blurFilterToken command
-      editor.commands.blurFilterToken();
+      // Leave the token without moving the caret
+      if (tokenId !== null) editor.commands.leaveToken(tokenId, 'none');
 
       // Token should still exist (it has a value)
       await waitFor(() => {
@@ -161,7 +161,7 @@ describe('DocumentRepairExtension - Integration Tests', () => {
         content: [{ type: 'paragraph', content: [empty('left'), empty('focused')] }],
       });
       act(() => {
-        editor.commands.focusFilterToken(2, 'end');
+        editor.commands.focusFilterToken('focused', 'end');
       });
 
       act(() => {

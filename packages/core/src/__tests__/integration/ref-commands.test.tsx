@@ -5,7 +5,7 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
-import { getTokenFocusState } from '../../plugins/token-focus-plugin';
+import { getFocusedToken } from '../../plugins/token-focus-plugin';
 import { getTokenMeta } from '../../plugins/token-meta-plugin';
 import type { QuerySnapshotFilterToken } from '../../types';
 import { extendedFields } from '../fixtures';
@@ -77,7 +77,7 @@ describe('TokenizedSearchInputRef', () => {
 
       expect(ref.current?.getValue()).toBe('status:is:active assignee:contains:jo');
       const editor = ref.current?.getEditor();
-      expect(editor && getTokenFocusState(editor.state)?.focusedPos).toBeNull();
+      expect(editor && getFocusedToken(editor.state)).toBeNull();
     });
 
     it('is undoable as a regular edit', async () => {

@@ -41,10 +41,10 @@ async function mount(
   return { editor, value: () => ref.current?.getValue() ?? '' };
 }
 
-function firstToken(editor: Editor): { pos: number; size: number } {
-  let found: { pos: number; size: number } | null = null;
+function firstToken(editor: Editor): { id: string; pos: number; size: number } {
+  let found: { id: string; pos: number; size: number } | null = null;
   editor.state.doc.descendants((node, pos) => {
-    if (!found && isToken(node)) found = { pos, size: node.nodeSize };
+    if (!found && isToken(node)) found = { id: String(node.attrs.id), pos, size: node.nodeSize };
     return !found;
   });
   if (!found) throw new Error('no token');
@@ -182,12 +182,12 @@ describe('repairs and the undo history', () => {
       ],
     });
     act(() => {
-      editor.commands.focusFilterToken(firstToken(editor).pos, 'end');
+      editor.commands.focusFilterToken(firstToken(editor).id, 'end');
     });
     const depth = undoDepth(editor.state);
 
     act(() => {
-      editor.commands.blurFilterToken();
+      editor.commands.leaveToken(firstToken(editor).id, 'none');
     });
 
     expect(value()).toBe('foo bar');

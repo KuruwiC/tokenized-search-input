@@ -1,5 +1,4 @@
 import { Extension } from '@tiptap/core';
-import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { type EditorState, Plugin, PluginKey } from '@tiptap/pm/state';
 import { getEditorContext } from '../../extensions/editor-context';
 import {
@@ -10,7 +9,7 @@ import {
   isValidationCheckRequested,
   type TokenValidation,
 } from '../shared/meta';
-import { getTokenFocusMeta, getTokenFocusState } from '../token-focus-plugin';
+import { getFocusedToken, getTokenFocusMeta } from '../token-focus-plugin';
 import { tokenMetaKey } from '../token-meta-plugin';
 import { createImplicitRules } from './implicit-rules';
 import { applyPlan, type Edits, planValidation, recordEdits } from './run';
@@ -31,13 +30,8 @@ const NO_SESSION: FocusSession = { tokenId: null, edits: new Map() };
 export { FIELD_VALIDATE_RULE_ID } from './field-validate-rule';
 export { collectTokens, type Plan, type ValidationInput } from './run';
 
-function tokenIdAt(doc: ProseMirrorNode, pos: number | null | undefined): string | null {
-  if (pos === null || pos === undefined) return null;
-  return doc.nodeAt(pos)?.attrs.id ?? null;
-}
-
 function focusedTokenId(state: EditorState): string | null {
-  return tokenIdAt(state.doc, getTokenFocusState(state)?.focusedPos);
+  return getFocusedToken(state)?.id ?? null;
 }
 
 /** The session the user is in at `state`, if the token is still the one focused there. */
@@ -78,7 +72,7 @@ export const ValidationExtension = Extension.create({
             const focus = getTokenFocusMeta(tr);
             let current = session;
             if (focus) {
-              const tokenId = tokenIdAt(tr.doc, focus.focusedPos);
+              const tokenId = focus.focused?.id ?? null;
               if (tokenId === null) return NO_SESSION;
               if (tokenId !== session.tokenId) current = { tokenId, edits: new Map() };
             }

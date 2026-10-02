@@ -9,7 +9,7 @@ import type { Editor } from '@tiptap/core';
 import type { EditorState } from '@tiptap/pm/state';
 import { getEditorContext } from '../extensions/editor-context';
 import { getSuggestionState } from '../plugins/suggestion-plugin';
-import { getTokenFocusState } from '../plugins/token-focus-plugin';
+import { getFocusedToken } from '../plugins/token-focus-plugin';
 
 /**
  * Check if field suggestions can be shown.
@@ -22,13 +22,12 @@ import { getTokenFocusState } from '../plugins/token-focus-plugin';
 export function canShowFieldSuggestion(editor: Editor): boolean {
   const { state } = editor;
   const suggestionState = getSuggestionState(state);
-  const tokenFocusState = getTokenFocusState(state);
 
   // Field suggestions must not be disabled
   if (getEditorContext(editor).fieldSuggestionsDisabled) return false;
 
   // Cannot show when a token is focused
-  if (tokenFocusState?.focusedPos != null) return false;
+  if (getFocusedToken(state) !== null) return false;
 
   // Cannot show when value/date/datetime suggestion is active
   const currentType = suggestionState?.type;
@@ -50,13 +49,12 @@ export function canShowFieldSuggestion(editor: Editor): boolean {
 export function canShowValueSuggestion(editor: Editor): boolean {
   const { state } = editor;
   const suggestionState = getSuggestionState(state);
-  const tokenFocusState = getTokenFocusState(state);
 
   // Value suggestions must not be disabled
   if (getEditorContext(editor).valueSuggestionsDisabled) return false;
 
   // Must have a focused token
-  if (tokenFocusState?.focusedPos == null) return false;
+  if (getFocusedToken(state) === null) return false;
 
   // Cannot show when field suggestion is active
   const currentType = suggestionState?.type;
@@ -78,10 +76,9 @@ export function canShowValueSuggestion(editor: Editor): boolean {
  */
 export function canShowCustomSuggestion(state: EditorState): boolean {
   const suggestionState = getSuggestionState(state);
-  const tokenFocusState = getTokenFocusState(state);
 
   // Cannot show when a token is focused
-  if (tokenFocusState?.focusedPos != null) return false;
+  if (getFocusedToken(state) !== null) return false;
 
   // Cannot show when value/date/datetime suggestion is active
   const currentType = suggestionState?.type;

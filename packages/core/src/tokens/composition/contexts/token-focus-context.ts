@@ -1,7 +1,6 @@
 import type { RefObject } from 'react';
 import { createContext, useContext } from 'react';
 
-export type EntryDirection = 'from-left' | 'from-right' | null;
 export type CursorPosition = 'start' | 'end';
 
 export interface FocusableElement {
@@ -43,16 +42,16 @@ export interface FocusRegistry {
 }
 
 /**
- * Focus state context for Token components.
- * Updates when focus state or entry direction changes.
+ * Focus state context for Token components. Whether the token is focused is derived
+ * from the editor's token focus; which of its blocks holds DOM focus is the token's own.
  */
 export interface TokenFocusContextValue {
   isFocused: boolean;
-  setFocus: (focused: boolean) => void;
-  entryDirection: EntryDirection;
   focusRegistry: FocusRegistry;
+  /** The block that holds DOM focus while the token is focused. */
   currentFocusId: string | null;
   setCurrentFocusId: (id: string | null) => void;
+  /** Leaves the token to the right. */
   exitToken: () => void;
   /**
    * Dispatch a keyboard event to Token-level handler.

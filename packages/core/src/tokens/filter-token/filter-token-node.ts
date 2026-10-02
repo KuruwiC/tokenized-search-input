@@ -1,17 +1,19 @@
 import { type Editor, mergeAttributes, Node } from '@tiptap/core';
-import type { EditorState, Transaction } from '@tiptap/pm/state';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import { getEditorContext } from '../../extensions/editor-context';
 import { setTokenMeta, type TokenDisplayContent } from '../../plugins/shared/meta';
 import {
-  type CursorPosition,
-  setTokenFocus,
-  tokenFocusKey,
+  canFocusToken,
+  getFocusedToken,
+  programEntry,
+  type TokenFocusEntry,
 } from '../../plugins/token-focus-plugin';
+import { findTokenById } from '../../utils/find-token';
 import { isFilterToken } from '../../utils/node-predicates';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
 import { isHistoryShortcut } from '../composition/keyboard';
 import { TOKEN_NODE_CLASS, updateTokenNodeView } from '../composition/node-view-update';
+import { enterTokenIn, type LeaveDirection, leaveTokenIn } from '../token-focus';
 import { createFilterTokenAttrs } from './create-attrs';
 import { FilterTokenView } from './filter-token-view';
 
@@ -27,8 +29,13 @@ declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     filterToken: {
       insertFilterToken: (attrs: InsertFilterTokenAttrs) => ReturnType;
-      focusFilterToken: (pos: number, cursorPosition?: CursorPosition) => ReturnType;
-      blurFilterToken: () => ReturnType;
+      /** Focuses the filter token `id` with the caret at `position` in its value. */
+      focusFilterToken: (id: string, position?: TokenFocusEntry['position']) => ReturnType;
+      /**
+       * Leaves the focused token `id`, filter or free text, committing it and putting
+       * the caret beside it on the `direction` side.
+       */
+      leaveToken: (id: string, direction: LeaveDirection) => ReturnType;
     };
   }
 }
@@ -181,36 +188,19 @@ export const FilterTokenNode = Node.create({
         },
 
       focusFilterToken:
-        (pos: number, cursorPosition: CursorPosition = 'end') =>
-        ({
-          tr,
-          state,
-          dispatch,
-        }: {
-          tr: Transaction;
-          state: EditorState;
-          dispatch?: (tr: Transaction) => void;
-        }) => {
-          const node = state.doc.nodeAt(pos);
-          if (!node || !isFilterToken(node)) return false;
-
-          if (dispatch) {
-            setTokenFocus(tr, { focusedPos: pos, cursorPosition });
-            tr.setMeta('addToHistory', false);
-            dispatch(tr);
-          }
-
+        (id: string, position: TokenFocusEntry['position'] = 'end') =>
+        ({ tr, dispatch, editor }) => {
+          const found = findTokenById(tr.doc, id);
+          if (!found || !isFilterToken(found.node) || !canFocusToken(tr.doc, id)) return false;
+          if (dispatch) enterTokenIn(tr, editor, id, programEntry(position));
           return true;
         },
 
-      blurFilterToken:
-        () =>
-        ({ tr, dispatch }: { tr: Transaction; dispatch?: (tr: Transaction) => void }) => {
-          if (dispatch) {
-            setTokenFocus(tr, { focusedPos: null });
-            tr.setMeta('addToHistory', false);
-            dispatch(tr);
-          }
+      leaveToken:
+        (id: string, direction: LeaveDirection) =>
+        ({ tr, state, dispatch, editor }) => {
+          if (getFocusedToken(state)?.id !== id) return false;
+          if (dispatch) leaveTokenIn(tr, editor, id, direction);
           return true;
         },
     };
@@ -226,12 +216,8 @@ export const FilterTokenNode = Node.create({
         const { selection } = editor.state;
         const node = editor.state.doc.nodeAt(selection.from);
 
-        if (node && isFilterToken(node)) {
-          const focusState = tokenFocusKey.getState(editor.state);
-          if (focusState?.focusedPos === null) {
-            editor.commands.focusFilterToken(selection.from, 'end');
-            return true;
-          }
+        if (node && isFilterToken(node) && getFocusedToken(editor.state) === null) {
+          return editor.commands.focusFilterToken(String(node.attrs.id), 'end');
         }
 
         return false;

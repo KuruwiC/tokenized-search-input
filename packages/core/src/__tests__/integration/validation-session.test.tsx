@@ -5,6 +5,7 @@
  */
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
+import type { Transaction } from '@tiptap/pm/state';
 import { createRef, type RefObject, useState } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -12,7 +13,7 @@ import {
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
 import { getEditorContext } from '../../extensions/editor-context';
-import { setTokenFocus } from '../../plugins/token-focus-plugin';
+import { programEntry, setTokenFocus } from '../../plugins/token-focus-plugin';
 import { getTokenMeta } from '../../plugins/token-meta-plugin';
 import { applyTokenAction } from '../../tokens/filter-token/token-actions';
 import type { FieldDefinition, QuerySnapshotFilterToken, ValidationRule } from '../../types';
@@ -71,8 +72,16 @@ function lastTokenId(editor: Editor): string {
   return id;
 }
 
-function focusToken(editor: Editor, pos: number | null) {
-  editor.view.dispatch(setTokenFocus(editor.state.tr, { focusedPos: pos }));
+function focusToken(editor: Editor, id: string | null) {
+  const tr = editor.state.tr;
+  setTokenFocus(tr, id === null ? null : { id, entry: programEntry() });
+  editor.view.dispatch(tr);
+}
+
+/** Puts the user in the token at `pos` of `tr` and dispatches `tr`. */
+function dispatchFocusingTokenAt(editor: Editor, tr: Transaction, pos: number) {
+  setTokenFocus(tr, { id: String(tr.doc.nodeAt(pos)?.attrs.id), entry: programEntry() });
+  editor.view.dispatch(tr);
 }
 
 function setValue(editor: Editor, id: string, value: string) {
@@ -92,9 +101,7 @@ function insertToken(editor: Editor, pos: number, key: string, value: string) {
 function typeStatusAndLeave(editor: Editor, typed: string[]) {
   const end = editor.state.doc.content.size - 1;
   act(() => {
-    editor.view.dispatch(
-      setTokenFocus(insertToken(editor, end, 'status', ''), { focusedPos: end })
-    );
+    dispatchFocusingTokenAt(editor, insertToken(editor, end, 'status', ''), end);
   });
   const id = lastTokenId(editor);
   for (const value of typed) act(() => setValue(editor, id, value));
@@ -122,7 +129,7 @@ describe('undo and redo', () => {
 
     const priority = filterTokens(ref).find((t) => t.key === 'priority');
     if (!priority) throw new Error('priority token missing');
-    act(() => focusToken(editor, tokenPos(editor, priority.id)));
+    act(() => focusToken(editor, priority.id));
     act(() => {
       editor.commands.undo();
     });
@@ -141,7 +148,7 @@ describe('undo and redo', () => {
     ]);
     const [status, priority] = filterTokens(ref);
     act(() => setValue(editor, priority.id, 'low'));
-    act(() => focusToken(editor, tokenPos(editor, status.id)));
+    act(() => focusToken(editor, status.id));
     act(() => {
       editor.commands.undo();
     });
@@ -160,7 +167,7 @@ describe('undo and redo', () => {
       recordingRule(passes),
     ]);
     const [status, priority] = filterTokens(ref);
-    act(() => focusToken(editor, tokenPos(editor, status.id)));
+    act(() => focusToken(editor, status.id));
     act(() => {
       ref.current?.updateToken(priority.id, { value: 'low' });
     });
@@ -252,9 +259,7 @@ describe('marks after a deletion', () => {
     if (!priority) throw new Error('priority token missing');
     const at = tokenPos(editor, priority.id);
     act(() => {
-      editor.view.dispatch(
-        setTokenFocus(insertToken(editor, at, 'status', ''), { focusedPos: at })
-      );
+      dispatchFocusingTokenAt(editor, insertToken(editor, at, 'status', ''), at);
     });
     const id = editor.state.doc.nodeAt(at)?.attrs.id as string;
     act(() => setValue(editor, id, 'inactive'));
@@ -294,7 +299,7 @@ describe('Unique reject and an edit that does not change what is compared', () =
     await waitFor(() => expect(values(ref)).toEqual(['active', 'inactive']));
 
     const duplicate = filterTokens(ref)[1];
-    act(() => focusToken(editor, tokenPos(editor, duplicate.id)));
+    act(() => focusToken(editor, duplicate.id));
     act(() => setValue(editor, duplicate.id, 'pending'));
     act(() => focusToken(editor, null));
     await settle();
@@ -305,7 +310,7 @@ describe('Unique reject and an edit that does not change what is compared', () =
   it('deletes an existing token that was edited to duplicate another', async () => {
     const { ref, editor } = await renderEditor('status:is:active priority:is:high', [rejectKey()]);
     const priority = filterTokens(ref)[1];
-    act(() => focusToken(editor, tokenPos(editor, priority.id)));
+    act(() => focusToken(editor, priority.id));
     act(() =>
       editor.view.dispatch(
         (() => {

@@ -6,13 +6,15 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Editor } from '@tiptap/core';
+import type { Transaction } from '@tiptap/pm/state';
 import { createRef, type RefObject } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
-import type { FieldDefinition } from '../../types';
+import { getTokenFocusMeta } from '../../plugins/token-focus-plugin';
+import type { FieldDefinition, QuerySnapshotFilterToken } from '../../types';
 import { extendedFields } from '../fixtures';
 
 afterEach(() => {
@@ -34,6 +36,12 @@ function getEditor(ref: RefObject<TokenizedSearchInputRef>): Editor {
   return editor;
 }
 
+function filterTokenIds(ref: RefObject<TokenizedSearchInputRef>): string[] {
+  return (ref.current?.getSnapshot().segments ?? [])
+    .filter((segment): segment is QuerySnapshotFilterToken => segment.type === 'filter')
+    .map((segment) => segment.id);
+}
+
 function tokenGroup(name: RegExp): HTMLElement {
   return screen.getByRole('group', { name });
 }
@@ -44,7 +52,60 @@ function valueInputOf(group: HTMLElement): HTMLInputElement {
   return input;
 }
 
+/** Fields with one whose tokens become immutable once the user leaves them with a value. */
+const fieldsWithImmutable: FieldDefinition[] = [
+  ...extendedFields,
+  { key: 'country', label: 'Country', type: 'string', operators: ['is'], immutable: true },
+];
+
 describe('Token focus', () => {
+  describe('moving focus from one token to another', () => {
+    it('takes one transaction to leave the edited token and one to focus the clicked one', async () => {
+      const user = userEvent.setup();
+      const { ref, container } = await renderInput('status:is:active', fieldsWithImmutable);
+      const editor = getEditor(ref);
+      act(() => {
+        editor.commands.focus('end');
+      });
+      await waitFor(() => expect(editor.isFocused).toBe(true));
+      await user.keyboard(' country:');
+      await waitFor(() =>
+        expect(document.activeElement).toBe(valueInputOf(tokenGroup(/country/i)))
+      );
+      await user.keyboard('jp');
+
+      // Leaving and entering tokens is all that changes the token focus or the document.
+      let transactions = 0;
+      const count = ({ transaction }: { transaction: Transaction }) => {
+        if (transaction.docChanged || getTokenFocusMeta(transaction)) transactions++;
+      };
+      editor.on('transaction', count);
+      await user.click(tokenGroup(/status/i));
+      await waitFor(() => expect(document.activeElement).toBe(valueInputOf(tokenGroup(/status/i))));
+      editor.off('transaction', count);
+
+      expect(container.querySelector('.tsi-token[data-immutable="true"]')).not.toBeNull();
+      expect(transactions).toBeLessThanOrEqual(2);
+    });
+  });
+
+  describe('programmatic focus', () => {
+    it('puts the caret at the start of the value when asked to focus at the start', async () => {
+      const { ref } = await renderInput('status:is:active');
+      const editor = getEditor(ref);
+      const [id] = filterTokenIds(ref);
+
+      act(() => {
+        editor.commands.focusFilterToken(id, 'start');
+      });
+
+      const input = valueInputOf(tokenGroup(/status/i));
+      await waitFor(() => expect(document.activeElement).toBe(input));
+      expect(input.selectionStart).toBe(0);
+      expect(input.selectionEnd).toBe(0);
+    });
+  });
+
   describe('the block that receives focus on entry', () => {
     async function renderWithCaret(defaultValue: string, at: 'start' | 'end') {
       const user = userEvent.setup();

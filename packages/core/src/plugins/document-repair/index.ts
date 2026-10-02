@@ -1,8 +1,7 @@
 import { Extension } from '@tiptap/core';
 import { type EditorState, Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
-import { isToken } from '../../utils/node-predicates';
 import { isHistoryTransaction } from '../shared/meta';
-import { tokenFocusKey } from '../token-focus-plugin';
+import { getFocusedToken } from '../token-focus-plugin';
 import { removeEmptyToken } from './empty-token-cleanup';
 import { focusRestoredEmptyToken } from './history-empty-token-focus';
 import { keepWordsApart } from './word-boundary';
@@ -15,10 +14,7 @@ function isRecorded(tr: Transaction): boolean {
 }
 
 function focusedTokenId(state: EditorState): string | null {
-  const pos = tokenFocusKey.getState(state)?.focusedPos ?? null;
-  if (pos === null || pos >= state.doc.content.size) return null;
-  const node = state.doc.nodeAt(pos);
-  return node && isToken(node) ? String(node.attrs.id) : null;
+  return getFocusedToken(state)?.id ?? null;
 }
 
 /**
