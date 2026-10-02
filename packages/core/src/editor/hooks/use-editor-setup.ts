@@ -1,6 +1,7 @@
 import History from '@tiptap/extension-history';
 import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { type Editor, useEditor } from '@tiptap/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ClipboardSerializer } from '../../extensions/clipboard-serializer';
@@ -70,6 +71,8 @@ export function useEditorSetup({
 }: UseEditorSetupOptions): UseEditorSetupResult {
   const [isEmpty, setIsEmpty] = useState(true);
 
+  // The document last reported through onChange; before the first report, an empty input.
+  const reportedDocRef = useRef<ProseMirrorNode | null>(null);
   const confirmedTokensRef = useRef<ComparableToken[]>([]);
   /** Calls onTokensChange when the tokens no longer being edited differ from the last report. */
   const reportConfirmedTokens = (ed: Editor, snapshot: QuerySnapshot) => {
@@ -137,21 +140,24 @@ export function useEditorSetup({
     content: initialContent,
     editable: !disabled,
     editorProps,
-    // The initial content counts as entered at once when the editor is created, so it
-    // is reported as a change from an empty input.
+    // The initial content counts as entered at once when the editor is created. The
+    // transaction that enters it is the first one reported, as a change from an empty
+    // input.
     onCreate: ({ editor: ed }) => {
-      const tr = ed.state.tr;
-      markContentEntered(tr);
-      ed.view.dispatch(tr);
-      const snapshot = readSnapshot(ed);
-      reportConfirmedTokens(ed, snapshot);
-      if (!isEditorEmpty(ed)) onChange?.(snapshot);
+      ed.view.dispatch(markContentEntered(ed.state.tr));
     },
     // Callbacks follow how the state changed, whatever dispatched the change: onChange
-    // when the document differs, after the plugins' appended transactions as well;
-    // onTokensChange when the confirmed tokens differ from the ones last reported.
+    // when the document differs from the one last reported, after the plugins' appended
+    // transactions as well; onTokensChange when the confirmed tokens differ from the ones
+    // last reported.
     onTransaction: ({ editor: ed, transaction, appendedTransactions }) => {
-      const docChanged = !transaction.before.eq(ed.state.doc);
+      const { doc } = ed.state;
+      // The placeholder follows the document itself; the layout effect below covers the
+      // content the editor is created with.
+      if (!transaction.before.eq(doc)) setIsEmpty(isEditorEmpty(ed));
+
+      const reported = reportedDocRef.current ?? ed.schema.topNodeType.createAndFill();
+      const docChanged = !reported?.eq(doc);
       const focusChanged = [transaction, ...appendedTransactions].some(
         (tr) => getTokenFocusMeta(tr) !== undefined
       );
@@ -160,8 +166,8 @@ export function useEditorSetup({
       const snapshot = readSnapshot(ed);
       reportConfirmedTokens(ed, snapshot);
       if (docChanged) {
+        reportedDocRef.current = doc;
         onChange?.(snapshot);
-        setIsEmpty(isEditorEmpty(ed));
       }
     },
   });

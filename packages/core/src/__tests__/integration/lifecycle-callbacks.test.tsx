@@ -6,8 +6,15 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
-import type { QuerySnapshot } from '../../types';
+import type { QuerySnapshot, QuerySnapshotFilterToken, ValidationRule } from '../../types';
+import { Unique } from '../../validation/presets';
 import { extendedFields } from '../fixtures';
+
+function filterValues(snapshot: QuerySnapshot | undefined): string[] {
+  return (snapshot?.segments ?? [])
+    .filter((segment): segment is QuerySnapshotFilterToken => segment.type === 'filter')
+    .map((segment) => `${segment.key}:${segment.value}`);
+}
 
 afterEach(() => cleanup());
 
@@ -72,6 +79,49 @@ describe('lifecycle callbacks', () => {
       await waitFor(() => expect(screen.queryByPlaceholderText('...')).not.toBeInTheDocument());
       expect(onChange).toHaveBeenCalledTimes(1);
       expect(onChange.mock.calls[0]?.[0].segments).toEqual([]);
+    });
+  });
+
+  describe('initial content', () => {
+    it('reports the content left once the initial content is entered, once', async () => {
+      const onChange = vi.fn<(snapshot: QuerySnapshot) => void>();
+      render(
+        <TokenizedSearchInput
+          fields={extendedFields}
+          defaultValue="status:is:active status:is:closed"
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
+          onChange={onChange}
+        />
+      );
+      await screen.findByText('active');
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(filterValues(onChange.mock.calls[0]?.[0])).toEqual(['status:active']);
+    });
+
+    it('reports nothing when entering the initial content leaves it empty', async () => {
+      const onChange = vi.fn<(snapshot: QuerySnapshot) => void>();
+      const rejectAll: ValidationRule = {
+        id: 'reject-all',
+        validate: (ctx) =>
+          ctx.tokens.map((token) => ({
+            ruleId: 'reject-all',
+            reason: 'rejected',
+            action: 'delete' as const,
+            targets: [{ tokenId: token.id }],
+          })),
+      };
+      render(
+        <TokenizedSearchInput
+          fields={extendedFields}
+          defaultValue="status:is:active"
+          validation={{ rules: [rejectAll] }}
+          onChange={onChange}
+        />
+      );
+      await waitFor(() => expect(screen.queryByText('active')).not.toBeInTheDocument());
+
+      expect(onChange).not.toHaveBeenCalled();
     });
   });
 
