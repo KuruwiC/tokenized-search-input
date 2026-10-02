@@ -88,6 +88,28 @@ export function registerPointerCases(): void {
       expect(m.value()).toBe('x');
     });
 
+    it('selects across tokens by dragging after the editor has lost focus once', async () => {
+      const m = await mountEditor(TWO_TOKENS);
+      await userEvent.click(m.pm, { position: gapBetween(m, 0) });
+      const outside = document.createElement('input');
+      document.body.appendChild(outside);
+      try {
+        outside.focus();
+        expect(document.activeElement).toBe(outside);
+
+        await userEvent.dragAndDrop(m.pm, m.pm, {
+          sourcePosition: beforeFirstToken(m),
+          targetPosition: afterLastToken(m),
+        });
+        expectRangeOverTokens(m, 2);
+
+        await userEvent.keyboard('x');
+        expect(m.value()).toBe('x');
+      } finally {
+        outside.remove();
+      }
+    });
+
     it('selects only the tokens a drag covers', async () => {
       const m = await mountEditor(THREE_TOKENS);
       await userEvent.dragAndDrop(m.pm, m.pm, {

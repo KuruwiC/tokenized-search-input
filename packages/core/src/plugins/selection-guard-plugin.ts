@@ -129,11 +129,10 @@ export function createSelectionGuardPlugin(): Plugin<SelectionGuardState> {
         const editorHasFocus = meta?.editorHasFocus ?? pluginState.editorHasFocus;
         // Positions captured at a press follow the edits made while the press lasts.
         const mapped = (pos: number | null) => (pos === null ? null : tr.mapping.map(pos));
-        const pressPos = !editorHasFocus
-          ? null
-          : meta?.pressPos !== undefined
-            ? meta.pressPos
-            : mapped(pluginState.pressPos);
+        // A press lasts from mousedown until its tracker cleans up, whatever happens to
+        // focus in between: the press itself may be what gives the editor focus.
+        const pressPos =
+          meta?.pressPos !== undefined ? meta.pressPos : mapped(pluginState.pressPos);
         const prefocusClickPos =
           meta?.prefocusClickPos !== undefined
             ? meta.prefocusClickPos
