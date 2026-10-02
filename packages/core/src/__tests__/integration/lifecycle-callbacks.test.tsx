@@ -6,6 +6,7 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
+import { getFocusedToken } from '../../plugins/token-focus/state';
 import type { QuerySnapshot, QuerySnapshotFilterToken, ValidationRule } from '../../types';
 import { Unique } from '../../validation/presets';
 import { extendedFields } from '../fixtures';
@@ -122,6 +123,43 @@ describe('lifecycle callbacks', () => {
       await waitFor(() => expect(screen.queryByText('active')).not.toBeInTheDocument());
 
       expect(onChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('onTokensChange', () => {
+    it('reports a focused token once it is confirmed, after a report made while it was edited', async () => {
+      const user = userEvent.setup();
+      const ref = createRef<TokenizedSearchInputRef>();
+      const onTokensChange = vi.fn<(snapshot: QuerySnapshot) => void>();
+      render(
+        <TokenizedSearchInput
+          ref={ref}
+          fields={extendedFields}
+          defaultValue="assignee:is:john priority:is:high"
+          onTokensChange={onTokensChange}
+        />
+      );
+      await screen.findByText('john');
+      const [, priority] = ref.current?.getSnapshot().segments ?? [];
+
+      await user.click(screen.getByRole('group', { name: /Filter: assignee/i }));
+      await user.type(await screen.findByPlaceholderText('...'), 'X');
+      act(() => {
+        if (priority?.type === 'filter') ref.current?.updateToken(priority.id, { value: 'low' });
+      });
+      onTokensChange.mockClear();
+
+      await user.keyboard('{Escape}');
+
+      await waitFor(() => {
+        const editor = ref.current?.getEditor();
+        expect(editor && getFocusedToken(editor.state)).toBeNull();
+      });
+      expect(onTokensChange).toHaveBeenCalledTimes(1);
+      expect(filterValues(onTokensChange.mock.calls[0]?.[0])).toEqual([
+        'assignee:johnX',
+        'priority:low',
+      ]);
     });
   });
 

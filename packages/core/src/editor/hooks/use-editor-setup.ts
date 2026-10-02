@@ -34,7 +34,7 @@ import { FilterTokenNode } from '../../tokens/filter-token/filter-token-node';
 import { FreeTextTokenNode } from '../../tokens/free-text-token/free-text-token-node';
 import type { QuerySnapshot } from '../../types';
 import { getAllTokens } from '../../utils/query-snapshot';
-import { areConfirmedTokensEqual, type ComparableToken } from '../../utils/token-events';
+import { areTokenListsEqual, type ComparableToken, confirmTokens } from '../../utils/token-events';
 import { isEditorEmpty } from '../editor-state';
 
 function readSnapshot(editor: Editor): QuerySnapshot {
@@ -73,13 +73,14 @@ export function useEditorSetup({
 
   // The document last reported through onChange; before the first report, an empty input.
   const reportedDocRef = useRef<ProseMirrorNode | null>(null);
-  const confirmedTokensRef = useRef<ComparableToken[]>([]);
-  /** Calls onTokensChange when the tokens no longer being edited differ from the last report. */
+  // The tokens last reported through onTokensChange, in their confirmed form.
+  const confirmedTokensRef = useRef<readonly ComparableToken[]>([]);
+  /** Calls onTokensChange when the confirmed tokens differ from the last report. */
   const reportConfirmedTokens = (ed: Editor, snapshot: QuerySnapshot) => {
     if (!onTokensChange) return;
-    const tokens = getAllTokens(snapshot);
     const focusedId = getFocusedToken(ed.state)?.id ?? null;
-    if (areConfirmedTokensEqual(confirmedTokensRef.current, tokens, focusedId)) return;
+    const tokens = confirmTokens(confirmedTokensRef.current, getAllTokens(snapshot), focusedId);
+    if (areTokenListsEqual(confirmedTokensRef.current, tokens)) return;
     confirmedTokensRef.current = tokens;
     onTokensChange(snapshot);
   };

@@ -11,18 +11,27 @@ function isSameToken(a: ComparableToken, b: ComparableToken): boolean {
 }
 
 /**
- * Whether two token lists confirm the same tokens: the same type, id, key, operator
- * and value in the same order. The focused token is still being edited, so it is left
- * out of both lists.
+ * The confirmed form of `current`. The focused token is still being edited, so it keeps
+ * the form it had in `confirmed`, the list confirmed before, or is left out when it was
+ * not confirmed yet.
  */
-export function areConfirmedTokensEqual(
-  prev: readonly ComparableToken[],
-  next: readonly ComparableToken[],
+export function confirmTokens(
+  confirmed: readonly ComparableToken[],
+  current: readonly ComparableToken[],
   focusedId: string | null
+): readonly ComparableToken[] {
+  if (focusedId === null) return current;
+  return current.flatMap((token) => {
+    if (token.id !== focusedId) return [token];
+    const before = confirmed.find((candidate) => candidate.id === focusedId);
+    return before ? [before] : [];
+  });
+}
+
+/** Whether two token lists hold the same type, id, key, operator and value in the same order. */
+export function areTokenListsEqual(
+  a: readonly ComparableToken[],
+  b: readonly ComparableToken[]
 ): boolean {
-  const confirmed = (tokens: readonly ComparableToken[]) =>
-    focusedId === null ? tokens : tokens.filter((token) => token.id !== focusedId);
-  const a = confirmed(prev);
-  const b = confirmed(next);
   return a.length === b.length && a.every((token, index) => isSameToken(token, b[index]));
 }
