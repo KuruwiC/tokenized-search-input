@@ -3,7 +3,7 @@
  * queries into the same tokens and write them back as the same strings.
  *
  * Generated, not written by hand: each case is what the 0.1.1 `parseQueryToDoc` made of
- * `input` with `fields` and `options` (spacer nodes left out of `tokens`), and what its
+ * `input` with `fields` and `options` (the separator nodes that version put around tokens left out of `tokens`), and what its
  * `serializeDocToQuery` wrote for that document. `unknownFieldOperators` stands for the
  * 0.1.1 options `allowUnknownFields: true` and `unknownFieldOperators`.
  */
