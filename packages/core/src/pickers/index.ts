@@ -1,7 +1,5 @@
 // Date format utilities (public)
 export {
-  createDateTimeValidator,
-  createDateValidator,
   DEFAULT_DATE_VALUE_FORMAT,
   DEFAULT_DATETIME_VALUE_FORMAT,
   isDateField,

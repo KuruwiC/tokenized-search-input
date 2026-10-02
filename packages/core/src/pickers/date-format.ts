@@ -176,18 +176,6 @@ export function validateDateTimeValue(
   return result.ok ? true : result.error;
 }
 
-export function createDateValidator(
-  config?: DateFormatConfig
-): (value: string) => boolean | string {
-  return (value: string) => validateDateValue(value, config);
-}
-
-export function createDateTimeValidator(
-  config?: DateTimeFormatConfig
-): (value: string) => boolean | string {
-  return (value: string) => validateDateTimeValue(value, config);
-}
-
 /**
  * Check if two dates represent the same month.
  * Useful for calendar navigation to avoid unnecessary re-renders.
