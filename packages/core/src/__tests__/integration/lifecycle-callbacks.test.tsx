@@ -1,7 +1,11 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import {
+  TokenizedSearchInput,
+  type TokenizedSearchInputRef,
+} from '../../editor/tokenized-search-input';
 import type { QuerySnapshot } from '../../types';
 import { extendedFields } from '../fixtures';
 
@@ -68,6 +72,24 @@ describe('lifecycle callbacks', () => {
       await waitFor(() => expect(screen.queryByPlaceholderText('...')).not.toBeInTheDocument());
       expect(onChange).toHaveBeenCalledTimes(1);
       expect(onChange.mock.calls[0]?.[0].segments).toEqual([]);
+    });
+  });
+
+  describe('setValue', () => {
+    it('replaces the content and requests validation in one transaction', async () => {
+      const ref = createRef<TokenizedSearchInputRef>();
+      render(<TokenizedSearchInput ref={ref} fields={extendedFields} />);
+      await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+      const editor = ref.current?.getEditor();
+      const count = vi.fn();
+      editor?.on('transaction', count);
+
+      act(() => {
+        ref.current?.setValue('status:is:active');
+      });
+
+      expect(ref.current?.getValue()).toBe('status:is:active');
+      expect(count).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -25,10 +25,19 @@ import type {
   TokenPatch,
 } from '../tokenized-search-input.types';
 
-/** Replaces the whole content. Token meta of the previous content is discarded. */
+/**
+ * Replaces the whole content and validates it, in one transaction. Token meta of the
+ * previous content is discarded.
+ */
 function setContentAndValidate(editor: Editor, doc: JSONContent): void {
-  editor.commands.replaceContent(doc);
-  editor.view.dispatch(requestValidationCheck(editor.state.tr));
+  editor
+    .chain()
+    .replaceContent(doc)
+    .command(({ tr }) => {
+      requestValidationCheck(tr);
+      return true;
+    })
+    .run();
 }
 
 /**
