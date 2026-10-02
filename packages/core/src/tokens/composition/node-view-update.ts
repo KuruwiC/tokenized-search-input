@@ -14,17 +14,12 @@ function sameSpec(a: Record<string, unknown>, b: Record<string, unknown>): boole
   return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
 }
 
-/** Token decorations carry what the view renders in their spec, so comparing specs suffices. */
+/**
+ * Token decorations carry what the view renders in their spec, so comparing specs
+ * suffices. Positions are ignored: they shift with every edit before the token.
+ */
 function sameDecorations(a: readonly Decoration[], b: readonly Decoration[]): boolean {
-  return (
-    a.length === b.length &&
-    a.every(
-      (decoration, i) =>
-        decoration.from === b[i].from &&
-        decoration.to === b[i].to &&
-        sameSpec(decoration.spec, b[i].spec)
-    )
-  );
+  return a.length === b.length && a.every((decoration, i) => sameSpec(decoration.spec, b[i].spec));
 }
 
 /**
