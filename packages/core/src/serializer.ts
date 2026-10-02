@@ -22,13 +22,7 @@ import { ensureTokenId } from './utils/token-id';
 
 export interface ParseQueryOptions {
   freeTextMode?: FreeTextMode;
-  /**
-   * Allow tokenizing fields not defined in the fields array.
-   * When provided, any text matching field:value or field:operator:value format
-   * is tokenized using this template. `operators` defaults to all default
-   * operators; its first entry is the operator for the field:value format.
-   * When omitted, unknown fields are not tokenized.
-   */
+  /** Tokenizes keys not defined in `fields` using this template; when omitted they stay text. */
   unknownFields?: UnknownFieldTemplate;
   /**
    * Delimiter character used to separate field, operator, and value in tokens.
@@ -144,13 +138,7 @@ export function serializeDocToQuery(doc: JSONContent, options: SerializeDocOptio
 }
 
 export interface ParseTokenTextOptions {
-  /**
-   * Allow tokenizing fields not defined in the fields array.
-   * When provided, any text matching field:value or field:operator:value format
-   * is tokenized using this template. `operators` defaults to all default
-   * operators; its first entry is the operator for the field:value format.
-   * When omitted, unknown fields are not tokenized.
-   */
+  /** Tokenizes keys not defined in `fields` using this template; when omitted they stay text. */
   unknownFields?: UnknownFieldTemplate;
   /**
    * Delimiter character used to separate field, operator, and value in tokens.
@@ -207,13 +195,7 @@ export interface ParseQueryStringResult {
 }
 
 export interface ParseQueryStringOptions {
-  /**
-   * Allow tokenizing fields not defined in the fields array.
-   * When provided, any text matching field:value or field:operator:value format
-   * is tokenized using this template. `operators` defaults to all default
-   * operators; its first entry is the operator for the field:value format.
-   * When omitted, unknown fields are not tokenized.
-   */
+  /** Tokenizes keys not defined in `fields` using this template; when omitted they stay text. */
   unknownFields?: UnknownFieldTemplate;
   /**
    * Delimiter character used to separate field, operator, and value in tokens.

@@ -28,10 +28,7 @@ export const DEFAULT_OPERATORS = [
  */
 export type DefaultOperator = (typeof DEFAULT_OPERATORS)[number];
 
-/**
- * Any operator accepted by fields and tokens: a default operator (with editor
- * autocompletion) or a custom operator string.
- */
+/** A default operator (with autocompletion) or a custom operator string. */
 export type Operator = DefaultOperator | (string & {});
 
 /** All valid default operators */

@@ -38,9 +38,8 @@ const javascriptArtifacts = listFiles(distRoot).filter(
 );
 // Keep this comfortably above the correctly externalized build while catching
 // accidental rebundling of runtime dependencies (which is several times larger).
-// The ceiling applies per file, and the `index` entry holds all component code in
-// one file now that no second entry shares a chunk with it (about 205 kB), so the
-// ceiling sits above that while still well below a rebundled build.
+// Per file: `index` holds all component code (about 205 kB), so the ceiling sits
+// above that while staying well below a rebundled build.
 const maxJavascriptArtifactBytes = 300_000;
 const oversizedJavascriptArtifacts = javascriptArtifacts.filter(
   (path) => statSync(resolve(distRoot, path)).size > maxJavascriptArtifactBytes
