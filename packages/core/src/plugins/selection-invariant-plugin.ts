@@ -10,6 +10,7 @@
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import { nearestValidCaret } from '../utils/caret';
+import { isCompositionTransaction } from './shared/meta';
 
 export const selectionInvariantKey = new PluginKey('selectionInvariant');
 
@@ -22,7 +23,7 @@ export const SelectionInvariantExtension = Extension.create({
         key: selectionInvariantKey,
 
         appendTransaction(transactions, oldState, newState) {
-          if (transactions.some((tr) => tr.getMeta('composition'))) return null;
+          if (transactions.some(isCompositionTransaction)) return null;
 
           const { selection, doc } = newState;
           if (!(selection instanceof TextSelection)) return null;
@@ -32,9 +33,7 @@ export const SelectionInvariantExtension = Extension.create({
           const head = nearestValidCaret(doc, selection.head, direction);
           if (anchor === selection.anchor && head === selection.head) return null;
 
-          return newState.tr
-            .setSelection(TextSelection.create(doc, anchor, head))
-            .setMeta('addToHistory', false);
+          return newState.tr.setSelection(TextSelection.create(doc, anchor, head));
         },
       }),
     ];

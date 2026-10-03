@@ -243,7 +243,6 @@ export function useCustomSuggestions(
 
       const tr = editor.state.tr;
       closeSuggestion(tr);
-      tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
     },
     [editor, config]
@@ -307,7 +306,6 @@ export function useCustomSuggestions(
           if (currentState?.type === 'custom' || currentState?.type === 'fieldWithCustom') {
             const tr = editor.state.tr;
             closeSuggestion(tr);
-            tr.setMeta('addToHistory', false);
             editor.view.dispatch(tr);
           }
           return;
@@ -323,7 +321,6 @@ export function useCustomSuggestions(
           // Replace field suggestions with custom suggestions
           const tr = editor.state.tr;
           openCustomSuggestion(tr, suggestions, query, anchorPos, hasMore);
-          tr.setMeta('addToHistory', false);
           editor.view.dispatch(tr);
         } else {
           // 'prepend' or 'append' mode: combine with field suggestions
@@ -346,7 +343,6 @@ export function useCustomSuggestions(
               anchorPos,
               hasMore
             );
-            tr.setMeta('addToHistory', false);
             editor.view.dispatch(tr);
           }
         }
@@ -376,7 +372,6 @@ export function useCustomSuggestions(
     const { signal } = startRequest(loadMoreRequestRef);
     const loading = editor.state.tr;
     setCustomLoadingMore(loading, started, true);
-    loading.setMeta('addToHistory', false);
     editor.view.dispatch(loading);
 
     try {
@@ -401,7 +396,6 @@ export function useCustomSuggestions(
 
       const tr = editor.state.tr;
       appendCustomSuggestions(tr, current, result.suggestions, result.hasMore ?? false);
-      tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
     } catch (error) {
       if (signal.aborted) return;
@@ -413,7 +407,6 @@ export function useCustomSuggestions(
       if (current?.custom.isLoadingMore) {
         const tr = editor.state.tr;
         setCustomLoadingMore(tr, current, false);
-        tr.setMeta('addToHistory', false);
         editor.view.dispatch(tr);
       }
     }

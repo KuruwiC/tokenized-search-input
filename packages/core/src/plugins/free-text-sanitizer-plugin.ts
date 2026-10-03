@@ -9,6 +9,7 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { EditorState } from '@tiptap/pm/state';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { isFilterToken, isFreeTextToken } from '../utils/node-predicates';
+import { isTextSanitized, markTextSanitized } from './shared/meta';
 
 const freeTextSanitizerKey = new PluginKey('freeTextSanitizer');
 
@@ -68,7 +69,7 @@ export function createFreeTextSanitizerPlugin(getContext: () => FreeTextSanitize
     key: freeTextSanitizerKey,
 
     appendTransaction(transactions, oldState, newState) {
-      if (transactions.some((tr) => tr.getMeta(freeTextSanitizerKey))) {
+      if (transactions.some(isTextSanitized)) {
         return null;
       }
 
@@ -100,7 +101,7 @@ export function createFreeTextSanitizerPlugin(getContext: () => FreeTextSanitize
         return null;
       }
 
-      return tr.setMeta(freeTextSanitizerKey, true);
+      return markTextSanitized(tr);
     },
   });
 }

@@ -42,6 +42,7 @@
       "semicolons": "always"
     }
   },
+  "plugins": ["./biome-plugins/no-literal-meta-keys.grit"],
   "css": {
     "parser": {
       "tailwindDirectives": true

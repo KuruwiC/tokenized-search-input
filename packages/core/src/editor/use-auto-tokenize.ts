@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/core';
 import { getEditorContext, getFocusContext } from '../extensions/editor-context';
-import { autoTokenizeKey } from '../plugins/auto-tokenize/plugin';
 import { tokenizeRange } from '../plugins/auto-tokenize/tokenize-range';
+import { markAutoTokenized, withoutHistory } from '../plugins/shared/meta';
 import { findLastWordBoundary, isInsideQuotes } from '../serializer/quote-state';
 import { isFilterToken } from '../utils/node-predicates';
 import { resolveField } from '../utils/resolve-field';
@@ -66,7 +66,7 @@ function insertEmptyFilterToken(
     .deleteRange({ from, to })
     .insertFilterToken({ key, operator, value: '' })
     .command(({ tr }) => {
-      tr.setMeta('addToHistory', false);
+      withoutHistory(tr);
       return true;
     })
     .run();
@@ -102,7 +102,7 @@ export function tryAutoTokenize(editor: Editor, trigger: string): boolean {
     return false;
   }
 
-  editor.view.dispatch(tr.setMeta(autoTokenizeKey, true));
+  editor.view.dispatch(markAutoTokenized(tr));
   return true;
 }
 

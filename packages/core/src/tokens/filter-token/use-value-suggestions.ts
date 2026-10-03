@@ -86,7 +86,6 @@ export function useValueSuggestions({
     if (isEnumField && fieldDef?.type === 'enum' && fieldDef.enumValues) {
       // Enum field: show value suggestions
       openValueSuggestion(tr, fieldKey, fieldDef.enumValues, value, tokenId);
-      tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
     } else if (fieldDef?.type === 'date' || fieldDef?.type === 'datetime') {
       const parsed = value ? parseDateFieldValue(value, fieldDef) : null;
@@ -98,7 +97,6 @@ export function useValueSuggestions({
         // DateTime field: show datetime picker
         openDateTimeSuggestion(tr, fieldKey, current, tokenId);
       }
-      tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
     }
   };

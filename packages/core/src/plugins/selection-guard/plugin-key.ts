@@ -3,7 +3,7 @@
  * Separated to avoid circular dependencies.
  */
 
-import { PluginKey } from '@tiptap/pm/state';
+import { PluginKey, type Transaction } from '@tiptap/pm/state';
 import type { DecorationSet } from '@tiptap/pm/view';
 
 export interface SelectionGuardState {
@@ -22,3 +22,19 @@ export interface SelectionGuardState {
 }
 
 export const selectionGuardKey = new PluginKey<SelectionGuardState>('selectionGuard');
+
+/**
+ * A change to the press and focus state. A member that is present replaces the stored
+ * one; an absent member is left unchanged.
+ */
+export type SelectionGuardMeta = Partial<
+  Pick<SelectionGuardState, 'editorHasFocus' | 'pressPos' | 'prefocusClickPos'>
+>;
+
+export function setSelectionGuardMeta(tr: Transaction, meta: SelectionGuardMeta): Transaction {
+  return tr.setMeta(selectionGuardKey, meta);
+}
+
+export function getSelectionGuardMeta(tr: Transaction): SelectionGuardMeta | undefined {
+  return tr.getMeta(selectionGuardKey);
+}

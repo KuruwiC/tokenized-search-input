@@ -84,7 +84,6 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     if (!editor.isEditable && !editor.isDestroyed && isSuggestionOpen(suggestionState)) {
       const tr = editor.state.tr;
       closeSuggestion(tr);
-      tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
     }
   }, [editor, editor.isEditable, suggestionState]);
@@ -93,7 +92,6 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     (index: number) => {
       const tr = editor.state.tr;
       updateSuggestionActiveIndex(tr, index);
-      tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
     },
     [editor]

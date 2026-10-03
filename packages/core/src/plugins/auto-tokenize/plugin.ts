@@ -1,7 +1,13 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { type EditorState, Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
 import { Mapping } from '@tiptap/pm/transform';
-import { isHistoryTransaction, requestValidationCheck } from '../shared/meta';
+import {
+  isAutoTokenized,
+  isCompositionTransaction,
+  isHistoryTransaction,
+  markAutoTokenized,
+  requestValidationCheck,
+} from '../shared/meta';
 import type { FocusTransitionContext } from '../token-focus-plugin';
 import { type TokenizeContext, tokenizeRange } from './tokenize-range';
 
@@ -59,7 +65,7 @@ export function createAutoTokenizePlugin(
 
     appendTransaction(transactions, _oldState, newState) {
       const skip = transactions.some(
-        (tr) => tr.getMeta(autoTokenizeKey) || tr.getMeta('composition') || isHistoryTransaction(tr)
+        (tr) => isAutoTokenized(tr) || isCompositionTransaction(tr) || isHistoryTransaction(tr)
       );
       if (skip) return null;
 
@@ -71,7 +77,7 @@ export function createAutoTokenizePlugin(
       if (!tokenizeRange(tr, from, to, getContext(), getFocusContext(newState))) return null;
 
       requestValidationCheck(tr);
-      return tr.setMeta(autoTokenizeKey, true);
+      return markAutoTokenized(tr);
     },
   });
 }

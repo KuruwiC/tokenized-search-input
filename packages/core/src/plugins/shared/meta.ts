@@ -5,6 +5,7 @@
  * single place.
  */
 
+import { isHistoryTransaction as isHistoryStateTransaction } from '@tiptap/pm/history';
 import type { Transaction } from '@tiptap/pm/state';
 import type { ReactNode } from 'react';
 
@@ -67,6 +68,16 @@ const FORCE_VALIDATION_CHECK = 'forceValidationCheck';
 const CONTENT_ENTERED = 'contentEntered';
 const PROGRAMMATIC_EDIT = 'programmaticEdit';
 const SUGGESTION_QUERY = 'suggestionQuery';
+const CONTEXT_UPDATED = 'editorContextUpdated';
+const SUBMITTED = 'querySubmitted';
+const CLEARED = 'queryCleared';
+const AUTO_TOKENIZED = 'autoTokenized';
+const DOCUMENT_REPAIRED = 'documentRepaired';
+const TEXT_SANITIZED = 'freeTextSanitized';
+
+// Keys owned by ProseMirror and its history plugin. They are named here and nowhere else.
+const ADD_TO_HISTORY = 'addToHistory';
+const COMPOSITION = 'composition';
 
 /**
  * Records a change to a token's meta on the transaction. Writes on one
@@ -131,8 +142,33 @@ export function isProgrammaticEdit(tr: Transaction): boolean {
  * before, rather than editing one.
  */
 export function isHistoryTransaction(tr: Transaction): boolean {
-  const meta: unknown = tr.getMeta('history$');
-  return meta !== null && typeof meta === 'object' && 'redo' in meta;
+  return isHistoryStateTransaction(tr);
+}
+
+/**
+ * Keeps the transaction out of the undo history. Only a transaction with steps needs
+ * it: the history does not record one that changes nothing but the selection or meta.
+ */
+export function withoutHistory(tr: Transaction): Transaction {
+  return tr.setMeta(ADD_TO_HISTORY, false);
+}
+
+/**
+ * Records the transaction's steps in the undo history, over a `withoutHistory` made
+ * earlier on the same transaction.
+ */
+export function recordInHistory(tr: Transaction): Transaction {
+  return tr.setMeta(ADD_TO_HISTORY, true);
+}
+
+/** Whether the transaction changes the document in a way undo reverts. */
+export function isRecordedInHistory(tr: Transaction): boolean {
+  return tr.docChanged && tr.getMeta(ADD_TO_HISTORY) !== false;
+}
+
+/** Whether the transaction is part of an IME composition. */
+export function isCompositionTransaction(tr: Transaction): boolean {
+  return tr.getMeta(COMPOSITION) !== undefined;
 }
 
 export function isValidationCheckRequested(tr: Transaction): boolean {
@@ -151,4 +187,64 @@ export function updateSuggestionQuery(tr: Transaction, tokenId: string): Transac
 /** The id of the token the user typed into on this transaction, if any. */
 export function getSuggestionQueryUpdate(tr: Transaction): string | undefined {
   return tr.getMeta(SUGGESTION_QUERY);
+}
+
+/**
+ * Marks the transaction as a change to the editor's configuration, which node views
+ * render from, with no change to the document.
+ */
+export function markContextUpdated(tr: Transaction): Transaction {
+  return tr.setMeta(CONTEXT_UPDATED, true);
+}
+
+export function isContextUpdated(tr: Transaction): boolean {
+  return tr.getMeta(CONTEXT_UPDATED) === true;
+}
+
+/** Marks the transaction as the user submitting the query. */
+export function markSubmitted(tr: Transaction): Transaction {
+  return tr.setMeta(SUBMITTED, true);
+}
+
+export function isSubmitted(tr: Transaction): boolean {
+  return tr.getMeta(SUBMITTED) === true;
+}
+
+/** Marks the transaction as clearing the query. */
+export function markCleared(tr: Transaction): Transaction {
+  return tr.setMeta(CLEARED, true);
+}
+
+export function isCleared(tr: Transaction): boolean {
+  return tr.getMeta(CLEARED) === true;
+}
+
+/**
+ * Marks the transaction as already tokenized, so the auto-tokenize plugin leaves the
+ * text it touched alone.
+ */
+export function markAutoTokenized(tr: Transaction): Transaction {
+  return tr.setMeta(AUTO_TOKENIZED, true);
+}
+
+export function isAutoTokenized(tr: Transaction): boolean {
+  return tr.getMeta(AUTO_TOKENIZED) === true;
+}
+
+/** Marks the transaction as the document-repair plugin's own repair. */
+export function markDocumentRepaired(tr: Transaction): Transaction {
+  return tr.setMeta(DOCUMENT_REPAIRED, true);
+}
+
+export function isDocumentRepaired(tr: Transaction): boolean {
+  return tr.getMeta(DOCUMENT_REPAIRED) === true;
+}
+
+/** Marks the transaction as the free text sanitizer's own removal of text. */
+export function markTextSanitized(tr: Transaction): Transaction {
+  return tr.setMeta(TEXT_SANITIZED, true);
+}
+
+export function isTextSanitized(tr: Transaction): boolean {
+  return tr.getMeta(TEXT_SANITIZED) === true;
 }

@@ -41,7 +41,6 @@ export function useSuggestionDismissal(
 
       const tr = editor.state.tr;
       closeSuggestion(tr);
-      tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
       return true;
     },

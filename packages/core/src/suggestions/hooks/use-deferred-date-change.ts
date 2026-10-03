@@ -44,7 +44,6 @@ export function useDeferredDateChange(
 
     const tr = editor.state.tr;
     updateSuggestionDateValue(tr, value);
-    tr.setMeta('addToHistory', false);
     editor.view.dispatch(tr);
 
     // The picker's field is gone from the state once it has closed

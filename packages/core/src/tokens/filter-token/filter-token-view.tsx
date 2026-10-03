@@ -109,7 +109,6 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
           onOpen={() => {
             const tr = editor.state.tr;
             closeSuggestion(tr);
-            tr.setMeta('addToHistory', false);
             editor.view.dispatch(tr);
           }}
         />
@@ -127,7 +126,6 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
           onOpen={() => {
             const tr = editor.state.tr;
             closeSuggestion(tr);
-            tr.setMeta('addToHistory', false);
             editor.view.dispatch(tr);
           }}
         />
@@ -252,7 +250,6 @@ function FilterTokenValue({
         e.preventDefault();
         const tr = editor.state.tr;
         navigateSuggestion(tr, suggestionState, e.key === 'ArrowDown' ? 'down' : 'up');
-        tr.setMeta('addToHistory', false);
         editor.view.dispatch(tr);
         return true;
       }

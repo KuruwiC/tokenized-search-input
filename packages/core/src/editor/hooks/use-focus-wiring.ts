@@ -67,7 +67,6 @@ export function useFocusWiring({
       if (type && interactionBoundary(type) === 'value-input') return;
       const tr = editor.state.tr;
       dismissSuggestion(tr);
-      tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
     };
 
@@ -81,7 +80,6 @@ export function useFocusWiring({
 
       const tr = editor.state.tr;
       clearDismissed(tr);
-      tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
       updateSuggestions();
       updateCustomSuggestions();
@@ -114,7 +112,6 @@ export function useFocusWiring({
 
       const tr = editor.state.tr;
       dismissSuggestion(tr);
-      tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
     };
 

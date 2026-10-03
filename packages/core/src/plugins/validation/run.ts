@@ -12,7 +12,7 @@ import { findTokenById } from '../../utils/find-token';
 import { isFilterToken, isFreeTextToken } from '../../utils/node-predicates';
 import { type FieldResolutionSource, resolveField } from '../../utils/resolve-field';
 import { ensureTokenId } from '../../utils/token-id';
-import { setTokenMeta, type TokenValidation } from '../shared/meta';
+import { setTokenMeta, type TokenValidation, withoutHistory } from '../shared/meta';
 
 export function collectTokens(doc: ProseMirrorNode): ValidationToken[] {
   const tokens: ValidationToken[] = [];
@@ -320,6 +320,6 @@ export function applyPlan(tr: Transaction, plan: Plan): boolean {
     setTokenMeta(tr, tokenId, { validation });
   }
   if (plan.ownUndoStep) closeHistory(tr);
-  if (!plan.undoable) tr.setMeta('addToHistory', false);
+  if (!plan.undoable) withoutHistory(tr);
   return tr.docChanged || plan.changes.length > 0;
 }

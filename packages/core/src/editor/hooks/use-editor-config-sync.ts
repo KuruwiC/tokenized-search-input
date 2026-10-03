@@ -3,19 +3,18 @@ import { useEffect, useRef } from 'react';
 import {
   applyEditorContext,
   DEFAULT_EDITOR_CONTEXT,
-  EDITOR_CONTEXT_UPDATED,
   type EditorCallbacks,
   type EditorConfig,
   getEditorContext,
   getFocusContext,
 } from '../../extensions/editor-context';
-import { requestValidationCheck } from '../../plugins/shared/meta';
+import { markContextUpdated, requestValidationCheck } from '../../plugins/shared/meta';
 import { applyFreeTextMode } from '../free-text-mode';
 
 /**
  * The only place that writes configuration into the editor context storage after
  * the editor exists. It updates the storage and, only when a member actually
- * changed, dispatches one `EDITOR_CONTEXT_UPDATED` transaction so node views and the
+ * changed, dispatches one context-updated transaction so node views and the
  * suggestion overlay re-read it.
  *
  * The storage of a destroyed editor is still written, so the imperative handle
@@ -61,9 +60,7 @@ export function useEditorConfigSync(
       paginationLabels,
     });
     if (!changed || editor.isDestroyed) return;
-    editor.view.dispatch(
-      editor.state.tr.setMeta('addToHistory', false).setMeta(EDITOR_CONTEXT_UPDATED, true)
-    );
+    editor.view.dispatch(markContextUpdated(editor.state.tr));
   }, [
     editor,
     fields,

@@ -87,7 +87,6 @@ export function useDatePickerState(
     (controls: { isUTC?: boolean; includeTime?: boolean }) => {
       const tr = editor.state.tr;
       updateSuggestionTimeControls(tr, controls);
-      tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
     },
     [editor]

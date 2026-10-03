@@ -101,7 +101,6 @@ export function setTokenDisplayById(
   const current = getApplicableDisplay(getTokenMeta(state, id)?.display, key, value);
   const merged = mergeTokenDisplay(current, display);
   setTokenMeta(tr, id, { display: merged && { ...merged, forKey: key, forValue: value } });
-  tr.setMeta('addToHistory', false);
   return true;
 }
 

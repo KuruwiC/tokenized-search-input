@@ -1,6 +1,7 @@
 import type { Editor } from '@tiptap/core';
 import { useCallback } from 'react';
 import { getEditorContext } from '../extensions/editor-context';
+import { withoutHistory } from '../plugins/shared/meta';
 import {
   closeSuggestion,
   getSuggestionState,
@@ -23,7 +24,6 @@ export interface UseFieldSuggestionsOptions {
 function closeSuggestionAndDispatch(editor: Editor): void {
   const tr = editor.state.tr;
   closeSuggestion(tr);
-  tr.setMeta('addToHistory', false);
   editor.view.dispatch(tr);
 }
 
@@ -68,7 +68,7 @@ export function useFieldSuggestions(
           // When value is set, that transaction IS recorded
           // If user clicks away, emptyTokenCleanup deletes it (also not in history)
           // This prevents orphaned history entries for incomplete tokens
-          tr.setMeta('addToHistory', false);
+          withoutHistory(tr);
           return true;
         })
         .run();
@@ -124,7 +124,6 @@ export function useFieldSuggestions(
 
       const tr = currentState.tr;
       openFieldSuggestion(tr, filtered, query, anchorPos);
-      tr.setMeta('addToHistory', false);
       editor.view.dispatch(tr);
     },
     [editor, options?.matcher]

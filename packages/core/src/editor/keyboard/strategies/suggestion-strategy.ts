@@ -16,7 +16,6 @@ export function handleArrowDown(ctx: KeyboardContext): boolean {
 
   const tr = editor.state.tr;
   navigateSuggestion(tr, suggestionState, 'down');
-  tr.setMeta('addToHistory', false);
   editor.view.dispatch(tr);
   return true;
 }
@@ -31,7 +30,6 @@ export function handleArrowUp(ctx: KeyboardContext): boolean {
 
   const tr = editor.state.tr;
   navigateSuggestion(tr, suggestionState, 'up');
-  tr.setMeta('addToHistory', false);
   editor.view.dispatch(tr);
   return true;
 }
@@ -66,7 +64,6 @@ export function handleEnterOnSuggestion(
   // This provides predictable UX: first Enter closes, second Enter triggers search
   const tr = editor.state.tr;
   closeSuggestion(tr);
-  tr.setMeta('addToHistory', false);
   editor.view.dispatch(tr);
   return true;
 }
@@ -90,7 +87,6 @@ export function handleEscape(ctx: KeyboardContext): boolean {
 
   const tr = editor.state.tr;
   closeSuggestion(tr);
-  tr.setMeta('addToHistory', false);
   editor.view.dispatch(tr);
   return true;
 }

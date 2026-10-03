@@ -15,11 +15,15 @@ import { runKeyHandlers } from '../keyboard';
 import { nearestValidCaret } from '../utils/caret';
 import { isToken } from '../utils/node-predicates';
 import { createDragTracker } from './selection-guard/drag-tracker';
-import { type SelectionGuardState, selectionGuardKey } from './selection-guard/plugin-key';
+import {
+  getSelectionGuardMeta,
+  type SelectionGuardState,
+  selectionGuardKey,
+  setSelectionGuardMeta,
+} from './selection-guard/plugin-key';
 import { handleShiftClickSelection } from './selection-guard/shift-click-handler';
 import { selectionGuardKeySpecs } from './selection-guard/specs';
 import { buildSelectionGuardContext } from './selection-guard/types';
-import { markAsGuarded } from './selection-guard/utils';
 import {
   type FocusTransitionContext,
   getFocusedToken,
@@ -93,8 +97,7 @@ function isTokenNode(node: ProseMirrorNode | null | undefined): boolean {
 
 function setPress(view: EditorView, pressPos: number | null): void {
   const tr = view.state.tr;
-  tr.setMeta(selectionGuardKey, { pressPos });
-  tr.setMeta('addToHistory', false);
+  setSelectionGuardMeta(tr, { pressPos });
   view.dispatch(tr);
 }
 
@@ -106,7 +109,7 @@ function placeCaretAtPress(view: EditorView, getFocusContext: GetFocusContext): 
   const tr = view.state.tr;
   leaveFocusedTokenIn(tr, getFocusContext(view.state));
   tr.setSelection(TextSelection.create(tr.doc, nearestValidCaret(tr.doc, pressPos, 1)));
-  view.dispatch(markAsGuarded(tr));
+  view.dispatch(tr);
   view.focus();
 }
 
@@ -126,13 +129,7 @@ export function createSelectionGuardPlugin(
         };
       },
       apply(tr, pluginState, _oldState, newState) {
-        const meta = tr.getMeta(selectionGuardKey) as
-          | {
-              editorHasFocus?: boolean;
-              pressPos?: number | null;
-              prefocusClickPos?: number | null;
-            }
-          | undefined;
+        const meta = getSelectionGuardMeta(tr);
         const editorHasFocus = meta?.editorHasFocus ?? pluginState.editorHasFocus;
         // Positions captured at a press follow the edits made while the press lasts.
         const mapped = (pos: number | null) => (pos === null ? null : tr.mapping.map(pos));
@@ -170,7 +167,7 @@ export function createSelectionGuardPlugin(
           const prefocusClickPos = pluginState?.prefocusClickPos ?? null;
 
           const tr = view.state.tr;
-          tr.setMeta(selectionGuardKey, { editorHasFocus: true, prefocusClickPos: null });
+          setSelectionGuardMeta(tr, { editorHasFocus: true, prefocusClickPos: null });
           view.dispatch(tr);
 
           if (prefocusClickPos !== null) {
@@ -185,7 +182,7 @@ export function createSelectionGuardPlugin(
 
               const newTr = view.state.tr;
               newTr.setSelection(TextSelection.create(view.state.doc, targetPos));
-              view.dispatch(markAsGuarded(newTr));
+              view.dispatch(newTr);
             } catch {
               // Position resolution failed - fall back to default focus behavior
             }
@@ -201,7 +198,7 @@ export function createSelectionGuardPlugin(
             tr.setSelection(TextSelection.create(view.state.doc, selection.to));
           }
 
-          tr.setMeta(selectionGuardKey, { editorHasFocus: false });
+          setSelectionGuardMeta(tr, { editorHasFocus: false });
           view.dispatch(tr);
           return false;
         },
@@ -218,7 +215,7 @@ export function createSelectionGuardPlugin(
               const tr = view.state.tr;
               leaveFocusedTokenIn(tr, getFocusContext(view.state));
               tr.setSelection(TextSelection.create(tr.doc, tr.doc.resolve(1).end()));
-              view.dispatch(markAsGuarded(tr));
+              view.dispatch(tr);
               view.focus();
               return true;
             }
@@ -226,8 +223,7 @@ export function createSelectionGuardPlugin(
 
           if (!view.hasFocus() && !event.shiftKey) {
             const tr = view.state.tr;
-            tr.setMeta(selectionGuardKey, { prefocusClickPos: posInfo.pos });
-            tr.setMeta('addToHistory', false);
+            setSelectionGuardMeta(tr, { prefocusClickPos: posInfo.pos });
             view.dispatch(tr);
           }
 

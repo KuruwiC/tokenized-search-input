@@ -1,11 +1,12 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { Editor } from '@tiptap/core';
+import type { Transaction } from '@tiptap/pm/state';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
-import { EDITOR_CONTEXT_UPDATED } from '../../extensions/editor-context';
+import { isContextUpdated } from '../../plugins/shared/meta';
 import type { FieldDefinition } from '../../types';
 import { extendedFields } from '../fixtures';
 import { getInternalEditor } from '../helpers/get-editor';
@@ -272,9 +273,7 @@ describe('reactive configuration', () => {
       const contextUpdates = dispatch.mock.calls.filter(
         ([event, payload]) =>
           event === 'transaction' &&
-          (payload as { transaction: { getMeta: (key: string) => unknown } }).transaction.getMeta(
-            EDITOR_CONTEXT_UPDATED
-          )
+          isContextUpdated((payload as { transaction: Transaction }).transaction)
       );
       expect(contextUpdates).toHaveLength(0);
     } finally {

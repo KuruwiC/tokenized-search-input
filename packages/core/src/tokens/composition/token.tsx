@@ -172,7 +172,6 @@ export function Token({
     editor.view.focus();
     const tr = editor.state.tr;
     tr.setSelection(TextSelection.create(tr.doc, pos, pos + tokenNode.nodeSize));
-    tr.setMeta('addToHistory', false);
     editor.view.dispatch(tr);
   }, [editor, getPos]);
 
@@ -244,7 +243,6 @@ export function Token({
         if (isSuggestionOpen(suggestionState)) {
           const tr = editor.state.tr;
           dismissSuggestion(tr);
-          tr.setMeta('addToHistory', false);
           editor.view.dispatch(tr);
           return;
         }

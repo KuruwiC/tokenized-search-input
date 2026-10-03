@@ -1,6 +1,7 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Transaction } from '@tiptap/pm/state';
 import { normalizeDateFieldValue } from '../../pickers/date-format';
+import { recordInHistory } from '../../plugins/shared/meta';
 import type { FieldDefinition } from '../../types';
 import { resolveStoredValue } from '../../utils/enum-value';
 import { findTokenById } from '../../utils/find-token';
@@ -121,7 +122,7 @@ export function applyTokenAction(
   if (!next || isUnchanged(editable.attrs, next)) return false;
 
   tr.setNodeMarkup(found.pos, undefined, { ...found.node.attrs, ...next });
-  tr.setMeta('addToHistory', true);
+  recordInHistory(tr);
   return true;
 }
 

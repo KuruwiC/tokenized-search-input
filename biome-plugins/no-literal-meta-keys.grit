@@ -1,0 +1,24 @@
+language js
+
+or {
+  `$tr.setMeta($key, $value)` where {
+    $key <: or {
+      `'addToHistory'`,
+      `"addToHistory"`,
+      `'history$'`,
+      `"history$"`
+    }
+  },
+  `$tr.getMeta($key)` where {
+    $key <: or {
+      `'addToHistory'`,
+      `"addToHistory"`,
+      `'history$'`,
+      `"history$"`,
+      `'composition'`,
+      `"composition"`
+    }
+  }
+} where {
+  register_diagnostic(span=$key, message="ProseMirror's history and composition metas are read and written through plugins/shared/meta.ts: withoutHistory, recordInHistory, isRecordedInHistory, isHistoryTransaction, isCompositionTransaction.", severity="error")
+}

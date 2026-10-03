@@ -15,6 +15,7 @@ import { Extension } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view';
+import { isCompositionTransaction } from './shared/meta';
 
 const ZERO_WIDTH_SPACE = '​';
 const GAP_CLASS = '_tsi-token-gap';
@@ -74,7 +75,7 @@ function buildGapDecorations(doc: ProseMirrorNode): DecorationSet {
 
 function rebuildAfterComposition(view: EditorView): void {
   if (view.composing || !tokenGapKey.getState(view.state)?.stale) return;
-  view.dispatch(view.state.tr.setMeta(tokenGapKey, REBUILD).setMeta('addToHistory', false));
+  view.dispatch(view.state.tr.setMeta(tokenGapKey, REBUILD));
 }
 
 export function createTokenGapPlugin(): Plugin<TokenGapState> {
@@ -83,7 +84,7 @@ export function createTokenGapPlugin(): Plugin<TokenGapState> {
     state: {
       init: (_, state) => ({ set: buildGapDecorations(state.doc), stale: false }),
       apply: (tr, value) => {
-        if (tr.getMeta('composition') !== undefined) {
+        if (isCompositionTransaction(tr)) {
           return tr.docChanged ? { set: value.set.map(tr.mapping, tr.doc), stale: true } : value;
         }
         if (tr.docChanged || tr.getMeta(tokenGapKey) === REBUILD) {

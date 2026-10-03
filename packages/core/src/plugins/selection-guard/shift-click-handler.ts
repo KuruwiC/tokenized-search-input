@@ -8,7 +8,6 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { TextSelection } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { isToken } from '../../utils/node-predicates';
-import { markAsGuarded } from './utils';
 
 export interface PosInfo {
   pos: number;
@@ -69,7 +68,7 @@ export function handleShiftClickSelection(
   event.preventDefault();
   const tr = view.state.tr;
   tr.setSelection(TextSelection.create(tr.doc, anchor, head));
-  view.dispatch(markAsGuarded(tr));
+  view.dispatch(tr);
 
   // Ensure editor has focus for subsequent keyboard input
   if (!view.hasFocus()) {

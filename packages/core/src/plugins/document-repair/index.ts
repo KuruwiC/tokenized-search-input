@@ -1,18 +1,20 @@
 import { Extension } from '@tiptap/core';
-import { type EditorState, Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
+import { type EditorState, Plugin, PluginKey } from '@tiptap/pm/state';
 import { getFocusContext } from '../../extensions/editor-context';
-import { isHistoryTransaction } from '../shared/meta';
+import {
+  isCompositionTransaction,
+  isDocumentRepaired,
+  isHistoryTransaction,
+  isRecordedInHistory,
+  markDocumentRepaired,
+  withoutHistory,
+} from '../shared/meta';
 import { getFocusedToken } from '../token-focus-plugin';
 import { removeEmptyToken } from './empty-token-cleanup';
 import { focusRestoredEmptyToken } from './history-empty-token-focus';
 import { keepWordsApart } from './word-boundary';
 
 export const documentRepairKey = new PluginKey('documentRepair');
-
-/** A document change that undo reverts. */
-function isRecorded(tr: Transaction): boolean {
-  return tr.docChanged && tr.getMeta('addToHistory') !== false;
-}
 
 function focusedTokenId(state: EditorState): string | null {
   return getFocusedToken(state)?.id ?? null;
@@ -45,7 +47,7 @@ export const DocumentRepairExtension = Extension.create({
 
         appendTransaction(transactions, oldState, newState) {
           const skip = transactions.some(
-            (tr) => tr.getMeta(documentRepairKey) || tr.getMeta('composition')
+            (tr) => isDocumentRepaired(tr) || isCompositionTransaction(tr)
           );
           if (skip) return null;
 
@@ -62,8 +64,8 @@ export const DocumentRepairExtension = Extension.create({
           }
           if (!repaired) return null;
 
-          if (!transactions.some(isRecorded)) tr.setMeta('addToHistory', false);
-          return tr.setMeta(documentRepairKey, true);
+          if (!transactions.some(isRecordedInHistory)) withoutHistory(tr);
+          return markDocumentRepaired(tr);
         },
       }),
     ];

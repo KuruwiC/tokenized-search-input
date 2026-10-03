@@ -12,7 +12,6 @@ import { isToken } from '../../utils/node-predicates';
 import { safeResolve } from '../../utils/safe-resolve';
 import { enterTokenIn, type TokenFocusEntry } from '../token-focus-plugin';
 import type { SelectionGuardContext } from './types';
-import { markAsGuarded } from './utils';
 
 /**
  * Enters a token from the keyboard. A token that cannot be edited, an immutable one,
@@ -34,7 +33,7 @@ function handleTokenEntry(
     tr.setSelection(TextSelection.create(tr.doc, tokenPos, tokenPos + tokenNode.nodeSize));
     view.focus();
   }
-  view.dispatch(markAsGuarded(tr));
+  view.dispatch(tr);
   return true;
 }
 
@@ -64,7 +63,7 @@ export const handleShiftArrowSelection: KeyHandlerFn<SelectionGuardContext> = (c
   const head = nearestValidCaret(ctx.doc, sel.head + direction * token.nodeSize, direction);
   const tr = ctx.view.state.tr;
   tr.setSelection(TextSelection.create(tr.doc, sel.anchor, head));
-  ctx.view.dispatch(markAsGuarded(tr));
+  ctx.view.dispatch(tr);
   return true;
 };
 

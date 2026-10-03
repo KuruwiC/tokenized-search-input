@@ -1,9 +1,16 @@
 import { type Editor, Extension } from '@tiptap/core';
 import type { EditorState } from '@tiptap/pm/state';
 import { getFreeTextStrategy } from '../plugins/auto-tokenize/free-text-strategy';
-import { autoTokenizeKey, createAutoTokenizePlugin } from '../plugins/auto-tokenize/plugin';
+import { createAutoTokenizePlugin } from '../plugins/auto-tokenize/plugin';
 import { tokenizeRange } from '../plugins/auto-tokenize/tokenize-range';
 import { createFreeTextSanitizerPlugin } from '../plugins/free-text-sanitizer-plugin';
+import {
+  isCleared,
+  isSubmitted,
+  markAutoTokenized,
+  markCleared,
+  markSubmitted,
+} from '../plugins/shared/meta';
 import { type FocusTransitionContext, leaveFocusedTokenIn } from '../plugins/token-focus-plugin';
 import { createQuerySnapshot, type SerializeDocOptions } from '../serializer';
 import {
@@ -35,14 +42,6 @@ export { type FieldResolutionSource, resolveField } from '../utils/resolve-field
  * }
  */
 export type DeserializeTextFn = (text: string) => ParsedToken[] | null;
-
-/** Transaction metadata used to notify node views that context-backed UI changed. */
-export const EDITOR_CONTEXT_UPDATED = 'editorContextUpdated';
-
-/** Marks the transaction of the `submit` command; `onSubmit` reads the state it leaves. */
-const SUBMITTED = 'querySubmitted';
-/** Marks the transaction of the `clear` command. */
-const CLEARED = 'queryCleared';
 
 export interface EditorCallbacks {
   onFieldSelect: (field: FieldDefinition) => void;
@@ -285,7 +284,7 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
               dispatch &&
               tokenizeRange(tr, 0, tr.doc.content.size, storage, getFocusContext(editor))
             ) {
-              tr.setMeta(autoTokenizeKey, true);
+              markAutoTokenized(tr);
             }
             return true;
           }
@@ -322,7 +321,7 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
           if (!dispatch) return true;
           leaveFocusedTokenIn(tr, getFocusContext(editor, state));
           commands.finalizeInput();
-          tr.setMeta(SUBMITTED, true);
+          markSubmitted(tr);
           return true;
         },
 
@@ -330,7 +329,7 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
         () =>
         ({ tr, commands, dispatch }) => {
           if (!commands.replaceContent('')) return false;
-          if (dispatch) tr.setMeta(CLEARED, true);
+          if (dispatch) markCleared(tr);
           return true;
         },
     };
@@ -338,8 +337,8 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
 
   onTransaction({ transaction }) {
     const { callbacks } = getEditorContext(this.editor);
-    if (transaction.getMeta(CLEARED)) callbacks.onClear();
-    if (transaction.getMeta(SUBMITTED)) {
+    if (isCleared(transaction)) callbacks.onClear();
+    if (isSubmitted(transaction)) {
       callbacks.onSubmit(createQuerySnapshot(this.editor.state, getSerializeOptions(this.editor)));
     }
   },

@@ -6,6 +6,7 @@ import {
   isContentReset,
   isHistoryTransaction,
   isProgrammaticEdit,
+  isRecordedInHistory,
   isValidationCheckRequested,
   type TokenValidation,
 } from '../shared/meta';
@@ -104,9 +105,7 @@ export const ValidationExtension = Extension.create({
             sessionEdits: sessionAt(oldState).edits,
             contentEntered,
             isHistoryOperation: transactions.some(isHistoryTransaction),
-            recordsHistory: transactions.some(
-              (tr) => tr.docChanged && tr.getMeta('addToHistory') !== false
-            ),
+            recordsHistory: transactions.some(isRecordedInHistory),
             recorded: recordedValidations(newState),
           });
 

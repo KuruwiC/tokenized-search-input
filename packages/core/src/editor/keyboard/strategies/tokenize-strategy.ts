@@ -8,7 +8,6 @@ function closeSuggestionIfOpen(ctx: KeyboardContext): void {
   if (isSuggestionOpen(suggestionState)) {
     const tr = editor.state.tr;
     closeSuggestion(tr);
-    tr.setMeta('addToHistory', false);
     editor.view.dispatch(tr);
   }
 }
