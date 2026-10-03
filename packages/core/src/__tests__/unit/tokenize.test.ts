@@ -19,13 +19,19 @@ describe('readQuoted', () => {
 describe('tokenizeQuery', () => {
   it('returns nothing for an empty or blank query', () => {
     expect(tokenizeQuery('', ':')).toEqual([]);
-    expect(tokenizeQuery(' \t\n\r ', ':')).toEqual([]);
+    expect(tokenizeQuery('   ', ':')).toEqual([]);
   });
 
-  it('separates segments at any whitespace outside quotes', () => {
-    const segments = tokenizeQuery('a\tb\nc\r\nd  e', ':');
+  it('separates segments at a space outside quotes', () => {
+    const segments = tokenizeQuery('a b  c', ':');
 
-    expect(segments.map((segment) => segment.raw)).toEqual(['a', 'b', 'c', 'd', 'e']);
+    expect(segments.map((segment) => segment.raw)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('keeps a tab, a carriage return and a newline inside a segment', () => {
+    const segments = tokenizeQuery('a\tb\nc\rd e', ':');
+
+    expect(segments.map((segment) => segment.raw)).toEqual(['a\tb\nc\rd', 'e']);
   });
 
   it('splits a word at its first delimiter', () => {

@@ -801,6 +801,54 @@ export const cases: SerializedCase[] = [
     serialized: 'name:is:a b',
   },
   {
+    name: 'value with a raw tab',
+    input: 'name:is:a\tb',
+    options: {},
+    source: 'serializer',
+    tokens: [
+      {
+        type: 'filterToken',
+        key: 'name',
+        operator: 'is',
+        value: 'a\tb',
+        immutable: false,
+      },
+    ],
+    serialized: 'name:is:a\tb',
+  },
+  {
+    name: 'value with a raw newline',
+    input: 'name:is:a\nb',
+    options: {},
+    source: 'serializer',
+    tokens: [
+      {
+        type: 'filterToken',
+        key: 'name',
+        operator: 'is',
+        value: 'a\nb',
+        immutable: false,
+      },
+    ],
+    serialized: 'name:is:a\nb',
+  },
+  {
+    name: 'value with a raw carriage return',
+    input: 'name:is:a\rb',
+    options: {},
+    source: 'serializer',
+    tokens: [
+      {
+        type: 'filterToken',
+        key: 'name',
+        operator: 'is',
+        value: 'a\rb',
+        immutable: false,
+      },
+    ],
+    serialized: 'name:is:a\rb',
+  },
+  {
     name: 'enum value in another case',
     input: 'status:is:ACTIVE',
     options: {},
@@ -1386,6 +1434,22 @@ export const cases: SerializedCase[] = [
     serialized: '"a b" c',
   },
   {
+    name: 'segments separated by a tab',
+    input: 'status:is:active\tname:is:x',
+    options: {},
+    source: 'serializer',
+    tokens: [
+      {
+        type: 'filterToken',
+        key: 'status',
+        operator: 'is',
+        value: 'active\tname:is:x',
+        immutable: false,
+      },
+    ],
+    serialized: 'status:is:active\tname:is:x',
+  },
+  {
     name: 'free text mixed with filters in none mode',
     input: 'foo status:is:active bar',
     options: {
@@ -1693,6 +1757,23 @@ export const changedCases: ChangedCase[] = [
     ],
     serialized: 'ab"c d"e',
     reason: 'free text with a quote is written in quotes, 0.1.1 wrote it bare',
+  },
+  {
+    name: 'free text with a raw tab in tokenize mode',
+    input: 'a\tb',
+    options: {
+      freeTextMode: 'tokenize',
+    },
+    source: 'serializer',
+    tokens: [
+      {
+        type: 'freeTextToken',
+        value: 'a\tb',
+        quoted: false,
+      },
+    ],
+    serialized: 'a\tb',
+    reason: 'free text with whitespace is written in quotes, 0.1.1 wrote it bare',
   },
   {
     name: 'unknown field with no support in tokenize mode',

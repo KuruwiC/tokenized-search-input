@@ -39,6 +39,14 @@ function read(input: string, options: SerializedCaseOptions) {
   return parseQueryToDoc(input, fields, parseOptions(options)).doc;
 }
 
+/** 0.1.1 wrote these without quotes; any whitespace character is written in quotes now. */
+const writtenQuoted: Record<string, string> = {
+  'value with a raw tab': 'name:is:"a\tb"',
+  'value with a raw newline': 'name:is:"a\nb"',
+  'value with a raw carriage return': 'name:is:"a\rb"',
+  'segments separated by a tab': 'status:is:"active\tname:is:x"',
+};
+
 describe('the grammar reads what 0.1.1 wrote', () => {
   it('covers at least forty queries', () => {
     expect(cases.length).toBeGreaterThanOrEqual(40);
@@ -63,9 +71,14 @@ describe('the grammar reads what 0.1.1 wrote', () => {
     expect(tokenSequence(read(input, options))).toEqual(tokens);
   });
 
-  it.each(cases)('writes $name as 0.1.1 did', ({ input, options, serialized }) => {
+  it.each(cases)('writes $name as 0.1.1 did, quoting whitespace', ({
+    input,
+    options,
+    name,
+    serialized,
+  }) => {
     expect(serializeDocToQuery(read(input, options), { delimiter: options.delimiter })).toBe(
-      serialized
+      writtenQuoted[name] ?? serialized
     );
   });
 
@@ -124,6 +137,10 @@ const readings: Record<
   'free text with a quote inside a word in tokenize mode': {
     serialized: '"ab\\"c d\\"e"',
     rewritten: [freeText('ab"c d"e', true)],
+  },
+  'free text with a raw tab in tokenize mode': {
+    serialized: '"a\tb"',
+    rewritten: [freeText('a\tb', true)],
   },
   'unknown field with no support in tokenize mode': {
     serialized: '"custom:is:x"',

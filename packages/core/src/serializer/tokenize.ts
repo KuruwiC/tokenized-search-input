@@ -1,6 +1,6 @@
-/** The characters that end a segment of a query when they are outside quotes. */
-export function isWhitespace(char: string): boolean {
-  return ' \t\n\r'.includes(char);
+/** The one character that ends a segment of a query when it is outside quotes. */
+export function isSeparator(char: string): boolean {
+  return char === ' ';
 }
 
 export interface QuotedRun {
@@ -70,16 +70,17 @@ export function splitAtDelimiter(
 }
 
 /**
- * Cuts a query into segments. Whitespace outside quotes separates them. A segment that
- * starts with a quote ends at its closing quote; any other segment runs until whitespace,
- * and a quote inside it opens a run that can hold whitespace. A quote left open runs to
+ * Cuts a query into segments. A space outside quotes separates them; a tab, a carriage
+ * return or a newline is an ordinary character. A segment that starts with a quote ends at
+ * its closing quote; any other segment runs until a space, and a quote inside it opens a
+ * run that can hold spaces. A quote left open runs to
  * the end of the text.
  */
 export function tokenizeQuery(text: string, delimiter: string): Segment[] {
   const segments: Segment[] = [];
   let i = 0;
   while (i < text.length) {
-    if (isWhitespace(text[i])) {
+    if (isSeparator(text[i])) {
       i++;
       continue;
     }
@@ -96,7 +97,7 @@ export function tokenizeQuery(text: string, delimiter: string): Segment[] {
       continue;
     }
     let closed = true;
-    while (i < text.length && !isWhitespace(text[i])) {
+    while (i < text.length && !isSeparator(text[i])) {
       if (text[i] === '"') {
         const run = readQuoted(text, i);
         closed = run.closed;

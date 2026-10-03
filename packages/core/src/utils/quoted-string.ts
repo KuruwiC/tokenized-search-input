@@ -1,4 +1,7 @@
-import { isWhitespace, readQuoted } from '../serializer/tokenize';
+import { readQuoted } from '../serializer/tokenize';
+
+/** What makes text need quotes: any whitespace character (space, tab, CR, LF), a quote or a backslash. */
+const NEEDS_QUOTES = /[ \t\r\n"\\]/;
 
 export interface QuoteOptions {
   /** Quote the text even when it would stand as written. */
@@ -25,7 +28,7 @@ export interface QuoteOptions {
 export function quote(text: string, options: QuoteOptions = {}): string {
   const needed =
     options.always ||
-    Array.from(text).some((char) => isWhitespace(char) || char === '"' || char === '\\') ||
+    NEEDS_QUOTES.test(text) ||
     (options.segmentDelimiter !== undefined && text.indexOf(options.segmentDelimiter) > 0);
   if (!needed) return text;
   return `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
