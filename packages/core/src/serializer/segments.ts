@@ -16,6 +16,17 @@ export function freeTextSegment(
   delimiter: string
 ): string | null {
   const value = String(token.value || '');
-  if (!value) return null;
+  // The parser drops free text that is only whitespace, so it is not written.
+  if (!value.trim()) return null;
   return quote(value, { always: Boolean(token.quoted), segmentDelimiter: delimiter });
+}
+
+/** Text of the document as a segment of a query: without the spaces around it, or `null` when nothing is left. */
+export function textSegment(text: string | undefined): string | null {
+  return text?.replace(/^ +| +$/g, '') || null;
+}
+
+/** The query as written, without the spaces at its edges. Other whitespace belongs to a value. */
+export function trimSpaces(query: string): string {
+  return query.replace(/^ +| +$/g, '');
 }

@@ -173,3 +173,25 @@ describe('diagnostics', () => {
     expect(parseQueryString(query, statusFields).diagnostics.incompleteQuote).toBe(expected);
   });
 });
+
+describe('the edges of a query', () => {
+  it.each([
+    ['an ideographic space', '太郎　'],
+    ['a non-breaking space', 'a '],
+  ])('keeps %s at the end of the last value', (_label, value) => {
+    const serialized = serializeDocToQuery(docOf(filterNode(value)));
+
+    expect(serialized).toBe(`k:is:${value}`);
+    expect(tokenNodes(parseDoc(serialized, fields))[0]?.attrs?.value).toBe(value);
+  });
+
+  it('keeps an ideographic space at the start of the first free text', () => {
+    expect(serializeDocToQuery(docOf(freeTextNode('　太郎')))).toBe('　太郎');
+  });
+
+  it('writes nothing for free text that is only whitespace, as the parser drops it', () => {
+    expect(serializeDocToQuery(docOf(freeTextNode(' ', true)))).toBe('');
+    expect(serializeDocToQuery(docOf(freeTextNode('\t')))).toBe('');
+    expect(tokenNodes(parseDoc('" "', fields, { freeTextMode: 'tokenize' }))).toEqual([]);
+  });
+});

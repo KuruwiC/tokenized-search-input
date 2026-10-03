@@ -19,7 +19,7 @@ import {
 } from './plugins/auto-tokenize/free-text-strategy';
 import { getTokenMeta } from './plugins/token-meta-plugin';
 import { knownOperators, readWord } from './serializer/read-word';
-import { filterSegment, freeTextSegment } from './serializer/segments';
+import { filterSegment, freeTextSegment, textSegment, trimSpaces } from './serializer/segments';
 import { splitAtDelimiter, tokenizeQuery } from './serializer/tokenize';
 import { createFilterTokenAttrs } from './tokens/filter-token/create-attrs';
 import {
@@ -132,10 +132,8 @@ export function serializeDocToQuery(doc: JSONContent, options: SerializeDocOptio
       if (segment) ctx.parts.push(segment);
     },
     text: (node, ctx) => {
-      const text = node.text?.trim();
-      if (text) {
-        ctx.parts.push(text);
-      }
+      const segment = textSegment(node.text);
+      if (segment) ctx.parts.push(segment);
     },
     paragraph: (_node, _ctx, visitChildren) => {
       visitChildren();
@@ -144,7 +142,7 @@ export function serializeDocToQuery(doc: JSONContent, options: SerializeDocOptio
 
   visitDocument(doc, visitor, context);
 
-  return context.parts.join(' ').trim();
+  return trimSpaces(context.parts.join(' '));
 }
 
 export function parseTokenText(
