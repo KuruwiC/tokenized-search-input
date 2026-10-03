@@ -188,8 +188,8 @@ describe('Serializer Round-trip', () => {
       const query = 'unknown:value';
       const doc = parseQueryToDoc(query, fields, { freeTextMode: 'tokenize' }).doc;
       const result = serializeDocToQuery(doc);
-      // Unknown field is treated as free text, and its quotes keep it from reading as a filter
-      expect(result).toBe('"unknown:value"');
+      // Unknown field is treated as free text, not a filter
+      expect(result).toBe('unknown:value');
     });
   });
 });

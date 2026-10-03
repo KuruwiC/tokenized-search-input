@@ -1372,6 +1372,22 @@ export const cases: SerializedCase[] = [
     serialized: 'foo:bar',
   },
   {
+    name: 'free text key and value that match no field in tokenize mode',
+    input: 'foo:bar',
+    options: {
+      freeTextMode: 'tokenize',
+    },
+    source: 'serializer',
+    tokens: [
+      {
+        type: 'freeTextToken',
+        value: 'foo:bar',
+        quoted: false,
+      },
+    ],
+    serialized: 'foo:bar',
+  },
+  {
     name: 'free text key and value that match no field in none mode',
     input: 'foo:bar',
     options: {
@@ -1620,6 +1636,22 @@ export const cases: SerializedCase[] = [
     serialized: 'custom:is:gt:5',
   },
   {
+    name: 'unknown field with no support in tokenize mode',
+    input: 'custom:is:x',
+    options: {
+      freeTextMode: 'tokenize',
+    },
+    source: 'serializer',
+    tokens: [
+      {
+        type: 'freeTextToken',
+        value: 'custom:is:x',
+        quoted: false,
+      },
+    ],
+    serialized: 'custom:is:x',
+  },
+  {
     name: 'unknown field with no support in none mode',
     input: 'custom:is:x status:is:active',
     options: {
@@ -1724,24 +1756,6 @@ export const changedCases: ChangedCase[] = [
     reason: 'free text with a backslash is written in quotes, 0.1.1 wrote it bare',
   },
   {
-    name: 'free text key and value that match no field in tokenize mode',
-    input: 'foo:bar',
-    options: {
-      freeTextMode: 'tokenize',
-    },
-    source: 'serializer',
-    tokens: [
-      {
-        type: 'freeTextToken',
-        value: 'foo:bar',
-        quoted: false,
-      },
-    ],
-    serialized: 'foo:bar',
-    reason:
-      'free text that starts as a key and a delimiter is written in quotes, 0.1.1 wrote it bare',
-  },
-  {
     name: 'free text with a quote inside a word in tokenize mode',
     input: 'ab"c d"e',
     options: {
@@ -1756,6 +1770,23 @@ export const changedCases: ChangedCase[] = [
       },
     ],
     serialized: 'ab"c d"e',
+    reason: 'free text with a quote is written in quotes, 0.1.1 wrote it bare',
+  },
+  {
+    name: 'free text with an unclosed quote in tokenize mode',
+    input: 'ab"c d',
+    options: {
+      freeTextMode: 'tokenize',
+    },
+    source: 'serializer',
+    tokens: [
+      {
+        type: 'freeTextToken',
+        value: 'ab"c d',
+        quoted: false,
+      },
+    ],
+    serialized: 'ab"c d',
     reason: 'free text with a quote is written in quotes, 0.1.1 wrote it bare',
   },
   {
@@ -1774,24 +1805,6 @@ export const changedCases: ChangedCase[] = [
     ],
     serialized: 'a\tb',
     reason: 'free text with whitespace is written in quotes, 0.1.1 wrote it bare',
-  },
-  {
-    name: 'unknown field with no support in tokenize mode',
-    input: 'custom:is:x',
-    options: {
-      freeTextMode: 'tokenize',
-    },
-    source: 'serializer',
-    tokens: [
-      {
-        type: 'freeTextToken',
-        value: 'custom:is:x',
-        quoted: false,
-      },
-    ],
-    serialized: 'custom:is:x',
-    reason:
-      'free text that starts as a key and a delimiter is written in quotes, 0.1.1 wrote it bare',
   },
   {
     name: 'operator of another field after a known key',

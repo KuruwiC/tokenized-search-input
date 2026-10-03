@@ -1,4 +1,6 @@
 import { quote } from '../utils/quoted-string';
+import type { FieldResolutionSource } from '../utils/resolve-field';
+import { readsAsFilter } from './read-word';
 
 /** A filter token as a segment of a query, or `null` for a token without a value. */
 export function filterSegment(
@@ -10,15 +12,22 @@ export function filterSegment(
   return `${token.key}${delimiter}${token.operator}${delimiter}${quote(value)}`;
 }
 
-/** A free text token as a segment of a query, or `null` for a token without a value. */
+/**
+ * A free text token as a segment of a query, or `null` for a token without a value. With
+ * `source`, free text that would read as a filter is quoted; without it nothing is known
+ * to be a field, so that is left as written.
+ */
 export function freeTextSegment(
   token: { value?: unknown; quoted?: unknown },
-  delimiter: string
+  delimiter: string,
+  source?: FieldResolutionSource
 ): string | null {
   const value = String(token.value || '');
   // The parser drops free text that is only whitespace, so it is not written.
   if (!value.trim()) return null;
-  return quote(value, { always: Boolean(token.quoted), segmentDelimiter: delimiter });
+  const always =
+    Boolean(token.quoted) || (source !== undefined && readsAsFilter(value, source, delimiter));
+  return quote(value, { always });
 }
 
 /** Text of the document as a segment of a query: without the spaces around it, or `null` when nothing is left. */

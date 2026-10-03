@@ -115,13 +115,6 @@ describe('quote', () => {
     expect(quote('a\u00a0b')).toBe('a\u00a0b');
   });
 
-  it('quotes text that starts as a key and a delimiter only for a segment of its own', () => {
-    expect(quote('a:b')).toBe('a:b');
-    expect(quote('a:b', { segmentDelimiter: ':' })).toBe('"a:b"');
-    expect(quote('a=b', { segmentDelimiter: ':' })).toBe('a=b');
-    expect(quote(':b', { segmentDelimiter: ':' })).toBe(':b');
-  });
-
   it('quotes on request', () => {
     expect(quote('hello', { always: true })).toBe('"hello"');
   });

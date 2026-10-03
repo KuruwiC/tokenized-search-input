@@ -1,7 +1,8 @@
 import { Extension } from '@tiptap/core';
 import type { Fragment, Slice } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
-import { filterSegment, freeTextSegment } from '../serializer/segments';
+import type { SerializeDocOptions } from '../serializer';
+import { filterSegment, freeTextSegment, textSegment, trimSpaces } from '../serializer/segments';
 import type { FilterTokenAttrs } from '../types';
 import { NODE_TYPE_NAMES } from '../utils/node-predicates';
 import { getEditorContext } from './editor-context';
@@ -20,7 +21,7 @@ interface FragmentLike {
   forEach: (fn: (node: FragmentNode) => void) => void;
 }
 
-interface SerializeOptions {
+interface SerializeOptions extends SerializeDocOptions {
   serializeToken?: SerializeTokenFn;
   delimiter: string;
 }
@@ -30,14 +31,19 @@ function defaultSerializeFilterToken(node: FragmentNode, parts: string[], delimi
   if (segment) parts.push(segment);
 }
 
-function serializeFreeTextToken(node: FragmentNode, parts: string[], delimiter: string): void {
-  const segment = freeTextSegment(node.attrs ?? {}, delimiter);
+function serializeFreeTextToken(
+  node: FragmentNode,
+  parts: string[],
+  options: SerializeOptions
+): void {
+  const source = options.fields && { fields: options.fields, unknownFields: options.unknownFields };
+  const segment = freeTextSegment(node.attrs ?? {}, options.delimiter, source);
   if (segment) parts.push(segment);
 }
 
 function serializeText(node: FragmentNode, parts: string[]): void {
-  const text = (node.text || '').replace(/\s+/g, ' ').trim();
-  if (text) parts.push(text);
+  const segment = textSegment(node.text);
+  if (segment) parts.push(segment);
 }
 
 function visitFragment(fragment: FragmentLike, parts: string[], options: SerializeOptions): void {
@@ -60,7 +66,7 @@ function visitFragment(fragment: FragmentLike, parts: string[], options: Seriali
         break;
       }
       case NODE_TYPE_NAMES.freeTextToken:
-        serializeFreeTextToken(node, parts, options.delimiter);
+        serializeFreeTextToken(node, parts, options);
         break;
       case 'text':
         serializeText(node, parts);
@@ -82,7 +88,7 @@ function visitFragment(fragment: FragmentLike, parts: string[], options: Seriali
 function serializeFragment(fragment: FragmentLike, options: SerializeOptions): string {
   const parts: string[] = [];
   visitFragment(fragment, parts, options);
-  return parts.join(' ');
+  return trimSpaces(parts.join(' '));
 }
 
 function containsTokenNodes(fragment: Fragment): boolean {
@@ -120,8 +126,8 @@ export const ClipboardSerializer = Extension.create({
 
   addProseMirrorPlugins() {
     const getSerializeOptions = (): SerializeOptions => {
-      const { serializeToken, delimiter } = getEditorContext(this.editor);
-      return { serializeToken, delimiter };
+      const { serializeToken, delimiter, fields, unknownFields } = getEditorContext(this.editor);
+      return { serializeToken, delimiter, fields, unknownFields };
     };
 
     return [

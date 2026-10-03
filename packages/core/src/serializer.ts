@@ -116,11 +116,19 @@ export interface SerializeDocOptions {
    * @default ':'
    */
   delimiter?: string;
+  /**
+   * The fields of the editor. With them, free text that would read as a filter, such as
+   * `status:active` for a field `status`, is written in quotes; without them it is not.
+   */
+  fields?: FieldDefinition[];
+  /** The `unknownFields` template of the editor, which makes any key a field. */
+  unknownFields?: UnknownFieldTemplate;
 }
 
 export function serializeDocToQuery(doc: JSONContent, options: SerializeDocOptions = {}): string {
   const delimiter = options.delimiter ?? DEFAULT_TOKEN_DELIMITER;
   const context = { parts: [] as string[] };
+  const source = options.fields && { fields: options.fields, unknownFields: options.unknownFields };
 
   const visitor: NodeVisitor<typeof context> = {
     filterToken: (node, ctx) => {
@@ -128,7 +136,7 @@ export function serializeDocToQuery(doc: JSONContent, options: SerializeDocOptio
       if (segment) ctx.parts.push(segment);
     },
     freeTextToken: (node, ctx) => {
-      const segment = freeTextSegment(node.attrs ?? {}, delimiter);
+      const segment = freeTextSegment(node.attrs ?? {}, delimiter, source);
       if (segment) ctx.parts.push(segment);
     },
     text: (node, ctx) => {
@@ -238,13 +246,7 @@ export function parseQueryString(
   return { tokens, diagnostics };
 }
 
-export interface CreateQuerySnapshotOptions {
-  /**
-   * Delimiter character used to separate field, operator, and value in tokens.
-   * @default ':'
-   */
-  delimiter?: string;
-}
+export type CreateQuerySnapshotOptions = SerializeDocOptions;
 
 /**
  * Creates a QuerySnapshot from an editor state.
@@ -258,7 +260,6 @@ export function createQuerySnapshot(
   state: EditorState,
   options: CreateQuerySnapshotOptions = {}
 ): QuerySnapshot {
-  const delimiter = options.delimiter ?? DEFAULT_TOKEN_DELIMITER;
   const doc = state.doc.toJSON() as JSONContent;
   const context = { segments: [] as QuerySnapshotSegment[] };
 
@@ -310,6 +311,6 @@ export function createQuerySnapshot(
 
   return {
     segments: context.segments,
-    text: serializeDocToQuery(doc, { delimiter }),
+    text: serializeDocToQuery(doc, options),
   };
 }

@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/react';
 import { type RefObject, useEffect } from 'react';
-import { getEditorContext } from '../../extensions/editor-context';
+import { getSerializeOptions } from '../../extensions/editor-context';
 import {
   clearDismissed,
   dismissSuggestion,
@@ -57,9 +57,7 @@ export function useFocusWiring({
       editor.commands.finalizeInput();
 
       if (onBlur) {
-        const snapshot = createQuerySnapshot(editor.state, {
-          delimiter: getEditorContext(editor).delimiter,
-        });
+        const snapshot = createQuerySnapshot(editor.state, getSerializeOptions(editor));
         onBlur(snapshot);
       }
 
@@ -77,9 +75,7 @@ export function useFocusWiring({
       if (isInside(e.relatedTarget)) return;
 
       if (onFocus) {
-        const snapshot = createQuerySnapshot(editor.state, {
-          delimiter: getEditorContext(editor).delimiter,
-        });
+        const snapshot = createQuerySnapshot(editor.state, getSerializeOptions(editor));
         onFocus(snapshot);
       }
 

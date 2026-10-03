@@ -10,8 +10,8 @@ import {
   createEditorContext,
   type EditorConfig,
   EditorContextExtension,
-  getEditorContext,
   getFocusContext,
+  getSerializeOptions,
 } from '../../extensions/editor-context';
 import { KeyboardShortcutsExtension } from '../../extensions/keyboard-shortcuts';
 import { SingleParagraphDocument } from '../../extensions/single-paragraph-document';
@@ -38,7 +38,7 @@ import { areTokenListsEqual, type ComparableToken, confirmTokens } from '../../u
 import { isEditorEmpty } from '../editor-state';
 
 function readSnapshot(editor: Editor): QuerySnapshot {
-  return createQuerySnapshot(editor.state, { delimiter: getEditorContext(editor).delimiter });
+  return createQuerySnapshot(editor.state, getSerializeOptions(editor));
 }
 
 export interface UseEditorSetupOptions {

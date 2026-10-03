@@ -6,31 +6,21 @@ const NEEDS_QUOTES = /[ \t\r\n"\\]/;
 export interface QuoteOptions {
   /** Quote the text even when it would stand as written. */
   always?: boolean;
-  /**
-   * Set for text that stands as a segment of its own, such as free text. Text that starts
-   * as a key followed by this delimiter would read as a filter, so it is quoted.
-   */
-  segmentDelimiter?: string;
 }
 
 /**
  * Writes `text` as a value or as free text of a query. Quotes are added when the text
- * contains whitespace, a quote or a backslash, or when `segmentDelimiter` is given and the
- * text starts as a key followed by that delimiter. Inside quotes, `"` and `\` are written
+ * contains whitespace, a quote or a backslash, or when `always` is set. Inside quotes, `"` and `\` are written
  * as `\"` and `\\`; every other character stays as it is.
  *
  * @example
  * quote('hello') // 'hello'
  * quote('hello world') // '"hello world"'
  * quote('say "hi"') // '"say \\"hi\\""'
- * quote('a:b', { segmentDelimiter: ':' }) // '"a:b"'
+ * quote('a', { always: true }) // '"a"'
  */
 export function quote(text: string, options: QuoteOptions = {}): string {
-  const needed =
-    options.always ||
-    NEEDS_QUOTES.test(text) ||
-    (options.segmentDelimiter !== undefined && text.indexOf(options.segmentDelimiter) > 0);
-  if (!needed) return text;
+  if (!options.always && !NEEDS_QUOTES.test(text)) return text;
   return `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }
 

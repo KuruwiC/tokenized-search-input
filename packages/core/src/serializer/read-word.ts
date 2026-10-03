@@ -1,6 +1,7 @@
 import { DEFAULT_OPERATORS } from '../types';
 import { type FieldResolutionSource, resolveField } from '../utils/resolve-field';
 import { resolveTokenValue } from './resolve-token-value';
+import { splitAtDelimiter } from './tokenize';
 
 /** What a word of a query stands for, before the value is checked to be there. */
 export type WordReading =
@@ -62,4 +63,16 @@ export function readWord(
     value: resolveTokenValue(field, word.rest),
     unknownOperator: false,
   };
+}
+
+/** Whether `text`, written as a segment of its own, would be read as a filter with a value. */
+export function readsAsFilter(
+  text: string,
+  source: FieldResolutionSource,
+  delimiter: string
+): boolean {
+  const { key, rest } = splitAtDelimiter(text, delimiter);
+  if (key === null) return false;
+  const reading = readWord({ key, rest }, source, delimiter);
+  return reading?.type === 'filter' && reading.value !== '';
 }

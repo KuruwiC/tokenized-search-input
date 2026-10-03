@@ -8,7 +8,7 @@ import {
   useImperativeHandle,
   useRef,
 } from 'react';
-import { getEditorContext } from '../../extensions/editor-context';
+import { getEditorContext, getSerializeOptions } from '../../extensions/editor-context';
 import {
   applyTokenPatch,
   type DisplayBinding,
@@ -142,15 +142,11 @@ export function useTokenizedSearchInputRef(
       },
       getValue: () => {
         if (!editor) return '';
-        return serializeDocToQuery(readDoc(editor), {
-          delimiter: getEditorContext(editor).delimiter,
-        });
+        return serializeDocToQuery(readDoc(editor), getSerializeOptions(editor));
       },
       getSnapshot: () => {
         if (!editor) return { segments: [], text: '' };
-        return createQuerySnapshot(readState(editor), {
-          delimiter: getEditorContext(editor).delimiter,
-        });
+        return createQuerySnapshot(readState(editor), getSerializeOptions(editor));
       },
       focus: () => {
         if (!editor) return;

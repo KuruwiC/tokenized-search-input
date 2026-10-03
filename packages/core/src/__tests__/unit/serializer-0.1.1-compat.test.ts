@@ -39,6 +39,15 @@ function read(input: string, options: SerializedCaseOptions) {
   return parseQueryToDoc(input, fields, parseOptions(options)).doc;
 }
 
+/** Writes the document the way the editor does, with its fields. */
+function write(doc: JSONContent, options: SerializedCaseOptions): string {
+  return serializeDocToQuery(doc, {
+    delimiter: options.delimiter,
+    fields,
+    unknownFields: parseOptions(options).unknownFields,
+  });
+}
+
 /** 0.1.1 wrote these without quotes; any whitespace character is written in quotes now. */
 const writtenQuoted: Record<string, string> = {
   'value with a raw tab': 'name:is:"a\tb"',
@@ -77,9 +86,7 @@ describe('the grammar reads what 0.1.1 wrote', () => {
     name,
     serialized,
   }) => {
-    expect(serializeDocToQuery(read(input, options), { delimiter: options.delimiter })).toBe(
-      writtenQuoted[name] ?? serialized
-    );
+    expect(write(read(input, options), options)).toBe(writtenQuoted[name] ?? serialized);
   });
 
   it.each(cases)('reads what it writes for $name as the same tokens', ({
@@ -87,7 +94,7 @@ describe('the grammar reads what 0.1.1 wrote', () => {
     options,
     tokens,
   }) => {
-    const written = serializeDocToQuery(read(input, options), { delimiter: options.delimiter });
+    const written = write(read(input, options), options);
 
     expect(tokenSequence(read(written, options))).toEqual(tokens);
   });
@@ -130,9 +137,9 @@ const readings: Record<
     serialized: '"a\\\\nb"',
     rewritten: [freeText('a\\nb', true)],
   },
-  'free text key and value that match no field in tokenize mode': {
-    serialized: '"foo:bar"',
-    rewritten: [freeText('foo:bar', true)],
+  'free text with an unclosed quote in tokenize mode': {
+    serialized: '"ab\\"c d"',
+    rewritten: [freeText('ab"c d', true)],
   },
   'free text with a quote inside a word in tokenize mode': {
     serialized: '"ab\\"c d\\"e"',
@@ -141,10 +148,6 @@ const readings: Record<
   'free text with a raw tab in tokenize mode': {
     serialized: '"a\tb"',
     rewritten: [freeText('a\tb', true)],
-  },
-  'unknown field with no support in tokenize mode': {
-    serialized: '"custom:is:x"',
-    rewritten: [freeText('custom:is:x', true)],
   },
   'operator of another field after a known key': {
     tokens: [filter('status', 'contains', 'foo')],
@@ -167,7 +170,7 @@ describe('the grammar reads queries that 0.1.1 read differently', () => {
     const tokens = reading?.tokens ?? c.tokens;
 
     expect(tokenSequence(doc)).toEqual(tokens);
-    expect(serializeDocToQuery(doc, { delimiter: c.options.delimiter })).toBe(reading?.serialized);
+    expect(write(doc, c.options)).toBe(reading?.serialized);
     expect(tokenSequence(read(reading?.serialized ?? '', c.options))).toEqual(
       reading?.rewritten ?? tokens
     );

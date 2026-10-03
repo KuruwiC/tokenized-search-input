@@ -5,7 +5,7 @@ import { autoTokenizeKey, createAutoTokenizePlugin } from '../plugins/auto-token
 import { tokenizeRange } from '../plugins/auto-tokenize/tokenize-range';
 import { createFreeTextSanitizerPlugin } from '../plugins/free-text-sanitizer-plugin';
 import { type FocusTransitionContext, leaveFocusedTokenIn } from '../plugins/token-focus-plugin';
-import { createQuerySnapshot } from '../serializer';
+import { createQuerySnapshot, type SerializeDocOptions } from '../serializer';
 import {
   type ClassNames,
   type CustomSuggestion,
@@ -224,6 +224,12 @@ export function getEditorContext(editor: object): EditorContextStorage {
   return context;
 }
 
+/** What writing the query of `editor` needs from its configuration. */
+export function getSerializeOptions(editor: object): SerializeDocOptions {
+  const { delimiter, fields, unknownFields } = getEditorContext(editor);
+  return { delimiter, fields, unknownFields };
+}
+
 /** What a focus transition in a transaction from `state` of `editor` needs to know. */
 export function getFocusContext(
   editor: Editor,
@@ -331,10 +337,10 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
   },
 
   onTransaction({ transaction }) {
-    const { callbacks, delimiter } = getEditorContext(this.editor);
+    const { callbacks } = getEditorContext(this.editor);
     if (transaction.getMeta(CLEARED)) callbacks.onClear();
     if (transaction.getMeta(SUBMITTED)) {
-      callbacks.onSubmit(createQuerySnapshot(this.editor.state, { delimiter }));
+      callbacks.onSubmit(createQuerySnapshot(this.editor.state, getSerializeOptions(this.editor)));
     }
   },
 

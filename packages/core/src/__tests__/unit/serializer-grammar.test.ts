@@ -54,8 +54,42 @@ describe('quoting on serialize', () => {
     expect(reparsed[0]?.attrs?.value).toBe('hello world');
   });
 
-  it('quotes free text that would read as a key and value', () => {
-    expect(serializeDocToQuery(docOf(freeTextNode('k:value')))).toBe('"k:value"');
+  describe('free text that starts as a key and the delimiter', () => {
+    const write = (value: string, options: Parameters<typeof serializeDocToQuery>[1] = {}) =>
+      serializeDocToQuery(docOf(freeTextNode(value)), options);
+
+    it('is quoted when the key is a field, as it would read as a filter otherwise', () => {
+      expect(write('k:value', { fields })).toBe('"k:value"');
+      expect(write('k:is:value', { fields })).toBe('"k:is:value"');
+    });
+
+    it('is quoted when an unknownFields template makes any identifier a field', () => {
+      expect(write('anything:value', { fields, unknownFields: {} })).toBe('"anything:value"');
+    });
+
+    it('is left as written when the key matches no field and there is no template', () => {
+      expect(write('http://example.com', { fields })).toBe('http://example.com');
+      expect(write('10:30', { fields })).toBe('10:30');
+      expect(write('other:value', { fields })).toBe('other:value');
+    });
+
+    it('is left as written when it would not read as a filter anyway', () => {
+      expect(write('k:', { fields })).toBe('k:');
+      expect(write(':value', { fields, unknownFields: {} })).toBe(':value');
+    });
+
+    it('is left as written without fields to compare with', () => {
+      expect(write('k:value')).toBe('k:value');
+    });
+
+    it('keeps the quoted flag through a write and a read', () => {
+      const options = { freeTextMode: 'tokenize' as const };
+      const written = serializeDocToQuery(parseDoc('http://x 10:30', fields, options), { fields });
+      const reread = tokenNodes(parseDoc(written, fields, options));
+
+      expect(written).toBe('http://x 10:30');
+      expect(reread.map((node) => node.attrs?.quoted)).toEqual([false, false]);
+    });
   });
 
   it('leaves free text that needs no quotes as written', () => {
