@@ -93,6 +93,8 @@ export {
 export {
   type CreateQuerySnapshotOptions,
   createQuerySnapshot,
+  type ParseDiagnostics,
+  type ParsedQuery,
   type ParseOptions,
   parseQueryToDoc,
   type SerializeDocOptions,
