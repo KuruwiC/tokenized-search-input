@@ -124,6 +124,30 @@
   --tsi-selection-foreground: hsl(0 0% 98%);
 }
 
+/* Follow the system preference unless the page pins the light theme. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --tsi-background: hsl(0 0% 3.9%);
+    --tsi-foreground: hsl(0 0% 98%);
+    --tsi-muted: hsl(0 0% 14.9%);
+    --tsi-muted-foreground: hsl(0 0% 63.9%);
+    --tsi-muted-darker: hsl(0 0% 26%);
+    --tsi-border: hsl(0 0% 14.9%);
+    --tsi-border-hover: hsl(0 0% 45.1%);
+    --tsi-border-focus: hsl(0 0% 98%);
+    --tsi-ring-color: hsl(0 0% 98%);
+    --tsi-ring-offset-color: hsl(0 0% 3.9%);
+    --tsi-primary: hsl(0 0% 98%);
+    --tsi-primary-muted: hsl(0 0% 14.9%);
+    --tsi-primary-muted-foreground: hsl(0 0% 98%);
+    --tsi-secondary: hsl(0 0% 63.9%);
+    --tsi-destructive: hsl(0 62.8% 50.6%);
+    --tsi-destructive-muted: hsl(0 63% 15%);
+    --tsi-selection: hsl(0 0% 40%);
+    --tsi-selection-foreground: hsl(0 0% 98%);
+  }
+}
+
 /* ============================================
    Base Layer - Scoped Reset
    Reset styles are placed in @layer base so that
@@ -1059,7 +1083,7 @@
     transition: all 150ms ease-out;
   }
 
-  /* Clear button positioning is now handled by .tsi-end-controls container */
+  /* Clear button positioning is handled by .tsi-end-controls container */
   :where(.tsi-clear-button--absolute),
   :where(.tsi-clear-button--inline) {
     flex-shrink: 0;
@@ -1363,12 +1387,6 @@
     padding: 0.5rem;
     font-size: var(--tsi-font-size-xs);
     color: var(--tsi-muted-foreground);
-  }
-
-  /* === Utility: foreground text === */
-
-  :where(.tsi-text-foreground) {
-    color: var(--tsi-foreground);
   }
 
   /* ============================================

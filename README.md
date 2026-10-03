@@ -664,7 +664,7 @@ All styles are customizable via `--tsi-*` CSS variables. Override them in your C
 
 ### Dark Mode
 
-Apply dark mode by setting variables under a `.dark` class (or any selector):
+The dark palette applies automatically when the system prefers a dark color scheme, unless an ancestor sets `data-theme="light"`. Set `data-theme="dark"` or a `.dark` class to force it, or override the variables under any selector:
 
 ```css
 .dark {
