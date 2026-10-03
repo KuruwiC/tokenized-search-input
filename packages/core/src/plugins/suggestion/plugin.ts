@@ -4,7 +4,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EnumValue, FieldDefinition } from '../../types';
 import { findTokenById } from '../../utils/find-token';
 import { isFilterToken, isToken } from '../../utils/node-predicates';
-import { getSuggestionQueryUpdate } from '../shared/meta';
+import { getTokenValueTypedId } from '../shared/meta';
 import { getTokenFocusMeta } from '../token-focus/state';
 import { suggestionEntries } from './entries';
 import { createResetState } from './state-helpers';
@@ -69,7 +69,7 @@ function typedValueSuggestionMeta(
   tr: Transaction,
   resolveField: SuggestionPluginOptions['resolveField']
 ): SetSuggestionMeta | undefined {
-  const tokenId = getSuggestionQueryUpdate(tr);
+  const tokenId = getTokenValueTypedId(tr);
   if (tokenId === undefined) return undefined;
   const derived = deriveValueSuggestion(tr.doc, tokenId, resolveField);
   if (!derived) return undefined;

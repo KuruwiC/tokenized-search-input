@@ -1,7 +1,6 @@
 const DEFAULT_DRAG_THRESHOLD = 5;
 
 export interface DragTrackerCallbacks {
-  /** Called when the drag threshold is exceeded */
   onDragStart: () => void;
   /** Called on mouse move during a drag, with the document position under the pointer */
   onDragMove: (pos: number) => void;

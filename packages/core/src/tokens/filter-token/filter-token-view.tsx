@@ -204,7 +204,7 @@ function FilterTokenValue({
   // A space is part of the value once the typed text opens a quote
   const allowSpaces = baseAllowSpaces || isInsideQuotes(effectiveValue);
 
-  const { handleValueInputFocus, addSuggestionQuery } = useValueSuggestions({
+  const { handleValueInputFocus, markValueTyped } = useValueSuggestions({
     editor,
     tokenId,
     fieldKey,
@@ -217,7 +217,7 @@ function FilterTokenValue({
   const handleInputChange = (inputText: string) => {
     const tr = editor.state.tr;
     if (!applyTokenAction(tr, tokenId, { type: 'setValue', value: inputText }, fieldSource)) return;
-    addSuggestionQuery(tr);
+    markValueTyped(tr);
     editor.view.dispatch(tr);
   };
 

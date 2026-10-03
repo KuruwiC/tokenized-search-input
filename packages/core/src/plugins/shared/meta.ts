@@ -67,7 +67,7 @@ const CONTENT_RESET = 'contentReset';
 const FORCE_VALIDATION_CHECK = 'forceValidationCheck';
 const CONTENT_ENTERED = 'contentEntered';
 const PROGRAMMATIC_EDIT = 'programmaticEdit';
-const SUGGESTION_QUERY = 'suggestionQuery';
+const TOKEN_VALUE_TYPED = 'tokenValueTyped';
 const CONTEXT_UPDATED = 'editorContextUpdated';
 const SUBMITTED = 'querySubmitted';
 const CLEARED = 'queryCleared';
@@ -110,6 +110,10 @@ export function isContentReset(tr: Transaction): boolean {
  */
 export function requestValidationCheck(tr: Transaction): Transaction {
   return tr.setMeta(FORCE_VALIDATION_CHECK, true);
+}
+
+export function isValidationCheckRequested(tr: Transaction): boolean {
+  return tr.getMeta(FORCE_VALIDATION_CHECK) === true;
 }
 
 /**
@@ -171,22 +175,18 @@ export function isCompositionTransaction(tr: Transaction): boolean {
   return tr.getMeta(COMPOSITION) !== undefined;
 }
 
-export function isValidationCheckRequested(tr: Transaction): boolean {
-  return tr.getMeta(FORCE_VALIDATION_CHECK) === true;
-}
-
 /**
  * Marks the transaction as the user typing into the token with the given id. The
  * suggestion plugin then shows that token's value suggestions, even if they were
  * dismissed; their query always follows the token's value.
  */
-export function updateSuggestionQuery(tr: Transaction, tokenId: string): Transaction {
-  return tr.setMeta(SUGGESTION_QUERY, tokenId);
+export function markTokenValueTyped(tr: Transaction, tokenId: string): Transaction {
+  return tr.setMeta(TOKEN_VALUE_TYPED, tokenId);
 }
 
 /** The id of the token the user typed into on this transaction, if any. */
-export function getSuggestionQueryUpdate(tr: Transaction): string | undefined {
-  return tr.getMeta(SUGGESTION_QUERY);
+export function getTokenValueTypedId(tr: Transaction): string | undefined {
+  return tr.getMeta(TOKEN_VALUE_TYPED);
 }
 
 /**

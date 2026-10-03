@@ -3,7 +3,6 @@ import { NODE_TYPE_NAMES } from './node-predicates';
 
 /**
  * Visitor interface for processing TipTap document nodes.
- * Each method is optional; only the node types a caller cares about need a handler.
  */
 export interface NodeVisitor<TContext> {
   filterToken?: (node: JSONContent, ctx: TContext) => void;

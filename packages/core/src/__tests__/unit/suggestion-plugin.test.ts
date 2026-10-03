@@ -1,7 +1,7 @@
 import { Schema } from '@tiptap/pm/model';
 import { EditorState } from '@tiptap/pm/state';
 import { describe, expect, it } from 'vitest';
-import { updateSuggestionQuery } from '../../plugins/shared/meta';
+import { markTokenValueTyped } from '../../plugins/shared/meta';
 import {
   appendCustomSuggestions,
   clearDismissed,
@@ -180,7 +180,7 @@ describe('SuggestionPlugin', () => {
 
       const untyped = getSuggestionState(state2.apply(setTokenValue(state2, 'p')));
       const typed = getSuggestionState(
-        state2.apply(updateSuggestionQuery(setTokenValue(state2, 'p'), 'token-1'))
+        state2.apply(markTokenValueTyped(setTokenValue(state2, 'p'), 'token-1'))
       );
 
       expect(untyped?.dismissed).toBe(true);

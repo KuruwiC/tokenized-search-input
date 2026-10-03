@@ -2,7 +2,7 @@ import type { Editor } from '@tiptap/core';
 import type { Transaction } from '@tiptap/pm/state';
 import { useEffect, useRef } from 'react';
 import { parseDateFieldValue } from '../../pickers/date-format';
-import { updateSuggestionQuery } from '../../plugins/shared/meta';
+import { markTokenValueTyped } from '../../plugins/shared/meta';
 import {
   getSuggestionState,
   isAnchoredToToken,
@@ -28,7 +28,7 @@ export interface UseValueSuggestionsReturn {
    * Marks the transaction that writes a typed value, so the value suggestions are
    * shown for it even after the user dismissed them.
    */
-  addSuggestionQuery: (tr: Transaction) => void;
+  markValueTyped: (tr: Transaction) => void;
 }
 
 /**
@@ -98,10 +98,10 @@ export function useValueSuggestions({
     }
   };
 
-  const addSuggestionQuery = (tr: Transaction) => {
+  const markValueTyped = (tr: Transaction) => {
     if (!enabled || !isEnumField) return;
-    updateSuggestionQuery(tr, tokenId);
+    markTokenValueTyped(tr, tokenId);
   };
 
-  return { handleValueInputFocus, addSuggestionQuery };
+  return { handleValueInputFocus, markValueTyped };
 }
