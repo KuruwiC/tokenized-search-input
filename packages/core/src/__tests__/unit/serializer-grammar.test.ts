@@ -195,3 +195,57 @@ describe('the edges of a query', () => {
     expect(tokenNodes(parseDoc('" "', fields, { freeTextMode: 'tokenize' }))).toEqual([]);
   });
 });
+
+describe('what a word can name', () => {
+  it.each(['::x', ':foo', ':is:x'])('never reads %j as a filter with an empty key', (query) => {
+    const { tokens, diagnostics } = parseQueryString(query, statusFields, { unknownFields: {} });
+
+    expect(tokens).toEqual([{ type: 'freeText', value: query, quoted: false }]);
+    expect(diagnostics.unknownFields).toEqual([]);
+  });
+
+  it('reports only keys that look like identifiers as unknown fields', () => {
+    const { diagnostics } = parseQueryString(
+      'http://x 10:30 a.b:1 user_x:2 -x:1 .y:2 snake-case:3',
+      statusFields
+    );
+
+    expect(diagnostics.unknownFields).toEqual(['http', 'a.b', 'user_x', 'snake-case']);
+  });
+
+  describe('as an operator', () => {
+    const between = [
+      { key: 'range', label: 'Range', type: 'string', operators: ['is', 'between'] },
+      { key: 'name', label: 'Name', type: 'string', operators: ['is'] },
+    ] satisfies FieldDefinition[];
+
+    it('is an operator of the field of the key', () => {
+      const { tokens, diagnostics } = parseQueryString('range:between:5', between);
+
+      expect(tokens).toEqual([{ type: 'filter', key: 'range', operator: 'between', value: '5' }]);
+      expect(diagnostics.unknownOperators).toEqual([]);
+    });
+
+    it('is not one on a key whose field does not have it, when no default or template names it', () => {
+      const { tokens, diagnostics } = parseQueryString('name:between:5', between);
+
+      expect(tokens).toEqual([{ type: 'filter', key: 'name', operator: 'is', value: 'between:5' }]);
+      expect(diagnostics.unknownOperators).toEqual([]);
+    });
+
+    it('is one that a default names, whichever field has it', () => {
+      expect(parseQueryString('name:contains:5', between).diagnostics.unknownOperators).toEqual([
+        { key: 'name', operator: 'contains' },
+      ]);
+    });
+
+    it('is one that the unknown field template names', () => {
+      const { tokens, diagnostics } = parseQueryString('name:fuzzy:5', between, {
+        unknownFields: { operators: ['is', 'fuzzy'] },
+      });
+
+      expect(tokens).toEqual([{ type: 'filter', key: 'name', operator: 'fuzzy', value: '5' }]);
+      expect(diagnostics.unknownOperators).toEqual([{ key: 'name', operator: 'fuzzy' }]);
+    });
+  });
+});

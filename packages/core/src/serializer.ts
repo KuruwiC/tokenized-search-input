@@ -18,7 +18,7 @@ import {
   type ParsedFreeTextToken,
 } from './plugins/auto-tokenize/free-text-strategy';
 import { getTokenMeta } from './plugins/token-meta-plugin';
-import { knownOperators, readWord } from './serializer/read-word';
+import { readWord } from './serializer/read-word';
 import { filterSegment, freeTextSegment, textSegment, trimSpaces } from './serializer/segments';
 import { splitAtDelimiter, tokenizeQuery } from './serializer/tokenize';
 import { createFilterTokenAttrs } from './tokens/filter-token/create-attrs';
@@ -160,8 +160,7 @@ export function parseTokenText(
   const reading = readWord(
     { key, rest },
     { fields, unknownFields: options?.unknownFields },
-    delimiter,
-    knownOperators(fields, options?.unknownFields)
+    delimiter
   );
   if (reading?.type !== 'filter') return null;
   return { key: reading.key, operator: reading.operator, value: reading.value };
@@ -197,7 +196,6 @@ export function parseQueryString(
   const diagnostics = emptyDiagnostics();
   const delimiter = options?.delimiter ?? DEFAULT_TOKEN_DELIMITER;
   const source = { fields, unknownFields: options?.unknownFields };
-  const known = knownOperators(fields, options?.unknownFields);
 
   for (const segment of tokenizeQuery(query, delimiter)) {
     if (!segment.closed) diagnostics.incompleteQuote = true;
@@ -215,7 +213,7 @@ export function parseQueryString(
     const reading =
       segment.key === null
         ? null
-        : readWord({ key: segment.key, rest: segment.rest }, source, delimiter, known);
+        : readWord({ key: segment.key, rest: segment.rest }, source, delimiter);
     if (reading?.type === 'filter' && reading.value) {
       tokens.push({
         type: 'filter',
