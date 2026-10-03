@@ -4,12 +4,19 @@ import type { Matcher } from '../types';
 // Score Constants
 // ============================================
 
+// Scores are worked out in points out of 100 and returned as a fraction of it, so that every
+// matcher answers on the same 0..1 scale.
+const SCALE = 100;
 const SCORE_EXACT = 100;
 const SCORE_PREFIX_BASE = 80;
 const SCORE_CASE_BONUS = 5;
 const SCORE_CONSECUTIVE_BONUS = 10;
 const SCORE_START_BONUS = 15;
 const SCORE_BOUNDARY_BONUS = 10;
+const SCORE_PER_CONSECUTIVE = 3;
+const SCORE_PER_BOUNDARY = 3;
+// A partial match never reaches the score of an exact one.
+const SCORE_FUZZY_MAX = 99;
 
 // ============================================
 // Internal Helpers
@@ -19,7 +26,7 @@ function isWordBoundary(char: string): boolean {
   return char === '-' || char === '_' || char === ' ';
 }
 
-function fuzzyScore(input: string, target: string): number {
+function fuzzyPoints(input: string, target: string): number {
   if (!input) return 0;
   if (!target) return 0;
 
@@ -51,18 +58,17 @@ function fuzzyScore(input: string, target: string): number {
     }
   }
   if (consecutiveCount > 0) {
-    score += Math.min(SCORE_CONSECUTIVE_BONUS, consecutiveCount * 3);
+    score += Math.min(SCORE_CONSECUTIVE_BONUS, consecutiveCount * SCORE_PER_CONSECUTIVE);
   }
 
   if (matchPositions[0] === 0) {
     score += SCORE_START_BONUS;
   }
 
-  for (const pos of matchPositions) {
-    if (pos === 0 || (pos > 0 && isWordBoundary(target[pos - 1]))) {
-      score += Math.min(SCORE_BOUNDARY_BONUS, 3);
-    }
-  }
+  const boundaryCount = matchPositions.filter(
+    (pos) => pos === 0 || isWordBoundary(target[pos - 1])
+  ).length;
+  score += Math.min(SCORE_BOUNDARY_BONUS, boundaryCount * SCORE_PER_BOUNDARY);
 
   let caseMatches = 0;
   for (let i = 0; i < matchPositions.length; i++) {
@@ -74,7 +80,7 @@ function fuzzyScore(input: string, target: string): number {
     score += SCORE_CASE_BONUS;
   }
 
-  return Math.max(1, Math.min(99, score));
+  return Math.max(1, Math.min(SCORE_FUZZY_MAX, score));
 }
 
 // ============================================
@@ -83,23 +89,23 @@ function fuzzyScore(input: string, target: string): number {
 
 /**
  * Case-sensitive exact match.
- * Returns 100 for exact match, 0 otherwise.
+ * Returns 1 for an exact match, 0 otherwise.
  */
 export const exact: Matcher = (input, target) => {
-  return input === target ? SCORE_EXACT : 0;
+  return input === target ? SCORE_EXACT / SCALE : 0;
 };
 
 /**
  * Case-insensitive exact match.
- * Returns 100 for match, 0 otherwise.
+ * Returns 1 for a match, 0 otherwise.
  */
 export const caseInsensitive: Matcher = (input, target) => {
-  return input.toLowerCase() === target.toLowerCase() ? SCORE_EXACT : 0;
+  return input.toLowerCase() === target.toLowerCase() ? SCORE_EXACT / SCALE : 0;
 };
 
 /**
  * Case-insensitive prefix match.
- * Returns 80 + case bonus for match, 0 otherwise.
+ * Returns 0.8 for a match, or 0.85 when the case matches too; 0 otherwise.
  */
 export const prefix: Matcher = (input, target) => {
   const lowerInput = input.toLowerCase();
@@ -109,17 +115,19 @@ export const prefix: Matcher = (input, target) => {
     return 0;
   }
 
-  return SCORE_PREFIX_BASE + (target.startsWith(input) ? SCORE_CASE_BONUS : 0);
+  return (SCORE_PREFIX_BASE + (target.startsWith(input) ? SCORE_CASE_BONUS : 0)) / SCALE;
 };
 
 /**
  * fzf-style fuzzy matcher.
- * Scores based on consecutive matches, start position, word boundaries, and case.
+ * Returns 1 for an exact match, ignoring case, and 0 when the input is not a subsequence of
+ * the target. Otherwise the score is between 0.01 and 0.99: it grows with the share of the
+ * target the input covers, consecutive matches (up to 0.1), a match at the start (0.15),
+ * matches at word boundaries (up to 0.1) and matching case (0.05).
  */
 export const fuzzy: Matcher = (input, target) => {
-  if (input === target) return SCORE_EXACT;
-  if (input.toLowerCase() === target.toLowerCase()) return SCORE_EXACT;
-  return fuzzyScore(input, target);
+  if (input.toLowerCase() === target.toLowerCase()) return SCORE_EXACT / SCALE;
+  return fuzzyPoints(input, target) / SCALE;
 };
 
 // ============================================
@@ -130,7 +138,7 @@ export const fuzzy: Matcher = (input, target) => {
  * Built-in matchers for filtering suggestions.
  *
  * @example
- * import { matchers } from 'search-input';
+ * import { matchers } from '@kuruwic/tokenized-search-input/utils';
  *
  * const field: EnumFieldDefinition = {
  *   key: 'status',
@@ -156,7 +164,8 @@ export const defaultMatcher = fuzzy;
 // ============================================
 
 /**
- * Match input against multiple targets and return the highest score.
+ * Match input against multiple targets and return the highest score, on the 0..1 scale of the
+ * matcher.
  *
  * @example
  * // Match against both value and label

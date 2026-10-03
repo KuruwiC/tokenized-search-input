@@ -46,8 +46,8 @@ export interface FilterEnumValuesOptions {
    */
   matcher?: Matcher;
   /**
-   * Minimum score threshold for inclusion.
-   * @default 1
+   * Lowest matcher score, on its 0..1 scale, a value may have and still be included.
+   * @default 0
    */
   minScore?: number;
 }
@@ -138,7 +138,7 @@ export const defaultEnumResolver = enumResolvers.caseInsensitive;
  * resolveEnumValue(enumValues, 'Active') // → 'active'
  *
  * // Case-sensitive exact match
- * import { enumResolvers } from 'search-input';
+ * import { enumResolvers } from '@kuruwic/tokenized-search-input/utils';
  * resolveEnumValue(enumValues, 'Active', { resolver: enumResolvers.exact })
  */
 export function resolveEnumValue(

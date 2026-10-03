@@ -100,14 +100,14 @@ describe('enum-value utilities', () => {
     });
 
     it('respects minScore option', () => {
-      const lowThreshold = filterEnumValues(enumValues, 'a', { minScore: 1 });
-      const highThreshold = filterEnumValues(enumValues, 'a', { minScore: 50 });
+      const lowThreshold = filterEnumValues(enumValues, 'a', { minScore: 0 });
+      const highThreshold = filterEnumValues(enumValues, 'a', { minScore: 0.5 });
 
       expect(lowThreshold.length).toBeGreaterThan(highThreshold.length);
     });
 
     it('uses custom matcher function', () => {
-      const customMatcher = (input: string, value: string) => (value.startsWith(input) ? 100 : 0);
+      const customMatcher = (input: string, value: string) => (value.startsWith(input) ? 1 : 0);
 
       const result = filterEnumValues(enumValues, 'act', { matcher: customMatcher });
       expect(result.length).toBe(1);

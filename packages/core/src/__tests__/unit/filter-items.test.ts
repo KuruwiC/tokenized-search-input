@@ -63,7 +63,7 @@ describe('filterItems', () => {
     });
 
     it('uses custom matcher function', () => {
-      const customMatcher = (input: string, target: string) => (target.startsWith(input) ? 100 : 0);
+      const customMatcher = (input: string, target: string) => (target.startsWith(input) ? 1 : 0);
 
       const result = filterItems(items, 'act', getTargets, { matcher: customMatcher });
       expect(result.length).toBe(1);
@@ -73,15 +73,15 @@ describe('filterItems', () => {
 
   describe('minScore option', () => {
     it('respects minScore option', () => {
-      const lowThreshold = filterItems(items, 'a', getTargets, { minScore: 1 });
-      const highThreshold = filterItems(items, 'a', getTargets, { minScore: 50 });
+      const lowThreshold = filterItems(items, 'a', getTargets, { minScore: 0 });
+      const highThreshold = filterItems(items, 'a', getTargets, { minScore: 0.5 });
 
       expect(lowThreshold.length).toBeGreaterThan(highThreshold.length);
     });
 
     it('excludes items below minScore', () => {
       // With exact matcher and partial input, nothing should match
-      const result = filterItems(items, 'act', getTargets, { matcher: exact, minScore: 100 });
+      const result = filterItems(items, 'act', getTargets, { matcher: exact, minScore: 1 });
       expect(result).toEqual([]);
     });
   });
@@ -124,7 +124,7 @@ describe('filterItems', () => {
     it('applies matcher and minScore together', () => {
       const result = filterItems(items, 'act', getTargets, {
         matcher: fuzzy,
-        minScore: 1,
+        minScore: 0,
       });
 
       expect(result.length).toBeGreaterThan(0);

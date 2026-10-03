@@ -11,8 +11,8 @@ import {
 
 describe('matcher', () => {
   describe('exact', () => {
-    it('returns 100 for exact match', () => {
-      expect(exact('active', 'active')).toBe(100);
+    it('returns 1 for exact match', () => {
+      expect(exact('active', 'active')).toBe(1);
     });
 
     it('returns 0 for case mismatch', () => {
@@ -29,12 +29,12 @@ describe('matcher', () => {
   });
 
   describe('caseInsensitive', () => {
-    it('returns 100 for exact match ignoring case', () => {
-      expect(caseInsensitive('ACTIVE', 'active')).toBe(100);
+    it('returns 1 for exact match ignoring case', () => {
+      expect(caseInsensitive('ACTIVE', 'active')).toBe(1);
     });
 
-    it('returns 100 for same case match', () => {
-      expect(caseInsensitive('active', 'active')).toBe(100);
+    it('returns 1 for same case match', () => {
+      expect(caseInsensitive('active', 'active')).toBe(1);
     });
 
     it('returns 0 for partial match', () => {
@@ -47,8 +47,9 @@ describe('matcher', () => {
   });
 
   describe('prefix', () => {
-    it('returns 80+ for prefix match', () => {
-      expect(prefix('act', 'active')).toBeGreaterThanOrEqual(80);
+    it('returns 0.8 or more for prefix match', () => {
+      expect(prefix('act', 'active')).toBeGreaterThanOrEqual(0.8);
+      expect(prefix('act', 'active')).toBeLessThan(1);
     });
 
     it('adds case bonus for exact case match', () => {
@@ -67,18 +68,18 @@ describe('matcher', () => {
   });
 
   describe('fuzzy', () => {
-    it('returns 100 for exact match', () => {
-      expect(fuzzy('active', 'active')).toBe(100);
+    it('returns 1 for exact match', () => {
+      expect(fuzzy('active', 'active')).toBe(1);
     });
 
-    it('returns 100 for case-insensitive exact match', () => {
-      expect(fuzzy('ACTIVE', 'active')).toBe(100);
+    it('returns 1 for case-insensitive exact match', () => {
+      expect(fuzzy('ACTIVE', 'active')).toBe(1);
     });
 
     it('returns positive score for subsequence match', () => {
       const score = fuzzy('acv', 'active');
       expect(score).toBeGreaterThan(0);
-      expect(score).toBeLessThan(100);
+      expect(score).toBeLessThan(1);
     });
 
     it('returns higher score for consecutive matches', () => {
@@ -103,6 +104,31 @@ describe('matcher', () => {
       expect(fuzzy('xyz', 'active')).toBe(0);
     });
 
+    it('caps the word boundary bonus at 0.1', () => {
+      // 4 of 7 characters: 0.29 from coverage, 0.15 for the start, 0.05 for case, and the
+      // four boundary matches would add 0.12 uncapped.
+      expect(fuzzy('abcd', 'a-b-c-d')).toBeCloseTo(0.59, 5);
+    });
+
+    it.each([
+      ['exact', exact],
+      ['caseInsensitive', caseInsensitive],
+      ['prefix', prefix],
+      ['fuzzy', fuzzy],
+    ])('%s scores within 0..1', (_name, matcher) => {
+      for (const [input, target] of [
+        ['act', 'active'],
+        ['Act', 'Active'],
+        ['active', 'active'],
+        ['acv', 'active'],
+        ['xyz', 'active'],
+      ]) {
+        const score = matcher(input, target);
+        expect(score).toBeGreaterThanOrEqual(0);
+        expect(score).toBeLessThanOrEqual(1);
+      }
+    });
+
     it('returns 0 for empty input', () => {
       expect(fuzzy('', 'active')).toBe(0);
     });
@@ -111,7 +137,7 @@ describe('matcher', () => {
   describe('matchBest', () => {
     it('returns highest score from multiple targets', () => {
       const score = matchBest(exact, 'active', 'inactive', 'active', 'pending');
-      expect(score).toBe(100);
+      expect(score).toBe(1);
     });
 
     it('returns 0 when no targets match', () => {
@@ -131,7 +157,7 @@ describe('matcher', () => {
         'active',
         undefined as unknown as string
       );
-      expect(score).toBe(100);
+      expect(score).toBe(1);
     });
 
     it('returns 0 when all targets are null/undefined', () => {

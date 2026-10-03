@@ -861,8 +861,8 @@ A `Matcher` scores how well a user's input matches a target string: `(input: str
 | Score | Meaning |
 |-------|---------|
 | `0` | No match |
-| `1-99` | Partial match (higher = better) |
-| `100` | Exact match |
+| `0 < score < 1` | Partial match (higher = better) |
+| `1` | Exact match |
 
 Built-in matchers:
 

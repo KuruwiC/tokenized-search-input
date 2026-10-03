@@ -8,8 +8,9 @@ export interface FilterItemsOptions {
    */
   matcher?: Matcher;
   /**
-   * Minimum score threshold for inclusion.
-   * @default 1
+   * Lowest matcher score, on its 0..1 scale, an item may have and still be included.
+   * An item the matcher scores 0 never matches, whatever this is.
+   * @default 0
    */
   minScore?: number;
 }
@@ -52,14 +53,14 @@ export function filterItems<T>(
   }
 
   const matcher = options?.matcher ?? defaultMatcher;
-  const minScore = options?.minScore ?? 1;
+  const minScore = options?.minScore ?? 0;
 
   const scored = items
     .map((item) => ({
       item,
       score: matchBest(matcher, query, ...getTargets(item)),
     }))
-    .filter(({ score }) => score >= minScore)
+    .filter(({ score }) => score > 0 && score >= minScore)
     .sort((a, b) => b.score - a.score);
 
   return scored.map(({ item }) => item);

@@ -98,21 +98,21 @@ interface BaseFieldDefinition {
  *
  * Score values:
  * - 0: No match
- * - 1-99: Partial match (higher = better)
- * - 100: Exact match
+ * - Greater than 0 and less than 1: Partial match (higher = better)
+ * - 1: Exact match
  *
  * When multiple items have the same score, array order takes precedence.
  *
  * @example
  * // Custom matcher
  * const myMatcher: Matcher = (input, target) => {
- *   if (input === target) return 100;
- *   if (target.toLowerCase().includes(input.toLowerCase())) return 50;
+ *   if (input === target) return 1;
+ *   if (target.toLowerCase().includes(input.toLowerCase())) return 0.5;
  *   return 0;
  * };
  *
  * // Using built-in matchers
- * import { matchers } from 'search-input';
+ * import { matchers } from '@kuruwic/tokenized-search-input/utils';
  * const field = { suggestionMatcher: matchers.fuzzy };
  */
 export type Matcher = (input: string, target: string) => number;
@@ -144,7 +144,7 @@ export interface EnumResolverContext {
  * };
  *
  * // Using built-in resolvers
- * import { enumResolvers } from 'search-input';
+ * import { enumResolvers } from '@kuruwic/tokenized-search-input/utils';
  * const field = { valueResolver: enumResolvers.exact };
  */
 export type EnumValueResolver = (ctx: EnumResolverContext) => string | null;
@@ -176,7 +176,7 @@ export interface LabelResolverContext {
  * };
  *
  * // Using built-in resolvers
- * import { labelResolvers } from 'search-input';
+ * import { labelResolvers } from '@kuruwic/tokenized-search-input/utils';
  * const config = { labelResolver: labelResolvers.exact };
  */
 export type LabelResolver = (ctx: LabelResolverContext) => string | null;
