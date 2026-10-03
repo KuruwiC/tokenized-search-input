@@ -48,7 +48,7 @@ function write(doc: JSONContent, options: SerializedCaseOptions): string {
   });
 }
 
-/** 0.1.1 wrote these without quotes; any whitespace character is written in quotes now. */
+/** Queries that 0.1.1 wrote without quotes; any whitespace character is written in quotes. */
 const writtenQuoted: Record<string, string> = {
   'value with a raw tab': 'name:is:"a\tb"',
   'value with a raw newline': 'name:is:"a\nb"',

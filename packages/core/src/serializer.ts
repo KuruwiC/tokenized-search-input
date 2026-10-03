@@ -7,9 +7,9 @@
  * stand for themselves. A value or free text is written in quotes when it holds any
  * whitespace character, a quote or a backslash, or when free text would be read as a filter.
  * `tokenizeQuery` is the one tokenizer that reads queries and `quote` the one function that
- * writes quotes. What cannot be read as written is kept and reported in the
- * diagnostics of the result: an open quote, a key that matches no field, an operator its
- * field does not allow.
+ * writes quotes. What cannot be read as written is kept and reported in the diagnostics of
+ * the result: an open quote, a key that matches no field, an operator its field does not
+ * allow.
  */
 import type { JSONContent } from '@tiptap/core';
 import type { EditorState } from '@tiptap/pm/state';
@@ -45,6 +45,20 @@ export interface ParseOptions {
    * @default ':'
    */
   delimiter?: string;
+}
+
+/** What a query held that could not be read as it was written. */
+export interface ParseDiagnostics {
+  /** A quote was left open and runs to the end of the query. */
+  incompleteQuote: boolean;
+  /** Keys that start a segment as `key<delimiter>` and match no field, each once. These stay free text unless `unknownFields` allows them. */
+  unknownFields: string[];
+  /** Operators the editor knows that the field of the key does not allow, each pair once. The tokens keep them and are marked invalid by validation. */
+  unknownOperators: { key: string; operator: string }[];
+}
+
+export function emptyDiagnostics(): ParseDiagnostics {
+  return { incompleteQuote: false, unknownFields: [], unknownOperators: [] };
 }
 
 export interface ParsedQuery {
@@ -175,20 +189,6 @@ export function parseTokenText(
 }
 
 export type SerializedToken = FilterToken | ParsedFreeTextToken;
-
-/** What a query held that could not be read as it was written. */
-export interface ParseDiagnostics {
-  /** A quote was left open and runs to the end of the query. */
-  incompleteQuote: boolean;
-  /** Keys that start a segment as `key<delimiter>` and match no field, each once. These stay free text unless `unknownFields` allows them. */
-  unknownFields: string[];
-  /** Operators the editor knows that the field of the key does not allow, each pair once. The tokens keep them and are marked invalid by validation. */
-  unknownOperators: { key: string; operator: string }[];
-}
-
-export function emptyDiagnostics(): ParseDiagnostics {
-  return { incompleteQuote: false, unknownFields: [], unknownOperators: [] };
-}
 
 export interface ParseQueryStringResult {
   tokens: Array<SerializedToken>;

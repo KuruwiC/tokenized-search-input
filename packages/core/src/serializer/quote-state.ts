@@ -8,7 +8,7 @@ function isSpace(char: string): boolean {
   return char === ' ' || char === ' ';
 }
 
-/** Reads `text` as one stretch of typed text; a token boundary is not part of it. */
+/** Reads one stretch of typed text, which holds no token boundary. */
 function scanStretch(stretch: string): { openQuote: boolean; lastSpace: number } {
   let openQuote = false;
   let lastSpace = -1;

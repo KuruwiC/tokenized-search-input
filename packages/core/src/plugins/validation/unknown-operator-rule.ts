@@ -4,10 +4,9 @@ import { type FieldResolutionSource, resolveField } from '../../utils/resolve-fi
 export const UNKNOWN_OPERATOR_RULE_ID = 'unknown-operator';
 
 /**
- * The implicit rule that marks a filter token whose operator its field does not allow.
- * A query can carry such a token, for example `status:contains:foo` on a field without
- * `contains`, and the parser keeps what was written instead of changing it. Like any
- * rule, it can be disabled per field with `validation: { 'unknown-operator': false }`.
+ * Marks a filter token whose operator its field does not allow, such as `status:contains:foo`
+ * on a field without `contains`; the parser keeps what was written. Disable it per field with
+ * `validation: { 'unknown-operator': false }`.
  */
 export function createUnknownOperatorRule(source: FieldResolutionSource): ValidationRule {
   return {

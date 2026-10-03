@@ -10,8 +10,8 @@ export interface QuoteOptions {
 
 /**
  * Writes `text` as a value or as free text of a query. Quotes are added when the text
- * contains whitespace, a quote or a backslash, or when `always` is set. Inside quotes, `"` and `\` are written
- * as `\"` and `\\`; every other character stays as it is.
+ * contains whitespace, a quote or a backslash, or when `always` is set. Inside quotes, `"`
+ * and `\` are written as `\"` and `\\`; every other character stays as it is.
  *
  * @example
  * quote('hello') // 'hello'

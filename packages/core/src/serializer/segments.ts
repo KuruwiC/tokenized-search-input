@@ -30,9 +30,9 @@ export function freeTextSegment(
   return quote(value, { always });
 }
 
-/** Text of the document as a segment of a query: without the spaces around it, or `null` when nothing is left. */
+/** Document text as a segment of a query, or `null` when only spaces are left. */
 export function textSegment(text: string | undefined): string | null {
-  return text?.replace(/^ +| +$/g, '') || null;
+  return trimSpaces(text ?? '') || null;
 }
 
 /** The query as written, without the spaces at its edges. Other whitespace belongs to a value. */

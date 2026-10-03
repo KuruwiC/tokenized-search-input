@@ -73,8 +73,7 @@ export function splitAtDelimiter(
  * Cuts a query into segments. A space outside quotes separates them; a tab, a carriage
  * return or a newline is an ordinary character. A segment that starts with a quote ends at
  * its closing quote; any other segment runs until a space, and a quote inside it opens a
- * run that can hold spaces. A quote left open runs to
- * the end of the text.
+ * run that can hold spaces. A quote left open runs to the end of the text.
  */
 export function tokenizeQuery(text: string, delimiter: string): Segment[] {
   const segments: Segment[] = [];

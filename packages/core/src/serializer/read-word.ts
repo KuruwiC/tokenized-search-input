@@ -25,11 +25,10 @@ function isKnownOperator(name: string, source: FieldResolutionSource): boolean {
 const IDENTIFIER_KEY = /^[A-Za-z_][\w.-]*$/;
 
 /**
- * Reads a word that holds a delimiter: its `key` and what follows it. A word after the key
- * that the field allows is the operator. One that a default operator or the `unknownFields`
- * template names, and the field does not allow, is read as the operator too and marked
- * unknown, so the input stays what it was written. Anything else is part of the value, and
- * the operator is the first one of the field. A word with an empty key is never a filter.
+ * Reads a word that holds a delimiter. The word after the key is the operator when the field
+ * allows it, or when a default operator or the `unknownFields` template names it (then it is
+ * marked unknown). Anything else is part of the value, with the first operator of the field.
+ * A word with an empty key is never a filter.
  */
 export function readWord(
   word: { key: string; rest: string },

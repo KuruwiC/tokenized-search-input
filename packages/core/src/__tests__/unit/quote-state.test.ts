@@ -159,7 +159,6 @@ describe('findLastWordBoundary', () => {
     });
 
     it('handles filter-like patterns inside quotes', () => {
-      // This is the original bug case
       expect(findLastWordBoundary('"aaa \\" status:hoge"')).toBe(-1);
     });
   });
