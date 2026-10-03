@@ -55,9 +55,11 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
   const tokenLabelDisplay = fieldDef?.tokenLabelDisplay ?? 'auto';
   const showLabel = tokenLabelDisplay !== 'hidden';
   const hasMultipleOperators = operators.length > 1;
+  // An operator the field does not allow has to stay visible and changeable.
+  const operatorAllowed = operators.includes(operator);
   // Operator visibility: multiple operators always show (user needs to switch between them)
   // hideSingleOperator only applies when exactly one operator exists
-  const showOperator = hasMultipleOperators || !fieldDef?.hideSingleOperator;
+  const showOperator = hasMultipleOperators || !operatorAllowed || !fieldDef?.hideSingleOperator;
   const isImmutable = node.attrs.immutable ?? false;
 
   const rangeSelected = isRangeSelected(decorations);
