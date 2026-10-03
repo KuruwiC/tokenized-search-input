@@ -170,7 +170,7 @@ describe('Validation System Integration', () => {
 
   describe('Rule priority', () => {
     it('runs higher priority rules first', async () => {
-      // In the new architecture, all rules run and their violations are collected.
+      // All rules run and their violations are collected.
       const executionOrder: string[] = [];
 
       const highPriorityRule: ValidationRule = {
@@ -703,8 +703,7 @@ describe('Validation System Integration', () => {
 
   describe('Unique.replace protects edited token', () => {
     it('unique rule returns violations with targets for duplicates', async () => {
-      // New architecture: Unique.rule() returns Violation[] with explicit targets
-      // The violation contains all duplicate targets (except the survivor)
+      // Unique.rule() returns Violation[] with explicit targets: every duplicate except the survivor
       const capturedViolations: Array<{ ruleId: string; targetCount: number }> = [];
 
       const captureRule: ValidationRule = {
@@ -743,11 +742,8 @@ describe('Validation System Integration', () => {
     });
   });
 
-  // ============================================
-  // Position-independent behavior tests
-  // ============================================
-  // These tests verify that delete-new and delete-existing work correctly
-  // regardless of whether the new token is added BEFORE or AFTER existing tokens.
+  // delete-new and delete-existing work regardless of whether the new token is added
+  // BEFORE or AFTER existing tokens.
 
   describe('Unique.reject: position-independent behavior', () => {
     it('delete-new preserves existing token on forceCheck', async () => {
@@ -1135,7 +1131,7 @@ describe('Validation System Integration', () => {
   describe('action: mark - blur behavior consistency', () => {
     it('mark action: marking state is consistent before and after blur', async () => {
       // The unique rule marks only the later (non-first) token as invalid.
-      // This marking should persist through blur - no special clearing behavior.
+      // This marking persists through blur.
       const user = userEvent.setup();
 
       const TestComponent = () => {
@@ -1171,7 +1167,6 @@ describe('Validation System Integration', () => {
         expect(invalidTokens.length).toBe(1);
       });
 
-      // Step 1: Click on first token to focus it
       const tokens = document.querySelectorAll('.node-filterToken');
       const firstToken = tokens[0];
       await user.click(firstToken);
@@ -1179,7 +1174,6 @@ describe('Validation System Integration', () => {
       // Wait for focus to settle
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Step 2: Click outside to blur
       const combobox = document.querySelector('[role="combobox"]') as HTMLElement;
       await user.click(combobox);
       await user.keyboard('{Escape}');
@@ -1202,11 +1196,9 @@ describe('Validation System Integration', () => {
 
   describe('Validation with plaintext', () => {
     it('BUG: should not delete immediately when plaintext exists (delete-existing)', async () => {
-      // This test reproduces the bug where:
       // Initial state: `status:is:active "search term" priority:is:high`
       // Action: Add a new `status:` token via suggestion
-      // Expected: existing `status:is:active` is MARKED but NOT deleted immediately
-      // Actual (BUG): existing `status:is:active` is DELETED immediately
+      // Expected: existing `status:is:active` is marked but not deleted immediately
       const user = userEvent.setup();
 
       render(
@@ -1244,7 +1236,7 @@ describe('Validation System Integration', () => {
       await user.click(statusOption);
 
       // Should now have 3 tokens (2 existing + 1 new editing)
-      // BUG: If this fails with 2 tokens, the existing status:is:active was deleted immediately
+      // 2 tokens here would mean the existing status:is:active was deleted immediately
       await waitFor(
         () => {
           const tokens = document.querySelectorAll('.node-filterToken');
@@ -1700,11 +1692,7 @@ describe('Validation System Integration', () => {
     });
   });
 
-  // ============================================
-  // Focus-based freshness tests
-  // ============================================
-  // These tests verify that focused/blurred tokens are treated as "fresh"
-  // for strategy decisions (root cause fix for deferred deletion boundary issue)
+  // Focused/blurred tokens are treated as "fresh" for strategy decisions.
 
   describe('Focus-based freshness', () => {
     it('focused token is treated as fresh for Unique.reject', async () => {
@@ -1787,14 +1775,8 @@ describe('Validation System Integration', () => {
     });
   });
 
-  // ============================================
-  // Undo behavior tests
-  // ============================================
-  // These tests verify undo behavior with validation strategies.
-  //
-  // Important: setValue() creates a single undo step. When you undo, it reverts
-  // to the state BEFORE setValue, not to an intermediate state with duplicates.
-  // Therefore, these tests verify that undo correctly restores the original state.
+  // setValue() creates a single undo step: undo reverts to the state BEFORE setValue,
+  // not to an intermediate state with duplicates.
 
   describe('Undo behavior with validation', () => {
     it('Unique.replace: undo restores original token after replace deletion', async () => {
@@ -2072,12 +2054,9 @@ describe('Validation System Integration', () => {
     });
 
     it('BUG REPORT: Paste duplicate to replace existing, then undo should restore original', async () => {
-      // User reported scenario:
       // 1. Start with existing token [status:active]
       // 2. Paste duplicate "status:inactive" -> replace deletes active, keeps inactive
-      // 3. Undo -> should restore [status:active], NOT become empty
-      //
-      // If undo results in empty, that's a bug.
+      // 3. Undo -> should restore [status:active], not become empty
       const user = userEvent.setup();
       const ref = createRef<TokenizedSearchInputRef>();
 

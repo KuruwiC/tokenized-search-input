@@ -40,9 +40,7 @@ function isRejectable(token: ValidationToken, ctx: ValidationContext): boolean {
   return ctx.isEditing(token) && isEntered(token, ctx);
 }
 
-// ============================================
 // Uniqueness Presets
-// ============================================
 
 export type UniqueConstraint = 'key' | 'key-operator' | 'exact';
 
@@ -181,9 +179,7 @@ export const Unique = {
   },
 };
 
-// ============================================
 // Count Presets
-// ============================================
 
 export interface MaxCountOptions {
   /**
@@ -256,9 +252,7 @@ export const MaxCount = {
   },
 };
 
-// ============================================
 // Pattern Validation Presets
-// ============================================
 
 export interface RequirePatternOptions {
   /**
@@ -332,9 +326,7 @@ export const RequirePattern = {
   },
 };
 
-// ============================================
 // Enum Value Validation Presets
-// ============================================
 
 export interface RequireEnumOptions {
   /**
@@ -396,9 +388,7 @@ export const RequireEnum = {
   },
 };
 
-// ============================================
 // Custom Rule Helpers
-// ============================================
 
 /**
  * Creates a validation rule from a function that checks one token at a time.

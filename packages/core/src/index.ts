@@ -1,8 +1,6 @@
 'use client';
 
-// ============================================
 // Main Component
-// ============================================
 
 export { ClearButton, type ClearButtonProps } from './editor/clear-button';
 export { TokenizedSearchInput } from './editor/tokenized-search-input';
@@ -13,18 +11,14 @@ export type {
   TokenPatch,
 } from './editor/tokenized-search-input.types';
 
-// ============================================
 // Date Picker Components
-// ============================================
 
 export type { DateTimeOffset, DateTimeValue } from './pickers/date-time-value';
 export { DefaultDatePicker } from './pickers/default-date-picker';
 export { DefaultDateTimePicker } from './pickers/default-datetime-picker';
 export { TimePicker, type TimePickerProps, type TimeValue } from './pickers/time-picker';
 
-// ============================================
 // Helpers (React hooks)
-// ============================================
 
 export {
   type AsyncTokenResolverOptions,
@@ -33,9 +27,7 @@ export {
   useAsyncTokenResolver,
 } from './helpers/use-async-token-resolver';
 
-// ============================================
 // Type Definitions and Constants
-// ============================================
 
 export type {
   AtLeastOne,
@@ -112,9 +104,7 @@ export {
   DEFAULT_TOKEN_DELIMITER,
 } from './types';
 
-// ============================================
 // Callback Types
-// ============================================
 
 export type { SerializeTokenFn } from './extensions/clipboard-serializer';
 export type { DeserializeTextFn } from './extensions/editor-context';

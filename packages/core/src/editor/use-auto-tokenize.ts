@@ -27,15 +27,13 @@ function focusEmptyFilterToken(editor: Editor, fieldKey: string, onFocused?: () 
   }
 }
 
-// Object replacement characters (U+FFFC) representing non-text nodes
-// are replaced with spaces to preserve word boundaries.
+// A token node reads as U+FFFC; it becomes a space so it still ends a word.
 function getTextBeforeCursor(editor: Editor): string {
   const { state } = editor;
   const { selection } = state;
   const { $from } = selection;
 
   const textBefore = $from.parent.textBetween(0, $from.parentOffset, undefined, '\ufffc');
-  // Replace object replacement characters with spaces to preserve word boundaries
   return textBefore.replaceAll('\ufffc', ' ');
 }
 
@@ -106,25 +104,18 @@ export function tryAutoTokenize(editor: Editor, trigger: string): boolean {
   return true;
 }
 
-/**
- * Get the plain text after the last token (or from start if no tokens).
- * Returns both the text and its position information for deletion.
- */
+/** The text between the last token and the caret, and the document range it covers. */
 function getPlainTextSegment(editor: Editor): { text: string; from: number; to: number } {
   const { state } = editor;
   const { selection } = state;
   const { $from } = selection;
 
-  // Get raw text with object replacement characters for tokens
   const rawText = $from.parent.textBetween(0, $from.parentOffset, undefined, '\ufffc');
 
-  // Find the last token position (object replacement character)
   const lastTokenIndex = rawText.lastIndexOf('\ufffc');
 
-  // Extract text after the last token
   const textAfterToken = lastTokenIndex === -1 ? rawText : rawText.slice(lastTokenIndex + 1);
 
-  // Calculate document positions
   const cursorPos = selection.from;
   const from = cursorPos - textAfterToken.length;
   const to = cursorPos;

@@ -127,7 +127,6 @@ export const FilterTokenNode = Node.create({
       className: TOKEN_NODE_CLASS,
       update: updateTokenNodeView,
       stopEvent: ({ event }) => {
-        // When disabled, let all events flow to ProseMirror (don't handle in NodeView)
         if (!editor.isEditable) {
           return false;
         }
@@ -211,7 +210,6 @@ export const FilterTokenNode = Node.create({
     return {
       // When in editor (not in token), Enter on a token selects it
       Enter: ({ editor }) => {
-        // Skip when editor is disabled
         if (!editor.isEditable) return false;
 
         const { selection } = editor.state;

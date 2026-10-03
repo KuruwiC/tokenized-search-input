@@ -1,7 +1,4 @@
-/**
- * Plugin key for selection guard plugin.
- * Separated to avoid circular dependencies.
- */
+// Kept apart from the plugin so the modules it imports can read its state without a circular import.
 
 import { PluginKey, type Transaction } from '@tiptap/pm/state';
 import type { DecorationSet } from '@tiptap/pm/view';
@@ -15,8 +12,8 @@ export interface SelectionGuardState {
    */
   pressPos: number | null;
   /**
-   * Document position captured at mousedown before focus.
-   * Used to restore cursor position after layout changes (e.g., :focus-within reflow).
+   * Document position of a mousedown that arrived before the editor had focus. The caret
+   * is put there on focus, because focusing can reflow the layout (e.g. :focus-within).
    */
   prefocusClickPos: number | null;
 }

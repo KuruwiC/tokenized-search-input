@@ -32,7 +32,6 @@ export function useSuggestionHandlers({
   editor,
   updateSuggestions,
 }: UseSuggestionHandlersOptions): UseSuggestionHandlersResult {
-  // Value selection from suggestions
   const handleValueSelect = useCallback(
     (value: string) => {
       if (!editor) return;
@@ -49,7 +48,6 @@ export function useSuggestionHandlers({
     [editor]
   );
 
-  // Date/datetime change from picker (real-time update)
   const handleDateChange = useCallback(
     (value: DateTimeValue | null, fieldKey: string) => {
       if (!editor || !value) return;
@@ -73,7 +71,6 @@ export function useSuggestionHandlers({
     [editor]
   );
 
-  // Close picker and exit token
   const handleDateClose = useCallback(() => {
     if (!editor) return;
 

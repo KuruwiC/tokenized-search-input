@@ -104,7 +104,6 @@ export const FreeTextTokenNode = Node.create({
       className: TOKEN_NODE_CLASS,
       update: updateTokenNodeView,
       stopEvent: ({ event }) => {
-        // When disabled, let all events flow to ProseMirror (don't handle in NodeView)
         if (!editor.isEditable) {
           return false;
         }
@@ -169,7 +168,6 @@ export const FreeTextTokenNode = Node.create({
           if (attrs.focus !== false && attrs.quoted) {
             // Use requestAnimationFrame to ensure the node is rendered
             requestAnimationFrame(() => {
-              // Guard: check if editor is still available and editable
               if (editor.isDestroyed || !editor.isEditable) return;
               enterToken(editor, id, programEntry(attrs.position ?? 'end'));
             });
@@ -192,7 +190,6 @@ export const FreeTextTokenNode = Node.create({
   addKeyboardShortcuts() {
     return {
       Enter: ({ editor }) => {
-        // Skip when editor is disabled
         if (!editor.isEditable) return false;
 
         const { selection } = editor.state;

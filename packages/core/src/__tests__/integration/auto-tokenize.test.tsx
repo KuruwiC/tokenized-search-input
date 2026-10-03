@@ -148,21 +148,14 @@ describe('Auto-tokenize - Integration Tests', () => {
       await user.click(editor.view.dom);
       await user.keyboard('{Escape}');
 
-      // Note: When typing "status:", colon trigger creates an empty token
-      // So this test verifies the Enter trigger path with complete format
-      // For Enter trigger, we need the full format already in text
-      // We use insertContent to bypass colon trigger and test Enter path
+      // Typing "status:" would create an empty token through the colon trigger, so the full
+      // text is inserted with insertContent to reach the Enter trigger path.
       editor.commands.insertContent('status:is:active');
       editor.commands.focus('end');
 
-      // Manually call tryAutoTokenize with Enter trigger
-      // Result may be false if text was already tokenized by insertContent bulk handler
+      // insertContent may already have tokenized the text, in which case this returns false
       tryAutoTokenize(editor, 'Enter');
 
-      // Since insertContent immediately tokenizes (bulk insert),
-      // we verify the result is true if the text was parsed
-      // Note: The text may already be tokenized by useAutoTokenize hook
-      // This test mainly verifies the function signature works correctly
       await waitFor(() => {
         let hasFilterToken = false;
         editor.state.doc.descendants((node) => {
@@ -257,9 +250,7 @@ describe('Auto-tokenize - Integration Tests', () => {
       // Type single characters (simulates normal typing)
       await user.type(editor.view.dom, 'h');
 
-      // Text should still be plain (not tokenized during typing)
-      // During single-character typing, text is not immediately tokenized
-      // It's kept as plain text until trigger
+      // Single-character typing stays plain text until a trigger
       await waitFor(() => {
         expect(editor.state.doc.textContent).toContain('h');
       });

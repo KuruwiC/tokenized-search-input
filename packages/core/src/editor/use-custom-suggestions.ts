@@ -40,9 +40,6 @@ const DEFAULT_DEBOUNCE_MS = 150;
 const DEFAULT_MAX_SUGGESTIONS = 5;
 const DEFAULT_TIMEOUT_MS = 5000;
 
-/**
- * Default error handler (Strategy pattern default).
- */
 const defaultErrorHandler = (error: Error, context: SuggestionErrorContext): void => {
   console.error(
     `[TokenizedSearchInput] ${context.type} failed for query "${context.query}":`,
@@ -257,17 +254,13 @@ export function useCustomSuggestions(
       return;
     }
 
-    // Get plain text segment (text after last token up to cursor)
     const { text: plainTextSegment } = getPlainTextSegment(editor);
 
-    // Don't show suggestions when cursor is inside quotes
     if (isInsideQuotes(plainTextSegment)) {
       cancelRequests();
       return;
     }
 
-    // Use trimmed plain text segment as query for custom suggestions
-    // This ensures we only consider text between the last token and cursor
     const query = plainTextSegment.trim();
 
     // A newer query supersedes the one waiting out its debounce or its response
@@ -294,7 +287,6 @@ export function useCustomSuggestions(
 
         if (signal.aborted || editor.isDestroyed || !canSuggest(editor)) return;
 
-        // Normalize result to handle both array and object returns
         const result = normalizeResult(rawResult);
 
         const maxSuggestions = config.maxSuggestions ?? DEFAULT_MAX_SUGGESTIONS;
@@ -313,12 +305,10 @@ export function useCustomSuggestions(
 
         const hasMore = result.hasMore ?? false;
 
-        // Check displayMode to decide whether to show custom suggestions
         const displayMode = config.displayMode ?? 'replace';
         const anchorPos = editor.state.selection.from;
 
         if (displayMode === 'replace') {
-          // Replace field suggestions with custom suggestions
           const tr = editor.state.tr;
           openCustomSuggestion(tr, suggestions, query, anchorPos, hasMore);
           editor.view.dispatch(tr);
@@ -326,7 +316,6 @@ export function useCustomSuggestions(
           // 'prepend' or 'append' mode: combine with field suggestions
           const currentState = getSuggestionState(editor.state);
 
-          // Get current field items (from field or fieldWithCustom state)
           const fieldItems =
             currentState?.type === 'field' || currentState?.type === 'fieldWithCustom'
               ? currentState.items

@@ -3,9 +3,6 @@ import { toCalendarDay } from '../pickers/calendar-days';
 import { type DateTimeValue, pad } from '../pickers/date-time-value';
 import { parseDateForNavigation, parseDateTimeForNavigation } from '../pickers/navigation-parsers';
 
-/**
- * Result of picker synchronization.
- */
 export interface PickerSyncResult {
   /** The value the picker shows, or undefined when there is nothing to show */
   value: DateTimeValue | undefined;
@@ -13,9 +10,6 @@ export interface PickerSyncResult {
   complete: DateTimeValue | null;
 }
 
-/**
- * Options for useDebouncedPickerSync hook.
- */
 export interface UseDebouncedPickerSyncOptions {
   /** The input value to read */
   inputValue: string;

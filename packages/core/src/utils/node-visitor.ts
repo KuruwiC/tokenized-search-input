@@ -3,9 +3,7 @@ import { NODE_TYPE_NAMES } from './node-predicates';
 
 /**
  * Visitor interface for processing TipTap document nodes.
- * Each method is optional - only implement handlers for node types you care about.
- *
- * @template TContext - Context passed to each visitor method
+ * Each method is optional; only the node types a caller cares about need a handler.
  */
 export interface NodeVisitor<TContext> {
   filterToken?: (node: JSONContent, ctx: TContext) => void;
@@ -18,12 +16,8 @@ export interface NodeVisitor<TContext> {
 }
 
 /**
- * Visit all nodes in a TipTap document using the Visitor pattern.
- * Recursively processes the document tree, calling appropriate visitor methods.
- *
- * @param doc - The TipTap document (JSONContent)
- * @param visitor - Visitor object with handlers for each node type
- * @param context - Context passed to each visitor method
+ * Visits all nodes in a TipTap document, calling the visitor method for each node type and
+ * passing `context` to every call.
  */
 export function visitDocument<TContext>(
   doc: JSONContent,

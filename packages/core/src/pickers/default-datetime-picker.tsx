@@ -52,7 +52,6 @@ export const DefaultDateTimePicker: FC<DateTimePickerRenderProps> = ({
   const time = value?.time;
   const currentTime = useMemo(() => toTimeValue(time), [time]);
 
-  // Internal month state for calendar navigation
   const [month, setMonth] = useState<Date>(defaultMonth ?? selectedDate ?? new Date());
   const monthRef = useRef(month);
   monthRef.current = month;
@@ -83,7 +82,6 @@ export const DefaultDateTimePicker: FC<DateTimePickerRenderProps> = ({
     if (!cell) return;
     const date = toCalendarDay(cell);
     onChange(isTimeEnabled ? valueAt(date, time ?? START_OF_DAY) : { date });
-    // Restore focus to value input and scroll into view
     restoreFocus?.();
   };
 

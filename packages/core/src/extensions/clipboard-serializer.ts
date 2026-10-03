@@ -45,7 +45,6 @@ function visitFragment(fragment: Fragment, parts: string[], options: SerializeOp
   fragment.forEach((node) => {
     switch (node.type.name) {
       case NODE_TYPE_NAMES.filterToken: {
-        // Try custom serializer first
         if (options.serializeToken && node.attrs) {
           const attrs = node.attrs as unknown as FilterTokenAttrs;
           const result = options.serializeToken(attrs);
@@ -54,7 +53,6 @@ function visitFragment(fragment: Fragment, parts: string[], options: SerializeOp
             break;
           }
         }
-        // Fall back to default
         defaultSerializeFilterToken(node, parts, options.delimiter);
         break;
       }
@@ -112,7 +110,7 @@ function serializeSliceToText(slice: Slice, options: SerializeOptions): string {
 /**
  * Writes only plain text to clipboard on copy/cut when token nodes are present.
  * This prevents ProseMirror from restoring tokens from HTML on paste,
- * ensuring paste goes through useAutoTokenize for proper parsing.
+ * so the pasted text is read as a query by the auto-tokenize plugin.
  */
 export const ClipboardSerializer = Extension.create({
   name: 'clipboardSerializer',

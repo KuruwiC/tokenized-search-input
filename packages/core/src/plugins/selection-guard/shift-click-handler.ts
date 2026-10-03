@@ -1,9 +1,3 @@
-/**
- * Shift+Click Selection Handler
- *
- * Handles Shift+click range selection at mousedown.
- */
-
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { TextSelection } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
@@ -36,22 +30,16 @@ export function shiftClickHead(
 }
 
 /**
- * Handle Shift+click range selection.
+ * Extends the selection on a Shift+click. Runs at mousedown because next to a
+ * non-editable token the browser does not extend the selection reliably.
  *
- * Must be processed at mousedown: next to a non-editable token the browser does not
- * extend the selection reliably.
- *
- * @param view - ProseMirror editor view
- * @param event - Mouse event
- * @param posInfo - Position info from view.posAtCoords
- * @returns true if handled, false to let ProseMirror handle
+ * @returns false to leave the click to ProseMirror
  */
 export function handleShiftClickSelection(
   view: EditorView,
   event: MouseEvent,
   posInfo: PosInfo
 ): boolean {
-  // Only handle Shift+click without other modifiers
   if (!event.shiftKey || event.metaKey || event.ctrlKey) {
     return false;
   }
@@ -60,7 +48,6 @@ export function handleShiftClickSelection(
   const anchor = selection.anchor;
   const head = shiftClickHead(doc, posInfo, anchor);
 
-  // null means let ProseMirror handle (plain text areas)
   if (head === null) {
     return false;
   }
@@ -70,7 +57,6 @@ export function handleShiftClickSelection(
   tr.setSelection(TextSelection.create(tr.doc, anchor, head));
   view.dispatch(tr);
 
-  // Ensure editor has focus for subsequent keyboard input
   if (!view.hasFocus()) {
     view.focus();
   }

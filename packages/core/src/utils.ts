@@ -1,6 +1,4 @@
-// ============================================
 // Date Picker Utilities
-// ============================================
 
 export {
   DEFAULT_DATE_VALUE_FORMAT,
@@ -20,15 +18,11 @@ export {
 } from './pickers/date-time-value';
 export type { ParseResult } from './pickers/navigation-parsers';
 
-// ============================================
 // Operator Label Helpers
-// ============================================
 
 export { getOperatorDisplayLabel, getOperatorSelectLabel } from './types';
 
-// ============================================
 // Enum Value Utilities
-// ============================================
 
 export {
   defaultEnumResolver,
@@ -43,9 +37,7 @@ export {
   resolveEnumValue,
 } from './utils/enum-value';
 
-// ============================================
 // Label Resolve Utilities
-// ============================================
 
 export {
   defaultLabelResolver,
@@ -55,21 +47,15 @@ export {
   resolveLabelToField,
 } from './utils/label-resolve';
 
-// ============================================
 // Filter Items Utility
-// ============================================
 
 export { type FilterItemsOptions, filterItems } from './utils/filter-items';
 
-// ============================================
 // Matchers
-// ============================================
 
 export { defaultMatcher, matchBest, matchers } from './utils/matcher';
 
-// ============================================
 // Validation Presets
-// ============================================
 
 export {
   createFieldRule,
@@ -86,9 +72,7 @@ export {
   type UniqueOptions,
 } from './validation/presets';
 
-// ============================================
 // Serialization (stable subset)
-// ============================================
 
 export {
   type CreateQuerySnapshotOptions,
@@ -102,9 +86,7 @@ export {
   serializeDocToQuery,
 } from './serializer';
 
-// ============================================
 // Query Snapshot Helpers
-// ============================================
 
 export {
   EMPTY_SNAPSHOT,
@@ -113,9 +95,7 @@ export {
   getPlainText,
 } from './utils/query-snapshot';
 
-// ============================================
 // Helpers (React-independent)
-// ============================================
 
 export {
   createToggleSelectHandler,

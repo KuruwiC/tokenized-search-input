@@ -13,11 +13,8 @@ import {
 } from './types';
 
 export function setSuggestion(tr: Transaction, meta: SuggestionMeta): Transaction {
-  // Auto-merge with existing meta to prevent overwrites when setSuggestion
-  // is called multiple times in the same transaction
+  // Calls on one transaction merge instead of overwriting, and a close is final.
   const existing = tr.getMeta(suggestionKey) as SuggestionMeta | undefined;
-
-  // If existing is a close meta, preserve it (close is terminal)
   if (existing && isCloseMeta(existing)) {
     return tr;
   }
@@ -216,14 +213,8 @@ export function updateSuggestionActiveIndex(tr: Transaction, activeIndex: number
 }
 
 /**
- * Navigate suggestion index up or down with wrapping.
- * - Down from last item wraps to first (index 0)
- * - Up from first item (index 0) wraps to last
- * - Navigation starts at index 0 when entering from unselected state (-1)
- *
- * @param tr - Transaction to apply the navigation to (mutated in place)
- * @param state - Current suggestion state
- * @param direction - Navigation direction ('up' or 'down')
+ * Moves the active entry up or down, wrapping at both ends. From no active entry (-1),
+ * down goes to the first entry and up to the last.
  */
 export function navigateSuggestion(
   tr: Transaction,
@@ -238,7 +229,6 @@ export function navigateSuggestion(
   if (direction === 'down') {
     newIndex = activeIndex === -1 ? 0 : (activeIndex + 1) % itemCount;
   } else {
-    // Wrap from first item to last, or from unselected to last
     newIndex = activeIndex <= 0 ? itemCount - 1 : activeIndex - 1;
   }
 
@@ -250,19 +240,8 @@ export function setSuggestionLoading(tr: Transaction, isLoading: boolean): Trans
 }
 
 /**
- * Check if the suggestion menu is open and ready for display.
- *
- * The suggestion is considered "open" when ALL of the following conditions are met:
- * - State is initialized (not null or undefined)
- * - Suggestion type is set ('field', 'value', 'date', 'datetime', 'custom', or 'fieldWithCustom', not null)
- * - Suggestion has not been dismissed by user action (Escape key, etc.)
- * - For field/value types: there are items to display (non-empty list)
- * - For custom type: there are customItems to display (non-empty list)
- * - For fieldWithCustom type: there are items or customItems to display
- * - For date/datetime types: always open (picker doesn't need items)
- *
- * @param state - The suggestion state from the editor
- * @returns true if all conditions for display are met, false otherwise
+ * Whether the suggestion has something to show: it has a type, is not dismissed, and
+ * has entries to list. The date and datetime pickers need no entries.
  */
 export function isSuggestionOpen(
   state: SuggestionState | null | undefined
@@ -271,21 +250,17 @@ export function isSuggestionOpen(
     return false;
   }
 
-  // Date/datetime pickers don't need items
   if (state.type === 'date' || state.type === 'datetime') {
     return true;
   }
 
-  // Custom suggestions need customItems
   if (state.type === 'custom') {
     return state.customItems.length > 0;
   }
 
-  // fieldWithCustom needs at least items or customItems
   if (state.type === 'fieldWithCustom') {
     return state.items.length > 0 || state.customItems.length > 0;
   }
 
-  // Field/value suggestions need items
   return state.items.length > 0;
 }

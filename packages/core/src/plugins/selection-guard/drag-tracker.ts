@@ -1,52 +1,31 @@
-/**
- * Drag Tracker
- *
- * Manages mouse drag tracking for selection operations.
- * Handles DOM event listeners and threshold detection,
- * delegating ProseMirror operations via callbacks.
- */
-
 const DEFAULT_DRAG_THRESHOLD = 5;
 
 export interface DragTrackerCallbacks {
-  /** Called when drag threshold is exceeded */
+  /** Called when the drag threshold is exceeded */
   onDragStart: () => void;
-  /** Called on mouse move during drag with document position */
+  /** Called on mouse move during a drag, with the document position under the pointer */
   onDragMove: (pos: number) => void;
-  /** Called when drag ends (mouseup). wasDrag indicates if threshold was exceeded */
+  /** Called when the press ends; `wasDrag` is whether the threshold was exceeded */
   onDragEnd: (wasDrag: boolean) => void;
-  /** Called during cleanup (blur, mouseup, or button release) */
+  /** Called once when tracking stops (mouseup, window blur, or button release) */
   onCleanup: () => void;
 }
 
 export interface DragTrackerConfig {
-  /** Starting X coordinate */
   startX: number;
-  /** Starting Y coordinate */
   startY: number;
-  /** Pixels to move before considered a drag (default: 5) */
+  /** Pixels to move before the press counts as a drag (default: 5) */
   threshold?: number;
-  /** Function to convert screen coords to document position */
   posAtCoords: (coords: { left: number; top: number }) => { pos: number } | null;
 }
 
 export interface DragTracker {
-  /** Call to cleanup listeners and state */
   cleanup: () => void;
 }
 
 /**
- * Create a drag tracker that manages mouse tracking for drag selection.
- *
- * The tracker:
- * - Listens to mousemove, mouseup, and window blur events
- * - Detects when drag threshold is exceeded
- * - Converts screen coordinates to document positions
- * - Ensures cleanup is called exactly once
- *
- * @param config - Configuration including start position and posAtCoords function
- * @param callbacks - Event callbacks for drag lifecycle
- * @returns Object with cleanup function
+ * Tracks a mouse press until it ends, telling `callbacks` when it turns into a drag and
+ * where the pointer is. `onCleanup` runs exactly once however the press ends.
  */
 export function createDragTracker(
   config: DragTrackerConfig,
@@ -69,8 +48,8 @@ export function createDragTracker(
 
     cleanupListeners();
 
-    // Call onDragEnd if cleanup triggered by non-mouseup event (blur, button release)
-    // so a click next to a token is still handled when the mouse is released off-window
+    // A press that ends without a mouseup (blur, button released off-window) still ends
+    // here, so a click next to a token is handled.
     if (!fromMouseUp) {
       callbacks.onDragEnd(isDragging);
     }
@@ -79,7 +58,7 @@ export function createDragTracker(
   };
 
   const onMouseMove = (e: MouseEvent) => {
-    // Cleanup if button was released (e.g., focus lost to another window)
+    // The primary button is no longer down: its mouseup went elsewhere.
     if (cleanedUp || !(e.buttons & 1)) {
       cleanup(false);
       return;
@@ -88,13 +67,11 @@ export function createDragTracker(
     const dx = Math.abs(e.clientX - startX);
     const dy = Math.abs(e.clientY - startY);
 
-    // Check if drag threshold exceeded
     if (!isDragging && (dx > threshold || dy > threshold)) {
       isDragging = true;
       callbacks.onDragStart();
     }
 
-    // Update selection during drag
     if (isDragging) {
       const movePos = posAtCoords({ left: e.clientX, top: e.clientY });
       if (movePos) {
@@ -113,7 +90,6 @@ export function createDragTracker(
     cleanup(false);
   };
 
-  // Attach listeners
   document.addEventListener('mousemove', onMouseMove);
   document.addEventListener('mouseup', onMouseUp);
   window.addEventListener('blur', onWindowBlur);

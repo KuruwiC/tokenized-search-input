@@ -28,9 +28,6 @@ export interface NodeFilterTokenAttrs {
  * Creates filter token attributes from input parameters.
  * All token creation paths should use this function to ensure consistent attributes,
  * including the value an enum token stores.
- *
- * @param input - Token creation parameters
- * @returns Complete filter token attributes including a stable UUID
  */
 export function createFilterTokenAttrs(input: CreateFilterTokenAttrsInput): NodeFilterTokenAttrs {
   const { key, operator, source, id } = input;

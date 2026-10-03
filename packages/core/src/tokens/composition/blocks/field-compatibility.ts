@@ -49,9 +49,6 @@ function getMatchScore(field: FieldDefinition, query: string, matcher: Matcher):
   return Math.max(labelScore, keyScore);
 }
 
-/**
- * Get sorted and filtered fields based on compatibility with current field.
- */
 export function getSortedFields(
   currentField: FieldDefinition | undefined,
   allFields: readonly FieldDefinition[],

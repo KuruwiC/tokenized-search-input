@@ -52,7 +52,7 @@ export interface SuggestionState {
    */
   includeTime: boolean;
   dismissed: boolean;
-  /** Display mode for fieldWithCustom type */
+  /** Where the custom suggestions go in a fieldWithCustom list. */
   customDisplayMode: CustomDisplayMode | null;
 }
 

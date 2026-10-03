@@ -4,7 +4,6 @@ import { cn } from '../../../utils/cn';
 import { type CursorPosition, useTokenFocusContext } from '../contexts/token-focus-context';
 import { useFocusableBlock } from '../focus';
 
-/** Renders an icon slot with consistent styling */
 export function TokenIconSlot({
   children,
 }: {

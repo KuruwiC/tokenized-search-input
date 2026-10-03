@@ -1,10 +1,3 @@
-/**
- * Free Text Sanitizer Plugin
- *
- * Removes free text when freeTextMode is 'none'.
- * This plugin runs after the auto-tokenize plugin, which handles tokenization.
- * Any remaining text nodes after tokenization are removed.
- */
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { EditorState } from '@tiptap/pm/state';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
@@ -18,9 +11,6 @@ interface FreeTextSanitizerContext {
   freeTextMode: FreeTextMode;
 }
 
-/**
- * Count token nodes in a document.
- */
 function countTokens(doc: ProseMirrorNode): number {
   let count = 0;
   doc.descendants((node) => {
@@ -30,24 +20,17 @@ function countTokens(doc: ProseMirrorNode): number {
   return count;
 }
 
-/**
- * Check if token count increased between old and new state.
- */
 function hasTokenInsertion(oldState: EditorState, newState: EditorState): boolean {
   const oldCount = countTokens(oldState.doc);
   const newCount = countTokens(newState.doc);
   return newCount > oldCount;
 }
 
-/**
- * Collect text nodes that are direct children of the paragraph (top-level free text).
- * Excludes text inside token NodeViews.
- */
+/** Text nodes that are direct children of the paragraph, so text inside tokens is excluded. */
 function collectFreeTextNodes(doc: ProseMirrorNode): Array<{ from: number; to: number }> {
   const textNodes: Array<{ from: number; to: number }> = [];
 
   doc.descendants((node, pos, parent) => {
-    // Only collect text nodes that are direct children of paragraph (not inside tokens)
     if (node.isText && parent?.type.name === 'paragraph') {
       textNodes.push({ from: pos, to: pos + node.nodeSize });
     }
@@ -58,12 +41,10 @@ function collectFreeTextNodes(doc: ProseMirrorNode): Array<{ from: number; to: n
 }
 
 /**
- * Plugin that removes free text when freeTextMode is 'none'.
- * Triggers when tokens are inserted (after the auto-tokenize plugin runs).
- *
- * This plugin provides "early cleanup" - removing free text immediately when
- * tokens are created. The `finalizeInput` command provides "final cleanup"
- * for cases like submit/blur where no token insertion occurs.
+ * Removes the free text left in the document when freeTextMode is 'none', once a
+ * transaction has inserted tokens (the auto-tokenize plugin has already read the text).
+ * The `finalizeInput` command removes what remains on submit or blur, where no token is
+ * inserted.
  */
 export function createFreeTextSanitizerPlugin(getContext: () => FreeTextSanitizerContext) {
   return new Plugin({
@@ -83,7 +64,6 @@ export function createFreeTextSanitizerPlugin(getContext: () => FreeTextSanitize
         return null;
       }
 
-      // Only trigger when tokens are inserted (the auto-tokenize plugin already ran)
       if (!hasTokenInsertion(oldState, newState)) {
         return null;
       }

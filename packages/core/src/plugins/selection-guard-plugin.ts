@@ -30,9 +30,7 @@ export type { SelectionGuardState } from './selection-guard/plugin-key';
 const CSS_RANGE_SELECTED = '_tsi-pm-range-selected';
 const PRIMARY_MOUSE_BUTTON = 0;
 
-/**
- * Detect if click is in padding area of the editor.
- */
+/** Whether the click landed in the editor's padding rather than its content box. */
 function isPaddingClick(view: EditorView, event: MouseEvent): boolean {
   const rect = view.dom.getBoundingClientRect();
   const style = getComputedStyle(view.dom);

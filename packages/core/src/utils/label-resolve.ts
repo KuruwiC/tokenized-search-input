@@ -61,7 +61,7 @@ export interface ResolveLabelOptions {
  * resolveLabel(fields, 'Status') // → 'status'
  *
  * // Case-sensitive exact match
- * import { labelResolvers } from 'search-input';
+ * import { labelResolvers } from '@kuruwic/tokenized-search-input/utils';
  * resolveLabel(fields, 'Status', { resolver: labelResolvers.exact })
  */
 export function resolveLabel(

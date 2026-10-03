@@ -6,14 +6,9 @@ interface VisualViewportState {
 }
 
 /**
- * Hook to track visual viewport dimensions.
- * Useful for adjusting UI when software keyboard appears on mobile.
- *
- * The visual viewport represents the actual visible area of the page,
- * excluding on-screen keyboards. This differs from the layout viewport
- * (window.innerHeight) which doesn't change when the keyboard appears.
- *
- * @returns Object with height and offsetTop of the visual viewport
+ * The height and top offset of the visual viewport, the part of the page actually
+ * visible. Unlike the layout viewport (`window.innerHeight`) it shrinks when an
+ * on-screen keyboard appears.
  */
 export function useVisualViewport(): VisualViewportState {
   const [state, setState] = useState<VisualViewportState>(() => ({

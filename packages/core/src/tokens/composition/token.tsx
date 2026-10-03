@@ -369,7 +369,6 @@ export function Token({
   );
 }
 
-// Attach block components as static properties for Compound Components pattern
 Token.LabelCombobox = TokenLabelCombobox;
 Token.Operator = TokenOperator;
 Token.Value = TokenValue;

@@ -9,7 +9,6 @@ import type { KeyboardCallbacks, KeyboardContext } from '../types';
 export function handleArrowDown(ctx: KeyboardContext): boolean {
   const { editor, suggestionState } = ctx;
 
-  // isSuggestionOpen already checks for null/undefined
   if (!isSuggestionOpen(suggestionState)) {
     return false;
   }
@@ -23,7 +22,6 @@ export function handleArrowDown(ctx: KeyboardContext): boolean {
 export function handleArrowUp(ctx: KeyboardContext): boolean {
   const { editor, suggestionState } = ctx;
 
-  // isSuggestionOpen already checks for null/undefined
   if (!isSuggestionOpen(suggestionState)) {
     return false;
   }
@@ -46,7 +44,6 @@ export function handleEnterOnSuggestion(
 ): boolean {
   const { editor, suggestionState } = ctx;
 
-  // isSuggestionOpen already checks for null/undefined
   if (!isSuggestionOpen(suggestionState)) {
     return false;
   }
@@ -61,7 +58,7 @@ export function handleEnterOnSuggestion(
     return true;
   }
 
-  // This provides predictable UX: first Enter closes, second Enter triggers search
+  // No entry is active: the first Enter closes the list, the next one submits.
   const tr = editor.state.tr;
   closeSuggestion(tr);
   editor.view.dispatch(tr);

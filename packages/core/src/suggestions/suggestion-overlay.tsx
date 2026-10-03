@@ -30,9 +30,7 @@ export interface SuggestionOverlayProps {
   onCustomSelect?: (suggestion: CustomSuggestion) => void;
   onDateChange?: (value: DateTimeValue | null, fieldKey: string) => void;
   onDateClose?: () => void;
-  /** Callback to load more custom suggestions */
   onCustomLoadMore?: () => void;
-  /** Whether expandOnFocus mode is enabled */
   expandOnFocus?: boolean;
   /** Stable ids shared by the combobox and its active options. */
   listboxId: string;

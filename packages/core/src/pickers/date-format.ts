@@ -159,10 +159,6 @@ export function validateDateTimeValue(
   return result.ok ? true : result.error;
 }
 
-/**
- * Check if two dates represent the same month.
- * Useful for calendar navigation to avoid unnecessary re-renders.
- */
 export function isSameMonth(a: Date | null | undefined, b: Date | null | undefined): boolean {
   if (a === b) return true;
   if (!a || !b) return false;

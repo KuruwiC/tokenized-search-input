@@ -1,9 +1,3 @@
-/**
- * Suggestion Plugin
- *
- * ProseMirror plugin for managing suggestion state in the editor.
- */
-
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
@@ -106,8 +100,7 @@ export function createSuggestionPlugin(
       apply(tr, value): SuggestionState {
         const tokenFocusMeta = getTokenFocusMeta(tr);
 
-        // Rule: Field/custom suggestions are only valid in plain text areas, not inside tokens.
-        // When a token gains focus, automatically close any open field, custom, or fieldWithCustom suggestion.
+        // Field and custom suggestions belong to plain text, so they close when a token gains focus.
         if (
           tokenFocusMeta !== undefined &&
           tokenFocusMeta.focused !== null &&
@@ -116,8 +109,7 @@ export function createSuggestionPlugin(
           return createResetState(value);
         }
 
-        // Rule: Value/date/datetime suggestions are only valid inside tokens.
-        // When token focus is cleared, automatically close any open value suggestion.
+        // Value, date and datetime suggestions belong to a token, so they close when token focus clears.
         if (
           tokenFocusMeta?.focused === null &&
           (value.type === 'value' || value.type === 'date' || value.type === 'datetime')
@@ -125,8 +117,8 @@ export function createSuggestionPlugin(
           return createResetState(value);
         }
 
-        // Rule: A suggestion lives as long as what it is anchored to. This also covers
-        // token deletion (e.g., Backspace), where no blur event fires.
+        // A suggestion lives as long as what it is anchored to. This covers a token deleted
+        // with Backspace, where no blur event fires.
         if (tr.docChanged && value.anchor !== null && value.type !== null) {
           const anchor = followAnchor(value, value.anchor, tr);
           if (anchor === null) {
@@ -137,7 +129,7 @@ export function createSuggestionPlugin(
           }
         }
 
-        // Rule: The query of value suggestions is the value of their token, whichever
+        // The query of value suggestions is the value of their token, whichever
         // transaction changed it (typing, undo/redo, a ref call, normalization).
         if (
           tr.docChanged &&

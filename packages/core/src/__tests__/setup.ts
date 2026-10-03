@@ -58,7 +58,6 @@ afterEach(() => {
 
 // SSR tests intentionally run without browser globals.
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-  // Mock window.matchMedia for tests
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: (query: string) => ({
@@ -84,7 +83,6 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     }),
   });
 
-  // Mock ResizeObserver for tests
   class MockResizeObserver {
     observe() {}
     unobserve() {}
@@ -92,7 +90,6 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   }
   window.ResizeObserver = MockResizeObserver;
 
-  // Mock IntersectionObserver for tests
   class MockIntersectionObserver {
     readonly root: Element | null = null;
     readonly rootMargin: string = '';
@@ -106,7 +103,6 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   }
   window.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
 
-  // Mock scrollIntoView for tests
   Element.prototype.scrollIntoView = () => {};
 
   // Mock getClientRects for ProseMirror

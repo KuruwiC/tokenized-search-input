@@ -17,7 +17,6 @@ export function ensureTokenId(id: string | undefined | null): string {
     return id;
   }
 
-  // Log warning in development for debugging
   if (isDevelopment() && id === undefined) {
     console.warn(
       '[TokenizedSearchInput] Token missing ID, regenerating. This may indicate a schema migration issue.'

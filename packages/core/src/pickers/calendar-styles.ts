@@ -1,6 +1,5 @@
 /**
  * CSS class names for react-day-picker v9.
- * Provides consistent styling across date and datetime pickers.
  * Uses tsi-calendar-* classes defined in index.css.
  *
  * Note: In react-day-picker v9, modifier classes (selected, outside, etc.)
@@ -29,7 +28,4 @@ export const calendarClassNames = {
   hidden: 'tsi-calendar-hidden',
 };
 
-/**
- * CSS class name for close button in date/datetime pickers.
- */
 export const closeButtonClassName = 'tsi-picker-close-btn';

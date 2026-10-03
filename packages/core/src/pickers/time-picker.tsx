@@ -11,17 +11,11 @@ export interface TimePickerProps {
   disabled?: boolean;
 }
 
-/**
- * Format TimeValue to HH:MM string for input[type="time"]
- */
 const formatTimeValue = (time: TimeValue | null): string => {
   if (!time) return '';
   return `${time.hours.toString().padStart(2, '0')}:${time.minutes.toString().padStart(2, '0')}`;
 };
 
-/**
- * Parse HH:MM string to TimeValue with range validation
- */
 const parseTimeString = (str: string): TimeValue | null => {
   if (!str) return null;
   const [hours, minutes] = str.split(':').map(Number);
@@ -39,13 +33,8 @@ const parseTimeString = (str: string): TimeValue | null => {
 };
 
 /**
- * Time picker using native HTML input[type="time"].
- *
- * Uses browser's native time picker which is:
- * - Well-tested across all browsers
- * - Provides native mobile UI (wheel picker on iOS, clock on Android)
- * - Handles keyboard navigation automatically
- * - Accessible by default
+ * Time picker using native HTML input[type="time"], so the browser provides the native
+ * mobile UI, keyboard navigation and accessibility.
  *
  * @see https://daypicker.dev/docs/time-pickers
  */

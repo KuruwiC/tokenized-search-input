@@ -1,7 +1,6 @@
 /**
  * Integration tests for FilterTokenView suggestion updates.
- * These tests verify that suggestion panel updates work correctly
- * after moving side effects from render to useEffect.
+ * Verifies that the suggestion panel follows token focus and edits.
  */
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

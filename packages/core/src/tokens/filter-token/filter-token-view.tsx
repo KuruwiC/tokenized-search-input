@@ -50,7 +50,6 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
   const validation = getDecorationValidation(decorations);
   const display = getApplicableDisplay(useTokenMeta(editor, id)?.display, key, rawValue);
 
-  // Display control options
   const tokenLabelDisplay = fieldDef?.tokenLabelDisplay ?? 'auto';
   const showLabel = tokenLabelDisplay !== 'hidden';
   const hasMultipleOperators = operators.length > 1;
@@ -63,7 +62,6 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
 
   const rangeSelected = decorations.some((decoration) => decoration.spec?.rangeSelected === true);
 
-  // Resolve display value using pure function (extracted for testability)
   const { valueDisplayString, startContent, endContent } = resolveDisplayValue({
     rawValue,
     fieldDef,
@@ -206,7 +204,6 @@ function FilterTokenValue({
   // A space is part of the value once the typed text opens a quote
   const allowSpaces = baseAllowSpaces || isInsideQuotes(effectiveValue);
 
-  // Event-driven value suggestions management
   const { handleValueInputFocus, addSuggestionQuery } = useValueSuggestions({
     editor,
     tokenId,
@@ -224,7 +221,6 @@ function FilterTokenValue({
     editor.view.dispatch(tr);
   };
 
-  // Helper to check if value suggestions are open
   const isValueSuggestionOpen = () => {
     const suggestionState = getSuggestionState(editor.state);
     return (

@@ -19,7 +19,7 @@ export function useDismissManager(
   isInside: (el: Element | null) => boolean,
   onDismiss: (reason: DismissReason) => boolean
 ): void {
-  // Prevent double-dismiss when pointerdown and focusin fire for the same interaction
+  // A pointer press and the focus change it causes are one interaction: dismiss once.
   const dismissedRef = useRef(false);
 
   useEffect(() => {
@@ -30,7 +30,6 @@ export function useDismissManager(
 
     const safeDismiss = (reason: DismissReason) => {
       if (dismissedRef.current) return;
-      // Only mark as dismissed if onDismiss actually executed the dismiss
       if (onDismiss(reason)) dismissedRef.current = true;
     };
 
@@ -49,7 +48,7 @@ export function useDismissManager(
       if (!isInside(e.target as Element | null)) safeDismiss('focus-outside');
     };
 
-    // Use capture phase for pointer events to handle before focus changes
+    // Capture phase, so the press is handled before the focus change it causes.
     document.addEventListener('pointerdown', handlePointerDown, true);
     document.addEventListener('keydown', handleKeyDown);
     const watchFocus = interactionBoundary(type) === 'value-input';

@@ -1,6 +1,4 @@
 /**
- * Token Gap Decorations
- *
  * A caret between two tokens, or between a token and the paragraph edge, has no text to
  * sit in, and browsers do not draw a caret at such a position on their own. Each of these
  * positions gets a zero-width widget that gives the caret something to stand beside. The

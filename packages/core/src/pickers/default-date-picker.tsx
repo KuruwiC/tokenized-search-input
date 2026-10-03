@@ -26,7 +26,6 @@ export const DefaultDatePicker: FC<DatePickerRenderProps> = ({
   const day = value?.date;
   const selectedDate = useMemo(() => (day ? calendarDayToDate(day) : undefined), [day]);
 
-  // Internal month state for calendar navigation
   const [month, setMonth] = useState<Date>(defaultMonth ?? selectedDate ?? new Date());
   const monthRef = useRef(month);
   monthRef.current = month;
@@ -47,7 +46,6 @@ export const DefaultDatePicker: FC<DatePickerRenderProps> = ({
   const handleSelect = (date: Date | undefined) => {
     if (date) {
       onChange({ date: toCalendarDay(date) });
-      // Restore focus to value input and scroll into view
       restoreFocus?.();
     }
   };

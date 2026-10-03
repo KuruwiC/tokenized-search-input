@@ -2,16 +2,7 @@ import type { Editor } from '@tiptap/core';
 import type { PluginKey } from '@tiptap/pm/state';
 import { useEffect, useState } from 'react';
 
-/**
- * Subscribe to ProseMirror plugin state changes in React.
- *
- * This hook provides a clean way to synchronize ProseMirror plugin state
- * with React's rendering cycle without using CustomEvents or refs.
- *
- * @param editor - TipTap editor instance
- * @param pluginKey - ProseMirror plugin key to subscribe to
- * @returns Current plugin state, or undefined if editor/plugin not ready
- */
+/** The state of the plugin under `pluginKey`, re-read after every transaction; `undefined` without an editor or plugin. */
 export function usePluginState<T>(editor: Editor | null, pluginKey: PluginKey<T>): T | undefined {
   const [state, setState] = useState<T | undefined>(() => {
     if (!editor) return undefined;

@@ -1,6 +1,5 @@
 /** The suggestion plugin: its state, the actions that change it, and the entries it lists. */
 
-// Actions
 export {
   appendCustomSuggestions,
   clearDismissed,
@@ -21,14 +20,9 @@ export {
   updateSuggestionDateValue,
   updateSuggestionTimeControls,
 } from './actions';
-// Anchors
 export { isAnchoredToToken, resolveAnchorPos } from './anchor';
-// Entries
 export { DEFAULT_CATEGORY, type SuggestionEntry, suggestionEntries } from './entries';
-// Plugin
 export { createSuggestionPlugin, getSuggestionState, suggestionKey } from './plugin';
-// Types
 export type { SuggestionState, SuggestionType } from './types';
 export { initialSuggestionState } from './types';
-// Value suggestions
 export { getEditableValueText } from './value-items';

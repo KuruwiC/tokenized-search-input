@@ -10,10 +10,6 @@
  */
 import type { FieldDefinition } from '../../types';
 
-// ============================================================
-// Individual Field Definitions
-// ============================================================
-
 /**
  * Basic enum field with multiple values.
  * Used for testing standard filter token creation.
@@ -128,10 +124,6 @@ export const categoryFieldWithMultipleOperators: FieldDefinition = {
   hideSingleOperator: true, // Has no effect because multiple operators exist
 };
 
-// ============================================================
-// Pre-composed Field Sets
-// ============================================================
-
 /**
  * Basic field set with two enum fields.
  * Most commonly used for simple tests.
@@ -198,10 +190,6 @@ export const allFields: FieldDefinition[] = [
   tagFieldWithHiddenOperator,
   categoryFieldWithMultipleOperators,
 ];
-
-// ============================================================
-// Date Fields
-// ============================================================
 
 /**
  * Date field for testing date picker.

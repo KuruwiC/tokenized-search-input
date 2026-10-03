@@ -1,31 +1,19 @@
-/**
- * Selection guard keyboard handler types.
- */
-
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Selection } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { safeResolve } from '../../utils/safe-resolve';
 import type { FocusTransitionContext } from '../token-focus';
 
-/**
- * Context for selection guard keyboard handlers.
- * Contains all state needed to handle keyboard events at ProseMirror level.
- */
+/** What a selection guard key handler needs to handle a key press. */
 export interface SelectionGuardContext {
-  /** ProseMirror editor view */
   view: EditorView;
-  /** The keyboard event */
   event: KeyboardEvent;
-  /** Current selection */
   selection: Selection;
-  /** Document */
   doc: ProseMirrorNode;
-  /** Node before the cursor position (null if at start) */
+  /** Node before the selection start (null at the start of a block) */
   nodeBefore: ProseMirrorNode | null;
-  /** Node after the cursor position (null if at end) */
+  /** Node after the selection start (null at the end of a block) */
   nodeAfter: ProseMirrorNode | null;
-  /** What moving the token focus needs */
   focus: FocusTransitionContext;
 }
 
@@ -35,9 +23,6 @@ export type Predicate = (ctx: SelectionGuardContext) => boolean;
 /** Handles a key press; returns true when it did, which stops the keys after it. */
 export type KeyHandler = (ctx: SelectionGuardContext) => boolean;
 
-/**
- * Build a SelectionGuardContext from view and event.
- */
 export function buildSelectionGuardContext(
   view: EditorView,
   event: KeyboardEvent,

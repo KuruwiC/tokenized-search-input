@@ -84,17 +84,14 @@ export function useValueSuggestions({
     const tr = editor.state.tr;
 
     if (isEnumField && fieldDef?.type === 'enum' && fieldDef.enumValues) {
-      // Enum field: show value suggestions
       openValueSuggestion(tr, fieldKey, fieldDef.enumValues, value, tokenId);
       editor.view.dispatch(tr);
     } else if (fieldDef?.type === 'date' || fieldDef?.type === 'datetime') {
       const parsed = value ? parseDateFieldValue(value, fieldDef) : null;
       const current = parsed?.ok ? parsed.value : null;
       if (fieldDef.type === 'date') {
-        // Date field: show date picker
         openDateSuggestion(tr, fieldKey, current, tokenId);
       } else {
-        // DateTime field: show datetime picker
         openDateTimeSuggestion(tr, fieldKey, current, tokenId);
       }
       editor.view.dispatch(tr);

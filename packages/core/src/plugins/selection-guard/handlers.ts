@@ -1,9 +1,3 @@
-/**
- * Handler functions for selection guard keyboard events.
- *
- * Each handler returns true if the event was handled.
- */
-
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { TextSelection } from '@tiptap/pm/state';
 import { nearestValidCaret } from '../../utils/caret';
@@ -14,11 +8,9 @@ import type { KeyHandler, SelectionGuardContext } from './types';
 
 /**
  * Enters a token from the keyboard. A token that cannot be edited, an immutable one,
- * is selected as a whole instead, as a drag would select it:
- *   - This enables 2-stage deletion: first press selects, second press deletes via existing range deletion.
- *   - Cmd+C/Cmd+X work automatically via existing ClipboardSerializer.
- *
- * @returns true if handled
+ * is selected as a whole instead, as a drag would select it. A selected token is deleted by
+ * the next Backspace/Delete as any range is, and the clipboard serializer handles
+ * copy and cut of it.
  */
 function handleTokenEntry(
   ctx: SelectionGuardContext,
@@ -49,7 +41,7 @@ function tokenInDirection(ctx: SelectionGuardContext, head: number, direction: D
 }
 
 /**
- * Handle Shift+Arrow over a token: the selection grows by the whole token. Within text
+ * Shift+Arrow over a token: the selection grows by the whole token. Within text
  * the browser extends the selection itself.
  */
 export const handleShiftArrowSelection: KeyHandler = (ctx) => {
@@ -67,7 +59,7 @@ export const handleShiftArrowSelection: KeyHandler = (ctx) => {
 };
 
 /**
- * Handle Arrow keys for single cursor movement: moving onto a token enters it from that
+ * Arrow key with a collapsed selection: moving onto a token enters it from that
  * side, at the block on that side. Within text the browser moves the caret itself.
  */
 export const handleArrowMove: KeyHandler = (ctx) => {
@@ -85,7 +77,7 @@ export const handleArrowMove: KeyHandler = (ctx) => {
 };
 
 /**
- * Handle Delete when cursor is directly before a token.
+ * Delete with the caret directly before a token.
  * The token is entered as a whole, at its first entry-focusable block.
  */
 export const handleDeleteFromToken: KeyHandler = (ctx) => {
@@ -100,7 +92,7 @@ export const handleDeleteFromToken: KeyHandler = (ctx) => {
 };
 
 /**
- * Handle Backspace when cursor is directly after a token.
+ * Backspace with the caret directly after a token.
  * The token is entered as a whole, at its last entry-focusable block.
  */
 export const handleBackspaceFromToken: KeyHandler = (ctx) => {

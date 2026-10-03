@@ -1,6 +1,6 @@
 /**
- * Regression tests for bug fixes.
- * These tests ensure that previously fixed bugs remain fixed.
+ * Behaviour tests for change reporting of initial tokens, whitespace between text,
+ * suggestion pagination, displayValue and deleting a focused token.
  */
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -17,13 +17,8 @@ afterEach(() => {
 describe('Regression Tests', () => {
   describe('Fix #1: Initial Token Events', () => {
     /**
-     * Verifies that onTokensChange fires for initial tokens when defaultValue is set.
-     *
-     * Before the fix: Initial tokens from defaultValue did not trigger token events
-     * because prevSnapshotRef was null and the diff was skipped.
-     *
-     * After the fix: prevSnapshotRef is initialized with EMPTY_SNAPSHOT, so the first
-     * onUpdate calculates a diff from empty to the initial state, firing change events.
+     * onTokensChange fires for the initial tokens of defaultValue: the first update is
+     * compared against an empty snapshot.
      */
     it('fires onTokensChange for initial tokens from defaultValue', async () => {
       let capturedTokens: QuerySnapshotFilterToken[] = [];
@@ -52,13 +47,8 @@ describe('Regression Tests', () => {
 
   describe('Fix #2: Whitespace Preservation', () => {
     /**
-     * Verifies that whitespace is preserved in plaintext segments.
-     *
-     * Before the fix: The serializer used trim() which removed leading/trailing spaces,
-     * and getPlainText() joined with '' which didn't restore spaces between segments.
-     *
-     * After the fix: The serializer preserves the original text without trimming,
-     * so "hello world" remains "hello world" instead of becoming "helloworld".
+     * Whitespace between plaintext segments is preserved: "hello world" does not become
+     * "helloworld".
      */
     it('preserves whitespace in getPlainText output', async () => {
       const onChange = vi.fn();
@@ -83,16 +73,11 @@ describe('Regression Tests', () => {
 
   describe('Fix #3: Pagination in prepend/append mode', () => {
     /**
-     * Verifies that pagination configuration is supported in prepend/append modes.
+     * Pagination is configurable in the prepend and append display modes, where custom
+     * suggestions are listed with field suggestions.
      *
-     * Before the fix: loadMore() only checked for 'custom' type, ignoring 'fieldWithCustom'.
-     * Also, CustomSuggestionList in fieldWithCustom case didn't receive pagination props.
-     *
-     * After the fix: loadMore() supports both 'custom' and 'fieldWithCustom' types,
-     * and pagination props are passed to CustomSuggestionList in all cases.
-     *
-     * Note: Full UI testing of pagination scroll behavior requires browser environment.
-     * This test verifies the configuration is properly accepted.
+     * Scrolling a list to load more needs a real browser; these tests only check that the
+     * configuration is accepted.
      */
     it('accepts loadMore configuration in prepend mode', () => {
       const loadMore = vi.fn();
@@ -135,16 +120,10 @@ describe('Regression Tests', () => {
 
   describe('Fix #4: Suggestion-inserted tokens should be editable', () => {
     /**
-     * Verifies that tokens inserted from suggestions can include displayValue.
+     * A token inserted from a custom suggestion can carry a displayValue. Editing the value
+     * clears it, so the input shows what the user types.
      *
-     * Before the fix: When displayValue was set by custom suggestions,
-     * the controlled input would not reflect user typing because displayValue
-     * was not updated on input change.
-     *
-     * After the fix: handleValueChange clears displayValue/startContent/endContent,
-     * so resolveDisplayValue falls back to rawValue, making user input visible.
-     *
-     * This test verifies the suggestion configuration supports displayValue.
+     * This test only checks that the suggestion configuration supports displayValue.
      */
     it('supports displayValue in custom suggestions', () => {
       const customSuggestion: CustomSuggestionConfig = {
@@ -172,13 +151,8 @@ describe('Regression Tests', () => {
 
   describe('Fix #5: onTokensChange fires on token blur', () => {
     /**
-     * Verifies that onTokensChange fires when a token loses focus after value changes.
-     *
-     * Before the fix: While a token was focused, value changes were not tracked
-     * because the focused token was excluded from comparison. When focus was lost,
-     * confirmedTokensRef still had the old value, and comparison should detect the change.
-     *
-     * This test verifies the basic blur behavior for enum tokens.
+     * The focused token is excluded from the comparison of confirmed tokens, so a change
+     * made in it is reported once focus leaves it. This test covers deleting a token.
      */
     it('fires onTokensChange when token is deleted', async () => {
       const onTokensChange = vi.fn();

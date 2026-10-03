@@ -2,10 +2,6 @@
 
 import type { TimeValue } from './time-picker';
 
-// ============================================================================
-// Parse results
-// ============================================================================
-
 export type ParseOk<T> = { readonly ok: true; readonly value: T };
 export type ParseErr = { readonly ok: false; readonly error: string; readonly hint?: string };
 export type ParseResult<T> = ParseOk<T> | ParseErr;
@@ -28,10 +24,6 @@ const chainParsers = <T>(
     return lastErr;
   };
 };
-
-// ============================================================================
-// Date Navigation Parsers
-// ============================================================================
 
 type DateParseFn = (input: string) => ParseResult<Date>;
 
@@ -100,10 +92,6 @@ export function parseDateForNavigation(input: string): Date | null {
   const result = dateNavigationParser(input.trim());
   return result.ok ? result.value : null;
 }
-
-// ============================================================================
-// DateTime Navigation Parsers
-// ============================================================================
 
 export interface DateTimeNavigationResult {
   date: Date | null;

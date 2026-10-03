@@ -14,9 +14,9 @@ export interface ResolveDisplayValueInput {
   fieldDef: FieldDefinition | undefined;
   /** Display data that describes the token's current value, if any */
   display: TokenDisplayContent | undefined;
-  /** Date display formatter (injected for testability) */
+  /** Date display formatter; without it the raw value is shown */
   getDateDisplayValue?: (value: DateTimeValue, config?: DateFormatConfig) => string;
-  /** DateTime display formatter (injected for testability) */
+  /** DateTime display formatter; without it the raw value is shown */
   getDateTimeDisplayValue?: (value: DateTimeValue, config?: DateTimeFormatConfig) => string;
 }
 

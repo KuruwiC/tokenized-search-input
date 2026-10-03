@@ -27,23 +27,19 @@ describe('Token Creation - User Journeys', () => {
 
       const editor = screen.getByRole('combobox');
 
-      // Step 1: Click editor to show field suggestions
       await user.click(editor);
       await waitFor(() => {
         expect(screen.getByText('Status')).toBeInTheDocument();
       });
 
-      // Step 2: Select field from suggestions
       await user.click(screen.getByText('Status'));
       await waitFor(() => {
         expect(screen.getByPlaceholderText('...')).toBeInTheDocument();
       });
 
-      // Step 3: Enter value
       const valueInput = screen.getByPlaceholderText('...');
       await user.type(valueInput, 'active');
 
-      // Step 4: Confirm with Enter
       await user.keyboard('{Enter}');
 
       // Verify: Token created with correct value
@@ -61,13 +57,12 @@ describe('Token Creation - User Journeys', () => {
 
       const editor = screen.getByRole('combobox');
 
-      // Step 1: Focus editor
       await user.click(editor);
       await waitFor(() => {
         expect(screen.getByText('Status')).toBeInTheDocument();
       });
 
-      // Step 2: Navigate to select first item (Status), then to Priority
+      // Navigate to select first item (Status), then to Priority
       await user.keyboard('{ArrowDown}'); // Select Status
       await user.keyboard('{ArrowDown}'); // Navigate to Priority
       await waitFor(() => {
@@ -75,13 +70,11 @@ describe('Token Creation - User Journeys', () => {
         expect(priorityItem).toHaveAttribute('data-active', 'true');
       });
 
-      // Step 3: Select Priority with Enter
       await user.keyboard('{Enter}');
       await waitFor(() => {
         expect(screen.getByPlaceholderText('...')).toBeInTheDocument();
       });
 
-      // Step 4: Select value from enum suggestions
       await waitFor(() => {
         expect(screen.getByText('high')).toBeInTheDocument();
       });
@@ -229,9 +222,8 @@ describe('Token Creation - User Journeys', () => {
   });
 
   describe('FreeText token spacing', () => {
-    // Note: These tests use editor.commands.insertFreeTextToken directly instead of
-    // user.type because JSDOM has issues with contentEditable next to non-editable tokens.
-    // The actual browser behavior works correctly.
+    // These tests use editor.commands.insertFreeTextToken because JSDOM mishandles
+    // contentEditable next to non-editable tokens, which user.type depends on.
 
     it.each([
       { tokens: ['hello', 'world'], expected: 'hello world' },

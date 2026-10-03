@@ -1,6 +1,4 @@
 /**
- * Selection Invariant Plugin
- *
  * A text selection whose ends fall where the caret may not sit (inside an atom, or
  * between blocks) is moved to the nearest position where it may, in the direction the
  * selection was moving. Every other position is left alone: the caret may sit next to
