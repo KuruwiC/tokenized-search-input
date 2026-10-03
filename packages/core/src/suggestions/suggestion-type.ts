@@ -1,4 +1,4 @@
-import type { SuggestionType } from '../plugins/suggestion-plugin';
+import type { SuggestionType } from '../plugins/suggestion';
 
 /** Whether the suggestion is a date or date-time picker, which only an explicit choice closes. */
 export const isPickerType = (type: SuggestionType): boolean =>

@@ -9,7 +9,7 @@ import { act, renderHook } from '@testing-library/react';
 import type { FC, PropsWithChildren } from 'react';
 import { useMemo, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
-import type { TokenFocusEntry } from '../../plugins/token-focus-plugin';
+import type { TokenFocusEntry } from '../../plugins/token-focus';
 import {
   type CursorPosition,
   type FocusableBlock,

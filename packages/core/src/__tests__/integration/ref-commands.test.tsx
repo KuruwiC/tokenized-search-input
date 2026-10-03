@@ -5,7 +5,7 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
-import { getFocusedToken } from '../../plugins/token-focus-plugin';
+import { getFocusedToken } from '../../plugins/token-focus';
 import { getTokenMeta } from '../../plugins/token-meta-plugin';
 import type { QuerySnapshotFilterToken } from '../../types';
 import { extendedFields } from '../fixtures';

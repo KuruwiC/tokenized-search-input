@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/core';
 import { type RefObject, useState } from 'react';
-import type { SuggestionType } from '../plugins/suggestion-plugin';
+import type { SuggestionType } from '../plugins/suggestion';
 import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect';
 
 export interface SuggestionPosition {

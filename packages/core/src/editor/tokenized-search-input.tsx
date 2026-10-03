@@ -27,7 +27,6 @@ export type {
   TokenDisplay,
   TokenizedSearchInputProps,
   TokenizedSearchInputRef,
-  TokenPatch,
 } from './tokenized-search-input.types';
 
 export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, TokenizedSearchInputProps>(
@@ -221,5 +220,3 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
     );
   }
 );
-
-export default TokenizedSearchInput;

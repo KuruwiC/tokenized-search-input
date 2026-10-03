@@ -11,7 +11,6 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { type EditorState, Plugin, TextSelection } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
-import { runKeyHandlers } from '../keyboard';
 import { nearestValidCaret } from '../utils/caret';
 import { isToken } from '../utils/node-predicates';
 import { createDragTracker } from './selection-guard/drag-tracker';
@@ -22,16 +21,11 @@ import {
   setSelectionGuardMeta,
 } from './selection-guard/plugin-key';
 import { handleShiftClickSelection } from './selection-guard/shift-click-handler';
-import { selectionGuardKeySpecs } from './selection-guard/specs';
+import { runKeySpecs } from './selection-guard/specs';
 import { buildSelectionGuardContext } from './selection-guard/types';
-import {
-  type FocusTransitionContext,
-  getFocusedToken,
-  leaveFocusedTokenIn,
-} from './token-focus-plugin';
+import { type FocusTransitionContext, getFocusedToken, leaveFocusedTokenIn } from './token-focus';
 
 export type { SelectionGuardState } from './selection-guard/plugin-key';
-export { selectionGuardKey } from './selection-guard/plugin-key';
 
 const CSS_RANGE_SELECTED = '_tsi-pm-range-selected';
 const PRIMARY_MOUSE_BUTTON = 0;
@@ -284,7 +278,7 @@ export function createSelectionGuardPlugin(
         if (getFocusedToken(view.state) !== null) return false;
 
         const ctx = buildSelectionGuardContext(view, event, getFocusContext(view.state));
-        return runKeyHandlers(selectionGuardKeySpecs, event.key, ctx);
+        return runKeySpecs(event.key, ctx);
       },
     },
   });

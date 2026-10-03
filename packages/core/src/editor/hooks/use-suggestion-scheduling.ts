@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/core';
 import { type RefObject, useEffect, useRef } from 'react';
-import { getFocusedToken } from '../../plugins/token-focus-plugin';
+import { getFocusedToken } from '../../plugins/token-focus';
 
 export interface UseSuggestionSchedulingOptions {
   editor: Editor | null;

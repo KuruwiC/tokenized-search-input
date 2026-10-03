@@ -2,7 +2,7 @@ import type { Editor } from '@tiptap/core';
 import type { EditorState } from '@tiptap/pm/state';
 import { useRef, useSyncExternalStore } from 'react';
 import type { TokenMeta } from '../plugins/shared/meta';
-import { getFocusedToken, type TokenFocusEntry } from '../plugins/token-focus-plugin';
+import { getFocusedToken, type TokenFocusEntry } from '../plugins/token-focus';
 import { getTokenMeta } from '../plugins/token-meta-plugin';
 
 interface EditorStore {

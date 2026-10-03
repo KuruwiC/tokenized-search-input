@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/core';
-import type { SuggestionState } from '../../plugins/suggestion-plugin';
+import type { SuggestionState } from '../../plugins/suggestion';
 import type {
   CustomSuggestion,
   FieldDefinition,
@@ -21,9 +21,6 @@ export interface KeyboardCallbacks {
   onValueSelect: (value: string) => void;
   onCustomSelect: (suggestion: CustomSuggestion) => void;
 }
-
-// Returns true if the event was handled and should stop propagation.
-export type KeyboardStrategy = (context: KeyboardContext, callbacks: KeyboardCallbacks) => boolean;
 
 export function buildContext(
   editor: Editor,

@@ -1,8 +1,4 @@
-/**
- * Suggestion Plugin
- *
- * Re-exports for the suggestion plugin module.
- */
+/** The suggestion plugin: its state, the actions that change it, and the entries it lists. */
 
 // Actions
 export {
@@ -30,25 +26,9 @@ export { isAnchoredToToken, resolveAnchorPos } from './anchor';
 // Entries
 export { DEFAULT_CATEGORY, type SuggestionEntry, suggestionEntries } from './entries';
 // Plugin
-export {
-  createSuggestionPlugin,
-  getSuggestionState,
-  type SuggestionPluginOptions,
-  suggestionKey,
-} from './plugin';
-// State helpers
-export { createResetState, type ResetStateOptions } from './state-helpers';
+export { createSuggestionPlugin, getSuggestionState, suggestionKey } from './plugin';
 // Types
-export type {
-  CloseSuggestionMeta,
-  CustomDisplayMode,
-  CustomPagination,
-  SetSuggestionMeta,
-  SuggestionAnchor,
-  SuggestionMeta,
-  SuggestionState,
-  SuggestionType,
-} from './types';
+export type { SuggestionState, SuggestionType } from './types';
 export { initialSuggestionState } from './types';
 // Value suggestions
-export { getEditableValueText, matchValueSuggestions } from './value-items';
+export { getEditableValueText } from './value-items';

@@ -9,7 +9,7 @@ import { isFilterToken, isFreeTextToken } from '../../utils/node-predicates';
 import { type FieldResolutionSource, resolveField } from '../../utils/resolve-field';
 
 /** The attributes of a filter token that the user enters. */
-export interface FilterTokenEditableAttrs {
+interface FilterTokenEditableAttrs {
   key: string;
   operator: string;
   value: string;
@@ -17,12 +17,12 @@ export interface FilterTokenEditableAttrs {
 }
 
 /** The attributes of a free text token that the user enters. */
-export interface FreeTextTokenEditableAttrs {
+interface FreeTextTokenEditableAttrs {
   value: string;
   quoted: boolean;
 }
 
-export type EditableTokenAttrs =
+type EditableTokenAttrs =
   | { kind: 'filter'; attrs: FilterTokenEditableAttrs }
   | { kind: 'freeText'; attrs: FreeTextTokenEditableAttrs };
 
@@ -32,7 +32,7 @@ export type FilterTokenAction =
   | { type: 'setValue'; value: string }
   | { type: 'setImmutable'; immutable: boolean };
 
-export interface FreeTextTokenAction {
+interface FreeTextTokenAction {
   type: 'setValue';
   value: string;
   quoted: boolean;
@@ -40,7 +40,7 @@ export interface FreeTextTokenAction {
 
 export type TokenEditAction = FilterTokenAction | FreeTextTokenAction;
 
-export function toEditableAttrs(node: ProseMirrorNode): EditableTokenAttrs | null {
+function toEditableAttrs(node: ProseMirrorNode): EditableTokenAttrs | null {
   if (isFilterToken(node)) {
     return {
       kind: 'filter',

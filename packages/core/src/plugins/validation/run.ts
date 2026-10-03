@@ -14,7 +14,7 @@ import { type FieldResolutionSource, resolveField } from '../../utils/resolve-fi
 import { ensureTokenId } from '../../utils/token-id';
 import { setTokenMeta, type TokenValidation, withoutHistory } from '../shared/meta';
 
-export function collectTokens(doc: ProseMirrorNode): ValidationToken[] {
+function collectTokens(doc: ProseMirrorNode): ValidationToken[] {
   const tokens: ValidationToken[] = [];
 
   doc.descendants((node) => {
@@ -77,7 +77,7 @@ export interface ValidationInput {
   recorded: ReadonlyMap<string, TokenValidation>;
 }
 
-export interface ValidationChange {
+interface ValidationChange {
   tokenId: string;
   /** `undefined` clears the token's validation. */
   validation: TokenValidation | undefined;

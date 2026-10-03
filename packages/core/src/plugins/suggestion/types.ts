@@ -13,7 +13,7 @@ export type SuggestionType =
 export type CustomDisplayMode = 'prepend' | 'append';
 
 /** How far the pages of custom suggestions have been read. */
-export interface CustomPagination {
+interface CustomPagination {
   readonly hasMore: boolean;
   /** How many suggestions have been read, the offset of the next page. */
   readonly offset: number;

@@ -8,8 +8,8 @@
 import type { Editor } from '@tiptap/core';
 import type { EditorState } from '@tiptap/pm/state';
 import { getEditorContext } from '../extensions/editor-context';
-import { getSuggestionState } from '../plugins/suggestion-plugin';
-import { getFocusedToken } from '../plugins/token-focus-plugin';
+import { getSuggestionState } from '../plugins/suggestion';
+import { getFocusedToken } from '../plugins/token-focus';
 
 /**
  * Check if field suggestions can be shown.
@@ -87,34 +87,6 @@ export function canShowCustomSuggestion(state: EditorState): boolean {
   }
 
   return true;
-}
-
-/**
- * Check if within an editable area (not a date/datetime picker).
- *
- * Returns true when:
- * - No suggestion is open, or
- * - A field/value/custom suggestion is open (but not date/datetime)
- */
-export function isWithinEditableArea(state: EditorState): boolean {
-  const suggestionState = getSuggestionState(state);
-
-  if (!suggestionState?.type) return true;
-
-  // Date/datetime pickers are not editable text areas
-  if (suggestionState.type === 'date' || suggestionState.type === 'datetime') {
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * Check if a suggestion is currently open and active.
- */
-export function isSuggestionActive(state: EditorState): boolean {
-  const suggestionState = getSuggestionState(state);
-  return suggestionState?.type != null;
 }
 
 /**

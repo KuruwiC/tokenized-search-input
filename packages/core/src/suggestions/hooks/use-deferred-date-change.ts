@@ -5,7 +5,7 @@ import {
   type SuggestionState,
   suggestionKey,
   updateSuggestionDateValue,
-} from '../../plugins/suggestion-plugin';
+} from '../../plugins/suggestion';
 
 /**
  * Passes the date a picker reports on to the suggestion state and the token once per

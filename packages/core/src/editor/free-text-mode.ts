@@ -3,7 +3,7 @@ import type { Transaction } from '@tiptap/pm/state';
 import type { EditorContextStorage } from '../extensions/editor-context';
 import { getFreeTextStrategy } from '../plugins/auto-tokenize/free-text-strategy';
 import { tokenizeRange } from '../plugins/auto-tokenize/tokenize-range';
-import type { FocusTransitionContext } from '../plugins/token-focus-plugin';
+import type { FocusTransitionContext } from '../plugins/token-focus';
 import { isFreeTextToken } from '../utils/node-predicates';
 
 /** The top-level inline nodes of the document, last first, so earlier positions stay valid. */

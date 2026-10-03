@@ -10,7 +10,7 @@ import {
   isValidationCheckRequested,
   type TokenValidation,
 } from '../shared/meta';
-import { getFocusedToken, getTokenFocusMeta } from '../token-focus-plugin';
+import { getFocusedToken, getTokenFocusMeta } from '../token-focus';
 import { tokenMetaKey } from '../token-meta-plugin';
 import { createImplicitRules } from './implicit-rules';
 import { applyPlan, type Edits, planValidation, recordEdits } from './run';
@@ -24,12 +24,9 @@ interface FocusSession {
   edits: Edits;
 }
 
-export const validationKey = new PluginKey<FocusSession>('validation');
+const validationKey = new PluginKey<FocusSession>('validation');
 
 const NO_SESSION: FocusSession = { tokenId: null, edits: new Map() };
-
-export { FIELD_VALIDATE_RULE_ID } from './field-validate-rule';
-export { collectTokens, type Plan, type ValidationInput } from './run';
 
 function focusedTokenId(state: EditorState): string | null {
   return getFocusedToken(state)?.id ?? null;

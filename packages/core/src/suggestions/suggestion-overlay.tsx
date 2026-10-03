@@ -13,7 +13,7 @@ import {
   resolveAnchorPos,
   suggestionKey,
   updateSuggestionActiveIndex,
-} from '../plugins/suggestion-plugin';
+} from '../plugins/suggestion';
 import type { CustomSuggestion, FieldDefinition } from '../types';
 import { cn } from '../utils/cn';
 import { useDatePickerState } from './hooks/use-date-picker-state';

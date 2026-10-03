@@ -6,16 +6,12 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getEditorContext, resolveField } from '../../extensions/editor-context';
 import { useTokenFocus } from '../../hooks/use-editor-store';
 import type { TokenValidation } from '../../plugins/shared/meta';
-import {
-  dismissSuggestion,
-  getSuggestionState,
-  isSuggestionOpen,
-} from '../../plugins/suggestion-plugin';
+import { dismissSuggestion, getSuggestionState, isSuggestionOpen } from '../../plugins/suggestion';
 import {
   getFocusedToken,
   type LeaveDirection,
   type TokenFocusEntry,
-} from '../../plugins/token-focus-plugin';
+} from '../../plugins/token-focus';
 import { getValidationDescriptionId } from '../../plugins/token-meta-plugin';
 import { isPickerType } from '../../suggestions/suggestion-type';
 import { cn } from '../../utils/cn';

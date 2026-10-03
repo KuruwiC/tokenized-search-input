@@ -6,12 +6,11 @@
 
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { TextSelection } from '@tiptap/pm/state';
-import type { KeyHandlerFn } from '../../keyboard';
 import { nearestValidCaret } from '../../utils/caret';
 import { isToken } from '../../utils/node-predicates';
 import { safeResolve } from '../../utils/safe-resolve';
-import { enterTokenIn, type TokenFocusEntry } from '../token-focus-plugin';
-import type { SelectionGuardContext } from './types';
+import { enterTokenIn, type TokenFocusEntry } from '../token-focus';
+import type { KeyHandler, SelectionGuardContext } from './types';
 
 /**
  * Enters a token from the keyboard. A token that cannot be edited, an immutable one,
@@ -53,7 +52,7 @@ function tokenInDirection(ctx: SelectionGuardContext, head: number, direction: D
  * Handle Shift+Arrow over a token: the selection grows by the whole token. Within text
  * the browser extends the selection itself.
  */
-export const handleShiftArrowSelection: KeyHandlerFn<SelectionGuardContext> = (ctx) => {
+export const handleShiftArrowSelection: KeyHandler = (ctx) => {
   const sel = ctx.selection as TextSelection;
   const direction = arrowDirection(ctx);
   const token = tokenInDirection(ctx, sel.head, direction);
@@ -71,7 +70,7 @@ export const handleShiftArrowSelection: KeyHandlerFn<SelectionGuardContext> = (c
  * Handle Arrow keys for single cursor movement: moving onto a token enters it from that
  * side, at the block on that side. Within text the browser moves the caret itself.
  */
-export const handleArrowMove: KeyHandlerFn<SelectionGuardContext> = (ctx) => {
+export const handleArrowMove: KeyHandler = (ctx) => {
   const direction = arrowDirection(ctx);
   const token = tokenInDirection(ctx, ctx.selection.from, direction);
   if (!token) return false;
@@ -89,7 +88,7 @@ export const handleArrowMove: KeyHandlerFn<SelectionGuardContext> = (ctx) => {
  * Handle Delete when cursor is directly before a token.
  * The token is entered as a whole, at its first entry-focusable block.
  */
-export const handleDeleteFromToken: KeyHandlerFn<SelectionGuardContext> = (ctx) => {
+export const handleDeleteFromToken: KeyHandler = (ctx) => {
   if (!ctx.nodeAfter || !isToken(ctx.nodeAfter)) return false;
 
   ctx.event.preventDefault();
@@ -104,7 +103,7 @@ export const handleDeleteFromToken: KeyHandlerFn<SelectionGuardContext> = (ctx) 
  * Handle Backspace when cursor is directly after a token.
  * The token is entered as a whole, at its last entry-focusable block.
  */
-export const handleBackspaceFromToken: KeyHandlerFn<SelectionGuardContext> = (ctx) => {
+export const handleBackspaceFromToken: KeyHandler = (ctx) => {
   if (!ctx.nodeBefore || !isToken(ctx.nodeBefore)) return false;
 
   ctx.event.preventDefault();

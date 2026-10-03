@@ -5,8 +5,6 @@
  * Specs are evaluated in order - first matching spec wins.
  */
 
-import type { KeySpec } from '../../keyboard';
-import { and } from '../../keyboard';
 import {
   handleArrowMove,
   handleBackspaceFromToken,
@@ -21,14 +19,25 @@ import {
   nodeBeforeIsToken,
   tokenNotFocused,
 } from './predicates';
-import type { SelectionGuardContext } from './types';
+import type { KeyHandler, Predicate, SelectionGuardContext } from './types';
+
+interface KeySpec {
+  key: string;
+  when: Predicate;
+  action: KeyHandler;
+}
+
+const and =
+  (...predicates: Predicate[]): Predicate =>
+  (ctx) =>
+    predicates.every((predicate) => predicate(ctx));
 
 /**
  * Selection guard keyboard specifications.
  *
  * Order matters - more specific specs should come before general ones.
  */
-export const selectionGuardKeySpecs: readonly KeySpec<SelectionGuardContext>[] = [
+const selectionGuardKeySpecs: readonly KeySpec[] = [
   // --- Shift+Arrow: Range selection over whole tokens ---
   // Must come before regular arrow handling
   {
@@ -68,3 +77,10 @@ export const selectionGuardKeySpecs: readonly KeySpec<SelectionGuardContext>[] =
     action: handleArrowMove,
   },
 ];
+
+/** Runs the first spec for `key` whose condition holds and whose action handles the press. */
+export function runKeySpecs(key: string, ctx: SelectionGuardContext): boolean {
+  return selectionGuardKeySpecs.some(
+    (spec) => spec.key === key && spec.when(ctx) && spec.action(ctx)
+  );
+}

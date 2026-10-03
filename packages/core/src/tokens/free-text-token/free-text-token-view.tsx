@@ -2,7 +2,6 @@ import type { NodeViewProps } from '@tiptap/react';
 import { getEditorContext } from '../../extensions/editor-context';
 import { useEditorContextUpdate } from '../../hooks/use-editor-context-update';
 import { getDecorationValidation } from '../../plugins/token-meta-plugin';
-import { isRangeSelected } from '../../utils/decoration-helpers';
 import { Token } from '../composition';
 import { applyTokenAction } from '../filter-token/token-actions';
 
@@ -19,7 +18,7 @@ export const FreeTextTokenView: React.FC<NodeViewProps> = ({
   const editorContext = getEditorContext(editor);
   const classNames = editorContext.classNames;
 
-  const rangeSelected = isRangeSelected(decorations);
+  const rangeSelected = decorations.some((decoration) => decoration.spec?.rangeSelected === true);
   const validation = getDecorationValidation(decorations);
 
   const handleValueChange = (newValue: string) => {

@@ -4,7 +4,7 @@ import { type MutableRefObject, useEffect, useRef } from 'react';
  * Scroll an element into view with 'nearest' block alignment.
  * Safe to call with null/undefined elements.
  */
-export function scrollIntoViewNearest(element: HTMLElement | null | undefined): void {
+function scrollIntoViewNearest(element: HTMLElement | null | undefined): void {
   element?.scrollIntoView({ block: 'nearest' });
 }
 

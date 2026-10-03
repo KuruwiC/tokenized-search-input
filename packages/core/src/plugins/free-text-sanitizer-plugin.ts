@@ -8,13 +8,14 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { EditorState } from '@tiptap/pm/state';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
+import type { FreeTextMode } from '../types';
 import { isFilterToken, isFreeTextToken } from '../utils/node-predicates';
 import { isTextSanitized, markTextSanitized } from './shared/meta';
 
 const freeTextSanitizerKey = new PluginKey('freeTextSanitizer');
 
-export interface FreeTextSanitizerContext {
-  freeTextMode: string;
+interface FreeTextSanitizerContext {
+  freeTextMode: FreeTextMode;
 }
 
 /**

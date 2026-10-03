@@ -1,7 +1,7 @@
 import { Extension } from '@tiptap/core';
 import { createSelectionGuardPlugin } from '../plugins/selection-guard-plugin';
-import { createSuggestionPlugin } from '../plugins/suggestion-plugin';
-import { createTokenFocusPlugin } from '../plugins/token-focus-plugin';
+import { createSuggestionPlugin } from '../plugins/suggestion';
+import { createTokenFocusPlugin } from '../plugins/token-focus';
 import { getEditorContext, getFocusContext, resolveField } from './editor-context';
 
 /** The low priority keeps these plugins behind every other extension's, so they see transactions last. */

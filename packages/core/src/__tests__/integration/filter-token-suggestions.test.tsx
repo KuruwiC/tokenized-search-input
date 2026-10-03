@@ -12,7 +12,7 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
-import { getSuggestionState } from '../../plugins/suggestion-plugin';
+import { getSuggestionState } from '../../plugins/suggestion';
 import type { FieldDefinition } from '../../types';
 
 const enumFields: FieldDefinition[] = [

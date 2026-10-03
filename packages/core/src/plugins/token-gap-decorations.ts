@@ -35,7 +35,7 @@ function isInlineAtom(node: ProseMirrorNode | null): boolean {
 }
 
 /** Positions inside textblocks where neither neighbour is text and at least one is an atom. */
-export function findTokenGaps(doc: ProseMirrorNode): number[] {
+function findTokenGaps(doc: ProseMirrorNode): number[] {
   const gaps: number[] = [];
   doc.descendants((block, blockPos) => {
     if (!block.isTextblock) return true;

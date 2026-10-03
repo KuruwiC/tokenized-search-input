@@ -2,7 +2,7 @@ import {
   closeSuggestion,
   navigateSuggestion,
   suggestionEntries,
-} from '../../../plugins/suggestion-plugin';
+} from '../../../plugins/suggestion';
 import { isSuggestionOpen, isTokenFocused } from '../guards';
 import type { KeyboardCallbacks, KeyboardContext } from '../types';
 

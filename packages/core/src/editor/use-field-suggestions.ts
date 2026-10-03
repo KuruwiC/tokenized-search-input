@@ -2,11 +2,7 @@ import type { Editor } from '@tiptap/core';
 import { useCallback } from 'react';
 import { getEditorContext } from '../extensions/editor-context';
 import { withoutHistory } from '../plugins/shared/meta';
-import {
-  closeSuggestion,
-  getSuggestionState,
-  openFieldSuggestion,
-} from '../plugins/suggestion-plugin';
+import { closeSuggestion, getSuggestionState, openFieldSuggestion } from '../plugins/suggestion';
 import { isInsideQuotes } from '../serializer/quote-state';
 import { canShowFieldSuggestion, getCurrentSuggestionType } from '../suggestions/suggestion-guards';
 import type { FieldDefinition, Matcher } from '../types';

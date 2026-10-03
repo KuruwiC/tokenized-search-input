@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { initialSuggestionState, type SuggestionState } from '../../plugins/suggestion';
 import { type SuggestionEntry, suggestionEntries } from '../../plugins/suggestion/entries';
-import { initialSuggestionState, type SuggestionState } from '../../plugins/suggestion-plugin';
 import type { CustomSuggestion, FieldDefinition } from '../../types';
 
 const field = (key: string, category?: string): FieldDefinition => ({

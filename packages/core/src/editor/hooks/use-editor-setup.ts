@@ -23,13 +23,9 @@ import { useIsomorphicLayoutEffect } from '../../hooks/use-isomorphic-layout-eff
 import { DocumentRepairExtension } from '../../plugins/document-repair';
 import { SelectionInvariantExtension } from '../../plugins/selection-invariant-plugin';
 import { markContentEntered } from '../../plugins/shared/meta';
-import {
-  getFocusedToken,
-  getTokenFocusMeta,
-  leaveFocusedTokenIn,
-} from '../../plugins/token-focus-plugin';
+import { getFocusedToken, getTokenFocusMeta, leaveFocusedTokenIn } from '../../plugins/token-focus';
 import { TokenGapExtension } from '../../plugins/token-gap-decorations';
-import { ValidationExtension } from '../../plugins/validation-plugin';
+import { ValidationExtension } from '../../plugins/validation';
 import { createQuerySnapshot, parseQueryToDoc } from '../../serializer';
 import { FilterTokenNode } from '../../tokens/filter-token/filter-token-node';
 import { FreeTextTokenNode } from '../../tokens/free-text-token/free-text-token-node';

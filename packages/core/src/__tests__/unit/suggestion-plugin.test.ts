@@ -2,7 +2,6 @@ import { Schema } from '@tiptap/pm/model';
 import { EditorState } from '@tiptap/pm/state';
 import { describe, expect, it } from 'vitest';
 import { updateSuggestionQuery } from '../../plugins/shared/meta';
-import { suggestionEntries } from '../../plugins/suggestion/entries';
 import {
   appendCustomSuggestions,
   clearDismissed,
@@ -23,7 +22,8 @@ import {
   updateSuggestionActiveIndex,
   updateSuggestionDateValue,
   updateSuggestionTimeControls,
-} from '../../plugins/suggestion-plugin';
+} from '../../plugins/suggestion';
+import { suggestionEntries } from '../../plugins/suggestion/entries';
 import type { CustomSuggestion, FieldDefinition } from '../../types';
 import { basicFields, basicBlockSchema as schema } from '../fixtures';
 

@@ -9,12 +9,12 @@ import {
   markDocumentRepaired,
   withoutHistory,
 } from '../shared/meta';
-import { getFocusedToken } from '../token-focus-plugin';
+import { getFocusedToken } from '../token-focus';
 import { removeEmptyToken } from './empty-token-cleanup';
 import { focusRestoredEmptyToken } from './history-empty-token-focus';
 import { keepWordsApart } from './word-boundary';
 
-export const documentRepairKey = new PluginKey('documentRepair');
+const documentRepairKey = new PluginKey('documentRepair');
 
 function focusedTokenId(state: EditorState): string | null {
   return getFocusedToken(state)?.id ?? null;

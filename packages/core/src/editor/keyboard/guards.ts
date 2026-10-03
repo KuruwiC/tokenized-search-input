@@ -1,8 +1,8 @@
 import type { Editor } from '@tiptap/core';
-import { getFocusedToken } from '../../plugins/token-focus-plugin';
+import { getFocusedToken } from '../../plugins/token-focus';
 import type { FreeTextMode } from '../../types';
 
-export { isSuggestionOpen } from '../../plugins/suggestion-plugin';
+export { isSuggestionOpen } from '../../plugins/suggestion';
 
 // Uses ProseMirror plugin state instead of DOM queries for reliability.
 export function isTokenFocused(editor: Editor): boolean {

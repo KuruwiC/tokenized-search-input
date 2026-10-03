@@ -19,7 +19,7 @@ export interface FocusableBlock {
   entryFocusable?: boolean;
 }
 
-export interface FocusNavigationOptions {
+interface FocusNavigationOptions {
   /** Only blocks that can receive focus when entering the token via Backspace/Delete. */
   entryOnly?: boolean;
   position?: CursorPosition;

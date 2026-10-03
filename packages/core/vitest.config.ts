@@ -16,12 +16,8 @@ export default defineConfig({
         'src/__tests__/**',
         // Barrel files that only re-export.
         'src/index.ts',
-        'src/editor/hooks/index.ts',
         'src/editor/keyboard/index.ts',
         'src/editor/keyboard/strategies/index.ts',
-        'src/helpers/index.ts',
-        'src/keyboard/index.ts',
-        'src/pickers/index.ts',
         'src/plugins/suggestion/index.ts',
         'src/tokens/composition/**/index.ts',
         'src/types/index.ts',

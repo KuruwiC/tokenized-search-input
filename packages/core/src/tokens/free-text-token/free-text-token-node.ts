@@ -7,7 +7,7 @@ import {
   getFocusedToken,
   programEntry,
   type TokenFocusEntry,
-} from '../../plugins/token-focus-plugin';
+} from '../../plugins/token-focus';
 import { findTokenById } from '../../utils/find-token';
 import { isFreeTextToken } from '../../utils/node-predicates';
 import { quote } from '../../utils/quoted-string';

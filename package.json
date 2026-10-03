@@ -11,6 +11,7 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "lint:fix:unsafe": "biome check --write --unsafe .",
+    "lint:unused": "knip --workspace packages/core",
     "format": "biome format --write .",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm --filter @kuruwic/tokenized-search-input test",
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.10",
+    "knip": "6.39.0",
     "publint": "0.3.24",
     "typescript": "^5.7.2"
   }

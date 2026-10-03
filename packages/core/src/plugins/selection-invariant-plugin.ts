@@ -12,7 +12,7 @@ import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import { nearestValidCaret } from '../utils/caret';
 import { isCompositionTransaction } from './shared/meta';
 
-export const selectionInvariantKey = new PluginKey('selectionInvariant');
+const selectionInvariantKey = new PluginKey('selectionInvariant');
 
 export const SelectionInvariantExtension = Extension.create({
   name: 'selectionInvariant',

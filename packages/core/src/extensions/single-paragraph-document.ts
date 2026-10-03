@@ -11,7 +11,7 @@ function paragraphSlice(schema: Schema, content: Fragment | ProseMirrorNode[]): 
  * textblock ends and the next begins. A slice whose inline content the paragraph
  * cannot hold is pasted as its plain text.
  */
-export function joinIntoOneParagraph(slice: Slice, schema: Schema): Slice {
+function joinIntoOneParagraph(slice: Slice, schema: Schema): Slice {
   const inline: ProseMirrorNode[] = [];
   let textblocks = 0;
   slice.content.descendants((node) => {

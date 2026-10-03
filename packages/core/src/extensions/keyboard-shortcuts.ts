@@ -13,7 +13,7 @@ import {
   handleSpace,
   handleTab,
 } from '../editor/keyboard';
-import { getSuggestionState } from '../plugins/suggestion-plugin';
+import { getSuggestionState } from '../plugins/suggestion';
 import { getEditorContext } from './editor-context';
 
 const delimiterKeyPluginKey = new PluginKey('delimiterKey');

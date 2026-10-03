@@ -8,7 +8,7 @@ import { useEditorConfig } from '../../editor/hooks/use-editor-config';
 import { useEditorConfigSync } from '../../editor/hooks/use-editor-config-sync';
 import { EditorContextExtension, getEditorContext } from '../../extensions/editor-context';
 import { requestValidationCheck } from '../../plugins/shared/meta';
-import { ValidationExtension } from '../../plugins/validation-plugin';
+import { ValidationExtension } from '../../plugins/validation';
 import type { FieldDefinition } from '../../types';
 
 const fields: FieldDefinition[] = [

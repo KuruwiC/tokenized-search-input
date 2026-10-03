@@ -38,7 +38,7 @@ export interface TokenFocusPluginState {
   focused: FocusedToken | null;
 }
 
-export const tokenFocusKey = new PluginKey<TokenFocusPluginState>('tokenFocus');
+const tokenFocusKey = new PluginKey<TokenFocusPluginState>('tokenFocus');
 
 const NO_FOCUS: TokenFocusPluginState = { focused: null };
 

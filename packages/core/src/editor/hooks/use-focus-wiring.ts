@@ -1,11 +1,7 @@
 import type { Editor } from '@tiptap/core';
 import { type RefObject, useEffect } from 'react';
 import { getSerializeOptions } from '../../extensions/editor-context';
-import {
-  clearDismissed,
-  dismissSuggestion,
-  getSuggestionState,
-} from '../../plugins/suggestion-plugin';
+import { clearDismissed, dismissSuggestion, getSuggestionState } from '../../plugins/suggestion';
 import { createQuerySnapshot } from '../../serializer';
 import { interactionBoundary } from '../../suggestions/suggestion-type';
 import type { QuerySnapshot } from '../../types';

@@ -60,7 +60,7 @@ export function deleteTokenById(tr: Transaction, id: string): boolean {
 }
 
 /** Merges a `TokenDisplay` into the current display: omitted members stay, `null` clears one. */
-export function mergeTokenDisplay(
+function mergeTokenDisplay(
   current: TokenDisplayContent | undefined,
   display: TokenDisplay
 ): TokenDisplayContent | undefined {

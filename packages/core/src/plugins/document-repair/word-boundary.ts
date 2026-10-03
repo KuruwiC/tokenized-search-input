@@ -38,7 +38,7 @@ function removesWholeWords(doc: ProseMirrorNode, from: number, to: number): bool
  * replacement. Undo and redo are not edits: the document they restore already kept
  * its words apart.
  */
-export function findTokenRemovalEdges(transactions: readonly Transaction[]): number[] {
+function findTokenRemovalEdges(transactions: readonly Transaction[]): number[] {
   const steps = transactions.flatMap((tr) =>
     tr.steps.map((step, index) => ({
       map: step.getMap(),

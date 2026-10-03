@@ -11,7 +11,7 @@ import {
   markCleared,
   markSubmitted,
 } from '../plugins/shared/meta';
-import { type FocusTransitionContext, leaveFocusedTokenIn } from '../plugins/token-focus-plugin';
+import { type FocusTransitionContext, leaveFocusedTokenIn } from '../plugins/token-focus';
 import { createQuerySnapshot, type SerializeDocOptions } from '../serializer';
 import {
   type ClassNames,
@@ -31,7 +31,7 @@ import {
   type ValidationConfig,
 } from '../types';
 
-export { type FieldResolutionSource, resolveField } from '../utils/resolve-field';
+export { resolveField } from '../utils/resolve-field';
 
 /**
  * @example

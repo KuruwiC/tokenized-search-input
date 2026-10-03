@@ -4,7 +4,7 @@
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
-import { getSuggestionState, openFieldSuggestion } from '../../plugins/suggestion-plugin';
+import { getSuggestionState, openFieldSuggestion } from '../../plugins/suggestion';
 import { fields, renderInput } from '../helpers/suggestion-layer';
 
 afterEach(cleanup);

@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 import { useLayoutEffect, useMemo, useRef } from 'react';
-import type { TokenFocusEntry } from '../../plugins/token-focus-plugin';
+import type { TokenFocusEntry } from '../../plugins/token-focus';
 import type { CursorPosition, FocusableBlock, FocusRegistry } from './contexts/token-focus-context';
 import { useTokenFocusContext } from './contexts/token-focus-context';
 

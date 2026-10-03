@@ -8,11 +8,11 @@ import {
   markAutoTokenized,
   requestValidationCheck,
 } from '../shared/meta';
-import type { FocusTransitionContext } from '../token-focus-plugin';
+import type { FocusTransitionContext } from '../token-focus';
 import { type TokenizeContext, tokenizeRange } from './tokenize-range';
 
 /** Marks a transaction whose text was already read as a query. */
-export const autoTokenizeKey = new PluginKey('autoTokenize');
+const autoTokenizeKey = new PluginKey('autoTokenize');
 
 /**
  * The span of the document after `transactions` covering every place where more than

@@ -12,7 +12,7 @@ import {
 import { createFilterTokenAttrs } from '../../tokens/filter-token/create-attrs';
 import type { FieldDefinition, FreeTextMode, UnknownFieldTemplate } from '../../types';
 import { isFreeTextToken, isToken } from '../../utils/node-predicates';
-import { enterTokenIn, type FocusTransitionContext, programEntry } from '../token-focus-plugin';
+import { enterTokenIn, type FocusTransitionContext, programEntry } from '../token-focus';
 import { getFreeTextStrategy } from './free-text-strategy';
 
 export interface TokenizeContext {

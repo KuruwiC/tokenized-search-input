@@ -16,7 +16,7 @@ import {
 import { getEditorContext } from '../../extensions/editor-context';
 import { useAsyncTokenResolver } from '../../helpers/use-async-token-resolver';
 import { requestValidationCheck, setTokenMeta } from '../../plugins/shared/meta';
-import { getSuggestionState } from '../../plugins/suggestion-plugin';
+import { getSuggestionState } from '../../plugins/suggestion';
 import { tokenMetaKey } from '../../plugins/token-meta-plugin';
 import type {
   FieldDefinition,

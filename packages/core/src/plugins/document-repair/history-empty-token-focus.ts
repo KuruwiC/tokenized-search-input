@@ -1,6 +1,6 @@
 import type { Transaction } from '@tiptap/pm/state';
 import { isEmptyToken, isToken } from '../../utils/node-predicates';
-import { enterTokenIn, type FocusTransitionContext, programEntry } from '../token-focus-plugin';
+import { enterTokenIn, type FocusTransitionContext, programEntry } from '../token-focus';
 
 /**
  * Undo and redo can restore a token without a value. Focusing the first such token

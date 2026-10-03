@@ -5,7 +5,7 @@
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getSuggestionState } from '../../plugins/suggestion-plugin';
+import { getSuggestionState } from '../../plugins/suggestion';
 import type { CustomSuggestion } from '../../types';
 import {
   activeDescendant,

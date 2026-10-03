@@ -14,7 +14,7 @@ interface ListPlacement {
   left: number;
 }
 
-export interface ActiveBounds {
+interface ActiveBounds {
   min: number;
   max: number;
 }
@@ -185,7 +185,7 @@ export function handleClosedKey(
   }
 }
 
-export interface TokenDropdownOption {
+interface TokenDropdownOption {
   key: string;
   selected: boolean;
   content: ReactNode;

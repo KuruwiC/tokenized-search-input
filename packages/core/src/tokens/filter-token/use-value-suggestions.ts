@@ -9,7 +9,7 @@ import {
   openDateSuggestion,
   openDateTimeSuggestion,
   openValueSuggestion,
-} from '../../plugins/suggestion-plugin';
+} from '../../plugins/suggestion';
 import { canShowValueSuggestion } from '../../suggestions/suggestion-guards';
 import type { FieldDefinition } from '../../types';
 

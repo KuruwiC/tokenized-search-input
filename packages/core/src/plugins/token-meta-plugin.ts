@@ -35,7 +35,7 @@ export interface TokenMetaPluginState {
 }
 
 /** Decoration spec key that carries a token's validation to its node view. */
-export const TOKEN_VALIDATION_SPEC = 'tokenValidation';
+const TOKEN_VALIDATION_SPEC = 'tokenValidation';
 
 export const tokenMetaKey = new PluginKey<TokenMetaPluginState>('tokenMeta');
 

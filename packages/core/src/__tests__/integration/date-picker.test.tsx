@@ -13,7 +13,7 @@ import {
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
 import { localOffsetAt } from '../../pickers/date-time-value';
-import { getFocusedToken } from '../../plugins/token-focus-plugin';
+import { getFocusedToken } from '../../plugins/token-focus';
 import { dateField, datetimeField, statusField } from '../fixtures/fields';
 
 afterEach(() => {

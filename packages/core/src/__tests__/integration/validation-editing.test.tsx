@@ -13,7 +13,7 @@ import {
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
 import { getEditorContext, getFocusContext } from '../../extensions/editor-context';
-import { enterTokenIn, leaveFocusedTokenIn, programEntry } from '../../plugins/token-focus-plugin';
+import { enterTokenIn, leaveFocusedTokenIn, programEntry } from '../../plugins/token-focus';
 import { applyTokenAction } from '../../tokens/filter-token/token-actions';
 import type { QuerySnapshotFilterToken, ValidationRule } from '../../types';
 import { findTokenById } from '../../utils/find-token';

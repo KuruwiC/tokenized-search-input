@@ -6,7 +6,7 @@
  */
 
 /** Data attribute selectors for focus detection */
-export const FOCUS_SELECTORS = {
+const FOCUS_SELECTORS = {
   filterToken: '[data-filter-token]',
   suggestionRoot: '[data-suggestion-root]',
   focusedFilterToken: '[data-filter-token][data-focused="true"]',

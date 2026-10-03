@@ -20,7 +20,7 @@ export interface ParsedFreeTextToken {
  * - 'remove': Remove all text nodes from document
  * - 'none': No action needed
  */
-export type FinalizeAction = 'tokenize' | 'remove' | 'none';
+type FinalizeAction = 'tokenize' | 'remove' | 'none';
 
 /**
  * Strategy interface for handling free text tokens based on mode.

@@ -14,7 +14,7 @@ import type { FilterTokenAttrs } from './tokens';
 /**
  * Configuration for field name suggestions.
  */
-export interface FieldSuggestionsConfig {
+interface FieldSuggestionsConfig {
   /** Disable field name autocomplete. @default false */
   disabled?: boolean;
   /** Matcher for field suggestions. @default matchers.fuzzy */
@@ -24,7 +24,7 @@ export interface FieldSuggestionsConfig {
 /**
  * Configuration for value suggestions.
  */
-export interface ValueSuggestionsConfig {
+interface ValueSuggestionsConfig {
   /** Disable value autocomplete for enum fields. @default false */
   disabled?: boolean;
 }

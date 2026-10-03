@@ -7,7 +7,7 @@ import {
   resolveAnchorPos,
   type SuggestionState,
   suggestionKey,
-} from '../plugins/suggestion-plugin';
+} from '../plugins/suggestion';
 import { isPickerType } from '../suggestions/suggestion-type';
 import { findValueInput } from '../utils/dom-focus';
 

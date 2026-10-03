@@ -1,0 +1,16 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    "packages/core": {
+      // The two public entry points. Tests count as consumers of what they import.
+      "entry": ["src/index.ts", "src/utils.ts", "src/**/*.{test,spec}.{ts,tsx}"],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignore": ["src/__tests__/**"],
+      // Public aliases of one value: ALL_OPERATORS of DEFAULT_OPERATORS, defaultMatcher of fuzzy.
+      "ignoreIssues": {
+        "src/types/operators.ts": ["duplicates"],
+        "src/utils/matcher.ts": ["duplicates"]
+      }
+    }
+  }
+}

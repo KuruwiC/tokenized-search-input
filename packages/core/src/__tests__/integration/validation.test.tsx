@@ -10,7 +10,7 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
-import { getSuggestionState, type SuggestionType } from '../../plugins/suggestion-plugin';
+import { getSuggestionState, type SuggestionType } from '../../plugins/suggestion';
 import type { FieldDefinition, ValidationRule } from '../../types';
 import { MaxCount, RequirePattern, Unique } from '../../validation/presets';
 import { fieldsWithValidationOverride } from '../fixtures';

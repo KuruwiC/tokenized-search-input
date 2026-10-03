@@ -21,28 +21,3 @@ export function safeResolve(doc: ProseMirrorNode, pos: number): ResolvedPos | nu
     return null;
   }
 }
-
-/**
- * Adjacent nodes at a given position.
- */
-export interface AdjacentNodes {
-  nodeBefore: ProseMirrorNode | null;
-  nodeAfter: ProseMirrorNode | null;
-}
-
-/**
- * Get adjacent nodes at a given position.
- *
- * @param doc - The ProseMirror document
- * @param pos - The position to check
- * @returns Adjacent nodes if position is valid, null otherwise
- */
-export function getAdjacentNodes(doc: ProseMirrorNode, pos: number): AdjacentNodes | null {
-  const $pos = safeResolve(doc, pos);
-  if (!$pos) return null;
-
-  return {
-    nodeBefore: $pos.nodeBefore,
-    nodeAfter: $pos.nodeAfter,
-  };
-}

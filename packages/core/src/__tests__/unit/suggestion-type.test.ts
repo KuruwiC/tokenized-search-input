@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { SuggestionType } from '../../plugins/suggestion-plugin';
+import type { SuggestionType } from '../../plugins/suggestion';
 import { interactionBoundary, isPickerType } from '../../suggestions/suggestion-type';
 
 describe('isPickerType', () => {

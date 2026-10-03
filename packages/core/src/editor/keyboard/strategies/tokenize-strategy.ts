@@ -1,4 +1,4 @@
-import { closeSuggestion } from '../../../plugins/suggestion-plugin';
+import { closeSuggestion } from '../../../plugins/suggestion';
 import { getTextBeforeCursor, tryAutoTokenize } from '../../use-auto-tokenize';
 import { canAutoTokenize, isSuggestionOpen, isTokenizeMode } from '../guards';
 import type { KeyboardContext } from '../types';

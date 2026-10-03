@@ -9,7 +9,7 @@ import {
   leaveTokenIn,
   programEntry,
   type TokenFocusEntry,
-} from '../../plugins/token-focus-plugin';
+} from '../../plugins/token-focus';
 import { findTokenById } from '../../utils/find-token';
 import { isFilterToken } from '../../utils/node-predicates';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';

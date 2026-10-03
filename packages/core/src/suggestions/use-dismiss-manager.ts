@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { SuggestionType } from '../plugins/suggestion-plugin';
+import type { SuggestionType } from '../plugins/suggestion';
 import { interactionBoundary } from './suggestion-type';
 
 export type DismissReason = 'pointer-outside' | 'escape' | 'focus-outside';

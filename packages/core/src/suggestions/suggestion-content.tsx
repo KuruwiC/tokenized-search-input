@@ -8,7 +8,7 @@ import {
   type SuggestionState,
   type SuggestionType,
   suggestionEntries,
-} from '../plugins/suggestion-plugin';
+} from '../plugins/suggestion';
 import type {
   ClassNames,
   CustomSuggestion,

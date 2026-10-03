@@ -16,7 +16,7 @@ import {
   type SuggestionState,
   suggestionKey,
   updateSuggestionTimeControls,
-} from '../../plugins/suggestion-plugin';
+} from '../../plugins/suggestion';
 import { useDeferredDateChange } from './use-deferred-date-change';
 
 export interface DatePickerState {

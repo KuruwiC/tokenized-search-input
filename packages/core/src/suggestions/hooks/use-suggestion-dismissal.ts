@@ -5,7 +5,7 @@ import {
   isSuggestionOpen,
   type SuggestionState,
   suggestionKey,
-} from '../../plugins/suggestion-plugin';
+} from '../../plugins/suggestion';
 import { interactionBoundary } from '../suggestion-type';
 import { type DismissReason, useDismissManager } from '../use-dismiss-manager';
 

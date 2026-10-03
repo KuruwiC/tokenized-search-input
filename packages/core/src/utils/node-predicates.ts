@@ -8,8 +8,8 @@ export const NODE_TYPE_NAMES = {
   freeTextToken: 'freeTextToken',
 } as const;
 
-export const TOKEN_TYPES = [NODE_TYPE_NAMES.filterToken, NODE_TYPE_NAMES.freeTextToken] as const;
-export type TokenTypeName = (typeof TOKEN_TYPES)[number];
+const TOKEN_TYPES = [NODE_TYPE_NAMES.filterToken, NODE_TYPE_NAMES.freeTextToken] as const;
+type TokenTypeName = (typeof TOKEN_TYPES)[number];
 
 export function isToken(node: ProseMirrorNode): boolean {
   return TOKEN_TYPES.includes(node.type.name as TokenTypeName);
@@ -21,10 +21,6 @@ export function isFilterToken(node: ProseMirrorNode): boolean {
 
 export function isFreeTextToken(node: ProseMirrorNode): boolean {
   return node.type.name === NODE_TYPE_NAMES.freeTextToken;
-}
-
-export function isText(node: ProseMirrorNode): boolean {
-  return node.type.name === NODE_TYPE_NAMES.text;
 }
 
 /** Whether a token's value is empty or only whitespace, so it says nothing to search for. */

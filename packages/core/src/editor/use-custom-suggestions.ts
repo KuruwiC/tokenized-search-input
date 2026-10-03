@@ -10,8 +10,8 @@ import {
   openCustomSuggestion,
   openFieldWithCustomSuggestion,
   setCustomLoadingMore,
-} from '../plugins/suggestion-plugin';
-import { getFocusedToken } from '../plugins/token-focus-plugin';
+} from '../plugins/suggestion';
+import { getFocusedToken } from '../plugins/token-focus';
 import { isInsideQuotes } from '../serializer/quote-state';
 import { canShowCustomSuggestion, isSuggestionDismissed } from '../suggestions/suggestion-guards';
 import type {

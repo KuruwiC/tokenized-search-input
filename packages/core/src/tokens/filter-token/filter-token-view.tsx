@@ -9,11 +9,10 @@ import {
   getEditableValueText,
   getSuggestionState,
   navigateSuggestion,
-} from '../../plugins/suggestion-plugin';
+} from '../../plugins/suggestion';
 import { getDecorationValidation } from '../../plugins/token-meta-plugin';
 import { isInsideQuotes } from '../../serializer/quote-state';
 import { type EnumValue, type FieldDefinition, getOperatorSelectLabel } from '../../types';
-import { isRangeSelected } from '../../utils/decoration-helpers';
 import { getEnumValue } from '../../utils/enum-value';
 import { Token, TokenIconSlot, useTokenConfig, useTokenFocusContext } from '../composition';
 import { resolveDisplayValue } from './resolve-display-value';
@@ -62,7 +61,7 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
   const showOperator = hasMultipleOperators || !operatorAllowed || !fieldDef?.hideSingleOperator;
   const isImmutable = node.attrs.immutable ?? false;
 
-  const rangeSelected = isRangeSelected(decorations);
+  const rangeSelected = decorations.some((decoration) => decoration.spec?.rangeSelected === true);
 
   // Resolve display value using pure function (extracted for testability)
   const { valueDisplayString, startContent, endContent } = resolveDisplayValue({

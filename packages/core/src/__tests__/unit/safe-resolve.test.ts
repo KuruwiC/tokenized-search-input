@@ -5,7 +5,7 @@
  * out-of-bounds positions gracefully.
  */
 import { describe, expect, it } from 'vitest';
-import { getAdjacentNodes, safeResolve } from '../../utils/safe-resolve';
+import { safeResolve } from '../../utils/safe-resolve';
 import { inlineSchema as schema } from '../fixtures';
 
 describe('safeResolve', () => {
@@ -61,73 +61,5 @@ describe('safeResolve', () => {
 
     const result = safeResolve(doc, 2);
     expect(result).toBeNull();
-  });
-});
-
-describe('getAdjacentNodes', () => {
-  it('returns adjacent nodes correctly at token boundary', () => {
-    // Document: [free text][filter][free text]
-    // Positions: 0 | free text | 1 | filter | 2 | free text | 3
-    const doc = schema.node('doc', null, [
-      schema.node('freeTextToken', { value: 'x' }),
-      schema.node('filterToken', { key: 'status', operator: 'is', value: 'active' }),
-      schema.node('freeTextToken', { value: 'x' }),
-    ]);
-
-    // Position 1: after the free text token, before the filter token
-    const result1 = getAdjacentNodes(doc, 1);
-    expect(result1).not.toBeNull();
-    expect(result1?.nodeBefore?.type.name).toBe('freeTextToken');
-    expect(result1?.nodeAfter?.type.name).toBe('filterToken');
-
-    // Position 2: after the filter token, before the free text token
-    const result2 = getAdjacentNodes(doc, 2);
-    expect(result2).not.toBeNull();
-    expect(result2?.nodeBefore?.type.name).toBe('filterToken');
-    expect(result2?.nodeAfter?.type.name).toBe('freeTextToken');
-  });
-
-  it('returns null for nodeBefore at document start', () => {
-    const doc = schema.node('doc', null, [schema.node('freeTextToken', { value: 'x' })]);
-
-    const result = getAdjacentNodes(doc, 0);
-    expect(result).not.toBeNull();
-    expect(result?.nodeBefore).toBeNull();
-    expect(result?.nodeAfter?.type.name).toBe('freeTextToken');
-  });
-
-  it('returns null for nodeAfter at document end', () => {
-    const doc = schema.node('doc', null, [schema.node('freeTextToken', { value: 'x' })]);
-
-    const result = getAdjacentNodes(doc, 1);
-    expect(result).not.toBeNull();
-    expect(result?.nodeBefore?.type.name).toBe('freeTextToken');
-    expect(result?.nodeAfter).toBeNull();
-  });
-
-  it('returns null for invalid positions', () => {
-    const doc = schema.node('doc', null, [schema.node('freeTextToken', { value: 'x' })]);
-
-    expect(getAdjacentNodes(doc, -1)).toBeNull();
-    expect(getAdjacentNodes(doc, 9999)).toBeNull();
-  });
-
-  it('handles text nodes correctly', () => {
-    // Document: [text]
-    const doc = schema.node('doc', null, [schema.text('hello')]);
-
-    // Position 3: middle of text (after 'hel', before 'lo')
-    const result = getAdjacentNodes(doc, 3);
-    expect(result).not.toBeNull();
-    // Text nodes have different behavior - nodeBefore/After return parent context for text positions
-  });
-
-  it('handles empty document', () => {
-    const doc = schema.node('doc', null, []);
-
-    const result = getAdjacentNodes(doc, 0);
-    expect(result).not.toBeNull();
-    expect(result?.nodeBefore).toBeNull();
-    expect(result?.nodeAfter).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/core';
 import { getFocusContext } from '../extensions/editor-context';
-import { enterTokenIn, type TokenFocusEntry } from '../plugins/token-focus-plugin';
+import { enterTokenIn, type TokenFocusEntry } from '../plugins/token-focus';
 
 /** Moves the token focus into the token `id` in a transaction of its own. */
 export function enterToken(editor: Editor, id: string, entry: TokenFocusEntry): boolean {

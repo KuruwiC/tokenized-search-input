@@ -6,7 +6,7 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Selection } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { safeResolve } from '../../utils/safe-resolve';
-import type { FocusTransitionContext } from '../token-focus-plugin';
+import type { FocusTransitionContext } from '../token-focus';
 
 /**
  * Context for selection guard keyboard handlers.
@@ -28,6 +28,12 @@ export interface SelectionGuardContext {
   /** What moving the token focus needs */
   focus: FocusTransitionContext;
 }
+
+/** A condition on the context of a key press. */
+export type Predicate = (ctx: SelectionGuardContext) => boolean;
+
+/** Handles a key press; returns true when it did, which stops the keys after it. */
+export type KeyHandler = (ctx: SelectionGuardContext) => boolean;
 
 /**
  * Build a SelectionGuardContext from view and event.

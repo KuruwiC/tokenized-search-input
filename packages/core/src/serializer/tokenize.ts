@@ -1,5 +1,5 @@
 /** The one character that ends a segment of a query when it is outside quotes. */
-export function isSeparator(char: string): boolean {
+function isSeparator(char: string): boolean {
   return char === ' ';
 }
 
@@ -37,7 +37,7 @@ export function readQuoted(text: string, start: number): QuotedRun {
 }
 
 /** A segment that is one quoted run: free text written in quotes. */
-export interface QuotedSegment {
+interface QuotedSegment {
   type: 'quoted';
   /** The segment as written, quotes and escapes included. */
   raw: string;
@@ -46,7 +46,7 @@ export interface QuotedSegment {
 }
 
 /** A segment without a leading quote: a filter, or free text. */
-export interface WordSegment {
+interface WordSegment {
   type: 'word';
   /** The segment as written, quotes and escapes included. */
   raw: string;
