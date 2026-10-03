@@ -1,16 +1,18 @@
 # Query grammar
 
 A query is the string form of the tokens in the search input. `serializeDocToQuery` and
-`createQuerySnapshot().text` write it, and `parseQueryToDoc` and `parseQueryString` read
-it. One tokenizer (`serializer/tokenize.ts`) cuts a query into segments, and one function,
+`createQuerySnapshot().text` write it, and `parseQueryToDoc` reads it. One tokenizer (`serializer/tokenize.ts`) cuts a query into segments, and one function,
 `quote`, writes text that needs quotes. A query that cannot be read as written is not
 changed; it is reported in the `diagnostics` of the result.
 
 ## Segments
 
 A query is a sequence of segments separated by spaces. Only a space (U+0020) separates
-segments; a tab, a carriage return, a newline and a non-breaking space are ordinary
-characters of a segment.
+segments; a tab, a carriage return, a newline, a non-breaking space and any other Unicode
+space are ordinary characters of a segment. In this document, _whitespace_ means a space, a
+tab, a carriage return or a newline; the other Unicode spaces are not whitespace. The query as
+written has no spaces at its start or end, and keeps any other character there, such as an
+ideographic space at the end of a value.
 
 A segment is one of:
 
@@ -45,43 +47,62 @@ that is never closed runs to the end of the query and is reported as `incomplete
 
 ### Writing
 
-`quote(text, { always, segmentDelimiter })` is the one place that decides. A value or free text
-is quoted when it holds any whitespace character, and only a space separates segments. Text is
-quoted when it contains
+`quote(text, { always })` is the one place that decides how text is quoted. A value or free
+text is quoted when it holds any whitespace character (a space, a tab, a carriage return or
+a newline), a quote or a backslash. Only a space separates segments, but any whitespace is
+quoted so that the text reads back as one value wherever it is pasted.
 
-- whitespace: a space, a tab, a carriage return or a newline,
-- a quote or a backslash, or
-- for text that stands as a segment of its own, a key followed by the delimiter at its start,
-  such as `foo:bar`, which would read as a filter.
+Free text is also quoted when the editor would otherwise read it as a filter: when its key,
+the text before the first delimiter, is a field of the editor, or any identifier when an
+`unknownFields` template is set, and a value follows. `serializeDocToQuery` and
+`createQuerySnapshot` take `fields` and `unknownFields` for this and the editor passes its
+own. Free text such as `http://example.com` or `10:30` stays as written, because no field
+matches its key. Without `fields`, free text is only quoted for the reasons above.
 
 `always` quotes text that would not need it, which is how free text that was typed in quotes
 keeps them. Inside the quotes `"` is written as `\"` and `\` as `\\`.
 
+Free text that is only whitespace is dropped when a query is read, so it is not written.
+
+A newline inside a quoted value is part of the value, but the browser's plain-text paste
+does not keep it: pasting `name:is:"a<newline>b"` into the editor turns the newline into
+what the paste handler makes of line breaks. Use `setValue`, the `defaultValue` or the
+value prop to load such a value.
+
 ## Operators
 
-A word after the key is read as the operator when it is one of the names the editor knows:
-the default operators and every operator a field or the `unknownFields` template declares.
+A word after the key is read as the operator when the field of the key allows it. A word the
+field does not allow is still read as the operator when it is a default operator or an
+operator of the `unknownFields` template; the operators of other fields do not count.
 
 - The field allows it: it is the operator of the token.
 - The field does not allow it, as in `status:contains:foo` on a field without `contains`: it
   is still the operator of the token, so what was written is kept. The token is listed in
   `diagnostics.unknownOperators`, and the `unknown-operator` validation rule marks it
-  invalid. A field can switch the rule off with `validation: { 'unknown-operator': false }`.
-- It is not a known name, as in `time:10:30` or `status:matches:x`: it belongs to the value, and
-  the operator is the first one of the field. Only a word that looks like an operator counts as
-  an unknown operator, because `key:word:rest` is also the shorthand of a value that holds the
-  delimiter.
+  invalid. The token shows its operator and offers the operators of the field, so it can be
+  repaired. A field can switch the rule off with `validation: { 'unknown-operator': false }`;
+  fields that an `unknownFields` template makes cannot, as the template has no `validation`.
+- It is none of these, as in `time:10:30` or `status:matches:x`: it belongs to the value, and
+  the operator is the first one of the field. Only a word that looks like an operator counts
+  as an unknown operator, because `key:word:rest` is also the shorthand of a value that holds
+  the delimiter.
+
+A word with an empty key, such as `::x` or `:foo`, is never a filter.
 
 ## Unknown fields
 
-A key that matches no field stays free text, and is listed in `diagnostics.unknownFields`.
-With an `unknownFields` template it becomes a filter whose operators come from the template,
-all default operators when it names none.
+A key that matches no field stays free text. With an `unknownFields` template it becomes a
+filter whose operators come from the template, all default operators when it names none.
+
+`diagnostics.unknownFields` lists the keys of segments that start as `key<d>` and match no
+field, each once, but only keys that look like names: they start with a letter or an
+underscore and hold letters, digits, `_`, `.` and `-`. `10:30` reports nothing, while
+`http://example.com` reports `http`.
 
 ## Diagnostics
 
-`parseQueryString` returns `{ tokens, diagnostics }` and `parseQueryToDoc` returns
-`{ doc, diagnostics }`:
+`parseQueryToDoc` returns `{ doc, diagnostics }`; `ParsedQuery` and `ParseDiagnostics` are
+exported from the utils entry:
 
 ```ts
 interface ParseDiagnostics {
