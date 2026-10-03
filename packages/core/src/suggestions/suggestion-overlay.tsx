@@ -1,4 +1,4 @@
-import type { Editor } from '@tiptap/react';
+import type { Editor } from '@tiptap/core';
 import { type RefObject, useCallback, useEffect, useRef } from 'react';
 import { getEditorContext } from '../extensions/editor-context';
 import { useEditorContextUpdate } from '../hooks/use-editor-context-update';

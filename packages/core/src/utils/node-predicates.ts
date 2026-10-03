@@ -26,3 +26,8 @@ export function isFreeTextToken(node: ProseMirrorNode): boolean {
 export function isText(node: ProseMirrorNode): boolean {
   return node.type.name === NODE_TYPE_NAMES.text;
 }
+
+/** Whether a token's value is empty or only whitespace, so it says nothing to search for. */
+export function isEmptyToken(node: ProseMirrorNode): boolean {
+  return !String(node.attrs.value ?? '').trim();
+}

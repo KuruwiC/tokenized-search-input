@@ -5,16 +5,12 @@ import { positionAnchor, tokenAnchor } from './anchor';
 import { suggestionEntries } from './entries';
 import { suggestionKey } from './plugin';
 import {
-  type CloseSuggestionMeta,
   type CustomDisplayMode,
   initialSuggestionState,
+  isCloseMeta,
   type SuggestionMeta,
   type SuggestionState,
 } from './types';
-
-function isCloseMeta(meta: SuggestionMeta): meta is CloseSuggestionMeta {
-  return 'close' in meta && meta.close === true;
-}
 
 export function setSuggestion(tr: Transaction, meta: SuggestionMeta): Transaction {
   // Auto-merge with existing meta to prevent overwrites when setSuggestion

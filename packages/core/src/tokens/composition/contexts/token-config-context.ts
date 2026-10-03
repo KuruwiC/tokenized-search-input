@@ -1,5 +1,5 @@
+import type { Editor } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
-import type { Editor } from '@tiptap/react';
 import { createContext, useContext } from 'react';
 
 /**

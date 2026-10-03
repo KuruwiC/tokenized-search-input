@@ -1,6 +1,6 @@
+import type { Editor } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { TextSelection } from '@tiptap/pm/state';
-import type { Editor } from '@tiptap/react';
 import { NodeViewWrapper } from '@tiptap/react';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getEditorContext, resolveField } from '../../extensions/editor-context';

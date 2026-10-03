@@ -1,8 +1,9 @@
+import type { Editor } from '@tiptap/core';
 import { History } from '@tiptap/extension-history';
 import { Paragraph } from '@tiptap/extension-paragraph';
 import { Text } from '@tiptap/extension-text';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
-import { type Editor, useEditor } from '@tiptap/react';
+import { useEditor } from '@tiptap/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ClipboardSerializer } from '../../extensions/clipboard-serializer';
 import { CorePluginsExtension } from '../../extensions/core-plugins';

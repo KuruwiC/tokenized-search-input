@@ -1,4 +1,4 @@
-import type { Editor } from '@tiptap/react';
+import type { Editor } from '@tiptap/core';
 import { useCallback } from 'react';
 import { getEditorContext } from '../../extensions/editor-context';
 import { useDebouncedPickerSync } from '../../hooks/use-debounced-picker-sync';

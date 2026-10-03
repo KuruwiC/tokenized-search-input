@@ -1,10 +1,6 @@
-import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Transaction } from '@tiptap/pm/state';
 import { findTokenById } from '../../utils/find-token';
-
-export function isEmptyToken(node: ProseMirrorNode): boolean {
-  return !String(node.attrs.value ?? '').trim();
-}
+import { isEmptyToken } from '../../utils/node-predicates';
 
 export function removeEmptyToken(tr: Transaction, tokenId: string): boolean {
   const found = findTokenById(tr.doc, tokenId);

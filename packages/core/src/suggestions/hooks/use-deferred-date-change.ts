@@ -1,4 +1,4 @@
-import type { Editor } from '@tiptap/react';
+import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useRef } from 'react';
 import type { DateTimeValue } from '../../pickers/date-time-value';
 import {

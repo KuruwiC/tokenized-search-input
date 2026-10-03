@@ -1,4 +1,4 @@
-import type { Editor } from '@tiptap/react';
+import type { Editor } from '@tiptap/core';
 import { useEffect, useRef } from 'react';
 import {
   applyEditorContext,

@@ -79,6 +79,10 @@ export interface CloseSuggestionMeta {
 
 export type SuggestionMeta = SetSuggestionMeta | CloseSuggestionMeta;
 
+export function isCloseMeta(meta: SuggestionMeta): meta is CloseSuggestionMeta {
+  return 'close' in meta && meta.close === true;
+}
+
 export const initialSuggestionState: SuggestionState = {
   type: null,
   fieldKey: null,

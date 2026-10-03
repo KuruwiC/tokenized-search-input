@@ -1,5 +1,5 @@
 import { Extension } from '@tiptap/core';
-import type { Fragment, Slice } from '@tiptap/pm/model';
+import type { Fragment, Node as ProseMirrorNode, Slice } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { SerializeDocOptions } from '../serializer';
 import { filterSegment, freeTextSegment, textSegment, trimSpaces } from '../serializer/segments';
@@ -10,44 +10,37 @@ import { getEditorContext } from './editor-context';
 /** Return null to use default serialization for that token. */
 export type SerializeTokenFn = (token: FilterTokenAttrs) => string | null;
 
-interface FragmentNode {
-  type: { name: string };
-  attrs?: Record<string, unknown>;
-  text?: string;
-  content?: FragmentLike;
-}
-
-interface FragmentLike {
-  forEach: (fn: (node: FragmentNode) => void) => void;
-}
-
 interface SerializeOptions extends SerializeDocOptions {
   serializeToken?: SerializeTokenFn;
   delimiter: string;
 }
 
-function defaultSerializeFilterToken(node: FragmentNode, parts: string[], delimiter: string): void {
-  const segment = filterSegment(node.attrs ?? {}, delimiter);
+function defaultSerializeFilterToken(
+  node: ProseMirrorNode,
+  parts: string[],
+  delimiter: string
+): void {
+  const segment = filterSegment(node.attrs, delimiter);
   if (segment) parts.push(segment);
 }
 
 function serializeFreeTextToken(
-  node: FragmentNode,
+  node: ProseMirrorNode,
   parts: string[],
   options: SerializeOptions
 ): void {
   const source = options.fields && { fields: options.fields, unknownFields: options.unknownFields };
-  const segment = freeTextSegment(node.attrs ?? {}, options.delimiter, source);
+  const segment = freeTextSegment(node.attrs, options.delimiter, source);
   if (segment) parts.push(segment);
 }
 
-function serializeText(node: FragmentNode, parts: string[]): void {
+function serializeText(node: ProseMirrorNode, parts: string[]): void {
   const segment = textSegment(node.text);
   if (segment) parts.push(segment);
 }
 
-function visitFragment(fragment: FragmentLike, parts: string[], options: SerializeOptions): void {
-  const visit = (content: FragmentLike) => visitFragment(content, parts, options);
+function visitFragment(fragment: Fragment, parts: string[], options: SerializeOptions): void {
+  const visit = (content: Fragment) => visitFragment(content, parts, options);
 
   fragment.forEach((node) => {
     switch (node.type.name) {
@@ -85,7 +78,7 @@ function visitFragment(fragment: FragmentLike, parts: string[], options: Seriali
   });
 }
 
-function serializeFragment(fragment: FragmentLike, options: SerializeOptions): string {
+function serializeFragment(fragment: Fragment, options: SerializeOptions): string {
   const parts: string[] = [];
   visitFragment(fragment, parts, options);
   return trimSpaces(parts.join(' '));

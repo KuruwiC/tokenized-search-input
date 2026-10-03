@@ -14,21 +14,11 @@ import { getSuggestionQueryUpdate } from '../shared/meta';
 import { getTokenFocusMeta } from '../token-focus/state';
 import { suggestionEntries } from './entries';
 import { createResetState } from './state-helpers';
-import type {
-  CloseSuggestionMeta,
-  SetSuggestionMeta,
-  SuggestionAnchor,
-  SuggestionMeta,
-  SuggestionState,
-} from './types';
-import { initialSuggestionState } from './types';
+import type { SetSuggestionMeta, SuggestionAnchor, SuggestionMeta, SuggestionState } from './types';
+import { initialSuggestionState, isCloseMeta } from './types';
 import { matchValueSuggestions } from './value-items';
 
 export const suggestionKey = new PluginKey<SuggestionState>('suggestion');
-
-function isCloseMeta(meta: SuggestionMeta): meta is CloseSuggestionMeta {
-  return 'close' in meta && meta.close === true;
-}
 
 /**
  * The anchor of an open suggestion after a document change, or null when what it

@@ -1,6 +1,5 @@
-import type { JSONContent } from '@tiptap/core';
+import type { Editor, JSONContent } from '@tiptap/core';
 import { EditorState, type Transaction } from '@tiptap/pm/state';
-import type { Editor } from '@tiptap/react';
 import {
   type ForwardedRef,
   type MutableRefObject,

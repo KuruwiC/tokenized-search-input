@@ -1,4 +1,4 @@
-import type { Editor } from '@tiptap/react';
+import type { Editor } from '@tiptap/core';
 import { type RefObject, useEffect, useRef } from 'react';
 import { getFocusedToken } from '../../plugins/token-focus-plugin';
 
