@@ -38,7 +38,6 @@ function fail(message) {
   process.exit(1);
 }
 
-/** Reads the fenced code blocks of the README and sorts them into examples and problems. */
 function collectExamples(readme) {
   const lines = readme.split('\n');
   const examples = [];
@@ -85,7 +84,6 @@ function collectExamples(readme) {
   return { examples, problems };
 }
 
-/** Links the scratch project to the built package and to the packages the examples import. */
 function linkDependencies(projectDirectory) {
   const nodeModules = join(projectDirectory, 'node_modules');
   const links = [
@@ -154,7 +152,6 @@ function compileExamples(examples) {
   }
 }
 
-/** Runtime exports of the /utils entry that README.md never names in backticks. */
 async function findUnlistedUtilsExports(readme) {
   const utils = await import(pathToFileURL(resolve(packageRoot, 'dist/utils.js')).href);
   return Object.keys(utils).filter((name) => !readme.includes(`\`${name}\``));

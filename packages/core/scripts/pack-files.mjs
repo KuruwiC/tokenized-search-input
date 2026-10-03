@@ -11,10 +11,7 @@ const archiveName = `${name.replace(/^@/, '').replace('/', '-')}-${version}.tgz`
 // The tarball that a GitHub release of the package publishes, as the README links to it.
 const INSTALL_URL = /releases\/download\/v[^/\s"]+\/[^/\s"]+\.tgz/g;
 
-/**
- * The README of the repository with every install URL pointing at the release of the
- * version being packed, so the README inside a tarball always names its own release.
- */
+// Stamps the install URLs so the README inside a tarball names its own release.
 export function packedReadme() {
   const readme = readFileSync(resolve(repositoryRoot, 'README.md'), 'utf8');
   if (!readme.match(INSTALL_URL)) {

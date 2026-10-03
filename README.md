@@ -1171,7 +1171,7 @@ Built-in resolvers:
 | `caseInsensitive` (default) | Case-insensitive match against both value and label |
 | `exact` | Case-sensitive match against both value and label |
 
-Both built-in resolvers match user input against **value** and **label**, returning the internal value on match. This enables label-to-value resolution when using `{ value, label }` enum definitions:
+Both built-in resolvers match user input against the value and the label, returning the internal value on match. This enables label-to-value resolution when using `{ value, label }` enum definitions:
 
 <!-- example -->
 ```tsx
