@@ -1,3 +1,16 @@
+/**
+ * The query grammar, written out in docs/query-grammar.md.
+ *
+ * A query is segments separated by spaces; only a space separates segments. A segment is
+ * `key<d>operator<d>value` (`<d>` is the delimiter) or free text. A value and free text may
+ * be wrapped in `"`; inside quotes the only escapes are `\"` and `\\`, and newlines and tabs
+ * stand for themselves. A value or free text is written in quotes when it holds any
+ * whitespace character, a quote or a backslash, or when free text starts as a key and the
+ * delimiter. `tokenizeQuery` is the one tokenizer that reads queries and `quote` the one
+ * function that writes quotes. What cannot be read as written is kept and reported in the
+ * diagnostics of the result: an open quote, a key that matches no field, an operator its
+ * field does not allow.
+ */
 import type { JSONContent } from '@tiptap/core';
 import type { EditorState } from '@tiptap/pm/state';
 import {
