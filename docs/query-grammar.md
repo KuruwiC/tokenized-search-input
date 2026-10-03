@@ -5,6 +5,8 @@ A query is the string form of the tokens in the search input. `serializeDocToQue
 `quote`, writes text that needs quotes. A query that cannot be read as written is not
 changed; it is reported in the `diagnostics` of the result.
 
+The [README](../README.md) shows how to use these functions and the props that read and write queries.
+
 ## Segments
 
 A query is a sequence of segments separated by spaces. Only a space (U+0020) separates
