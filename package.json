@@ -12,6 +12,7 @@
     "lint:fix": "biome check --write .",
     "lint:fix:unsafe": "biome check --write --unsafe .",
     "lint:unused": "knip --workspace packages/core",
+    "docs:check": "node scripts/check-readme-examples.mjs",
     "format": "biome format --write .",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm --filter @kuruwic/tokenized-search-input test",

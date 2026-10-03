@@ -34,6 +34,9 @@ jobs:
       - name: Build and validate package
         run: pnpm build
 
+      - name: Type-check README examples
+        run: pnpm docs:check
+
       - name: Lint
         run: pnpm lint
 
