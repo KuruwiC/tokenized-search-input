@@ -1,10 +1,6 @@
-import { copyFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { packageRoot, packedLicense, packedReadme } from './pack-files.mjs';
 
-const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const repositoryRoot = resolve(packageRoot, '../..');
-
-for (const filename of ['README.md', 'LICENSE']) {
-  copyFileSync(resolve(repositoryRoot, filename), resolve(packageRoot, filename));
-}
+writeFileSync(resolve(packageRoot, 'README.md'), packedReadme());
+writeFileSync(resolve(packageRoot, 'LICENSE'), packedLicense());

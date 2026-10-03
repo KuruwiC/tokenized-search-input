@@ -1,14 +1,15 @@
 import { existsSync, readFileSync, unlinkSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
+import { packageRoot, packedLicense, packedReadme } from './pack-files.mjs';
 
-const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const repositoryRoot = resolve(packageRoot, '../..');
+const generated = [
+  ['README.md', Buffer.from(packedReadme())],
+  ['LICENSE', packedLicense()],
+];
 
-for (const filename of ['README.md', 'LICENSE']) {
+for (const [filename, content] of generated) {
   const generatedPath = resolve(packageRoot, filename);
-  const sourcePath = resolve(repositoryRoot, filename);
-  if (existsSync(generatedPath) && readFileSync(generatedPath).equals(readFileSync(sourcePath))) {
+  if (existsSync(generatedPath) && readFileSync(generatedPath).equals(content)) {
     unlinkSync(generatedPath);
   }
 }
