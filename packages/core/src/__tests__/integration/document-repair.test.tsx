@@ -12,7 +12,7 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
-import type { ValidationConfig } from '../../types';
+import type { ValidationConfig, ValidationRule } from '../../types';
 import { Unique } from '../../validation/presets';
 import { basicFields } from '../fixtures';
 import { getInternalEditor } from '../helpers/get-editor';
@@ -291,6 +291,59 @@ describe('DocumentRepairExtension - Integration Tests', () => {
       });
 
       expect(editor.getJSON()).toEqual(before);
+    });
+  });
+
+  describe('An empty token added in a dispatch that a rule also changes', () => {
+    it('keeps the added token when a delete rule removes another one in the same dispatch', async () => {
+      const deleteDoomed: ValidationRule = {
+        id: 'delete-doomed',
+        validate: (ctx) =>
+          ctx.tokens
+            .filter((token) => token.value === 'doomed')
+            .map((token) => ({
+              ruleId: 'delete-doomed',
+              reason: 'doomed',
+              action: 'delete' as const,
+              targets: [{ tokenId: token.id }],
+            })),
+      };
+      const ref = createRef<TokenizedSearchInputRef>();
+      render(
+        <TokenizedSearchInput
+          ref={ref}
+          fields={testFields}
+          defaultValue="status:is:active"
+          validation={{ rules: [deleteDoomed] }}
+        />
+      );
+      await waitFor(() => expect(getInternalEditor(ref.current)).not.toBeNull());
+      const editor = getInternalEditor(ref.current);
+      if (!editor) throw new Error('editor is unavailable');
+      const existing = editor.state.doc.nodeAt(1);
+      if (!existing) throw new Error('no token');
+
+      act(() => {
+        const tr = editor.state.tr;
+        tr.setNodeMarkup(1, undefined, { ...existing.attrs, value: 'doomed' });
+        tr.insert(
+          tr.doc.content.size - 1,
+          editor.schema.nodes.filterToken.create({
+            id: 'added',
+            key: 'status',
+            operator: 'is',
+            value: '',
+          })
+        );
+        editor.view.dispatch(tr);
+      });
+
+      const ids: string[] = [];
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === 'filterToken') ids.push(String(node.attrs.id));
+        return true;
+      });
+      expect(ids).toEqual(['added']);
     });
   });
 

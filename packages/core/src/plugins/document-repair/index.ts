@@ -1,5 +1,6 @@
 import { Extension } from '@tiptap/core';
-import { type EditorState, Plugin, PluginKey } from '@tiptap/pm/state';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import { type EditorState, Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
 import { getFocusContext } from '../../extensions/editor-context';
 import {
   isCompositionTransaction,
@@ -18,6 +19,17 @@ const documentRepairKey = new PluginKey('documentRepair');
 
 function focusedTokenId(state: EditorState): string | null {
   return getFocusedToken(state)?.id ?? null;
+}
+
+/**
+ * The document at the start of the dispatch `transactions` belong to. A transaction that
+ * a plugin appended names the dispatched one it follows.
+ */
+function dispatchStartDoc(transactions: readonly Transaction[]): ProseMirrorNode | undefined {
+  const [first] = transactions;
+  if (!first) return undefined;
+  const root = (first.getMeta('appendedTransaction') as Transaction | undefined) ?? first;
+  return root.before;
 }
 
 /**
@@ -62,7 +74,8 @@ export const DocumentRepairExtension = Extension.create({
           const restoring = transactions.some(isHistoryTransaction);
           const tr = newState.tr;
           let repaired = removeEmptyTokens(tr, {
-            before: oldState.doc,
+            // A token is added when the dispatch adds it, whichever round repairs it.
+            before: dispatchStartDoc(transactions) ?? oldState.doc,
             focusedId: focused,
             leftId: focusLeft ? left : null,
             restoring,

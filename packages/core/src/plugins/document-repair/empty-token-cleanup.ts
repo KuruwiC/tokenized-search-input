@@ -4,7 +4,7 @@ import { isEmptyToken, isToken } from '../../utils/node-predicates';
 
 /** What the transactions being repaired did, as far as empty tokens are concerned. */
 export interface EmptyTokenScope {
-  /** The document before the transactions. */
+  /** The document at the start of the dispatch; a token that is not in it is being created. */
   before: ProseMirrorNode;
   /** The token focused after them. */
   focusedId: string | null;
@@ -26,7 +26,7 @@ function tokenIds(doc: ProseMirrorNode): Set<string> {
 /**
  * A token without a value is one the user is filling in: it stays while they are in it
  * and goes once they are not. Removes, in `tr`, every empty token that is not focused,
- * except one the transactions added, which is still being created. Undo and redo restore
+ * except one the dispatch added, which is still being created. Undo and redo restore
  * a document that existed, so after them only the token the focus left is removed.
  *
  * @returns whether a token was removed
