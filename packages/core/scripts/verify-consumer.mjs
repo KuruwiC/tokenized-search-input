@@ -41,7 +41,7 @@ const esmCheckSource = `import {
 } from '${packageName}';
 import { type DateTimeValue, parseDateTimeValue } from '${packageName}/utils';
 import '${packageName}/styles';
-import { useRef } from 'react';
+import { type RefObject, useRef } from 'react';
 
 const readDate = (input: string): DateTimeValue | null => {
   const parsed = parseDateTimeValue(input, 'date');
@@ -52,6 +52,20 @@ const fields: FieldDefinition[] = [
   { key: 'status', label: 'Status', type: 'enum', operators: ['is'], enumValues: ['open', 'closed'] },
   { key: 'due', label: 'Due', type: 'date', operators: ['gt'], formatConfig: { parse: readDate } },
 ];
+
+// The editor commands the package adds are typed on the editor that getEditor() returns.
+export function editTokens(ref: RefObject<TokenizedSearchInputRef | null>, id: string): boolean {
+  const commands = ref.current?.getEditor()?.commands;
+  if (!commands) return false;
+  return (
+    commands.updateToken(id, { value: 'closed' }) &&
+    commands.setTokenDisplay(id, { displayValue: 'Closed' }) &&
+    commands.insertFilterToken({ key: 'status', operator: 'is', value: 'open' }) &&
+    commands.insertFreeTextToken({ value: 'text' }) &&
+    commands.focusFilterToken(id) &&
+    commands.submit()
+  );
+}
 
 export function Search({ onSearch }: { onSearch: (snapshot: QuerySnapshot) => void }) {
   const ref = useRef<TokenizedSearchInputRef>(null);

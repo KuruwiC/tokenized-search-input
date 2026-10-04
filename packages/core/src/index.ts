@@ -104,6 +104,14 @@ export {
   DEFAULT_TOKEN_DELIMITER,
 } from './types';
 
+// Editor Commands
+// The commands these modules add to Tiptap's `Commands` are part of the type of the editor
+// that `getEditor()` returns, so the published declarations carry their augmentations.
+
+import './extensions/token-commands';
+import './tokens/filter-token/filter-token-node';
+import './tokens/free-text-token/free-text-token-node';
+
 // Callback Types
 
 export type { SerializeTokenFn } from './extensions/clipboard-serializer';
