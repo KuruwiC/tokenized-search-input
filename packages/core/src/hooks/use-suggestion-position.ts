@@ -88,11 +88,12 @@ export function useSuggestionPosition(
     const remeasure = () => measureRef.current();
     // Scroll events do not bubble; capturing them on the container sees every scroller in it.
     container.addEventListener('scroll', remeasure, { capture: true, passive: true });
-    const observer = new ResizeObserver(remeasure);
-    observer.observe(container);
+    // An environment without ResizeObserver (jsdom, for one) measures on scroll and commits only.
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(remeasure);
+    observer?.observe(container);
     return () => {
       container.removeEventListener('scroll', remeasure, { capture: true });
-      observer.disconnect();
+      observer?.disconnect();
     };
   }, [open, containerRef]);
 
