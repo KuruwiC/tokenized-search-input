@@ -58,7 +58,6 @@ describe('pagination of custom suggestions', () => {
       },
     };
 
-    // Verify configuration is valid
     expect(customSuggestion.displayMode).toBe('prepend');
     expect(customSuggestion.loadMore).toBeDefined();
   });
@@ -77,7 +76,6 @@ describe('pagination of custom suggestions', () => {
       },
     };
 
-    // Verify configuration is valid
     expect(customSuggestion.displayMode).toBe('append');
     expect(customSuggestion.loadMore).toBeDefined();
   });
@@ -259,7 +257,6 @@ describe('selecting a custom suggestion', () => {
       },
     };
 
-    // Verify configuration supports displayValue
     const suggestions = customSuggestion.suggest({
       query: 're',
       fields: [],

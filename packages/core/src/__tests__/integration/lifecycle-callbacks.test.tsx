@@ -196,19 +196,16 @@ describe('lifecycle callbacks', () => {
         />
       );
 
-      // Wait for initial onTokensChange
       await waitFor(() => {
         expect(onTokensChange).toHaveBeenCalled();
       });
 
       const initialCallCount = onTokensChange.mock.calls.length;
 
-      // Find and click the delete button on first token
       const deleteButtons = screen.getAllByRole('button', { name: /delete|remove/i });
       expect(deleteButtons.length).toBeGreaterThan(0);
       await user.click(deleteButtons[0]);
 
-      // onTokensChange should fire with one less token
       await waitFor(() => {
         expect(onTokensChange.mock.calls.length).toBeGreaterThan(initialCallCount);
       });
