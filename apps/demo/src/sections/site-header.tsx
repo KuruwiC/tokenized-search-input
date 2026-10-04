@@ -45,7 +45,7 @@ export function SiteHeader() {
           t:
         </span>
         <span>tokenized-search-input</span>
-        <span className="version">v0.1.1</span>
+        <span className="version">v0.1.2</span>
       </a>
       <nav aria-label="Primary navigation">
         <a href="#playground">Playground</a>

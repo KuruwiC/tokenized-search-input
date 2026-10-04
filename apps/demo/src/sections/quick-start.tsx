@@ -11,7 +11,7 @@ export function QuickStartSection() {
           submitted query means.
         </p>
         <CodeBlock
-          code="pnpm add https://github.com/KuruwiC/tokenized-search-input/releases/download/v0.1.1/kuruwic-tokenized-search-input-0.1.1.tgz"
+          code="pnpm add https://github.com/KuruwiC/tokenized-search-input/releases/download/v0.1.2/kuruwic-tokenized-search-input-0.1.2.tgz"
           label="Install"
           language="bash"
         />
