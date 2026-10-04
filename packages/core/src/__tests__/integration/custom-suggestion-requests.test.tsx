@@ -532,6 +532,100 @@ describe('the signal passed to suggest and loadMore', () => {
     expect(first.signal.aborted).toBe(false);
   });
 
+  it('leaves the signal of a suggest that threw alone', async () => {
+    const user = userEvent.setup();
+    const onError = vi.fn<(error: Error, context: SuggestionErrorContext) => void>();
+    const signals: AbortSignal[] = [];
+    await renderInput({
+      suggestions: {
+        custom: {
+          displayMode: 'replace',
+          debounceMs: 0,
+          suggest: ({ signal }) => {
+            signals.push(signal);
+            throw new Error('suggest failed');
+          },
+          onError,
+        },
+      },
+    });
+
+    await user.click(screen.getByRole('combobox'));
+    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
+    await user.keyboard('{Escape}');
+    cleanup();
+
+    expect(signals[0]?.aborted).toBe(false);
+  });
+
+  it('leaves the signal of a loadMore that threw alone', async () => {
+    const scrollToEnd = observeIntersections();
+    const user = userEvent.setup();
+    const onError = vi.fn<(error: Error, context: SuggestionErrorContext) => void>();
+    const signals: AbortSignal[] = [];
+    await renderInput({
+      suggestions: {
+        custom: {
+          displayMode: 'replace',
+          debounceMs: 0,
+          suggest: async () => ({ suggestions: page(['one', 'two']), hasMore: true }),
+          loadMore: ({ signal }) => {
+            signals.push(signal);
+            throw new Error('loadMore failed');
+          },
+          onError,
+        },
+      },
+    });
+    await user.click(screen.getByRole('combobox'));
+    await screen.findByRole('option', { name: /one/ });
+    act(scrollToEnd);
+    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
+    await user.keyboard('{Escape}');
+    cleanup();
+
+    expect(signals[0]?.aborted).toBe(false);
+  });
+
+  it('handles the rejection of a suggest whose request was abandoned while it was called', async () => {
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      let rejectLate: ((error: Error) => void) | undefined;
+      let calls = 0;
+      const { editor } = await renderInput({
+        suggestions: {
+          custom: {
+            displayMode: 'replace',
+            debounceMs: 0,
+            suggest: () => {
+              calls += 1;
+              if (calls > 1) return [];
+              // A newer query starts before this call returns
+              editor.commands.insertContent('x');
+              return new Promise<CustomSuggestion[]>((_, reject) => {
+                rejectLate = reject;
+              });
+            },
+          },
+        },
+      });
+
+      act(() => {
+        editor.commands.focus();
+      });
+      await waitFor(() => expect(rejectLate).toBeDefined());
+      await act(async () => {
+        rejectLate?.(new Error('late failure'));
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
+
   it('aborts the signal of a suggest that runs past timeoutMs and reports the timeout once', async () => {
     const onError = vi.fn<(error: Error, context: SuggestionErrorContext) => void>();
     const signals: AbortSignal[] = [];

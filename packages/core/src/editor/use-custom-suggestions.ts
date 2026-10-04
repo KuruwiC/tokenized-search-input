@@ -73,15 +73,16 @@ function withTimeout<T>(task: Promise<T>, timeoutMs: number, request: AbortContr
         request.abort(new RequestTimeoutError(`Suggestion request timed out after ${timeoutMs}ms`)),
       timeoutMs
     );
+    // Handled even when the request is abandoned before it settles
+    task.then(
+      (value) => settle(() => resolve(value)),
+      (error) => settle(() => reject(error))
+    );
     if (signal.aborted) {
       onAbort();
       return;
     }
     signal.addEventListener('abort', onAbort, { once: true });
-    task.then(
-      (value) => settle(() => resolve(value)),
-      (error) => settle(() => reject(error))
-    );
   });
 }
 
@@ -110,6 +111,20 @@ function settleRequest(
   controller: AbortController
 ): void {
   if (ref.current === controller) ref.current = null;
+}
+
+/**
+ * Calls `call` for `request` and waits for its result under `timeoutMs`. However it ends,
+ * including a synchronous throw from `call`, the request then leaves `ref`.
+ */
+function runRequest<T>(
+  ref: MutableRefObject<AbortController | null>,
+  request: AbortController,
+  timeoutMs: number,
+  call: () => T | PromiseLike<T>
+): Promise<T> {
+  const task = new Promise<T>((resolve) => resolve(call()));
+  return withTimeout(task, timeoutMs, request).finally(() => settleRequest(ref, request));
 }
 
 /** Whether suggestions for the text may be shown: it is being typed in, and not dismissed. */
@@ -307,17 +322,13 @@ export function useCustomSuggestions(
       const onError = config.onError ?? defaultErrorHandler;
 
       try {
-        const existingTokens = collectExistingTokens(editor);
-        const suggestPromise = Promise.resolve(
+        const rawResult = await runRequest(suggestRequestRef, request, timeoutMs, () =>
           config.suggest({
             query,
             fields: getEditorContext(editor).fields,
-            existingTokens,
+            existingTokens: collectExistingTokens(editor),
             signal,
           })
-        );
-        const rawResult = await withTimeout(suggestPromise, timeoutMs, request).finally(() =>
-          settleRequest(suggestRequestRef, request)
         );
 
         if (signal.aborted || editor.isDestroyed || !canSuggest(editor)) return;
@@ -400,20 +411,17 @@ export function useCustomSuggestions(
     editor.view.dispatch(loading);
 
     try {
-      const result = await withTimeout(
-        Promise.resolve(
-          config.loadMore({
-            query,
-            fields: getEditorContext(editor).fields,
-            existingTokens: collectExistingTokens(editor),
-            offset,
-            limit: config.maxSuggestions ?? DEFAULT_MAX_SUGGESTIONS,
-            signal,
-          })
-        ),
-        timeoutMs,
-        request
-      ).finally(() => settleRequest(loadMoreRequestRef, request));
+      const { loadMore } = config;
+      const result = await runRequest(loadMoreRequestRef, request, timeoutMs, () =>
+        loadMore({
+          query,
+          fields: getEditorContext(editor).fields,
+          existingTokens: collectExistingTokens(editor),
+          offset,
+          limit: config.maxSuggestions ?? DEFAULT_MAX_SUGGESTIONS,
+          signal,
+        })
+      );
 
       // The page belongs to the suggestion that asked for it: one that closed since, or a
       // newer request, has taken that away
