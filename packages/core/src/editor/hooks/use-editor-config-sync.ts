@@ -10,6 +10,7 @@ import {
 } from '../../extensions/editor-context';
 import { markContextUpdated, requestValidationCheck } from '../../plugins/shared/meta';
 import { applyFreeTextMode } from '../free-text-mode';
+import { scheduleDocumentChange } from './schedule-document-change';
 
 /**
  * The only place that writes configuration into the editor context storage after
@@ -91,7 +92,8 @@ export function useEditorConfigSync(
     editor.view.dispatch(tr);
   }, [editor, validation]);
 
-  // Read the content again when freeTextMode changes. An unset mode means the default.
+  // Read the content again when freeTextMode changes, under the mode the context holds
+  // when the change runs. An unset mode means the default.
   const mode = freeTextMode ?? DEFAULT_EDITOR_CONTEXT.freeTextMode;
   const prevFreeTextModeRef = useRef(mode);
   useEffect(() => {
@@ -101,9 +103,11 @@ export function useEditorConfigSync(
 
     if (prevMode === mode) return;
 
-    const { tr } = editor.state;
-    applyFreeTextMode(tr, getEditorContext(editor), getFocusContext(editor));
-    if (tr.docChanged) editor.view.dispatch(tr);
+    scheduleDocumentChange(editor, () => {
+      const { tr } = editor.state;
+      applyFreeTextMode(tr, getEditorContext(editor), getFocusContext(editor));
+      if (tr.docChanged) editor.view.dispatch(tr);
+    });
   }, [editor, mode]);
 
   // Callbacks change with the handlers' identities, so they update the storage

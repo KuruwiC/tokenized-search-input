@@ -23,6 +23,7 @@ import type {
   TokenizedSearchInputRef,
   TokenPatch,
 } from '../tokenized-search-input.types';
+import { scheduleDocumentChange } from './schedule-document-change';
 
 /**
  * Replaces the whole content and validates it, in one transaction. Token meta of the
@@ -83,7 +84,8 @@ const NO_PENDING_CALLS: PendingHandleCalls = { base: null, calls: [] };
  * An ancestor's effect in the same commit can call the handle while `editor` is
  * still a destroyed instance. Calls made then are held in call order and run by
  * `useApplyPendingHandleWrites` on the live editor, through the same commands as on a
- * live editor, starting from the document the destroyed editor had. `getValue` and
+ * live editor, starting from the document the destroyed editor had. Calls made while
+ * held calls wait are held behind them, so they run in call order. `getValue` and
  * `getSnapshot` read the document the held calls produce; validation runs once they
  * are applied, so snapshots read in the meantime carry no validation.
  */
@@ -128,12 +130,14 @@ export function useTokenizedSearchInputRef(
       const { base, calls } = pendingHandleRef.current;
       pendingHandleRef.current = { base: base ?? ed.getJSON(), calls: [...calls, call] };
     };
+    /** Whether a call has to wait: the editor is destroyed, or held calls wait before it. */
+    const mustHold = (ed: Editor) => ed.isDestroyed || pendingHandleRef.current.calls.length > 0;
 
     return {
       setValue: (value: string) => {
         if (!editor) return;
         const doc = parseValue(editor, value);
-        if (editor.isDestroyed) {
+        if (mustHold(editor)) {
           hold(editor, { type: 'setValue', doc });
           return;
         }
@@ -149,7 +153,7 @@ export function useTokenizedSearchInputRef(
       },
       focus: () => {
         if (!editor) return;
-        if (editor.isDestroyed) {
+        if (mustHold(editor)) {
           hold(editor, { type: 'focus' });
           return;
         }
@@ -157,7 +161,7 @@ export function useTokenizedSearchInputRef(
       },
       clear: () => {
         if (!editor) return;
-        if (editor.isDestroyed) {
+        if (mustHold(editor)) {
           hold(editor, { type: 'clear' });
           return;
         }
@@ -165,7 +169,7 @@ export function useTokenizedSearchInputRef(
       },
       submit: () => {
         if (!editor) return;
-        if (editor.isDestroyed) {
+        if (mustHold(editor)) {
           hold(editor, { type: 'submit' });
           return;
         }
@@ -173,7 +177,7 @@ export function useTokenizedSearchInputRef(
       },
       updateToken: (id: string, patch: TokenPatch) => {
         if (!editor) return;
-        if (editor.isDestroyed) {
+        if (mustHold(editor)) {
           hold(editor, { type: 'updateToken', id, patch });
           return;
         }
@@ -181,7 +185,7 @@ export function useTokenizedSearchInputRef(
       },
       deleteToken: (id: string) => {
         if (!editor) return;
-        if (editor.isDestroyed) {
+        if (mustHold(editor)) {
           hold(editor, { type: 'deleteToken', id });
           return;
         }
@@ -189,7 +193,7 @@ export function useTokenizedSearchInputRef(
       },
       setTokenDisplay: (id: string, display: TokenDisplay) => {
         if (!editor) return;
-        if (editor.isDestroyed) {
+        if (mustHold(editor)) {
           const found = findTokenById(stateFromDoc(editor, readDoc(editor)).doc, id);
           if (!found || !isFilterToken(found.node)) return;
           const binding = { key: found.node.attrs.key, value: found.node.attrs.value };
@@ -240,11 +244,11 @@ function runPendingCall(editor: Editor, call: PendingCall): void {
 }
 
 /**
- * Runs the handle calls held while the editor was destroyed, in call order. Call it
- * after every other hook that attaches to the editor: the calls set content, validate,
- * set token display, focus and submit, so they have to see the configuration synced
- * from the current props, the focus listeners and the suggestion scheduling already in
- * place.
+ * Runs the handle calls held while the editor was destroyed, in call order, after the
+ * commit that brings the live editor. Call it after every other hook that attaches to
+ * the editor: the calls set content, validate, set token display, focus and submit, so
+ * they have to see the configuration synced from the current props, the focus listeners
+ * and the suggestion scheduling already in place. The calls stay held until they run.
  */
 export function useApplyPendingHandleWrites(
   editor: Editor | null,
@@ -252,12 +256,14 @@ export function useApplyPendingHandleWrites(
 ): void {
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
-    const { base, calls } = pending.current;
-    pending.current = NO_PENDING_CALLS;
-    // The calls were made against the destroyed editor's document.
-    if (base && !editor.state.doc.eq(editor.schema.nodeFromJSON(base))) {
-      setContentAndValidate(editor, base);
-    }
-    for (const call of calls) runPendingCall(editor, call);
+    scheduleDocumentChange(editor, () => {
+      const { base, calls } = pending.current;
+      pending.current = NO_PENDING_CALLS;
+      // The calls were made against the destroyed editor's document.
+      if (base && !editor.state.doc.eq(editor.schema.nodeFromJSON(base))) {
+        setContentAndValidate(editor, base);
+      }
+      for (const call of calls) runPendingCall(editor, call);
+    });
   }, [editor, pending]);
 }

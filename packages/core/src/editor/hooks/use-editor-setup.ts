@@ -33,6 +33,7 @@ import type { QuerySnapshot } from '../../types';
 import { getAllTokens } from '../../utils/query-snapshot';
 import { areTokenListsEqual, type ComparableToken, confirmTokens } from '../../utils/token-events';
 import { isEditorEmpty } from '../editor-state';
+import { scheduleDocumentChange } from './schedule-document-change';
 
 function readSnapshot(editor: Editor): QuerySnapshot {
   return createQuerySnapshot(editor.state, getSerializeOptions(editor));
@@ -181,13 +182,17 @@ export function useEditorSetup({
   }, [editor]);
 
   // aria-disabled follows from editorProps; this toggles editability, which leaves the
-  // document as it is. A disabled editor edits no token, so the one focused is left.
+  // document as it is. A disabled editor edits no token, so the one focused is left,
+  // which commits it.
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
     editor.setEditable(!disabled, false);
     if (!disabled) return;
-    const tr = editor.state.tr;
-    if (leaveFocusedTokenIn(tr, getFocusContext(editor))) editor.view.dispatch(tr);
+    scheduleDocumentChange(editor, () => {
+      if (editor.isEditable) return;
+      const tr = editor.state.tr;
+      if (leaveFocusedTokenIn(tr, getFocusContext(editor))) editor.view.dispatch(tr);
+    });
   }, [editor, disabled]);
 
   return { editor, isEmpty };

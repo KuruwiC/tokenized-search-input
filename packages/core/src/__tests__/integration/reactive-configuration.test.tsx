@@ -247,6 +247,58 @@ describe('reactive configuration', () => {
     expect(subscribed).toBeLessThan(written);
   });
 
+  it('tokenizes free text when the mode switches from plain to tokenize, outside the React commit', async () => {
+    const ref = { current: null as TokenizedSearchInputRef | null };
+    const element = (freeTextMode: 'plain' | 'tokenize') => (
+      <TokenizedSearchInput
+        ref={ref}
+        fields={extendedFields}
+        defaultValue="status:is:active hello"
+        freeTextMode={freeTextMode}
+      />
+    );
+    const view = render(element('plain'));
+    await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+    const freeTextCount = () =>
+      ref.current?.getSnapshot().segments.filter((segment) => segment.type === 'freeText').length ??
+      0;
+    expect(freeTextCount()).toBe(0);
+
+    view.rerender(element('tokenize'));
+
+    await waitFor(() => expect(freeTextCount()).toBe(1));
+    expect(ref.current?.getValue()).toBe('status:is:active hello');
+  });
+
+  it('creates the tokens of a held setValue outside the React commit', async () => {
+    const ref = { current: null as TokenizedSearchInputRef | null };
+    const view = render(<TokenizedSearchInput ref={ref} fields={extendedFields} />);
+    await waitFor(() => expect(ref.current).not.toBeNull());
+    getInternalEditor(ref.current)?.destroy();
+    ref.current?.setValue('status:is:active');
+
+    view.rerender(<TokenizedSearchInput ref={ref} fields={extendedFields} />);
+
+    await waitFor(() => expect(view.container.querySelector('.tsi-token')).not.toBeNull());
+    expect(ref.current?.getValue()).toBe('status:is:active');
+  });
+
+  it('runs a handle call made while held calls wait after them', async () => {
+    const ref = { current: null as TokenizedSearchInputRef | null };
+    const view = render(<TokenizedSearchInput ref={ref} fields={extendedFields} />);
+    await waitFor(() => expect(ref.current).not.toBeNull());
+    getInternalEditor(ref.current)?.destroy();
+    ref.current?.setValue('first');
+
+    view.rerender(<TokenizedSearchInput ref={ref} fields={extendedFields} />);
+    ref.current?.setValue('second');
+
+    expect(ref.current?.getValue()).toBe('second');
+    await waitFor(() => expect(getInternalEditor(ref.current)?.getText()).toBe('second'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(ref.current?.getValue()).toBe('second');
+  });
+
   it('does not notify node views when the parent re-renders with equal configuration', async () => {
     const view = render(
       <TokenizedSearchInput
