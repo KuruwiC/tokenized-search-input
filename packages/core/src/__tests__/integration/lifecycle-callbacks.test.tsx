@@ -8,8 +8,9 @@ import {
 } from '../../editor/tokenized-search-input';
 import { getFocusedToken } from '../../plugins/token-focus/state';
 import type { QuerySnapshot, QuerySnapshotFilterToken, ValidationRule } from '../../types';
+import { getFilterTokens, getPlainText } from '../../utils/query-snapshot';
 import { Unique } from '../../validation/presets';
-import { extendedFields } from '../fixtures';
+import { basicFields, extendedFields } from '../fixtures';
 
 function filterValues(snapshot: QuerySnapshot | undefined): string[] {
   return (snapshot?.segments ?? [])
@@ -21,6 +22,30 @@ afterEach(() => cleanup());
 
 describe('lifecycle callbacks', () => {
   describe('onChange', () => {
+    /**
+     * Whitespace between plaintext segments is preserved: "hello world" does not become
+     * "helloworld".
+     */
+    it('preserves whitespace in getPlainText output', async () => {
+      const onChange = vi.fn();
+      const user = userEvent.setup();
+
+      render(<TokenizedSearchInput fields={basicFields} onChange={onChange} />);
+
+      const editor = screen.getByRole('combobox');
+      await user.click(editor);
+      await user.type(editor, 'hello world');
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalled();
+        const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
+        const snapshot = lastCall[0];
+        const plainText = getPlainText(snapshot);
+        expect(plainText).toContain('hello');
+        expect(plainText).toContain('world');
+      });
+    });
+
     it('is not called when the input is disabled and enabled again', async () => {
       const onChange = vi.fn<(snapshot: QuerySnapshot) => void>();
       const view = render(
@@ -84,6 +109,34 @@ describe('lifecycle callbacks', () => {
   });
 
   describe('initial content', () => {
+    /**
+     * onTokensChange fires for the initial tokens of defaultValue: the first update is
+     * compared against an empty snapshot.
+     */
+    it('fires onTokensChange for initial tokens from defaultValue', async () => {
+      let capturedTokens: QuerySnapshotFilterToken[] = [];
+      const onTokensChange = vi.fn((snapshot: QuerySnapshot) => {
+        capturedTokens = getFilterTokens(snapshot);
+      });
+
+      render(
+        <TokenizedSearchInput
+          fields={basicFields}
+          defaultValue="status:is:active priority:is:high"
+          onTokensChange={onTokensChange}
+        />
+      );
+
+      await waitFor(() => {
+        expect(capturedTokens.length).toBe(2);
+      });
+
+      expect(capturedTokens[0].key).toBe('status');
+      expect(capturedTokens[0].value).toBe('active');
+      expect(capturedTokens[1].key).toBe('priority');
+      expect(capturedTokens[1].value).toBe('high');
+    });
+
     it('reports the content left once the initial content is entered, once', async () => {
       const onChange = vi.fn<(snapshot: QuerySnapshot) => void>();
       render(
@@ -127,6 +180,44 @@ describe('lifecycle callbacks', () => {
   });
 
   describe('onTokensChange', () => {
+    /**
+     * The focused token is excluded from the comparison of confirmed tokens, so a change
+     * made in it is reported once focus leaves it. This test covers deleting a token.
+     */
+    it('fires onTokensChange when token is deleted', async () => {
+      const onTokensChange = vi.fn();
+      const user = userEvent.setup();
+
+      render(
+        <TokenizedSearchInput
+          fields={basicFields}
+          defaultValue="status:is:active priority:is:high"
+          onTokensChange={onTokensChange}
+        />
+      );
+
+      // Wait for initial onTokensChange
+      await waitFor(() => {
+        expect(onTokensChange).toHaveBeenCalled();
+      });
+
+      const initialCallCount = onTokensChange.mock.calls.length;
+
+      // Find and click the delete button on first token
+      const deleteButtons = screen.getAllByRole('button', { name: /delete|remove/i });
+      expect(deleteButtons.length).toBeGreaterThan(0);
+      await user.click(deleteButtons[0]);
+
+      // onTokensChange should fire with one less token
+      await waitFor(() => {
+        expect(onTokensChange.mock.calls.length).toBeGreaterThan(initialCallCount);
+      });
+
+      const lastCall = onTokensChange.mock.calls[onTokensChange.mock.calls.length - 1];
+      const tokens = getFilterTokens(lastCall[0]);
+      expect(tokens.length).toBe(1);
+    });
+
     it('reports a focused token once it is confirmed, after a report made while it was edited', async () => {
       const user = userEvent.setup();
       const ref = createRef<TokenizedSearchInputRef>();

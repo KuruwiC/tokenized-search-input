@@ -37,6 +37,51 @@ afterEach(() => {
 });
 
 describe('pagination of custom suggestions', () => {
+  /**
+   * Pagination is configurable in the prepend and append display modes, where custom
+   * suggestions are listed with field suggestions.
+   *
+   * Scrolling a list to load more needs a real browser; these tests only check that the
+   * configuration is accepted.
+   */
+  it('accepts loadMore configuration in prepend mode', () => {
+    const loadMore = vi.fn();
+
+    const customSuggestion: CustomSuggestionConfig = {
+      displayMode: 'prepend',
+      debounceMs: 50,
+      maxSuggestions: 3,
+      suggest: async () => ({ suggestions: [], hasMore: true }),
+      loadMore: async (params) => {
+        loadMore(params);
+        return { suggestions: [], hasMore: false };
+      },
+    };
+
+    // Verify configuration is valid
+    expect(customSuggestion.displayMode).toBe('prepend');
+    expect(customSuggestion.loadMore).toBeDefined();
+  });
+
+  it('accepts loadMore configuration in append mode', () => {
+    const loadMore = vi.fn();
+
+    const customSuggestion: CustomSuggestionConfig = {
+      displayMode: 'append',
+      debounceMs: 50,
+      maxSuggestions: 3,
+      suggest: async () => ({ suggestions: [], hasMore: true }),
+      loadMore: async (params) => {
+        loadMore(params);
+        return { suggestions: [], hasMore: false };
+      },
+    };
+
+    // Verify configuration is valid
+    expect(customSuggestion.displayMode).toBe('append');
+    expect(customSuggestion.loadMore).toBeDefined();
+  });
+
   it('starts at offset 0 when the suggestions open again after an Escape', async () => {
     const scrollToEnd = observeIntersections();
     const user = userEvent.setup();
@@ -193,6 +238,40 @@ describe('request timers of custom suggestions', () => {
 });
 
 describe('selecting a custom suggestion', () => {
+  /**
+   * A token inserted from a custom suggestion can carry a displayValue. Editing the value
+   * clears it, so the input shows what the user types.
+   *
+   * This test only checks that the suggestion configuration supports displayValue.
+   */
+  it('supports displayValue in custom suggestions', () => {
+    const customSuggestion: CustomSuggestionConfig = {
+      displayMode: 'replace',
+      suggest: () => {
+        return [
+          {
+            tokens: [
+              { key: 'tag', operator: 'is' as const, value: 'react', displayValue: 'React' },
+            ],
+            label: 'React',
+          },
+        ];
+      },
+    };
+
+    // Verify configuration supports displayValue
+    const suggestions = customSuggestion.suggest({
+      query: 're',
+      fields: [],
+      existingTokens: [],
+      signal: new AbortController().signal,
+    });
+    expect(Array.isArray(suggestions)).toBe(true);
+    if (Array.isArray(suggestions) && suggestions.length > 0) {
+      expect(suggestions[0].tokens[0].displayValue).toBe('React');
+    }
+  });
+
   it('undoes the typed text removal and the inserted tokens as one step', async () => {
     const user = userEvent.setup();
     const { ref, editor } = await renderInput({

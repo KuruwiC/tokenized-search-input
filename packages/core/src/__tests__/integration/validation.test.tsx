@@ -1195,7 +1195,7 @@ describe('Validation System Integration', () => {
   });
 
   describe('Validation with plaintext', () => {
-    it('BUG: should not delete immediately when plaintext exists (delete-existing)', async () => {
+    it('marks the existing duplicate instead of deleting it when plaintext sits between tokens (delete-existing)', async () => {
       // Initial state: `status:is:active "search term" priority:is:high`
       // Action: Add a new `status:` token via suggestion
       // Expected: existing `status:is:active` is marked but not deleted immediately
@@ -2053,7 +2053,7 @@ describe('Validation System Integration', () => {
       );
     });
 
-    it('BUG REPORT: Paste duplicate to replace existing, then undo should restore original', async () => {
+    it('restores the original token on undo after a pasted duplicate replaced it', async () => {
       // 1. Start with existing token [status:active]
       // 2. Paste duplicate "status:inactive" -> replace deletes active, keeps inactive
       // 3. Undo -> should restore [status:active], not become empty
