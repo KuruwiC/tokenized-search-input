@@ -1,5 +1,4 @@
-import { waitFor } from '@testing-library/react';
-import { createRef, Suspense, useEffect, version } from 'react';
+import { createRef, type ReactNode, Suspense, useEffect, version } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
@@ -8,16 +7,50 @@ import type { QuerySnapshot } from '../../types';
 import { basicFields } from '../fixtures';
 import { getInternalEditor } from '../helpers/get-editor';
 
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-function createSuspendOnce(delayMs: number) {
-  let pending: Promise<void> | null = wait(delayMs).then(() => {
-    pending = null;
+function createDeferred<T = void>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((settle) => {
+    resolve = settle;
   });
+  return { promise, resolve };
+}
+
+// The suspension starts on the first render of SuspendOnce, after its earlier
+// sibling created an editor in that render, so the editor's deferred destroy is
+// always due before the boundary resolves.
+function createSuspendOnce() {
+  let pending: Promise<void> | null = null;
+  let resolved = false;
   return function SuspendOnce() {
-    if (pending) throw pending;
-    return null;
+    if (resolved) return null;
+    pending ??= new Promise<void>((resolve) => setTimeout(resolve, 50)).then(() => {
+      resolved = true;
+    });
+    throw pending;
   };
+}
+
+// Inside the boundary, the outermost component's passive effect runs after every
+// effect of the content, once the boundary has committed.
+function CommitSignal({ onCommit, children }: { onCommit: () => void; children: ReactNode }) {
+  useEffect(onCommit, []);
+  return children;
+}
+
+// Resolves once the container holds the text, on the mutation that adds it.
+function untilText(container: HTMLElement, text: string): Promise<void> {
+  return new Promise((resolve) => {
+    const check = () => {
+      if (!container.textContent?.includes(text)) return false;
+      observer.disconnect();
+      resolve();
+      return true;
+    };
+    const observer = new MutationObserver(check);
+    if (!check()) {
+      observer.observe(container, { childList: true, subtree: true, characterData: true });
+    }
+  });
 }
 
 // React 19 prerenders the siblings of a suspended child and commits them only
@@ -48,26 +81,33 @@ describe('TokenizedSearchInput inside Suspense', () => {
   });
 
   it('mounts an editable input after a sibling in the same boundary resolves', async () => {
-    const SuspendOnce = createSuspendOnce(50);
+    const SuspendOnce = createSuspendOnce();
+
+    const committed = createDeferred();
 
     root.render(
       <Suspense fallback={<p>loading</p>}>
-        <TokenizedSearchInput fields={basicFields} placeholder="search" />
-        <SuspendOnce />
+        <CommitSignal onCommit={committed.resolve}>
+          <TokenizedSearchInput fields={basicFields} placeholder="search" />
+          <SuspendOnce />
+        </CommitSignal>
       </Suspense>
     );
-    await waitFor(() => {
-      expect(uncaughtErrors).toEqual([]);
-      const input = container.querySelector('[role="combobox"]');
-      expect(input).toHaveAttribute('contenteditable', 'true');
-      expect(input).toHaveAttribute('aria-expanded', 'false');
-    });
+    // The editor that replaces a destroyed one renders in the same task as the
+    // commit, so it is in place once the commit's effects have run.
+    await committed.promise;
+
+    expect(uncaughtErrors).toEqual([]);
+    const input = container.querySelector('[role="combobox"]');
+    expect(input).toHaveAttribute('contenteditable', 'true');
+    expect(input).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('keeps handle writes and reads ordered from an ancestor effect in the same boundary', async () => {
-    const SuspendOnce = createSuspendOnce(50);
+    const SuspendOnce = createSuspendOnce();
     const ref = createRef<TokenizedSearchInputRef>();
-    const onSubmit = vi.fn<(snapshot: QuerySnapshot) => void>();
+    const submitted = createDeferred();
+    const onSubmit = vi.fn<(snapshot: QuerySnapshot) => void>(() => submitted.resolve());
     const seenInEffect: { editorDestroyed?: boolean; valueAfterSet?: string } = {};
     function SearchPage() {
       useEffect(() => {
@@ -89,14 +129,13 @@ describe('TokenizedSearchInput inside Suspense', () => {
         <SearchPage />
       </Suspense>
     );
-    await waitFor(() => {
-      expect(uncaughtErrors).toEqual([]);
-      expect(container.querySelector('[role="combobox"]')).toHaveAttribute(
-        'contenteditable',
-        'true'
-      );
-      expect(ref.current?.getValue()).toBe('hello');
-    });
+    // The submit is the last call the effect makes; a held call runs after the
+    // ones before it.
+    await submitted.promise;
+
+    expect(uncaughtErrors).toEqual([]);
+    expect(container.querySelector('[role="combobox"]')).toHaveAttribute('contenteditable', 'true');
+    expect(ref.current?.getValue()).toBe('hello');
 
     // React 18 discards the suspended render instead, so only React 19 reaches
     // the ancestor effect with the destroyed editor this test is about.
@@ -109,9 +148,10 @@ describe('TokenizedSearchInput inside Suspense', () => {
   });
 
   it('clears through the clear command once the live editor renders', async () => {
-    const SuspendOnce = createSuspendOnce(50);
+    const SuspendOnce = createSuspendOnce();
     const ref = createRef<TokenizedSearchInputRef>();
-    const onClear = vi.fn();
+    const cleared = createDeferred();
+    const onClear = vi.fn(() => cleared.resolve());
     const seenInEffect: { valueAfterClear?: string } = {};
     function SearchPage() {
       useEffect(() => {
@@ -136,17 +176,17 @@ describe('TokenizedSearchInput inside Suspense', () => {
         <SearchPage />
       </Suspense>
     );
-    await waitFor(() => {
-      expect(uncaughtErrors).toEqual([]);
-      expect(onClear).toHaveBeenCalledTimes(1);
-    });
+    await cleared.promise;
+
+    expect(uncaughtErrors).toEqual([]);
+    expect(onClear).toHaveBeenCalledTimes(1);
 
     expect(seenInEffect.valueAfterClear).toBe('');
     expect(ref.current?.getValue()).toBe('');
   });
 
   it('applies token display set from an ancestor effect once the live editor renders', async () => {
-    const SuspendOnce = createSuspendOnce(50);
+    const SuspendOnce = createSuspendOnce();
     const ref = createRef<TokenizedSearchInputRef>();
     function SearchPage() {
       useEffect(() => {
@@ -168,10 +208,10 @@ describe('TokenizedSearchInput inside Suspense', () => {
         <SearchPage />
       </Suspense>
     );
-    await waitFor(() => {
-      expect(uncaughtErrors).toEqual([]);
-      expect(ref.current?.getValue()).toBe('status:is:active');
-      expect(container.textContent).toContain('Shown active');
-    });
+    await untilText(container, 'Shown active');
+
+    expect(uncaughtErrors).toEqual([]);
+    expect(ref.current?.getValue()).toBe('status:is:active');
+    expect(container.textContent).toContain('Shown active');
   });
 });
