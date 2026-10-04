@@ -15,6 +15,7 @@ import { getSuggestionState } from '../../plugins/suggestion';
 import type {
   CustomSuggestion,
   CustomSuggestionConfig,
+  CustomSuggestionResult,
   FieldDefinition,
   SuggestContext,
   SuggestContextWithPagination,
@@ -452,6 +453,36 @@ describe('the signal passed to suggest and loadMore', () => {
     expect(first.signal.aborted).toBe(false);
   });
 
+  it('aborts the signal of a suggest that runs past timeoutMs and reports the timeout once', async () => {
+    const onError = vi.fn<(error: Error, context: SuggestionErrorContext) => void>();
+    const signals: AbortSignal[] = [];
+    const { editor } = await renderInput({
+      suggestions: {
+        custom: {
+          displayMode: 'replace',
+          debounceMs: 0,
+          timeoutMs: 20,
+          suggest: ({ signal }) => {
+            signals.push(signal);
+            return new Promise<CustomSuggestion[]>(() => {});
+          },
+          onError,
+        },
+      },
+    });
+
+    act(() => {
+      editor.commands.focus();
+    });
+
+    await waitFor(() => expect(onError).toHaveBeenCalled());
+    expect(signals).toHaveLength(1);
+    expect(signals[0]?.aborted).toBe(true);
+    expect(signals[0]?.reason).toMatchObject({ name: 'TimeoutError' });
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0]?.[0].message).toMatch(/timed out after 20ms/);
+  });
+
   async function startLoadMore() {
     const scrollToEnd = observeIntersections();
     const user = userEvent.setup();
@@ -523,6 +554,37 @@ describe('the signal passed to suggest and loadMore', () => {
     cleanup();
 
     expect(first.signal.aborted).toBe(false);
+  });
+  it('aborts the signal of a loadMore that runs past timeoutMs and reports the timeout once', async () => {
+    const scrollToEnd = observeIntersections();
+    const user = userEvent.setup();
+    const onError = vi.fn<(error: Error, context: SuggestionErrorContext) => void>();
+    const signals: AbortSignal[] = [];
+    await renderInput({
+      suggestions: {
+        custom: {
+          displayMode: 'replace',
+          debounceMs: 0,
+          timeoutMs: 50,
+          suggest: async () => ({ suggestions: page(['one', 'two']), hasMore: true }),
+          loadMore: ({ signal }) => {
+            signals.push(signal);
+            return new Promise<CustomSuggestionResult>(() => {});
+          },
+          onError,
+        },
+      },
+    });
+    await user.click(screen.getByRole('combobox'));
+    await screen.findByRole('option', { name: /one/ });
+    act(scrollToEnd);
+
+    await waitFor(() => expect(onError).toHaveBeenCalled());
+    expect(signals).toHaveLength(1);
+    expect(signals[0]?.aborted).toBe(true);
+    expect(signals[0]?.reason).toMatchObject({ name: 'TimeoutError' });
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0]?.[1]).toEqual({ type: 'loadMore', query: '' });
   });
 });
 

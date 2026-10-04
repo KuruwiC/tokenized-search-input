@@ -47,11 +47,18 @@ const defaultErrorHandler = (error: Error, context: SuggestionErrorContext): voi
   );
 };
 
+/** The abort reason of a request that ran past `timeoutMs`; the only abort that is reported. */
+class RequestTimeoutError extends Error {
+  override name = 'TimeoutError';
+}
+
 /**
- * Settles with `task`, or rejects once `timeoutMs` has passed or `signal` is aborted. The
- * timer and the listener go as soon as it settles.
+ * Settles with `task`, or rejects with the abort reason once the request is aborted. A
+ * request still running after `timeoutMs` is abandoned like any other: it is aborted, with a
+ * `RequestTimeoutError` as the reason. The timer and the listener go as soon as it settles.
  */
-function withTimeout<T>(task: Promise<T>, timeoutMs: number, signal: AbortSignal): Promise<T> {
+function withTimeout<T>(task: Promise<T>, timeoutMs: number, request: AbortController): Promise<T> {
+  const { signal } = request;
   return new Promise<T>((resolve, reject) => {
     function settle(finish: () => void) {
       clearTimeout(timer);
@@ -62,7 +69,8 @@ function withTimeout<T>(task: Promise<T>, timeoutMs: number, signal: AbortSignal
       settle(() => reject(signal.reason));
     }
     const timer = setTimeout(
-      () => settle(() => reject(new Error(`Suggestion request timed out after ${timeoutMs}ms`))),
+      () =>
+        request.abort(new RequestTimeoutError(`Suggestion request timed out after ${timeoutMs}ms`)),
       timeoutMs
     );
     if (signal.aborted) {
@@ -75,6 +83,14 @@ function withTimeout<T>(task: Promise<T>, timeoutMs: number, signal: AbortSignal
       (error) => settle(() => reject(error))
     );
   });
+}
+
+/**
+ * Whether a failed request has something to report: it failed or timed out, rather than being
+ * abandoned because the suggestions closed, a newer query started or the input unmounted.
+ */
+function isReportable(signal: AbortSignal): boolean {
+  return !signal.aborted || signal.reason instanceof RequestTimeoutError;
 }
 
 /** Aborts the request in `ref`, if any, and puts a new one there. */
@@ -300,7 +316,7 @@ export function useCustomSuggestions(
             signal,
           })
         );
-        const rawResult = await withTimeout(suggestPromise, timeoutMs, signal).finally(() =>
+        const rawResult = await withTimeout(suggestPromise, timeoutMs, request).finally(() =>
           settleRequest(suggestRequestRef, request)
         );
 
@@ -355,7 +371,7 @@ export function useCustomSuggestions(
           }
         }
       } catch (error) {
-        if (signal.aborted) return;
+        if (!isReportable(signal)) return;
         onError(error instanceof Error ? error : new Error(String(error)), {
           type: 'suggest',
           query,
@@ -396,7 +412,7 @@ export function useCustomSuggestions(
           })
         ),
         timeoutMs,
-        signal
+        request
       ).finally(() => settleRequest(loadMoreRequestRef, request));
 
       // The page belongs to the suggestion that asked for it: one that closed since, or a
@@ -408,7 +424,7 @@ export function useCustomSuggestions(
       appendCustomSuggestions(tr, current, result.suggestions, result.hasMore ?? false);
       editor.view.dispatch(tr);
     } catch (error) {
-      if (signal.aborted) return;
+      if (!isReportable(signal)) return;
       onError(error instanceof Error ? error : new Error(String(error)), {
         type: 'loadMore',
         query,

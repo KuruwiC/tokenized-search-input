@@ -79,9 +79,9 @@ export interface SuggestContext {
   existingTokens: ExistingToken[];
   /**
    * Aborted when the result is no longer wanted: the suggestions close, a newer query
-   * starts, or the input unmounts. Pass it to `fetch` to cancel the request. It is not
-   * aborted once the returned promise has settled, nor when the request runs past
-   * `timeoutMs`.
+   * starts, the input unmounts, or the request runs past `timeoutMs` (then the reason is an
+   * error named `TimeoutError`, and the timeout is also reported to `onError`). Pass it to
+   * `fetch` to cancel the request. It is not aborted once the returned promise has settled.
    */
   signal: AbortSignal;
 }

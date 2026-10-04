@@ -478,7 +478,7 @@ export function SuggestingSearch() {
 
 Closing the suggestions (Escape or blur) discards a pending `suggest` or `loadMore` response: it does not reopen the list, add a page or call `onError`.
 
-Both functions receive `signal`, an `AbortSignal` that is aborted when the suggestions close, when a newer query starts, and when the input unmounts. Pass it to `fetch` (or check it) to cancel work whose result would be discarded. It is never aborted after the returned promise settles, nor when the request runs past `timeoutMs`.
+Both functions receive `signal`, an `AbortSignal` that is aborted when the suggestions close, when a newer query starts, when the input unmounts, and when the request runs past `timeoutMs`. A timeout aborts with an error named `TimeoutError` as the reason and is still reported to `onError`; the other aborts are not reported. Pass the signal to `fetch` (or check it) to cancel work whose result would be discarded. It is never aborted after the returned promise settles.
 
 ### SuggestedFilterToken
 
