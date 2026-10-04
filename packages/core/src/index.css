@@ -530,6 +530,24 @@
     margin-inline: var(--tsi-token-gap);
   }
 
+  /* The gap widget between tokens stays zero-width so the caret sits in the middle of
+     the space; its hit area covers the space on both sides, so a press or a tap there
+     lands on the gap rather than on the token next to it. */
+
+  :where(._tsi-token-gap) {
+    position: relative;
+  }
+
+  :where(._tsi-token-gap)::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: calc(var(--tsi-token-gap) * -1);
+    width: calc(var(--tsi-token-gap) * 2);
+    height: calc(var(--tsi-token-size) + var(--tsi-token-gap-y));
+    transform: translateY(-50%);
+  }
+
   /* Range Selection - Default styling via parent class from Decoration */
   :where(._tsi-pm-range-selected) [data-filter-token],
   :where(._tsi-pm-range-selected) [data-free-text-token] {

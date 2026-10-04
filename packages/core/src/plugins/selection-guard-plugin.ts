@@ -24,6 +24,7 @@ import { handleShiftClickSelection } from './selection-guard/shift-click-handler
 import { runKeySpecs } from './selection-guard/specs';
 import { buildSelectionGuardContext } from './selection-guard/types';
 import { type FocusTransitionContext, getFocusedToken, leaveFocusedTokenIn } from './token-focus';
+import { gapPosAtCoords } from './token-gap-decorations';
 
 export type { SelectionGuardState } from './selection-guard/plugin-key';
 
@@ -94,6 +95,17 @@ function setPress(view: EditorView, pressPos: number | null): void {
 }
 
 type GetFocusContext = (state: EditorState) => FocusTransitionContext;
+
+/** The position under the pointer, where a press on the space between tokens is the gap. */
+function posAtPointer(
+  view: EditorView,
+  coords: { left: number; top: number }
+): { pos: number; inside: number } | null {
+  const gapPos = gapPosAtCoords(view, coords);
+  if (gapPos === null) return view.posAtCoords(coords);
+  const $gap = view.state.doc.resolve(gapPos);
+  return { pos: gapPos, inside: $gap.depth > 0 ? $gap.before() : -1 };
+}
 
 function placeCaretAtPress(view: EditorView, getFocusContext: GetFocusContext): void {
   const pressPos = selectionGuardKey.getState(view.state)?.pressPos;
@@ -198,7 +210,7 @@ export function createSelectionGuardPlugin(
           if (event.button !== PRIMARY_MOUSE_BUTTON) return false;
 
           const coords = { left: event.clientX, top: event.clientY };
-          const posInfo = view.posAtCoords(coords);
+          const posInfo = posAtPointer(view, coords);
           if (!posInfo) return false;
 
           if (!event.shiftKey) {
@@ -242,7 +254,7 @@ export function createSelectionGuardPlugin(
             {
               startX: event.clientX,
               startY: event.clientY,
-              posAtCoords: (coords) => view.posAtCoords(coords),
+              posAtCoords: (coords) => posAtPointer(view, coords),
             },
             {
               onDragStart: () => {},

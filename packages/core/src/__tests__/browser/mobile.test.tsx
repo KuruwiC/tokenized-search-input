@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commands, server, userEvent } from 'vitest/browser';
+import { commands, userEvent } from 'vitest/browser';
 import { registerCaretCases } from './caret-cases';
 import {
   afterLastToken,
@@ -24,41 +24,48 @@ describe('mobile environment', () => {
 registerCaretCases();
 registerPointerCases();
 
-/*
- * Chromium retargets a touch that lands within a few pixels of a token control onto that
- * control, so the 8px gap between two tokens cannot be tapped there: a tap left of the gap
- * centre hits the delete button of the token before it, and a tap on or right of the centre
- * enters editing of the token after it. WebKit delivers the tap to the gap.
- */
-const touchIsRetargeted = () => server.browser === 'chromium';
+function centreOf(element: Element | undefined, m: { pm: HTMLElement }): { x: number; y: number } {
+  const rect = element?.getBoundingClientRect();
+  if (!rect) throw new Error('no element to tap');
+  const box = m.pm.getBoundingClientRect();
+  return { x: rect.left + rect.width / 2 - box.left, y: rect.top + rect.height / 2 - box.top };
+}
 
 describe('mobile touch', () => {
-  it('handles a tap on the centre of the gap between two tokens', async () => {
+  it('puts the caret in the gap when the centre of the gap between two tokens is tapped', async () => {
     const m = await mountEditor(TWO_TOKENS);
     await commands.tapEditor(gapBetween(m, 0));
 
-    if (touchIsRetargeted()) {
-      expect(editingTokenIndex(m)).toBe(1);
-      expect(m.value()).toBe(TWO_TOKENS);
-      return;
-    }
     await expectCaretBetween(m, { tokensBefore: 1, tokensAfter: 1 });
     await userEvent.keyboard('tap');
     expect(m.value()).toBe('status:is:open tap owner:is:bob');
   });
 
-  it('handles a tap just left of the centre of the gap', async () => {
+  it('puts the caret in the gap when the gap is tapped next to the delete button before it', async () => {
     const m = await mountEditor(TWO_TOKENS);
     const gap = gapBetween(m, 0);
     await commands.tapEditor({ x: gap.x - 2, y: gap.y });
 
-    if (touchIsRetargeted()) {
-      expect(m.value()).toBe('owner:is:bob');
-      expect(tokenElements(m)).toHaveLength(1);
-      return;
-    }
     await expectCaretBetween(m, { tokensBefore: 1, tokensAfter: 1 });
     expect(m.value()).toBe(TWO_TOKENS);
+  });
+
+  it('puts the caret in the gap when the gap is tapped next to the token after it', async () => {
+    const m = await mountEditor(TWO_TOKENS);
+    const gap = gapBetween(m, 0);
+    await commands.tapEditor({ x: gap.x + 2, y: gap.y });
+
+    await expectCaretBetween(m, { tokensBefore: 1, tokensAfter: 1 });
+    expect(editingTokenIndex(m)).toBe(-1);
+  });
+
+  it('removes a token when its delete button is tapped', async () => {
+    const m = await mountEditor(TWO_TOKENS);
+    const button = tokenElements(m)[0]?.querySelector('.tsi-token-delete') ?? undefined;
+    await commands.tapEditor(centreOf(button, m));
+
+    expect(m.value()).toBe('owner:is:bob');
+    expect(tokenElements(m)).toHaveLength(1);
   });
 
   it('puts the caret after the last token when the empty row is tapped', async () => {
