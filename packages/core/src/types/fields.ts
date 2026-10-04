@@ -53,8 +53,6 @@ interface BaseFieldDefinition {
   operators: AtLeastOne<Operator>;
   allowSpaces?: boolean;
   validate?: (value: string) => boolean | string;
-  sanitize?: (value: string) => string;
-  getValues?: (query: string) => Promise<string[]>;
   icon?: ReactNode;
   hint?: ReactNode;
   operatorLabels?: OperatorLabels;
@@ -289,7 +287,7 @@ export interface SimpleFieldDefinition extends BaseFieldDefinition {
 export type UnknownFieldTemplate = Partial<
   Pick<
     BaseFieldDefinition,
-    'operators' | 'hideSingleOperator' | 'allowSpaces' | 'validate' | 'validation' | 'sanitize'
+    'operators' | 'hideSingleOperator' | 'allowSpaces' | 'validate' | 'validation'
   >
 >;
 

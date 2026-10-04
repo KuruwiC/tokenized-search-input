@@ -40,7 +40,6 @@ export function useEditorConfig({
   const unknownAllowSpaces = unknownFields?.allowSpaces;
   const unknownValidate = unknownFields?.validate;
   const unknownValidation = unknownFields?.validation;
-  const unknownSanitize = unknownFields?.sanitize;
   const unknownFieldTemplate = useMemo<UnknownFieldTemplate | undefined>(
     () =>
       hasUnknownFields
@@ -50,7 +49,6 @@ export function useEditorConfig({
             allowSpaces: unknownAllowSpaces,
             validate: unknownValidate,
             validation: unknownValidation,
-            sanitize: unknownSanitize,
           }
         : undefined,
     [
@@ -60,7 +58,6 @@ export function useEditorConfig({
       unknownAllowSpaces,
       unknownValidate,
       unknownValidation,
-      unknownSanitize,
     ]
   );
   const validation = useMemo(
