@@ -145,11 +145,24 @@ async function frame(pm: HTMLElement): Promise<string> {
 }
 
 /**
+ * Moves the pointer to the bottom-right corner of the viewport, away from the editor. A
+ * pointer left over the editor hovers whatever moves under it: WebKit updates hover on a
+ * timer after layout changes, so a token that slides under the pointer (after the token
+ * before it is removed) starts its hover transition at an unpredictable moment.
+ */
+async function movePointerOffEditor(): Promise<void> {
+  await userEvent.hover(document.documentElement, {
+    position: { x: window.innerWidth - 1, y: window.innerHeight - 1 },
+  });
+}
+
+/**
  * `Range.getClientRects()` is empty for a caret at an element boundary even though the
  * browser draws it, so this compares a frame with `caret-color: transparent` against
  * frames with an opaque caret. The caret blinks, so frames are sampled until one differs.
  */
 export async function expectCaretPainted(m: MountedEditor): Promise<void> {
+  await movePointerOffEditor();
   await waitForAnimations();
   expect(document.activeElement).toBe(m.pm);
   const previous = m.pm.style.caretColor;
