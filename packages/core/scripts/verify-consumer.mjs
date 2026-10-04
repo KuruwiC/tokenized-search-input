@@ -1,6 +1,7 @@
 // Installs the packed tarball into minimal scratch projects (React 18 and 19) and
-// verifies what a real consumer sees: strict type resolution of the ESM entry
-// points (bundler resolution), plain Node ESM/CJS imports, and the published dist.
+// verifies what a real consumer sees: strict type resolution of the entry points
+// (bundler resolution, and nodenext resolution from an ESM and a CommonJS file),
+// plain Node ESM/CJS imports, and the published dist.
 //
 // Usage: node scripts/verify-consumer.mjs [path/to/package.tgz]
 // Without an argument the package is packed into the scratch directory first.
@@ -71,6 +72,17 @@ export function Search({ onSearch }: { onSearch: (snapshot: QuerySnapshot) => vo
     />
   );
 }
+`;
+
+// Read as CommonJS under nodenext, so the types come through the `require` conditions.
+const cjsCheckSource = `import { type FieldDefinition, TokenizedSearchInput } from '${packageName}';
+import { parseDateTimeValue } from '${packageName}/utils';
+
+export const fields: FieldDefinition[] = [
+  { key: 'status', label: 'Status', type: 'enum', operators: ['is'], enumValues: ['open'] },
+];
+export const component: unknown = TokenizedSearchInput;
+export const parsed: boolean = parseDateTimeValue('2024-01-31', 'date').ok;
 `;
 
 const esmRuntimeScript = `
@@ -184,34 +196,34 @@ function verifyWithReact(scratchRoot, tarball, { react, types }) {
       2
     )}\n`
   );
-  writeFileSync(
-    join(projectDirectory, 'tsconfig.json'),
-    `${JSON.stringify(
-      {
-        compilerOptions: {
-          strict: true,
-          target: 'ES2022',
-          module: 'esnext',
-          moduleResolution: 'bundler',
-          jsx: 'react-jsx',
-          noEmit: true,
-          skipLibCheck: false,
-          types: [],
-          noUncheckedSideEffectImports: true,
-        },
-        include: ['check.tsx'],
-      },
-      null,
-      2
-    )}\n`
-  );
+  const compilerOptions = {
+    strict: true,
+    target: 'ES2022',
+    jsx: 'react-jsx',
+    noEmit: true,
+    skipLibCheck: false,
+    types: [],
+    noUncheckedSideEffectImports: true,
+  };
+  const writeTsconfig = (name, resolution, include) =>
+    writeFileSync(
+      join(projectDirectory, name),
+      `${JSON.stringify({ compilerOptions: { ...compilerOptions, ...resolution }, include }, null, 2)}\n`
+    );
+  writeTsconfig('tsconfig.json', { module: 'esnext', moduleResolution: 'bundler' }, ['check.tsx']);
+  writeTsconfig('tsconfig.nodenext.json', { module: 'nodenext', moduleResolution: 'nodenext' }, [
+    'check.tsx',
+    'check-cjs.cts',
+  ]);
   writeFileSync(join(projectDirectory, 'check.tsx'), esmCheckSource);
+  writeFileSync(join(projectDirectory, 'check-cjs.cts'), cjsCheckSource);
 
   run('pnpm', ['install', '--ignore-workspace', '--no-frozen-lockfile', '--prefer-offline'], {
     cwd: projectDirectory,
   });
   verifyInstalledPackage(projectDirectory);
   run('pnpm', ['exec', 'tsc', '-p', 'tsconfig.json'], { cwd: projectDirectory });
+  run('pnpm', ['exec', 'tsc', '-p', 'tsconfig.nodenext.json'], { cwd: projectDirectory });
   run('node', ['--input-type=module', '-e', esmRuntimeScript], { cwd: projectDirectory });
   run('node', ['--input-type=commonjs', '-e', cjsRuntimeScript], { cwd: projectDirectory });
   console.log(`Verified consumer project (${label}).`);

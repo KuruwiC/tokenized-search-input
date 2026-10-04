@@ -39,7 +39,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && vite build && node scripts/verify-dist.mjs",
+    "build": "tsc -p tsconfig.build.json && vite build && node scripts/build-types.mjs && node scripts/verify-dist.mjs",
     "prepack": "pnpm build && node scripts/prepare-pack.mjs",
     "postpack": "node scripts/cleanup-pack.mjs",
     "typecheck": "tsc --noEmit",
@@ -84,9 +84,10 @@
     "playwright": "1.62.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "rollup": "4.63.1",
+    "rollup-plugin-dts": "6.5.1",
     "typescript": "^5.7.2",
     "vite": "^6.4.3",
-    "vite-plugin-dts": "^5.1.0",
     "vitest": "4.1.11"
   },
   "keywords": [

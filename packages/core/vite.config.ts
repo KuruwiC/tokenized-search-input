@@ -1,8 +1,7 @@
-import { copyFileSync, cpSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
-import dts from 'vite-plugin-dts';
 
 function copyStyles(): Plugin {
   return {
@@ -10,12 +9,6 @@ function copyStyles(): Plugin {
     closeBundle() {
       cpSync(resolve(__dirname, 'src/index.css'), resolve(__dirname, 'dist/index.css'));
       writeFileSync(resolve(__dirname, 'dist/index.css.d.ts'), 'export {};\n');
-      for (const entry of ['index', 'utils']) {
-        copyFileSync(
-          resolve(__dirname, `dist/${entry}.d.ts`),
-          resolve(__dirname, `dist/${entry}.d.cts`)
-        );
-      }
     },
   };
 }
@@ -35,14 +28,7 @@ function isExternalPackage(id: string): boolean {
 }
 
 export default defineConfig({
-  plugins: [
-    react(),
-    dts({
-      insertTypesEntry: true,
-      tsconfigPath: resolve(__dirname, 'tsconfig.build.json'),
-    }),
-    copyStyles(),
-  ],
+  plugins: [react(), copyStyles()],
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
