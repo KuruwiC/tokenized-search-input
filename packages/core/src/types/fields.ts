@@ -289,7 +289,7 @@ export interface SimpleFieldDefinition extends BaseFieldDefinition {
 export type UnknownFieldTemplate = Partial<
   Pick<
     BaseFieldDefinition,
-    'operators' | 'hideSingleOperator' | 'allowSpaces' | 'validate' | 'sanitize'
+    'operators' | 'hideSingleOperator' | 'allowSpaces' | 'validate' | 'validation' | 'sanitize'
   >
 >;
 

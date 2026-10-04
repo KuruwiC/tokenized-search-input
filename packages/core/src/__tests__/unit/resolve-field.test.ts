@@ -37,11 +37,11 @@ describe('resolveField', () => {
 
   it('carries the other template members onto the synthesized field', () => {
     const validate = (value: string) => value.length > 0;
-    const sanitize = (value: string) => value.trim();
+    const validation = { 'unknown-operator': false } as const;
     const field = resolveField(
       {
         fields: [],
-        unknownFields: { hideSingleOperator: true, allowSpaces: true, validate, sanitize },
+        unknownFields: { hideSingleOperator: true, allowSpaces: true, validate, validation },
       },
       'custom'
     );
@@ -50,7 +50,7 @@ describe('resolveField', () => {
       hideSingleOperator: true,
       allowSpaces: true,
       validate,
-      sanitize,
+      validation,
     });
   });
 

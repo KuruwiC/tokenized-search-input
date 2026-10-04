@@ -57,6 +57,31 @@ describe('an operator the field does not allow', () => {
     await waitFor(() => expect(document.querySelectorAll('.node-filterToken')).toHaveLength(1));
     expect(invalidCount()).toBe(0);
   });
+
+  it('can be switched off for unknown fields through their template', async () => {
+    render(
+      <TokenizedSearchInput
+        fields={[]}
+        unknownFields={{ operators: ['is'], validation: { 'unknown-operator': false } }}
+        defaultValue="custom:contains:foo"
+      />
+    );
+
+    await waitFor(() => expect(document.querySelectorAll('.node-filterToken')).toHaveLength(1));
+    expect(invalidCount()).toBe(0);
+  });
+
+  it('marks an unknown field whose template does not switch it off', async () => {
+    render(
+      <TokenizedSearchInput
+        fields={[]}
+        unknownFields={{ operators: ['is'] }}
+        defaultValue="custom:contains:foo"
+      />
+    );
+
+    await waitFor(() => expect(invalidCount()).toBe(1));
+  });
 });
 
 describe('repairing an operator the field does not allow', () => {

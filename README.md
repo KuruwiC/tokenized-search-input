@@ -358,7 +358,7 @@ export function ValidatedSearch() {
 
 A rule is `{ id, priority?, validate(ctx): Violation[] }`. `createRule(id, check, options?)` builds one from a function that is called as `check(token, ctx)` for every token, with `options.priority` as its only option. `ctx.tokens` holds all tokens, `ctx.isEditing(token)` tells whether the user just added or changed the token (or did so since entering the token they are in), `ctx.before(token)` returns the token as it was before that edit, `ctx.fieldOf(token)` returns its field, and `ctx.focusedTokenId` is the token the user is in. The check returns a violation, an array of violations, or `null`. A violation is `{ ruleId, reason, message?, action, targets }`: `action` is `'mark'` (show the token as invalid) or `'delete'`, and `targets` names the tokens it is about by `tokenId`, which need not include the checked token.
 
-`validation.rules` holds only the rules you add. `FieldDefinition.validate`, the date rule `date-value` and the operator rule `unknown-operator` always apply; switch one off for a field with `validation: { 'rule-id': false }`.
+`validation.rules` holds only the rules you add. `FieldDefinition.validate`, the date rule `date-value` and the operator rule `unknown-operator` always apply; switch one off for a field with `validation: { 'rule-id': false }`, or for every unknown field with the same member of the `unknownFields` template.
 
 ### Violation messages
 
@@ -725,6 +725,7 @@ export const unknownFields: UnknownFieldTemplate = {
   hideSingleOperator: false, // Hide operator when only one available
   allowSpaces: false, // Allow spaces in value without quotes
   validate: (value) => value.length <= 100 || "Value is too long", // Validate the value of an unknown field
+  validation: { "unknown-operator": false }, // Per-rule overrides, as on a field
 };
 ```
 

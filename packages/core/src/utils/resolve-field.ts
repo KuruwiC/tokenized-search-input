@@ -34,6 +34,7 @@ export function resolveField(source: FieldResolutionSource, key: string): FieldD
     hideSingleOperator: template.hideSingleOperator,
     allowSpaces: template.allowSpaces,
     validate: template.validate,
+    validation: template.validation,
     sanitize: template.sanitize,
   };
   return field;
