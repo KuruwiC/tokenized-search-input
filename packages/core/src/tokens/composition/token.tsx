@@ -22,7 +22,7 @@ import { TokenOperator } from './blocks/token-operator';
 import { TokenValue } from './blocks/token-value';
 import { TokenConfigContext, type TokenConfigContextValue } from './contexts/token-config-context';
 import { TokenFocusContext, type TokenFocusContextValue } from './contexts/token-focus-context';
-import { focusEntryBlock, useFocusRegistry } from './focus';
+import { entryBlock, focusEntryBlock, useFocusRegistry } from './focus';
 
 /** The key code of every key event an input method that is composing text reports. */
 const COMPOSING_KEY_CODE = 229;
@@ -290,10 +290,17 @@ export function Token({
     [showsControls, focusRegistry, currentFocusId, handleExitRight, editor.isEditable]
   );
 
-  const editing =
-    isFocused &&
-    currentFocusId !== null &&
-    (focusRegistry.get(currentFocusId)?.editsToken ?? false);
+  // Until the entry block takes focus, after this render, the block focus enters decides,
+  // so the token does not show as idle for one commit. Among the blocks registered so far
+  // that is the value or the delete button, which edit the token exactly when the entry
+  // block will.
+  const focusedBlock =
+    currentFocusId !== null
+      ? focusRegistry.get(currentFocusId)
+      : entry !== null
+        ? entryBlock(focusRegistry, entry)
+        : undefined;
+  const editing = isFocused && (focusedBlock?.editsToken ?? false);
 
   const wrapperClasses = 'tsi-token-wrapper';
 

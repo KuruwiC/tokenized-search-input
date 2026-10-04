@@ -30,6 +30,11 @@ interface FocusNavigationOptions {
 export interface FocusRegistry {
   register: (block: FocusableBlock) => () => void;
   get: (id: string) => FocusableBlock | undefined;
+  /** The first or last block, or undefined when no block is registered. */
+  edge: (
+    edge: 'first' | 'last',
+    options?: Pick<FocusNavigationOptions, 'entryOnly'>
+  ) => FocusableBlock | undefined;
   /** Focuses the first or last block. Leaves the focus alone when no block is registered. */
   focusEdge: (edge: 'first' | 'last', options?: FocusNavigationOptions) => void;
   /** Focuses the block next to `fromId`, or leaves the token past the last or first one. */

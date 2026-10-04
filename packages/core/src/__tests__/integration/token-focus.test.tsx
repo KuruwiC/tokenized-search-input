@@ -7,7 +7,7 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Editor } from '@tiptap/core';
 import type { Transaction } from '@tiptap/pm/state';
-import { createRef, type RefObject } from 'react';
+import { createRef, Profiler, type RefObject } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   TokenizedSearchInput,
@@ -27,10 +27,10 @@ async function renderInput(defaultValue: string, fields: FieldDefinition[] = ext
     <TokenizedSearchInput ref={ref} fields={fields} defaultValue={defaultValue} />
   );
   await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-  return { ref: ref as RefObject<TokenizedSearchInputRef>, container };
+  return { ref, container };
 }
 
-function getEditor(ref: RefObject<TokenizedSearchInputRef>): Editor {
+function getEditor(ref: RefObject<TokenizedSearchInputRef | null>): Editor {
   const editor = ref.current?.getEditor();
   if (!editor) throw new Error('editor not ready');
   return editor;
@@ -135,6 +135,42 @@ describe('Token focus', () => {
       await waitFor(() => expect(document.activeElement).toBe(valueInputOf(group)));
       await waitFor(() => expect(state()).toBe('editing'));
       expect(group.getAttribute('aria-label')).toMatch(/Editing\./);
+    });
+  });
+
+  describe('the first commit after entry', () => {
+    it('already shows the token as editing when the entry block is editable', async () => {
+      const ref = createRef<TokenizedSearchInputRef>();
+      const commits: { focused: string | null; state: string | null; label: string | null }[] = [];
+      const record = () => {
+        const token = document.querySelector('.tsi-token');
+        commits.push({
+          focused: token?.getAttribute('data-focused') ?? null,
+          state: token?.getAttribute('data-state') ?? null,
+          label: token?.closest('[role="group"]')?.getAttribute('aria-label') ?? null,
+        });
+      };
+      render(
+        <Profiler id="input" onRender={record}>
+          <TokenizedSearchInput ref={ref} fields={extendedFields} defaultValue="status:is:active" />
+        </Profiler>
+      );
+      await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+      const editor = getEditor(ref);
+      const [id] = filterTokenIds(ref);
+      commits.length = 0;
+
+      act(() => {
+        editor.commands.focusFilterToken(id, 'end');
+      });
+      await waitFor(() => expect(document.activeElement).toBe(valueInputOf(tokenGroup(/status/i))));
+
+      const focusedCommits = commits.filter((commit) => commit.focused === 'true');
+      expect(focusedCommits.length).toBeGreaterThan(0);
+      for (const commit of focusedCommits) {
+        expect(commit.state).toBe('editing');
+        expect(commit.label).toMatch(/Editing\./);
+      }
     });
   });
 

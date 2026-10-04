@@ -25,6 +25,14 @@ function createFocusRegistry({ onExitLeft, onExitRight }: FocusExits): FocusRegi
   const inDomOrder = (): FocusableBlock[] =>
     [...blocks.values()].filter((block) => block.element.current !== null).sort(compareDomOrder);
 
+  const edgeBlock = (edge: 'first' | 'last', entryOnly: boolean): FocusableBlock | undefined => {
+    const all = inDomOrder();
+    const entry = entryOnly ? all.filter((block) => block.entryFocusable !== false) : all;
+    // A token without an entry-focusable block still enters at one of its blocks
+    const candidates = entry.length > 0 ? entry : all;
+    return edge === 'first' ? candidates[0] : candidates[candidates.length - 1];
+  };
+
   return {
     register: (block) => {
       blocks.set(block.id, block);
@@ -35,13 +43,10 @@ function createFocusRegistry({ onExitLeft, onExitRight }: FocusExits): FocusRegi
 
     get: (id) => blocks.get(id),
 
+    edge: (edge, { entryOnly = false } = {}) => edgeBlock(edge, entryOnly),
+
     focusEdge: (edge, { entryOnly = false, position } = {}) => {
-      const all = inDomOrder();
-      const entry = entryOnly ? all.filter((block) => block.entryFocusable !== false) : all;
-      // A token without an entry-focusable block still enters at one of its blocks
-      const candidates = entry.length > 0 ? entry : all;
-      const target = edge === 'first' ? candidates[0] : candidates[candidates.length - 1];
-      target?.focus(position);
+      edgeBlock(edge, entryOnly)?.focus(position);
     },
 
     focusAdjacent: (fromId, direction, { entryOnly = false, position } = {}) => {
@@ -72,16 +77,20 @@ export function useFocusRegistry(exits: FocusExits): FocusRegistry {
 }
 
 /**
- * Gives DOM focus to the block that `entry` enters the token at, with the caret at the
- * entry's position. A keyboard entry at the end comes from the right, so it is the
- * last such block; every other entry takes the first.
+ * The block that `entry` enters the token at. A keyboard entry at the end comes from the
+ * right, so it is the last such block; every other entry takes the first.
  */
-export function focusEntryBlock(registry: FocusRegistry, entry: TokenFocusEntry): void {
+export function entryBlock(
+  registry: FocusRegistry,
+  entry: TokenFocusEntry
+): FocusableBlock | undefined {
   const fromRight = entry.source === 'keyboard' && entry.position === 'end';
-  registry.focusEdge(fromRight ? 'last' : 'first', {
-    entryOnly: entry.target !== 'entry',
-    position: entry.position,
-  });
+  return registry.edge(fromRight ? 'last' : 'first', { entryOnly: entry.target !== 'entry' });
+}
+
+/** Gives DOM focus to the block that `entry` enters the token at, with the caret at the entry's position. */
+export function focusEntryBlock(registry: FocusRegistry, entry: TokenFocusEntry): void {
+  entryBlock(registry, entry)?.focus(entry.position);
 }
 
 export interface UseFocusableBlockOptions {
