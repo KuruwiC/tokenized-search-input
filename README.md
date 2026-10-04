@@ -653,7 +653,8 @@ import type { ClassNames } from "@kuruwic/tokenized-search-input";
 
 export const classNames: ClassNames = {
   // Root-level
-  root: "", // Root container
+  root: "", // Outermost element (size, spacing, layout)
+  container: "", // Visible box inside the root (border, background, radius)
   input: "", // Editor content area
   placeholder: "", // Placeholder text
   clearButton: "", // Clear button
@@ -678,7 +679,7 @@ export const classNames: ClassNames = {
 };
 ```
 
-`className` and `classNames.root` can be used together; they are merged onto the outermost `tsi-root` element whether or not `expandOnFocus` is set.
+`className` and `classNames.root` can be used together; they are merged onto the outermost `tsi-root` element whether or not `expandOnFocus` is set. Style the visible box (border, background, radius, shadow) with `classNames.container`, which goes on the `tsi-container` element inside the root; with `expandOnFocus` that box leaves the flow on focus while the root keeps its place.
 
 ### Configuration Props (Grouped)
 
@@ -966,8 +967,8 @@ declare const fields: FieldDefinition[];
 export const tailwindSearch = (
   <TokenizedSearchInput
     fields={fields}
-    className="shadow-lg"
     classNames={{
+      container: "shadow-lg",
       input: "bg-slate-50",
       token: "bg-indigo-100 border-indigo-300",
       dropdown: "shadow-2xl",

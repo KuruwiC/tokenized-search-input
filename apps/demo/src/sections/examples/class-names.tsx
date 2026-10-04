@@ -6,7 +6,7 @@ import { CodeBlock } from '../../components';
 import { createSearchFields } from '../../fields';
 import { ExampleDetails, VariantSwitch } from './example';
 
-type PresetId = 'tokens' | 'hover' | 'root' | 'dropdown';
+type PresetId = 'tokens' | 'hover' | 'box' | 'dropdown';
 
 const CATEGORIZED_FIELDS: FieldDefinition[] = [
   {
@@ -77,12 +77,13 @@ const PRESETS: Array<{
     },
   },
   {
-    id: 'root',
-    label: 'Root and input',
-    placeholder: 'Narrow, centered root with a ring…',
+    id: 'box',
+    label: 'Root, box and input',
+    placeholder: 'Narrow, centered root with a purple box…',
     defaultValue: 'status:is:active',
     classNames: {
-      root: 'mx-auto max-w-md rounded-lg shadow-lg ring-1 ring-purple-300',
+      root: 'mx-auto max-w-md',
+      container: 'rounded-xl border-purple-300 bg-purple-50 shadow-lg',
       input: 'text-purple-700',
       placeholder: 'text-purple-300',
     },
@@ -112,7 +113,7 @@ export function ClassNamesExample() {
   return (
     <ExampleDetails
       title="classNames"
-      summary="Attach utility classes to individual slots: root (the outer element, for size, spacing and outline), input, token parts, and dropdown parts."
+      summary="Attach utility classes to individual slots: root (the outer element, for size and spacing), container (the visible box, for border, background and radius), input, token parts, and dropdown parts."
     >
       <VariantSwitch
         legend="Slot group"
@@ -131,11 +132,11 @@ export function ClassNamesExample() {
       </div>
       <CodeBlock code={toSnippet(preset.classNames)} label="classNames.tsx" />
       <p className="example-note">
-        Slots: <code>root</code>, <code>input</code>, <code>placeholder</code>,{' '}
-        <code>clearButton</code>, <code>startAdornment</code>, <code>endAdornment</code>,{' '}
-        <code>token</code>, <code>tokenLabel</code>, <code>tokenOperator</code>,{' '}
-        <code>tokenValue</code>, <code>tokenDeleteButton</code>, <code>dropdown</code>,{' '}
-        <code>operatorDropdown</code>, <code>operatorDropdownItem</code>,{' '}
+        Slots: <code>root</code>, <code>container</code>, <code>input</code>,{' '}
+        <code>placeholder</code>, <code>clearButton</code>, <code>startAdornment</code>,{' '}
+        <code>endAdornment</code>, <code>token</code>, <code>tokenLabel</code>,{' '}
+        <code>tokenOperator</code>, <code>tokenValue</code>, <code>tokenDeleteButton</code>,{' '}
+        <code>dropdown</code>, <code>operatorDropdown</code>, <code>operatorDropdownItem</code>,{' '}
         <code>suggestionItem</code>, <code>suggestionItemHint</code>,{' '}
         <code>suggestionItemDescription</code>, <code>suggestionItemIcon</code>,{' '}
         <code>fieldCategory</code>, <code>divider</code>.

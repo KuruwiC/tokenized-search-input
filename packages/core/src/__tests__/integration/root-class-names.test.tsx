@@ -25,4 +25,24 @@ describe('root class names', () => {
     expect(container.querySelectorAll('.from-root-slot')).toHaveLength(1);
     expect(root?.querySelector('.tsi-container')).not.toBeNull();
   });
+
+  it.each([
+    { expandOnFocus: false },
+    { expandOnFocus: true },
+  ])('puts classNames.container on the visible box inside the root (expandOnFocus: $expandOnFocus)', ({
+    expandOnFocus,
+  }) => {
+    const { container } = render(
+      <TokenizedSearchInput
+        fields={basicFields}
+        expandOnFocus={expandOnFocus}
+        classNames={{ root: 'from-root-slot', container: 'from-container-slot' }}
+      />
+    );
+
+    const boxes = container.querySelectorAll('.from-container-slot');
+    expect(boxes).toHaveLength(1);
+    expect(boxes[0]).toHaveClass('tsi-container');
+    expect(container.firstElementChild).not.toHaveClass('from-container-slot');
+  });
 });

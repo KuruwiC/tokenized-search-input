@@ -125,7 +125,8 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
           clearable && (singleLine || expandOnFocus) && 'tsi-container--clearable',
           (singleLine || expandOnFocus) && 'tsi-container--flex',
           startAdornment && 'tsi-container--has-start-adornment',
-          endAdornment && 'tsi-container--has-end-adornment'
+          endAdornment && 'tsi-container--has-end-adornment',
+          classNames?.container
         )}
       >
         {startAdornment && (

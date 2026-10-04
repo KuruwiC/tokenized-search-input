@@ -82,7 +82,10 @@ export interface PickersConfig {
  */
 export type ClassNameSlot =
   // Root-level
+  /** The outermost element, which holds the layout space. */
   | 'root'
+  /** The visible box (border, background, padding) inside the root. */
+  | 'container'
   | 'input'
   | 'placeholder'
   | 'clearButton'
