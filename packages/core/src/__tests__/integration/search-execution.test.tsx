@@ -123,7 +123,12 @@ describe('Search Execution', () => {
     await user.click(screen.getByRole('group', { name: /Filter: assignee/i }));
     await user.type(await screen.findByPlaceholderText('...'), 'X');
 
-    act(() => {
+    // Leaving the token moves focus out of the typed input while React commits, and
+    // user-event reports that blur as a change event inside act() of its own. A sync act
+    // has already closed its scope when it flushes the commit, so React 19 sees that
+    // nested act at the top level and leaves its work unflushed; an awaited act commits
+    // while its scope is still open.
+    await act(async () => {
       ref.current?.submit();
     });
 
