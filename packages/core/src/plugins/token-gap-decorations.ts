@@ -83,7 +83,8 @@ export function gapPosAtCoords(
   view: EditorView,
   coords: { left: number; top: number }
 ): number | null {
-  const element = view.dom.ownerDocument.elementFromPoint(coords.left, coords.top);
+  // The root the editor is in: inside a shadow root the document hit-tests to the host.
+  const element = view.root.elementFromPoint(coords.left, coords.top);
   const gap = element?.closest(`.${GAP_CLASS}`);
   if (!gap || !view.dom.contains(gap)) return null;
   return view.posAtDOM(gap, 0);

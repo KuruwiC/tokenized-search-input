@@ -1,8 +1,12 @@
 import { type Node as ProseMirrorNode, Schema } from '@tiptap/pm/model';
 import { EditorState, TextSelection } from '@tiptap/pm/state';
 import { type DecorationSet, EditorView } from '@tiptap/pm/view';
-import { describe, expect, it } from 'vitest';
-import { createTokenGapPlugin, tokenGapKey } from '../../plugins/token-gap-decorations';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  createTokenGapPlugin,
+  gapPosAtCoords,
+  tokenGapKey,
+} from '../../plugins/token-gap-decorations';
 
 const schema = new Schema({
   nodes: {
@@ -125,6 +129,27 @@ describe('token gap decorations', () => {
       ]);
     } finally {
       view.destroy();
+    }
+  });
+
+  it('reads the gap under the pointer from the root the editor is in, a shadow root included', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const shadow = host.attachShadow({ mode: 'open' });
+    const mount = document.createElement('div');
+    shadow.append(mount);
+    const view = new EditorView(mount, { state: stateOf(paragraph(token('a'), token('b'))) });
+    try {
+      const gap = view.dom.querySelectorAll('._tsi-token-gap')[1];
+      // The document hit-tests to the shadow host; only the shadow root sees the gap.
+      vi.spyOn(document, 'elementFromPoint').mockReturnValue(host);
+      Object.assign(shadow, { elementFromPoint: () => gap });
+
+      expect(gapPosAtCoords(view, { left: 0, top: 0 })).toBe(2);
+    } finally {
+      view.destroy();
+      host.remove();
+      vi.restoreAllMocks();
     }
   });
 });
