@@ -4,12 +4,16 @@
  * Tests token cleanup and the word boundary a removed token leaves, with full editor context.
  */
 import { act, cleanup, render, waitFor } from '@testing-library/react';
+import type { Editor } from '@tiptap/core';
+import { closeHistory } from '@tiptap/pm/history';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
+import type { ValidationConfig } from '../../types';
+import { Unique } from '../../validation/presets';
 import { basicFields } from '../fixtures';
 import { getInternalEditor } from '../helpers/get-editor';
 
@@ -146,7 +150,7 @@ describe('DocumentRepairExtension - Integration Tests', () => {
       });
     });
 
-    it('keeps an empty token the user is still in when an edit moves it', async () => {
+    it('keeps an empty token the user is still in when an edit moves it, and removes the one left', async () => {
       const ref = createRef<TokenizedSearchInputRef>();
       render(<TokenizedSearchInput ref={ref} fields={testFields} />);
       await waitFor(() => expect(getInternalEditor(ref.current)).not.toBeNull());
@@ -173,7 +177,7 @@ describe('DocumentRepairExtension - Integration Tests', () => {
         if (node.type.name === 'filterToken') ids.push(String(node.attrs.id));
         return true;
       });
-      expect(ids).toEqual(['left', 'focused']);
+      expect(ids).toEqual(['focused']);
     });
 
     it('leaves a space where a token between two words is removed', async () => {
@@ -217,6 +221,76 @@ describe('DocumentRepairExtension - Integration Tests', () => {
         // After token removal, text should be preserved with space separator
         expect(value).toBe('hello world');
       });
+    });
+  });
+
+  describe.each<[string, ValidationConfig | undefined]>([
+    ['without validation rules', undefined],
+    ['with validation rules', { rules: [Unique.rule('key')] }],
+  ])('Empty tokens nobody is in, %s', (_name, validation) => {
+    function tokenIds(editor: Editor): string[] {
+      const ids: string[] = [];
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === 'filterToken') ids.push(String(node.attrs.id));
+        return true;
+      });
+      return ids;
+    }
+
+    async function mountWithEmptyToken(): Promise<Editor> {
+      const ref = createRef<TokenizedSearchInputRef>();
+      render(<TokenizedSearchInput ref={ref} fields={testFields} validation={validation} />);
+      await waitFor(() => expect(getInternalEditor(ref.current)).not.toBeNull());
+      const editor = getInternalEditor(ref.current);
+      if (!editor) throw new Error('editor is unavailable');
+      act(() => {
+        editor.commands.setContent({
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                { type: 'text', text: 'foo ' },
+                {
+                  type: 'filterToken',
+                  attrs: { id: 'empty', key: 'status', operator: 'is', value: '' },
+                },
+                {
+                  type: 'filterToken',
+                  attrs: { id: 'full', key: 'priority', operator: 'is', value: 'high' },
+                },
+              ],
+            },
+          ],
+        });
+      });
+      return editor;
+    }
+
+    it('keeps an empty token in the change that adds it', async () => {
+      const editor = await mountWithEmptyToken();
+
+      expect(tokenIds(editor)).toEqual(['empty', 'full']);
+    });
+
+    it('removes an empty token nobody is in with the next edit, in the same undo step', async () => {
+      const editor = await mountWithEmptyToken();
+      act(() => {
+        editor.view.dispatch(closeHistory(editor.state.tr));
+      });
+      const before = editor.getJSON();
+
+      act(() => {
+        editor.commands.insertContentAt(1, 'x');
+      });
+
+      expect(tokenIds(editor)).toEqual(['full']);
+
+      act(() => {
+        editor.commands.undo();
+      });
+
+      expect(editor.getJSON()).toEqual(before);
     });
   });
 

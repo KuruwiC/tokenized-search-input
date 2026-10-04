@@ -85,9 +85,8 @@ interface ValidationChange {
 
 /** What to do to the document and to token meta after validating it. */
 export interface Plan {
+  /** Tokens a rule asked to delete; undo reverts their deletion. */
   deletions: readonly string[];
-  /** Whether the deletions are a user-visible change that undo should revert. */
-  undoable: boolean;
   /** Whether undo reverts the deletions on their own, not together with the edit that led to them. */
   ownUndoStep: boolean;
   /** Token meta writes for the tokens that remain, and for those that left. */
@@ -134,8 +133,6 @@ export function recordEdits(edits: Edits, prev: ProseMirrorNode, next: ProseMirr
 }
 
 interface EditedTokens {
-  /** The tokens that the transactions being validated added. */
-  added: Set<string>;
   editing: Set<string>;
   /** The edited tokens that existed before, as they were. */
   before: Map<string, ValidationToken>;
@@ -147,12 +144,11 @@ function editedTokens(
   input: ValidationInput
 ): EditedTokens {
   // Restored by undo or redo, so nothing counts as entered.
-  if (input.isHistoryOperation) return { added: new Set(), editing: new Set(), before: new Map() };
+  if (input.isHistoryOperation) return { editing: new Set(), before: new Map() };
 
   const group = diffTokens(collectTokens(prev), next);
-  const added = new Set([...group].filter(([, before]) => before === null).map(([id]) => id));
   if (input.contentEntered) {
-    return { added, editing: new Set(next.map((t) => t.id)), before: new Map() };
+    return { editing: new Set(next.map((t) => t.id)), before: new Map() };
   }
 
   const present = new Set(next.map((t) => t.id));
@@ -164,7 +160,7 @@ function editedTokens(
   for (const [id, token] of origins) {
     if (token) before.set(id, token);
   }
-  return { added, editing: new Set(origins.keys()), before };
+  return { editing: new Set(origins.keys()), before };
 }
 
 function isRuleDisabled(ruleId: string, field: FieldDefinition | null): boolean {
@@ -238,20 +234,13 @@ export function planValidation(
   input: ValidationInput
 ): Plan {
   const tokens = collectTokens(next);
-  const { added, editing, before } = editedTokens(prev, tokens, input);
+  const { editing, before } = editedTokens(prev, tokens, input);
   const rules = [...input.rules, ...input.implicitRules];
   let violations = runRules(rules, contextFor(tokens, editing, before, input));
 
   const present = new Set(tokens.map((t) => t.id));
   const deleted = new Set<string>();
-  let undoable = false;
   if (input.rules.length > 0 && !input.isHistoryOperation) {
-    // Empty tokens left behind by a cancelled creation are cleaned up silently.
-    for (const token of tokens) {
-      if (!token.value && token.id !== input.focusedTokenId && !added.has(token.id)) {
-        deleted.add(token.id);
-      }
-    }
     for (const violation of violations) {
       if (violation.action !== 'delete') continue;
       for (const { tokenId } of violation.targets) {
@@ -259,7 +248,6 @@ export function planValidation(
           continue;
         }
         deleted.add(tokenId);
-        undoable = true;
       }
     }
   }
@@ -294,8 +282,7 @@ export function planValidation(
 
   return {
     deletions: [...deleted],
-    undoable,
-    ownUndoStep: undoable && !input.recordsHistory,
+    ownUndoStep: deleted.size > 0 && !input.recordsHistory,
     changes,
   };
 }
@@ -320,6 +307,6 @@ export function applyPlan(tr: Transaction, plan: Plan): boolean {
     setTokenMeta(tr, tokenId, { validation });
   }
   if (plan.ownUndoStep) closeHistory(tr);
-  if (!plan.undoable) withoutHistory(tr);
+  if (plan.deletions.length === 0) withoutHistory(tr);
   return tr.docChanged || plan.changes.length > 0;
 }
