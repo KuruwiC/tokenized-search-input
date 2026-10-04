@@ -12,6 +12,7 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { type EditorState, Plugin, TextSelection } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
+import { TOKEN_NODE_CLASS } from '../tokens/composition/node-view-update';
 import { nearestValidCaret } from '../utils/caret';
 import { isToken } from '../utils/node-predicates';
 import { createDragTracker } from './selection-guard/drag-tracker';
@@ -137,14 +138,78 @@ function posAtPointer(
   return { pos: gapPos, inside: $gap.depth > 0 ? $gap.before() : -1 };
 }
 
+function placeCaretAt(view: EditorView, pos: number, getFocusContext: GetFocusContext): void {
+  const tr = view.state.tr;
+  leaveFocusedTokenIn(tr, getFocusContext(view.state));
+  tr.setSelection(TextSelection.create(tr.doc, nearestValidCaret(tr.doc, pos, 1)));
+  view.dispatch(tr);
+  view.focus();
+}
+
 function placeCaretAtPress(view: EditorView, getFocusContext: GetFocusContext): void {
   const pressPos = selectionGuardKey.getState(view.state)?.pressPos;
   if (pressPos == null) return;
-  const tr = view.state.tr;
-  leaveFocusedTokenIn(tr, getFocusContext(view.state));
-  tr.setSelection(TextSelection.create(tr.doc, nearestValidCaret(tr.doc, pressPos, 1)));
-  view.dispatch(tr);
-  view.focus();
+  placeCaretAt(view, pressPos, getFocusContext);
+}
+
+function isInToken(element: Element | null): boolean {
+  return element?.closest(`.${TOKEN_NODE_CLASS}`) != null;
+}
+
+/**
+ * A touch acts on what lies under the finger. Chromium moves a tap to the nearest element
+ * that responds to presses, so a tap between tokens, or next to one, arrives as a press on
+ * a token's delete button or label. The pointerdown that starts the tap still carries the
+ * point the finger touched; when that point is outside every token and the press that
+ * follows targets a token, the press and its click are kept from the token and the caret
+ * goes where the finger landed.
+ */
+function guardTouchRetargeting(
+  view: EditorView,
+  getFocusContext: GetFocusContext
+): { destroy: () => void } {
+  let touch: { left: number; top: number } | null = null;
+  let swallowClick = false;
+
+  const onPointerDown = (event: PointerEvent) => {
+    touch = event.pointerType === 'touch' ? { left: event.clientX, top: event.clientY } : null;
+    swallowClick = false;
+  };
+  const onMouseDown = (event: MouseEvent) => {
+    const coords = touch;
+    touch = null;
+    if (coords === null || event.button !== PRIMARY_MOUSE_BUTTON) return;
+    if (
+      !isInToken(event.target as Element) ||
+      isInToken(view.root.elementFromPoint(coords.left, coords.top))
+    ) {
+      return;
+    }
+    const posInfo = posAtPointer(view, coords);
+    if (!posInfo) return;
+    event.preventDefault();
+    event.stopPropagation();
+    swallowClick = true;
+    placeCaretAt(view, posInfo.pos, getFocusContext);
+  };
+  const onClick = (event: MouseEvent) => {
+    if (!swallowClick) return;
+    swallowClick = false;
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const dom = view.dom;
+  dom.addEventListener('pointerdown', onPointerDown, true);
+  dom.addEventListener('mousedown', onMouseDown, true);
+  dom.addEventListener('click', onClick, true);
+  return {
+    destroy() {
+      dom.removeEventListener('pointerdown', onPointerDown, true);
+      dom.removeEventListener('mousedown', onMouseDown, true);
+      dom.removeEventListener('click', onClick, true);
+    },
+  };
 }
 
 export function createSelectionGuardPlugin(
@@ -152,6 +217,8 @@ export function createSelectionGuardPlugin(
 ): Plugin<SelectionGuardState> {
   return new Plugin<SelectionGuardState>({
     key: selectionGuardKey,
+
+    view: (view) => guardTouchRetargeting(view, getFocusContext),
 
     state: {
       init() {

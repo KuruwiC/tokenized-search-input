@@ -4,7 +4,7 @@
  * positions gets a zero-width widget that gives the caret something to stand beside. The
  * widgets have no document positions; the visual spacing between tokens comes from CSS.
  *
- * The widgets are also what a press between two tokens lands on: each one's hit area
+ * The widgets are also what a point between two tokens hit-tests to: each one's hit area
  * (a CSS pseudo-element) covers the spacing on both sides of it, and a press on it is
  * resolved to the widget's position (see {@link gapPosAtCoords}).
  *
@@ -59,18 +59,10 @@ function findTokenGaps(doc: ProseMirrorNode): number[] {
   return gaps;
 }
 
-function respondToPresses(): void {}
-
 function renderGap(): HTMLElement {
   const anchor = document.createElement('span');
   anchor.className = GAP_CLASS;
   anchor.textContent = ZERO_WIDTH_SPACE;
-  // Chromium moves a tap to the nearest element that listens for mouse presses, and the
-  // editor around the gap is not a candidate because it contains the tokens' controls.
-  // Without a listener of its own, a tap in the gap would go to the delete button of the
-  // token before it or into the token after it. The press itself is handled by the
-  // selection guard on the editor.
-  anchor.addEventListener('mousedown', respondToPresses, { passive: true });
   return anchor;
 }
 

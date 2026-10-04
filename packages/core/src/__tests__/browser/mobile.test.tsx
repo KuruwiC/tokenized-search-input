@@ -31,6 +31,23 @@ function centreOf(element: Element | undefined, m: { pm: HTMLElement }): { x: nu
   return { x: rect.left + rect.width / 2 - box.left, y: rect.top + rect.height / 2 - box.top };
 }
 
+/** A point `inset` pixels inside the left or right edge of an element, at its middle height. */
+function insideEdge(
+  element: Element | undefined,
+  m: { pm: HTMLElement },
+  edge: 'left' | 'right',
+  inset: number
+): { x: number; y: number } {
+  const rect = element?.getBoundingClientRect();
+  if (!rect) throw new Error('no element to tap');
+  const box = m.pm.getBoundingClientRect();
+  const x = edge === 'left' ? rect.left + inset : rect.right - inset;
+  return { x: x - box.left, y: rect.top + rect.height / 2 - box.top };
+}
+
+const deleteButtonOf = (m: Parameters<typeof tokenElements>[0], index: number) =>
+  tokenElements(m)[index]?.querySelector('.tsi-token-delete') ?? undefined;
+
 describe('mobile touch', () => {
   it('puts the caret in the gap when the centre of the gap between two tokens is tapped', async () => {
     const m = await mountEditor(TWO_TOKENS);
@@ -61,12 +78,41 @@ describe('mobile touch', () => {
 
   it('removes a token when its delete button is tapped', async () => {
     const m = await mountEditor(TWO_TOKENS);
-    const button = tokenElements(m)[0]?.querySelector('.tsi-token-delete') ?? undefined;
-    await commands.tapEditor(centreOf(button, m));
+    await commands.tapEditor(centreOf(deleteButtonOf(m, 0), m));
 
     expect(m.value()).toBe('owner:is:bob');
     expect(tokenElements(m)).toHaveLength(1);
   });
+
+  for (const inset of [1, 3]) {
+    it(`enters the token after the gap when a tap lands ${inset}px inside its left edge`, async () => {
+      const m = await mountEditor(TWO_TOKENS);
+      await commands.tapEditor(insideEdge(tokenElements(m)[1], m, 'left', inset));
+
+      expect(editingTokenIndex(m)).toBe(1);
+      expect(m.value()).toBe(TWO_TOKENS);
+    });
+  }
+
+  it('removes the token before the gap when a tap lands on its delete button 3px inside its right edge', async () => {
+    const m = await mountEditor(TWO_TOKENS);
+    const point = insideEdge(tokenElements(m)[0], m, 'right', 3);
+    const box = m.pm.getBoundingClientRect();
+    const element = document.elementFromPoint(point.x + box.left, point.y + box.top);
+    expect(deleteButtonOf(m, 0)?.contains(element)).toBe(true);
+    await commands.tapEditor(point);
+
+    expect(m.value()).toBe('owner:is:bob');
+  });
+
+  for (const edge of ['left', 'right'] as const) {
+    it(`removes the token when its delete button is tapped just inside the button's ${edge} edge`, async () => {
+      const m = await mountEditor(TWO_TOKENS);
+      await commands.tapEditor(insideEdge(deleteButtonOf(m, 0), m, edge, 1));
+
+      expect(m.value()).toBe('owner:is:bob');
+    });
+  }
 
   it('puts the caret after the last token when the empty row is tapped', async () => {
     const m = await mountEditor(TWO_TOKENS);
