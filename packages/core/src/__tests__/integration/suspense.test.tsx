@@ -82,13 +82,13 @@ describe('TokenizedSearchInput inside Suspense', () => {
 
   it('mounts an editable input after a sibling in the same boundary resolves', async () => {
     const SuspendOnce = createSuspendOnce();
-
+    const ref = createRef<TokenizedSearchInputRef>();
     const committed = createDeferred();
 
     root.render(
       <Suspense fallback={<p>loading</p>}>
         <CommitSignal onCommit={committed.resolve}>
-          <TokenizedSearchInput fields={basicFields} placeholder="search" />
+          <TokenizedSearchInput ref={ref} fields={basicFields} placeholder="search" />
           <SuspendOnce />
         </CommitSignal>
       </Suspense>
@@ -101,6 +101,11 @@ describe('TokenizedSearchInput inside Suspense', () => {
     const input = container.querySelector('[role="combobox"]');
     expect(input).toHaveAttribute('contenteditable', 'true');
     expect(input).toHaveAttribute('aria-expanded', 'false');
+    // A destroyed view keeps its contenteditable attribute; the combobox must be the
+    // view of the editor that is live.
+    const editor = getInternalEditor(ref.current);
+    expect(editor?.isDestroyed).toBe(false);
+    expect(editor?.view.dom).toBe(input);
   });
 
   it('keeps handle writes and reads ordered from an ancestor effect in the same boundary', async () => {
