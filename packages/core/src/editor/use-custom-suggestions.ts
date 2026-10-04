@@ -85,6 +85,17 @@ function startRequest(ref: MutableRefObject<AbortController | null>): AbortContr
   return controller;
 }
 
+/**
+ * Takes a request that has settled out of `ref`, so that closing or unmounting later does
+ * not abort a signal whose work is done.
+ */
+function settleRequest(
+  ref: MutableRefObject<AbortController | null>,
+  controller: AbortController
+): void {
+  if (ref.current === controller) ref.current = null;
+}
+
 /** Whether suggestions for the text may be shown: it is being typed in, and not dismissed. */
 function canSuggest(editor: Editor): boolean {
   return (
@@ -265,7 +276,8 @@ export function useCustomSuggestions(
 
     // A newer query supersedes the one waiting out its debounce or its response
     cancelRequests();
-    const { signal } = startRequest(suggestRequestRef);
+    const request = startRequest(suggestRequestRef);
+    const { signal } = request;
 
     const debounceMs = config.debounceMs ?? DEFAULT_DEBOUNCE_MS;
 
@@ -281,9 +293,16 @@ export function useCustomSuggestions(
       try {
         const existingTokens = collectExistingTokens(editor);
         const suggestPromise = Promise.resolve(
-          config.suggest({ query, fields: getEditorContext(editor).fields, existingTokens })
+          config.suggest({
+            query,
+            fields: getEditorContext(editor).fields,
+            existingTokens,
+            signal,
+          })
         );
-        const rawResult = await withTimeout(suggestPromise, timeoutMs, signal);
+        const rawResult = await withTimeout(suggestPromise, timeoutMs, signal).finally(() =>
+          settleRequest(suggestRequestRef, request)
+        );
 
         if (signal.aborted || editor.isDestroyed || !canSuggest(editor)) return;
 
@@ -358,7 +377,8 @@ export function useCustomSuggestions(
     const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const onError = config.onError ?? defaultErrorHandler;
 
-    const { signal } = startRequest(loadMoreRequestRef);
+    const request = startRequest(loadMoreRequestRef);
+    const { signal } = request;
     const loading = editor.state.tr;
     setCustomLoadingMore(loading, started, true);
     editor.view.dispatch(loading);
@@ -372,11 +392,12 @@ export function useCustomSuggestions(
             existingTokens: collectExistingTokens(editor),
             offset,
             limit: config.maxSuggestions ?? DEFAULT_MAX_SUGGESTIONS,
+            signal,
           })
         ),
         timeoutMs,
         signal
-      );
+      ).finally(() => settleRequest(loadMoreRequestRef, request));
 
       // The page belongs to the suggestion that asked for it: one that closed since, or a
       // newer request, has taken that away

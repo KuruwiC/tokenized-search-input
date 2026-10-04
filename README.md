@@ -476,7 +476,9 @@ export function SuggestingSearch() {
 | `onError` | `(error: Error, ctx: SuggestionErrorContext) => void` | - | Error handler for suggestion failures |
 | `onSelect` | `(suggestion: CustomSuggestion, ctx: CustomSuggestionSelectContext) => boolean` | - | Custom selection handler |
 
-Closing the suggestions (Escape or blur) discards a pending `suggest` or `loadMore` response: it does not reopen the list, add a page or call `onError`. The requests themselves are not cancelled.
+Closing the suggestions (Escape or blur) discards a pending `suggest` or `loadMore` response: it does not reopen the list, add a page or call `onError`.
+
+Both functions receive `signal`, an `AbortSignal` that is aborted when the suggestions close, when a newer query starts, and when the input unmounts. Pass it to `fetch` (or check it) to cancel work whose result would be discarded. It is never aborted after the returned promise settles, nor when the request runs past `timeoutMs`.
 
 ### SuggestedFilterToken
 
@@ -506,11 +508,14 @@ Handle errors from async suggestion operations:
 ```tsx
 import type { CustomSuggestion, SuggestionsConfig } from "@kuruwic/tokenized-search-input";
 
-declare function fetchSuggestions(query: string): Promise<CustomSuggestion[]>;
+declare function fetchSuggestions(
+  query: string,
+  init: { signal: AbortSignal },
+): Promise<CustomSuggestion[]>;
 
 export const suggestions: SuggestionsConfig = {
   custom: {
-    suggest: async ({ query }) => fetchSuggestions(query),
+    suggest: async ({ query, signal }) => fetchSuggestions(query, { signal }),
     onError: (error, context) => {
       console.error(`Suggestion ${context.type} failed:`, error);
       // context.type: 'suggest' | 'loadMore'
@@ -577,6 +582,7 @@ declare function fetchPage(
   query: string,
   offset: number,
   limit: number,
+  signal: AbortSignal,
 ): Promise<{ items: CustomSuggestion[]; hasMore: boolean }>;
 
 export function PagedSearch() {
@@ -585,12 +591,12 @@ export function PagedSearch() {
       fields={fields}
       suggestions={{
         custom: {
-          suggest: async ({ query }) => {
-            const { items, hasMore } = await fetchPage(query, 0, 10);
+          suggest: async ({ query, signal }) => {
+            const { items, hasMore } = await fetchPage(query, 0, 10, signal);
             return { suggestions: items, hasMore };
           },
-          loadMore: async ({ query, offset, limit }) => {
-            const { items, hasMore } = await fetchPage(query, offset, limit);
+          loadMore: async ({ query, offset, limit, signal }) => {
+            const { items, hasMore } = await fetchPage(query, offset, limit, signal);
             return { suggestions: items, hasMore };
           },
           maxSuggestions: 10,

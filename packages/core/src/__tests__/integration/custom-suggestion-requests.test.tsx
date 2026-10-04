@@ -16,6 +16,8 @@ import type {
   CustomSuggestion,
   CustomSuggestionConfig,
   FieldDefinition,
+  SuggestContext,
+  SuggestContextWithPagination,
   SuggestionErrorContext,
   SuggestionsConfig,
 } from '../../types';
@@ -378,6 +380,149 @@ describe('closing the suggestions while a request is pending', () => {
 
     expect(suggest).toHaveBeenCalled();
     expect(withRequest).toBe(baseline);
+  });
+});
+
+describe('the signal passed to suggest and loadMore', () => {
+  /** A suggest whose calls stay pending until resolved, with the signal each one got. */
+  function pendingSuggest() {
+    const calls: Array<{ signal: AbortSignal; resolve: (result: CustomSuggestion[]) => void }> = [];
+    const suggest = vi.fn(
+      ({ signal }: SuggestContext) =>
+        new Promise<CustomSuggestion[]>((resolve) => {
+          calls.push({ signal, resolve });
+        })
+    );
+    return { suggest, calls };
+  }
+
+  async function startSuggest() {
+    const user = userEvent.setup();
+    const { suggest, calls } = pendingSuggest();
+    const { editor } = await renderInput({
+      suggestions: { custom: { displayMode: 'replace', debounceMs: 0, suggest } },
+    });
+    await user.click(screen.getByRole('combobox'));
+    await waitFor(() => expect(calls).toHaveLength(1));
+    const first = calls[0];
+    if (!first) throw new Error('suggest was not called');
+    expect(first.signal.aborted).toBe(false);
+    return { user, editor, calls, first };
+  }
+
+  it('aborts the signal of a pending suggest when the suggestions close', async () => {
+    const { user, first } = await startSuggest();
+
+    await user.keyboard('{Escape}');
+
+    expect(first.signal.aborted).toBe(true);
+  });
+
+  it('aborts the signal of a pending suggest when a newer query starts', async () => {
+    const { editor, calls, first } = await startSuggest();
+
+    act(() => {
+      editor.commands.insertContent('x');
+    });
+    await waitFor(() => expect(calls).toHaveLength(2));
+
+    expect(first.signal.aborted).toBe(true);
+    expect(calls[1]?.signal.aborted).toBe(false);
+  });
+
+  it('aborts the signal of a pending suggest when the input unmounts', async () => {
+    const { first } = await startSuggest();
+
+    cleanup();
+
+    expect(first.signal.aborted).toBe(true);
+  });
+
+  it('leaves the signal of a suggest that resolved alone', async () => {
+    const { user, first } = await startSuggest();
+
+    await act(async () => {
+      first.resolve(customOptions);
+    });
+    await screen.findByRole('option', { name: /First/ });
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument());
+    cleanup();
+
+    expect(first.signal.aborted).toBe(false);
+  });
+
+  async function startLoadMore() {
+    const scrollToEnd = observeIntersections();
+    const user = userEvent.setup();
+    const calls: Array<{
+      signal: AbortSignal;
+      resolve: (result: { suggestions: CustomSuggestion[]; hasMore: boolean }) => void;
+    }> = [];
+    const loadMore = vi.fn(
+      ({ signal }: SuggestContextWithPagination) =>
+        new Promise<{ suggestions: CustomSuggestion[]; hasMore: boolean }>((resolve) => {
+          calls.push({ signal, resolve });
+        })
+    );
+    const { editor } = await renderInput({
+      suggestions: {
+        custom: {
+          displayMode: 'replace',
+          debounceMs: 0,
+          suggest: async () => ({ suggestions: page(['one', 'two']), hasMore: true }),
+          loadMore,
+        },
+      },
+    });
+    await user.click(screen.getByRole('combobox'));
+    await screen.findByRole('option', { name: /one/ });
+    act(scrollToEnd);
+    await waitFor(() => expect(calls).toHaveLength(1));
+    const first = calls[0];
+    if (!first) throw new Error('loadMore was not called');
+    expect(first.signal.aborted).toBe(false);
+    return { user, editor, first };
+  }
+
+  it('aborts the signal of a pending loadMore when the suggestions close', async () => {
+    const { user, first } = await startLoadMore();
+
+    await user.keyboard('{Escape}');
+
+    expect(first.signal.aborted).toBe(true);
+  });
+
+  it('aborts the signal of a pending loadMore when a newer query starts', async () => {
+    const { editor, first } = await startLoadMore();
+
+    act(() => {
+      editor.commands.insertContent('x');
+    });
+
+    expect(first.signal.aborted).toBe(true);
+  });
+
+  it('aborts the signal of a pending loadMore when the input unmounts', async () => {
+    const { first } = await startLoadMore();
+
+    cleanup();
+
+    expect(first.signal.aborted).toBe(true);
+  });
+
+  it('leaves the signal of a loadMore that resolved alone', async () => {
+    const { user, first } = await startLoadMore();
+
+    await act(async () => {
+      first.resolve({ suggestions: page(['three']), hasMore: false });
+    });
+    await screen.findByRole('option', { name: /three/ });
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument());
+    cleanup();
+
+    expect(first.signal.aborted).toBe(false);
   });
 });
 

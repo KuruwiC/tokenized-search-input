@@ -141,7 +141,12 @@ describe('Regression Tests', () => {
       };
 
       // Verify configuration supports displayValue
-      const suggestions = customSuggestion.suggest({ query: 're', fields: [], existingTokens: [] });
+      const suggestions = customSuggestion.suggest({
+        query: 're',
+        fields: [],
+        existingTokens: [],
+        signal: new AbortController().signal,
+      });
       expect(Array.isArray(suggestions)).toBe(true);
       if (Array.isArray(suggestions) && suggestions.length > 0) {
         expect(suggestions[0].tokens[0].displayValue).toBe('React');

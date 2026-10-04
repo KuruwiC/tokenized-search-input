@@ -77,6 +77,13 @@ export interface SuggestContext {
   fields: FieldDefinition[];
   /** List of existing filter tokens (for excluding already-selected values) */
   existingTokens: ExistingToken[];
+  /**
+   * Aborted when the result is no longer wanted: the suggestions close, a newer query
+   * starts, or the input unmounts. Pass it to `fetch` to cancel the request. It is not
+   * aborted once the returned promise has settled, nor when the request runs past
+   * `timeoutMs`.
+   */
+  signal: AbortSignal;
 }
 
 export interface SuggestContextWithPagination extends SuggestContext {
@@ -119,13 +126,13 @@ export interface CustomSuggestionConfig {
    *
    * @example
    * ```typescript
-   * suggest: ({ query }) => {
+   * suggest: ({ query, signal }) => {
    *   if (query.length < 3) return []; // Skip for short queries
-   *   return fetchFromAPI(query);
+   *   return fetchFromAPI(query, { signal });
    * }
    * ```
    *
-   * @param context - Suggestion context including query, fields, and existing tokens
+   * @param context - Suggestion context including query, fields, existing tokens and the abort signal
    * @returns Array of suggestions, result object with hasMore, or Promise for async generation
    */
   suggest: (context: SuggestContext) => SuggestFnReturn;
