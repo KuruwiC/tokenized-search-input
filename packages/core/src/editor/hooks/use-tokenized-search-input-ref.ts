@@ -69,31 +69,60 @@ type PendingCall =
   | { type: 'focus' }
   | { type: 'submit' };
 
-interface PendingHandleCalls {
-  /** The destroyed editor's document, which the calls were made against. */
+/**
+ * The handle calls held to run on the live editor. Whenever calls are held and a live
+ * editor has committed, a drain that runs them on it is scheduled, so no call stays held.
+ */
+interface HeldHandleCalls {
+  /** The document the calls were made against. */
   base: JSONContent | null;
   /** In call order. */
   calls: PendingCall[];
+  /** The editor the calls run on: the last one whose commit happened. */
+  live: Editor | null;
 }
 
-const NO_PENDING_CALLS: PendingHandleCalls = { base: null, calls: [] };
+function liveEditor(held: HeldHandleCalls): Editor | null {
+  return held.live && !held.live.isDestroyed ? held.live : null;
+}
+
+/** Runs the held calls on `editor`, in call order. */
+function drain(held: HeldHandleCalls, editor: Editor): void {
+  const { base, calls } = held;
+  held.base = null;
+  held.calls = [];
+  if (calls.length === 0) return;
+  // The calls were made against `base`, which may be a destroyed editor's document.
+  if (base && !editor.state.doc.eq(editor.schema.nodeFromJSON(base))) {
+    setContentAndValidate(editor, base);
+  }
+  for (const call of calls) runPendingCall(editor, call);
+}
+
+/** Schedules a drain of `held` on the live editor, if there is one yet. */
+function scheduleDrain(held: HeldHandleCalls): void {
+  const live = liveEditor(held);
+  if (live) scheduleDocumentChange(live, () => drain(held, live));
+}
 
 /**
  * Builds the imperative handle.
  *
  * An ancestor's effect in the same commit can call the handle while `editor` is
- * still a destroyed instance. Calls made then are held in call order and run by
- * `useApplyPendingHandleWrites` on the live editor, through the same commands as on a
- * live editor, starting from the document the destroyed editor had. Calls made while
- * held calls wait are held behind them, so they run in call order. `getValue` and
+ * still a destroyed instance, and a handle kept from before can be called after its
+ * editor was replaced. Calls made through a destroyed editor are held in call order and
+ * run on the live editor after its commit (see `useApplyPendingHandleWrites`), through
+ * the same commands as on a live editor, starting from the document they were made
+ * against. Calls made while held calls wait are held behind them, so they run in call
+ * order. `getValue` and
  * `getSnapshot` read the document the held calls produce; validation runs once they
  * are applied, so snapshots read in the meantime carry no validation.
  */
 export function useTokenizedSearchInputRef(
   ref: ForwardedRef<TokenizedSearchInputRef>,
   editor: Editor | null
-): MutableRefObject<PendingHandleCalls> {
-  const pendingHandleRef = useRef<PendingHandleCalls>(NO_PENDING_CALLS);
+): MutableRefObject<HeldHandleCalls> {
+  const pendingHandleRef = useRef<HeldHandleCalls>({ base: null, calls: [], live: null });
 
   useImperativeHandle(ref, () => {
     const parseValue = (ed: Editor, value: string) => {
@@ -104,6 +133,9 @@ export function useTokenizedSearchInputRef(
         delimiter: context.delimiter,
       }).doc;
     };
+    /** The document calls are made against: the live editor's, else `ed`'s. */
+    const currentDoc = (ed: Editor): JSONContent =>
+      (liveEditor(pendingHandleRef.current) ?? ed).getJSON();
     /** The document after the held calls. */
     const readDoc = (ed: Editor): JSONContent => {
       const { base, calls } = pendingHandleRef.current;
@@ -122,13 +154,15 @@ export function useTokenizedSearchInputRef(
           default:
             return doc;
         }
-      }, base ?? ed.getJSON());
+      }, base ?? currentDoc(ed));
     };
     const readState = (ed: Editor) =>
       pendingHandleRef.current.calls.length > 0 ? stateFromDoc(ed, readDoc(ed)) : ed.state;
     const hold = (ed: Editor, call: PendingCall) => {
-      const { base, calls } = pendingHandleRef.current;
-      pendingHandleRef.current = { base: base ?? ed.getJSON(), calls: [...calls, call] };
+      const held = pendingHandleRef.current;
+      held.base ??= currentDoc(ed);
+      held.calls.push(call);
+      scheduleDrain(held);
     };
     /** Whether a call has to wait: the editor is destroyed, or held calls wait before it. */
     const mustHold = (ed: Editor) => ed.isDestroyed || pendingHandleRef.current.calls.length > 0;
@@ -244,26 +278,20 @@ function runPendingCall(editor: Editor, call: PendingCall): void {
 }
 
 /**
- * Runs the handle calls held while the editor was destroyed, in call order, after the
- * commit that brings the live editor. Call it after every other hook that attaches to
- * the editor: the calls set content, validate, set token display, focus and submit, so
- * they have to see the configuration synced from the current props, the focus listeners
- * and the suggestion scheduling already in place. The calls stay held until they run.
+ * Makes `editor` the one held handle calls run on once its commit has happened, and runs
+ * the calls held so far, in call order, right after that commit. Call it after every
+ * other hook that attaches to the editor: the calls set content, validate, set token
+ * display, focus and submit, so they have to see the configuration synced from the
+ * current props, the focus listeners and the suggestion scheduling already in place.
+ * The calls stay held until they run.
  */
 export function useApplyPendingHandleWrites(
   editor: Editor | null,
-  pending: MutableRefObject<PendingHandleCalls>
+  pending: MutableRefObject<HeldHandleCalls>
 ): void {
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
-    scheduleDocumentChange(editor, () => {
-      const { base, calls } = pending.current;
-      pending.current = NO_PENDING_CALLS;
-      // The calls were made against the destroyed editor's document.
-      if (base && !editor.state.doc.eq(editor.schema.nodeFromJSON(base))) {
-        setContentAndValidate(editor, base);
-      }
-      for (const call of calls) runPendingCall(editor, call);
-    });
+    pending.current.live = editor;
+    scheduleDrain(pending.current);
   }, [editor, pending]);
 }

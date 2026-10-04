@@ -299,6 +299,26 @@ describe('reactive configuration', () => {
     expect(ref.current?.getValue()).toBe('second');
   });
 
+  it('runs calls made through a handle of a destroyed editor on the live editor', async () => {
+    const ref = { current: null as TokenizedSearchInputRef | null };
+    const view = render(<TokenizedSearchInput ref={ref} fields={extendedFields} />);
+    await waitFor(() => expect(ref.current).not.toBeNull());
+    const stale = ref.current;
+    if (!stale) throw new Error('no handle');
+    getInternalEditor(stale)?.destroy();
+    view.rerender(<TokenizedSearchInput ref={ref} fields={extendedFields} />);
+    await waitFor(() => expect(getInternalEditor(ref.current)?.isDestroyed).toBe(false));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    stale.setValue('stale');
+    ref.current?.setValue('live');
+
+    await waitFor(() => expect(getInternalEditor(ref.current)?.getText()).toBe('live'));
+    expect(ref.current?.getValue()).toBe('live');
+    ref.current?.setValue('later');
+    await waitFor(() => expect(getInternalEditor(ref.current)?.getText()).toBe('later'));
+  });
+
   it('does not notify node views when the parent re-renders with equal configuration', async () => {
     const view = render(
       <TokenizedSearchInput
