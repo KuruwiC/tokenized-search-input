@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { server, userEvent } from 'vitest/browser';
+import { userEvent } from 'vitest/browser';
 import {
   afterLastToken,
   beforeFirstToken,
@@ -139,9 +139,7 @@ export function registerPointerCases(): void {
       expectRangeOverTokens(m, 1);
 
       await userEvent.keyboard('x');
-      // WebKit leaves the typed text after the remaining token instead of where the
-      // selected token was.
-      expect(m.value()).toBe(server.browser === 'webkit' ? 'owner:is:bob x' : 'x owner:is:bob');
+      expect(m.value()).toBe('x owner:is:bob');
     });
 
     it('selects every token with Shift+click from the start to the end', async () => {
