@@ -12,8 +12,9 @@ export interface TokenDeleteButtonProps {
 
 /**
  * Token delete button block (focusable).
- * Removes the token when pressed or activated from the keyboard. A press is recognised
- * by the token, which calls the block's `activate`.
+ * Removes the token when pressed or activated from the keyboard, including with
+ * Backspace and Delete. A press is recognised by the token, which calls the block's
+ * `activate`.
  */
 export function TokenDeleteButton({
   ariaLabel = 'Remove token',
@@ -33,13 +34,9 @@ export function TokenDeleteButton({
         break;
       case 'Enter':
       case ' ':
-        deleteToken();
-        break;
       case 'Backspace':
-        navigateLeftEntry();
-        break;
       case 'Delete':
-        navigateRightEntry();
+        deleteToken();
         break;
       default:
         return false;
@@ -48,17 +45,11 @@ export function TokenDeleteButton({
     return true;
   };
 
-  const {
-    navigateLeft,
-    navigateRight,
-    navigateLeftEntry,
-    navigateRightEntry,
-    tabIndex,
-    blockProps,
-  } = useFocusableBlock({
+  const { navigateLeft, navigateRight, tabIndex, blockProps } = useFocusableBlock({
     id: 'delete',
     ref: buttonRef,
     entryFocusable: false,
+    editsToken: false,
     handleKey,
     activate: deleteToken,
   });

@@ -60,7 +60,7 @@ export function TokenValue({
   handleKey: handleViewKey,
 }: TokenValueProps): React.ReactElement {
   const inputRef = useRef<HTMLInputElement>(null);
-  const { isFocused: tokenFocused, exitToken, currentFocusId } = useTokenFocusContext();
+  const { showsControls, exitToken, currentFocusId } = useTokenFocusContext();
 
   const focusInput = useCallback((position?: CursorPosition) => {
     const input = inputRef.current;
@@ -140,7 +140,7 @@ export function TokenValue({
     handleKey,
   });
 
-  const inputWidth = useTextWidth(inputRef, value || placeholder, tokenFocused);
+  const inputWidth = useTextWidth(inputRef, value || placeholder, showsControls);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
@@ -151,12 +151,12 @@ export function TokenValue({
     onFocus?.();
   };
 
-  const isValueFocused = tokenFocused && currentFocusId === 'value';
+  const isValueFocused = showsControls && currentFocusId === 'value';
 
   // Render both span and input to avoid DOM remount flickering
   return (
     <span className={cn('tsi-token-value', containerClassName)} data-focused={isValueFocused}>
-      {!tokenFocused && (
+      {!showsControls && (
         <span className={cn('tsi-token-value__display', className)}>
           <TokenIconSlot>{startContent}</TokenIconSlot>
           <span className="tsi-token-value__display-text">{value || placeholder}</span>
@@ -172,16 +172,16 @@ export function TokenValue({
         onFocus={handleFocus}
         className={cn('tsi-token-value__input', className)}
         style={{
-          width: tokenFocused ? inputWidth : 0,
-          maxWidth: tokenFocused ? '100%' : undefined,
-          opacity: tokenFocused ? 1 : 0,
-          position: tokenFocused ? 'relative' : 'absolute',
-          pointerEvents: tokenFocused ? 'auto' : 'none',
+          width: showsControls ? inputWidth : 0,
+          maxWidth: showsControls ? '100%' : undefined,
+          opacity: showsControls ? 1 : 0,
+          position: showsControls ? 'relative' : 'absolute',
+          pointerEvents: showsControls ? 'auto' : 'none',
         }}
-        placeholder={tokenFocused ? placeholder : undefined}
-        aria-label={tokenFocused ? ariaLabel : undefined}
-        tabIndex={tokenFocused ? tabIndex : -1}
-        aria-hidden={!tokenFocused}
+        placeholder={showsControls ? placeholder : undefined}
+        aria-label={showsControls ? ariaLabel : undefined}
+        tabIndex={showsControls ? tabIndex : -1}
+        aria-hidden={!showsControls}
         autoComplete="off"
         spellCheck={false}
       />

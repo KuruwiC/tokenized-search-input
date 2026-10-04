@@ -106,6 +106,38 @@ describe('Token focus', () => {
     });
   });
 
+  describe('the editing state', () => {
+    it('shows editing only while an editable block of the token holds focus', async () => {
+      const user = userEvent.setup();
+      const { ref, container } = await renderInput('status:is:active');
+      const editor = getEditor(ref);
+      const [id] = filterTokenIds(ref);
+      const group = tokenGroup(/status/i);
+      const state = () => container.querySelector('.tsi-token')?.getAttribute('data-state');
+      const deleteButton = () => group.querySelector('[data-token-block="delete"]');
+
+      act(() => {
+        editor.commands.focusFilterToken(id, 'end');
+      });
+      await waitFor(() => expect(document.activeElement).toBe(valueInputOf(group)));
+      await waitFor(() => expect(state()).toBe('editing'));
+      expect(group.getAttribute('aria-label')).toMatch(/Editing\./);
+
+      await user.keyboard('{ArrowRight}');
+
+      await waitFor(() => expect(document.activeElement).toBe(deleteButton()));
+      expect(getFocusedToken(editor.state)?.id).toBe(id);
+      await waitFor(() => expect(state()).toBe('idle'));
+      expect(group.getAttribute('aria-label')).not.toMatch(/Editing/);
+
+      await user.keyboard('{ArrowLeft}');
+
+      await waitFor(() => expect(document.activeElement).toBe(valueInputOf(group)));
+      await waitFor(() => expect(state()).toBe('editing'));
+      expect(group.getAttribute('aria-label')).toMatch(/Editing\./);
+    });
+  });
+
   describe('immutable tokens', () => {
     it('does not focus an immutable token that undo restored', async () => {
       const { ref, container } = await renderInput('country:is:" "', fieldsWithImmutable);
@@ -127,21 +159,109 @@ describe('Token focus', () => {
       expect(container.querySelectorAll('.tsi-token[data-focused="true"]')).toHaveLength(0);
     });
 
-    it('selects an immutable token that ArrowRight moves onto instead of editing it', async () => {
+    async function renderImmutableWithCaret(at: 'start' | 'end') {
       const user = userEvent.setup();
-      const { ref, container } = await renderInput('country:is:jp', fieldsWithImmutable);
-      const editor = getEditor(ref);
+      const rendered = await renderInput('country:is:jp', fieldsWithImmutable);
+      const editor = getEditor(rendered.ref);
       act(() => {
-        editor.commands.focus('start');
+        editor.commands.focus(at);
       });
       await waitFor(() => expect(editor.isFocused).toBe(true));
+      return { user, editor, ...rendered };
+    }
+
+    function deleteButtonOf(group: HTMLElement): HTMLElement {
+      const button = group.querySelector<HTMLElement>('[data-token-block="delete"]');
+      if (!button) throw new Error('token has no delete button');
+      return button;
+    }
+
+    it('focuses the delete button of an immutable token that ArrowRight moves onto, without editing it', async () => {
+      const { user, editor, container } = await renderImmutableWithCaret('start');
+
+      await user.keyboard('{ArrowRight}');
+
+      const group = tokenGroup(/country/i);
+      await waitFor(() => expect(document.activeElement).toBe(deleteButtonOf(group)));
+      expect(getFocusedToken(editor.state)).not.toBeNull();
+      expect(container.querySelector('.tsi-token')?.getAttribute('data-state')).toBe('idle');
+      expect(group.getAttribute('aria-label')).not.toMatch(/Editing/);
+    });
+
+    it('focuses the delete button of an immutable token that ArrowLeft moves onto', async () => {
+      const { user } = await renderImmutableWithCaret('end');
+
+      await user.keyboard('{ArrowLeft}');
+
+      await waitFor(() =>
+        expect(document.activeElement).toBe(deleteButtonOf(tokenGroup(/country/i)))
+      );
+    });
+
+    it('deletes an immutable token with Space once ArrowRight has focused its delete button', async () => {
+      const { user, ref } = await renderImmutableWithCaret('start');
+      await user.keyboard('{ArrowRight}');
+      await waitFor(() =>
+        expect(document.activeElement).toBe(deleteButtonOf(tokenGroup(/country/i)))
+      );
+
+      await user.keyboard(' ');
+
+      expect(filterTokenIds(ref)).toHaveLength(0);
+    });
+
+    it('moves on past an immutable token with the next arrow press', async () => {
+      const { user, editor } = await renderImmutableWithCaret('start');
+      await user.keyboard('{ArrowRight}');
+      await waitFor(() =>
+        expect(document.activeElement).toBe(deleteButtonOf(tokenGroup(/country/i)))
+      );
 
       await user.keyboard('{ArrowRight}');
 
       expect(getFocusedToken(editor.state)).toBeNull();
-      expect(editor.state.selection.from).toBe(1);
-      expect(editor.state.selection.to).toBe(2);
-      expect(container.querySelectorAll('.tsi-token[data-focused="true"]')).toHaveLength(0);
+      expect(editor.state.selection.empty).toBe(true);
+      expect(editor.state.selection.from).toBe(2);
+      expect(editor.isFocused).toBe(true);
+    });
+
+    it('focuses the delete button of an immutable token that is clicked, and Space deletes it', async () => {
+      const user = userEvent.setup();
+      const { ref, container } = await renderInput('country:is:jp', fieldsWithImmutable);
+      const group = tokenGroup(/country/i);
+
+      await user.click(group);
+
+      await waitFor(() => expect(document.activeElement).toBe(deleteButtonOf(group)));
+      expect(container.querySelector('.tsi-token')?.getAttribute('data-state')).toBe('idle');
+
+      await user.keyboard(' ');
+
+      expect(filterTokenIds(ref)).toHaveLength(0);
+    });
+
+    it('keeps the value of an immutable token when focus leaves it', async () => {
+      const user = userEvent.setup();
+      const lockedDatetime: FieldDefinition = {
+        key: 'updated',
+        label: 'Updated',
+        type: 'datetime',
+        operators: ['is'],
+        immutable: true,
+      };
+      const { ref } = await renderInput('updated:is:"2024-01-06T10:30:00+0900"', [
+        ...extendedFields,
+        lockedDatetime,
+      ]);
+      const editor = getEditor(ref);
+      const before = editor.state.doc.nodeAt(1)?.attrs.value;
+      await user.click(tokenGroup(/updated/i));
+      await waitFor(() => expect(getFocusedToken(editor.state)).not.toBeNull());
+
+      await user.keyboard('{Escape}');
+
+      expect(getFocusedToken(editor.state)).toBeNull();
+      expect(editor.state.doc.nodeAt(1)?.attrs.value).toBe(before);
     });
   });
 

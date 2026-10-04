@@ -1,11 +1,11 @@
 /**
  * Integration tests for immutable tokens.
- * Tests user flows for selecting, deleting, and navigating immutable tokens.
+ * Tests user flows for focusing, deleting, and navigating immutable tokens.
  *
  * Immutable tokens:
  * - Cannot be edited (no value input)
  * - Can only be deleted via X button or 2-stage Backspace
- * - Are selected as a whole when clicked
+ * - Focus their delete button, the one block they have, when clicked or entered
  */
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -37,8 +37,8 @@ afterEach(() => {
 });
 
 describe('Immutable Token - Integration Tests', () => {
-  describe('Selection behavior', () => {
-    it('selects entire token without showing value input when clicked', async () => {
+  describe('Focus behavior', () => {
+    it('focuses the delete button without showing a value input when clicked', async () => {
       const user = userEvent.setup();
       render(<TokenizedSearchInput fields={immutableFields} defaultValue="country:is:jp" />);
 
@@ -55,6 +55,9 @@ describe('Immutable Token - Integration Tests', () => {
         expect(tokenInputs).toHaveLength(0);
       });
       expect(screen.queryByPlaceholderText('...')).toBeNull();
+      await waitFor(() =>
+        expect(document.activeElement).toBe(screen.getByRole('button', { name: /remove/i }))
+      );
     });
   });
 
@@ -81,7 +84,7 @@ describe('Immutable Token - Integration Tests', () => {
       });
     });
 
-    it('deletes selected token with Backspace', async () => {
+    it('deletes a clicked token with Backspace', async () => {
       const onChange = vi.fn();
       const user = userEvent.setup();
       render(
@@ -104,7 +107,7 @@ describe('Immutable Token - Integration Tests', () => {
       });
     });
 
-    it('deletes selected token with Delete key', async () => {
+    it('deletes a clicked token with Delete key', async () => {
       const onChange = vi.fn();
       const user = userEvent.setup();
       render(
@@ -152,7 +155,7 @@ describe('Immutable Token - Integration Tests', () => {
       });
     });
 
-    it('exits immutable token selection with Escape', async () => {
+    it('leaves a clicked immutable token with Escape', async () => {
       const user = userEvent.setup();
       render(<TokenizedSearchInput fields={immutableFields} defaultValue="country:is:jp" />);
 

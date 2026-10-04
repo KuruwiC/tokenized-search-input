@@ -12,6 +12,11 @@ import {
 
 const TWO_TOKENS = 'status:is:open owner:is:bob';
 
+/** The block of a token that holds DOM focus, by its block id. */
+function focusedBlock(): string | undefined {
+  return document.activeElement?.closest<HTMLElement>('[data-token-block]')?.dataset.tokenBlock;
+}
+
 describe('deletion', () => {
   it('removes every token a dragged range covers and leaves a caret that types', async () => {
     const m = await mountEditor(TWO_TOKENS);
@@ -61,14 +66,14 @@ describe('deletion', () => {
     expect(editingTokenIndex(m)).toBe(1);
   });
 
-  it('selects an immutable token on the first Backspace and removes it on the second', async () => {
+  it('focuses the delete button of an immutable token on the first Backspace and removes the token on the second', async () => {
     const m = await mountEditor('status:is:open lock:is:x');
     await userEvent.click(m.pm, { position: afterLastToken(m) });
     await expectCaretBetween(m, { tokensBefore: 2, tokensAfter: 0 });
 
     await userEvent.keyboard('{Backspace}');
     expect(m.value()).toBe('status:is:open lock:is:x');
-    expect(caretLocation(m).tokensSelected).toBe(1);
+    expect(focusedBlock()).toBe('delete');
 
     await userEvent.keyboard('{Backspace}');
     expect(m.value()).toBe('status:is:open');
@@ -85,7 +90,7 @@ describe('deletion', () => {
 
     await userEvent.keyboard('{Backspace}');
     expect(m.value()).toBe('lock:is:x status:is:open');
-    expect(caretLocation(m).tokensSelected).toBe(1);
+    expect(focusedBlock()).toBe('delete');
 
     await userEvent.keyboard('{Backspace}');
     expect(m.value()).toBe('status:is:open');

@@ -136,7 +136,8 @@ function storedForm(field: FieldDefinition | null, value: string): string {
 
 /**
  * Commits a filter token the user finished editing: a typed date is stored in its canonical
- * form, and a token of an immutable field that has a value becomes immutable.
+ * form, and a token of an immutable field that has a value becomes immutable. An immutable
+ * token has nothing the user could have edited, so it is left as it is.
  *
  * @returns whether the token changed
  */
@@ -146,7 +147,7 @@ export function commitFilterToken(
   source: FieldResolutionSource
 ): boolean {
   const found = findTokenById(tr.doc, id);
-  if (!found || !isFilterToken(found.node)) return false;
+  if (!found || !isFilterToken(found.node) || found.node.attrs.immutable === true) return false;
   const field = resolveField(source, String(found.node.attrs.key ?? ''));
   const value = String(found.node.attrs.value ?? '');
 

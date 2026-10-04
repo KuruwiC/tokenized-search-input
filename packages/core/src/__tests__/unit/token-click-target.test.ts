@@ -37,38 +37,27 @@ describe('resolveClickTarget', () => {
   it('names the block a press lands in, including what it contains', () => {
     const parts = token();
 
-    expect(resolveClickTarget(plain, parts.label, false)).toBe('label');
-    expect(resolveClickTarget(plain, parts.text, false)).toBe('label');
-    expect(resolveClickTarget(plain, parts.operator, false)).toBe('operator');
-    expect(resolveClickTarget(plain, parts.delete, false)).toBe('delete');
-    expect(resolveClickTarget(plain, parts.delete.firstElementChild as Element, false)).toBe(
-      'delete'
-    );
+    expect(resolveClickTarget(plain, parts.label)).toBe('label');
+    expect(resolveClickTarget(plain, parts.text)).toBe('label');
+    expect(resolveClickTarget(plain, parts.operator)).toBe('operator');
+    expect(resolveClickTarget(plain, parts.delete)).toBe('delete');
+    expect(resolveClickTarget(plain, parts.delete.firstElementChild as Element)).toBe('delete');
   });
 
   it('acts on the value for a press anywhere else', () => {
-    expect(resolveClickTarget(plain, token().padding, false)).toBe('value');
+    expect(resolveClickTarget(plain, token().padding)).toBe('value');
   });
 
   it('leaves a press in a text input to the input', () => {
-    expect(resolveClickTarget(plain, token().value, false)).toBe('text-selection');
+    expect(resolveClickTarget(plain, token().value)).toBe('text-selection');
   });
 
   it('leaves a press with Shift held to the selection, except on the delete button', () => {
     const parts = token();
     const shift = { shiftKey: true };
 
-    expect(resolveClickTarget(shift, parts.padding, false)).toBe('text-selection');
-    expect(resolveClickTarget(shift, parts.label, false)).toBe('text-selection');
-    expect(resolveClickTarget(shift, parts.delete, false)).toBe('delete');
-  });
-
-  it('selects a token that cannot be edited whole, except for its delete button', () => {
-    const parts = token();
-
-    expect(resolveClickTarget(plain, parts.padding, true)).toBe('token-selection');
-    expect(resolveClickTarget(plain, parts.label, true)).toBe('token-selection');
-    expect(resolveClickTarget({ shiftKey: true }, parts.padding, true)).toBe('text-selection');
-    expect(resolveClickTarget(plain, parts.delete, true)).toBe('delete');
+    expect(resolveClickTarget(shift, parts.padding)).toBe('text-selection');
+    expect(resolveClickTarget(shift, parts.label)).toBe('text-selection');
+    expect(resolveClickTarget(shift, parts.delete)).toBe('delete');
   });
 });

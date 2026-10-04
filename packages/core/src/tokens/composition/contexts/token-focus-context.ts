@@ -17,6 +17,8 @@ export interface FocusableBlock {
   activate?: () => void;
   /** Whether this block can receive focus when entering the token via Backspace/Delete. Default: true */
   entryFocusable?: boolean;
+  /** Whether focus on this block is editing the token: true for the label, operator and value. */
+  editsToken: boolean;
 }
 
 interface FocusNavigationOptions {
@@ -39,11 +41,17 @@ export interface FocusRegistry {
 }
 
 /**
- * Focus state context for Token components. Whether the token is focused is derived
- * from the editor's token focus; which of its blocks holds DOM focus is the token's own.
+ * Focus state context for Token components. Whether the token shows its controls is
+ * derived from the editor's token focus and the token's attributes; which of its blocks
+ * holds DOM focus is the token's own.
  */
 export interface TokenFocusContextValue {
-  isFocused: boolean;
+  /**
+   * Whether the token is focused and can be changed. Its label, operator and value then
+   * show their controls, whichever block holds focus, so focus can move between them. An
+   * immutable token that holds focus shows none.
+   */
+  showsControls: boolean;
   focusRegistry: FocusRegistry;
   /** The block that holds DOM focus while the token is focused. */
   currentFocusId: string | null;
@@ -52,8 +60,6 @@ export interface TokenFocusContextValue {
   exitToken: (value?: string) => void;
   /** Whether the editor is editable (not disabled) */
   isEditable: boolean;
-  /** Whether the token is immutable (confirmed and cannot be edited) */
-  immutable: boolean;
 }
 
 export const TokenFocusContext = createContext<TokenFocusContextValue | null>(null);

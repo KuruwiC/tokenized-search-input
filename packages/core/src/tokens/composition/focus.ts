@@ -95,6 +95,8 @@ export interface UseFocusableBlockOptions {
   available?: boolean;
   /** Whether this block can receive focus when entering the token via Backspace/Delete. Default: true */
   entryFocusable?: boolean;
+  /** Whether focus on this block is editing the token. Default: true */
+  editsToken?: boolean;
 }
 
 export interface UseFocusableBlockResult {
@@ -132,7 +134,16 @@ function focusElement(element: HTMLElement, position?: CursorPosition): void {
  * means to move focus to its neighbours.
  */
 export function useFocusableBlock(options: UseFocusableBlockOptions): UseFocusableBlockResult {
-  const { id, ref, handleKey, activate, focus, available = true, entryFocusable } = options;
+  const {
+    id,
+    ref,
+    handleKey,
+    activate,
+    focus,
+    available = true,
+    entryFocusable,
+    editsToken = true,
+  } = options;
   const { focusRegistry, currentFocusId, setCurrentFocusId } = useTokenFocusContext();
 
   // The registered block calls the latest handlers, so new ones need no re-registration
@@ -155,8 +166,9 @@ export function useFocusableBlock(options: UseFocusableBlockOptions): UseFocusab
       handleKey: (e) => handlersRef.current.handleKey(e),
       activate: () => handlersRef.current.activate?.(),
       entryFocusable,
+      editsToken,
     });
-  }, [id, ref, focus, available, entryFocusable, focusRegistry, setCurrentFocusId]);
+  }, [id, ref, focus, available, entryFocusable, editsToken, focusRegistry, setCurrentFocusId]);
 
   return {
     navigateLeft: () => focusRegistry.focusAdjacent(id, 'prev'),

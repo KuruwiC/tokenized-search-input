@@ -83,7 +83,7 @@ export function TokenLabelCombobox({
   const hasList = displayMode !== 'input-only';
 
   const { editor } = useTokenConfig();
-  const { isFocused: tokenFocused, isEditable, focusRegistry, immutable } = useTokenFocusContext();
+  const { showsControls, isEditable, focusRegistry } = useTokenFocusContext();
 
   const filteredFields = useMemo(() => {
     return getSortedFields(field, selectableFields, {
@@ -231,7 +231,7 @@ export function TokenLabelCombobox({
   } = useFocusableBlock({
     id: 'label',
     ref: triggerRef,
-    available: displayMode !== 'static' && !immutable,
+    available: showsControls && displayMode !== 'static',
     entryFocusable: false,
     handleKey,
     activate: () => (pendingRef.current ? settle() : openDropdown()),
@@ -248,7 +248,7 @@ export function TokenLabelCombobox({
     if (!dropdown.holdsFocus(e.relatedTarget)) settle();
   };
 
-  if (!tokenFocused || displayMode === 'static' || immutable) {
+  if (!showsControls || displayMode === 'static') {
     return (
       <span className={cn('tsi-token-label', className)}>
         {hasIcon && <span className="tsi-token-label__icon">{field?.icon}</span>}

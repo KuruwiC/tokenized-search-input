@@ -7,10 +7,8 @@ import { enterTokenIn, type TokenFocusEntry } from '../token-focus';
 import type { KeyHandler, SelectionGuardContext } from './types';
 
 /**
- * Enters a token from the keyboard. A token that cannot be edited, an immutable one,
- * is selected as a whole instead, as a drag would select it. A selected token is deleted by
- * the next Backspace/Delete as any range is, and the clipboard serializer handles
- * copy and cut of it.
+ * Enters a token from the keyboard. While the editor cannot be edited no token receives
+ * focus, and the token is selected as a whole instead, as a drag would select it.
  */
 function handleTokenEntry(
   ctx: SelectionGuardContext,

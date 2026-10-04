@@ -39,6 +39,7 @@ function createBlock(
     focus: vi.fn<(position?: CursorPosition) => void>(),
     handleKey: options.handleKey ?? (() => false),
     entryFocusable: options.entryFocusable ?? true,
+    editsToken: true,
   };
 }
 
@@ -344,13 +345,12 @@ describe('useFocusableBlock', () => {
       registry = focusRegistry;
       const value: TokenFocusContextValue = useMemo(
         () => ({
-          isFocused: true,
+          showsControls: true,
           focusRegistry,
           currentFocusId,
           setCurrentFocusId,
           exitToken: vi.fn(),
           isEditable: true,
-          immutable: false,
         }),
         [focusRegistry, currentFocusId]
       );

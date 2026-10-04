@@ -194,12 +194,12 @@ function FilterTokenValue({
   endContent,
   valueClassName,
 }: FilterTokenValueProps): React.ReactElement {
-  const { exitToken, isFocused: tokenFocused } = useTokenFocusContext();
+  const { exitToken, showsControls } = useTokenFocusContext();
   const { deleteToken } = useTokenConfig();
   const fieldSource = getEditorContext(editor);
 
   // Editing shows the text that maps back to the value; display data never enters the input
-  const effectiveValue = tokenFocused ? editableText : valueDisplayString;
+  const effectiveValue = showsControls ? editableText : valueDisplayString;
 
   // A space is part of the value once the typed text opens a quote
   const allowSpaces = baseAllowSpaces || isInsideQuotes(effectiveValue);

@@ -43,12 +43,12 @@ const tokenFocusKey = new PluginKey<TokenFocusPluginState>('tokenFocus');
 const NO_FOCUS: TokenFocusPluginState = { focused: null };
 
 /**
- * Whether the token `id` can receive focus in `doc`: it has to be in the document, and
- * an immutable token is never edited.
+ * Whether the token `id` can receive focus in `doc`: it has to be in the document. Every
+ * token has a block that can hold focus; which blocks those are follows from the token's
+ * attributes, and an immutable token has only its delete button.
  */
 export function canFocusToken(doc: ProseMirrorNode, id: string): boolean {
-  const found = findTokenById(doc, id);
-  return found !== null && found.node.attrs.immutable !== true;
+  return findTokenById(doc, id) !== null;
 }
 
 /**
@@ -80,7 +80,7 @@ export function createTokenFocusPlugin(): Plugin<TokenFocusPluginState> {
       apply(tr, value): TokenFocusPluginState {
         const next = getTokenFocusMeta(tr) ?? value;
         // The focus names a token, so it holds through any edit until that token leaves
-        // the document or becomes immutable.
+        // the document.
         if (next.focused !== null && tr.docChanged && !canFocusToken(tr.doc, next.focused.id)) {
           return NO_FOCUS;
         }

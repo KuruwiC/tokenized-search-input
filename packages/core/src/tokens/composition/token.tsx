@@ -1,6 +1,5 @@
 import type { Editor } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
-import { TextSelection } from '@tiptap/pm/state';
 import { NodeViewWrapper } from '@tiptap/react';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getEditorContext, resolveField } from '../../extensions/editor-context';
@@ -28,7 +27,7 @@ import { focusEntryBlock, useFocusRegistry } from './focus';
 /** The key code of every key event an input method that is composing text reports. */
 const COMPOSING_KEY_CODE = 229;
 
-/** A press on a token edits it as a whole. */
+/** A press on a token enters it as a whole. */
 const CLICK_ENTRY: TokenFocusEntry = { source: 'click', position: 'end', target: 'all' };
 
 export type ClickTarget =
@@ -37,24 +36,20 @@ export type ClickTarget =
   | 'value'
   | 'delete'
   /** A press the browser or ProseMirror resolves: Shift extending a range, a caret in an input. */
-  | 'text-selection'
-  /** A press on a token that cannot be edited, which selects the token whole. */
-  | 'token-selection';
+  | 'text-selection';
 
 /**
  * Which part of the token a press lands on, `node` being what was pressed. A press on the
  * delete button always deletes. Otherwise a press on a block acts on that block, and
- * anywhere else, token padding or a value that is not being edited, it acts on the value.
+ * anywhere else, token padding or a value that is not being edited, it enters the token.
  */
 export function resolveClickTarget(
   event: Pick<React.MouseEvent, 'shiftKey'>,
-  node: Element,
-  immutable: boolean
+  node: Element
 ): ClickTarget {
   const block = node.closest<HTMLElement>('[data-token-block]')?.dataset.tokenBlock;
   if (block === 'delete') return block;
   if (event.shiftKey || node instanceof HTMLInputElement) return 'text-selection';
-  if (immutable) return 'token-selection';
   return block === 'label' || block === 'operator' ? block : 'value';
 }
 
@@ -70,14 +65,14 @@ function describeToken(editor: Editor, node: ProseMirrorNode): string {
 
 interface TokenAriaLabelState {
   name: string;
-  focused: boolean;
+  editing: boolean;
   editable: boolean;
   immutable: boolean;
 }
 
 /** The accessible name of a token: what it is, then what can be done with it. */
-function tokenAriaLabel({ name, focused, editable, immutable }: TokenAriaLabelState): string {
-  if (focused) return `${name}. Editing.`;
+function tokenAriaLabel({ name, editing, editable, immutable }: TokenAriaLabelState): string {
+  if (editing) return `${name}. Editing.`;
   if (!editable) return `${name}. Disabled.`;
   if (immutable) return `${name}. Immutable. Click X to delete.`;
   return `${name}. Click to edit.`;
@@ -104,6 +99,9 @@ export interface TokenProps {
  * Token container component using Compound Components pattern.
  * Whether the token is focused is derived from the editor's token focus; the token
  * gives DOM focus to the block focus entered at and keeps track of which block holds it.
+ * Which blocks can hold focus follows from the token's attributes: an immutable token has
+ * only its delete button, so it can be focused but never edited. The token is shown as
+ * editing while one of its editable blocks (label, operator, value) holds focus.
  */
 export function Token({
   editor,
@@ -122,6 +120,7 @@ export function Token({
   const id = String(node.attrs.id);
   const entry = useTokenFocus(editor, id);
   const isFocused = entry !== null;
+  const showsControls = isFocused && !immutable;
   const [currentFocusId, setCurrentFocusId] = useState<string | null>(null);
 
   const leave = useCallback(
@@ -159,28 +158,12 @@ export function Token({
     enterToken(editor, id, CLICK_ENTRY);
   }, [editor, id, focusRegistry]);
 
-  const selectToken = useCallback(() => {
-    const pos = getPos();
-    if (typeof pos !== 'number') return;
-    const tokenNode = editor.state.doc.nodeAt(pos);
-    if (!tokenNode) return;
-
-    editor.view.focus();
-    const tr = editor.state.tr;
-    tr.setSelection(TextSelection.create(tr.doc, pos, pos + tokenNode.nodeSize));
-    editor.view.dispatch(tr);
-  }, [editor, getPos]);
-
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      const target = resolveClickTarget(e, e.target as Element, immutable);
+      const target = resolveClickTarget(e, e.target as Element);
       switch (target) {
         case 'text-selection':
-          return;
-        case 'token-selection':
-          e.preventDefault();
-          selectToken();
           return;
         case 'value':
           handleActivate();
@@ -201,7 +184,7 @@ export function Token({
         }
       }
     },
-    [handleActivate, focusRegistry, immutable, selectToken]
+    [handleActivate, focusRegistry]
   );
 
   const handleContainerFocus = useCallback(
@@ -297,16 +280,20 @@ export function Token({
 
   const focusContextValue: TokenFocusContextValue = useMemo(
     () => ({
-      isFocused,
+      showsControls,
       focusRegistry,
       currentFocusId,
       setCurrentFocusId,
       exitToken: handleExitRight,
       isEditable: editor.isEditable,
-      immutable,
     }),
-    [isFocused, focusRegistry, currentFocusId, handleExitRight, editor.isEditable, immutable]
+    [showsControls, focusRegistry, currentFocusId, handleExitRight, editor.isEditable]
   );
+
+  const editing =
+    isFocused &&
+    currentFocusId !== null &&
+    (focusRegistry.get(currentFocusId)?.editsToken ?? false);
 
   const wrapperClasses = 'tsi-token-wrapper';
 
@@ -314,12 +301,12 @@ export function Token({
 
   const computedAriaLabel = tokenAriaLabel({
     name: ariaLabel ?? describeToken(editor, node),
-    focused: isFocused,
+    editing,
     editable: editor.isEditable,
     immutable,
   });
 
-  const dataState = isFocused ? 'editing' : 'idle';
+  const dataState = editing ? 'editing' : 'idle';
 
   const validationMessage = validation ? (validation.message ?? validation.reason) : undefined;
   const validationDescriptionId = validation

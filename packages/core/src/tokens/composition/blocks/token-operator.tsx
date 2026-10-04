@@ -33,10 +33,10 @@ export function TokenOperator({
 }: TokenOperatorProps): React.ReactElement | null {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdown = useTokenDropdown(triggerRef, onOpen);
-  const { isFocused: tokenFocused, isEditable, immutable } = useTokenFocusContext();
+  const { showsControls, isEditable } = useTokenFocusContext();
   // A value outside `operators` can only be repaired by choosing one of them, even when there is one.
   const choosable = operators.length > 1 || !operators.includes(value);
-  const interactive = tokenFocused && choosable && !immutable;
+  const interactive = showsControls && choosable;
 
   const openDropdown = () => dropdown.open(operators.indexOf(value));
 

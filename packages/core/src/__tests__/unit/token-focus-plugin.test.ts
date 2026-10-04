@@ -48,11 +48,11 @@ describe('TokenFocusPlugin', () => {
       expect(getFocusedToken(state)).toBeNull();
     });
 
-    it('refuses an immutable token', () => {
+    it('focuses an immutable token, whose delete button can hold focus', () => {
       const { set, state } = focus(createState(), 'locked');
 
-      expect(set).toBe(false);
-      expect(getFocusedToken(state)).toBeNull();
+      expect(set).toBe(true);
+      expect(getFocusedToken(state)?.id).toBe('locked');
     });
 
     it('clears the focus with null', () => {
@@ -82,13 +82,13 @@ describe('TokenFocusPlugin', () => {
       expect(getFocusedToken(next)?.id).toBe('a');
     });
 
-    it('drops the focus when the focused token becomes immutable', () => {
+    it('keeps the focus when the focused token becomes immutable', () => {
       const { state } = focus(createState(), 'a');
       const next = state.apply(
         state.tr.setNodeMarkup(1, undefined, { ...state.doc.nodeAt(1)?.attrs, immutable: true })
       );
 
-      expect(getFocusedToken(next)).toBeNull();
+      expect(getFocusedToken(next)?.id).toBe('a');
     });
 
     it('keeps the focus on the token when content before it changes', () => {
