@@ -1,4 +1,12 @@
-import { type ReactNode, type RefObject, useId, useLayoutEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '../../../utils/cn';
 import { useScrollActiveIntoView } from '../../../utils/scroll-into-view';
@@ -33,7 +41,7 @@ export interface TokenDropdownState {
   /** The id of the list, for the trigger's aria-controls while the list is shown. */
   listId: string;
   anchorRef: RefObject<HTMLElement | null>;
-  listRef: RefObject<HTMLDivElement>;
+  listRef: Ref<HTMLDivElement>;
   placement: ListPlacement | null;
   open: (activeIndex?: number) => void;
   close: () => void;
@@ -237,7 +245,7 @@ export function TokenDropdown({
 interface DropdownListProps {
   id: string;
   optionId: (index: number) => string;
-  listRef: RefObject<HTMLDivElement>;
+  listRef: Ref<HTMLDivElement>;
   label: string;
   options: readonly TokenDropdownOption[];
   activeIndex: number;

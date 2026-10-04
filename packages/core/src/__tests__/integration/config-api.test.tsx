@@ -10,7 +10,7 @@
  */
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { type ComponentProps, createRef, type RefObject } from 'react';
+import { type ComponentProps, createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   TokenizedSearchInput,
@@ -18,6 +18,9 @@ import {
 } from '../../editor/tokenized-search-input';
 import { Unique } from '../../validation/presets';
 import { basicFields } from '../fixtures/fields';
+
+// What createRef returns: React 19 types widen it to include null, React 18 types do not.
+type InputRef = ReturnType<typeof createRef<TokenizedSearchInputRef>>;
 
 describe('Config API', () => {
   describe('suggestions config', () => {
@@ -153,7 +156,7 @@ describe('Config API', () => {
       return ref;
     }
 
-    function filterSegments(ref: RefObject<TokenizedSearchInputRef>) {
+    function filterSegments(ref: InputRef) {
       return (ref.current?.getSnapshot().segments ?? []).filter((s) => s.type === 'filter');
     }
 

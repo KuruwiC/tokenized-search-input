@@ -1,5 +1,5 @@
 import { act, render, waitFor } from '@testing-library/react';
-import { createRef, type RefObject, useRef } from 'react';
+import { createRef, useRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   type TokenDisplay,
@@ -13,6 +13,9 @@ import {
 import { getApplicableDisplay } from '../../plugins/shared/meta';
 import { getTokenMeta } from '../../plugins/token-meta-plugin';
 import type { FieldDefinition } from '../../types';
+
+// What createRef returns: React 19 types widen it to include null, React 18 types do not.
+type InputRef = ReturnType<typeof createRef<TokenizedSearchInputRef>>;
 
 interface Country {
   value: string;
@@ -39,7 +42,7 @@ function createDeferred<T>() {
 }
 
 /** Each country token's attributes together with the display data of its current value (`null` when unset). */
-function getCountryTokenAttrs(inputRef: RefObject<TokenizedSearchInputRef>) {
+function getCountryTokenAttrs(inputRef: InputRef) {
   const editor = inputRef.current?.getEditor();
   const attrs: Record<string, unknown>[] = [];
   editor?.state.doc.descendants((node) => {
@@ -62,7 +65,7 @@ function getCountryTokenAttrs(inputRef: RefObject<TokenizedSearchInputRef>) {
 
 interface ResolverHarnessProps
   extends Pick<AsyncTokenResolverOptions<Country>, 'resolve' | 'loadingContent' | 'onError'> {
-  inputRef: RefObject<TokenizedSearchInputRef>;
+  inputRef: InputRef;
   defaultValue: string;
 }
 
@@ -176,10 +179,10 @@ describe('useAsyncTokenResolver', () => {
   });
 
   describe('writes through the ref commands', () => {
-    function spyOnCommands(realRef: RefObject<TokenizedSearchInputRef>) {
+    function spyOnCommands(realRef: InputRef) {
       const setTokenDisplay = vi.fn();
       const deleteToken = vi.fn();
-      const wrapped: RefObject<TokenizedSearchInputRef> = {
+      const wrapped: InputRef = {
         get current(): TokenizedSearchInputRef | null {
           const real = realRef.current;
           if (!real) return null;
@@ -207,8 +210,8 @@ describe('useAsyncTokenResolver', () => {
       onNotFound,
       loadingContent,
     }: {
-      realRef: RefObject<TokenizedSearchInputRef>;
-      wrapped: RefObject<TokenizedSearchInputRef>;
+      realRef: InputRef;
+      wrapped: InputRef;
       resolve: AsyncTokenResolverOptions<Country>['resolve'];
       defaultValue: string;
       onNotFound?: AsyncTokenResolverOptions<Country>['onNotFound'];
@@ -307,7 +310,7 @@ describe('useAsyncTokenResolver', () => {
   it('accepts a ref created by useRef(null) typed as nullable', () => {
     function NullableRefHarness() {
       const ref = useRef<TokenizedSearchInputRef>(null);
-      const nullableRef: RefObject<TokenizedSearchInputRef | null> = ref;
+      const nullableRef: InputRef = ref;
       useAsyncTokenResolver({
         inputRef: nullableRef,
         fieldKey: 'country',
