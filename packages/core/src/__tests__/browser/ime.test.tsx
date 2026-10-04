@@ -104,6 +104,17 @@ describe('IME composition', () => {
     await expectCaretBetween(m, { tokensBefore: 0, tokensAfter: 2 });
   });
 
+  it('replaces a backward selection that holds a token with the composed text', async () => {
+    const m = await mountEditor(TWO_TOKENS);
+    await userEvent.click(m.pm, { position: gapBetween(m, 0) });
+    await userEvent.click(m.pm, { position: beforeFirstToken(m), modifiers: ['Shift'] });
+    expect(m.editor.state.selection.empty).toBe(false);
+
+    await compose(m, ['に'], '日');
+    expect(m.value()).toBe('日 owner:is:bob');
+    expect(tokenElements(m)).toHaveLength(1);
+  });
+
   it('leaves the tokens in place while a composition is in progress', async () => {
     const m = await mountEditor(TWO_TOKENS);
     await userEvent.click(m.pm, { position: gapBetween(m, 0) });

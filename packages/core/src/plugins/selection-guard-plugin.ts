@@ -4,8 +4,8 @@
  * Handles the pointer and keyboard input around tokens that the browser would get
  * wrong on its own: a press next to a token puts the caret where it landed or starts a
  * drag selection from there, Shift+click and Shift+Arrow select whole tokens, the
- * arrow keys and Backspace/Delete enter the token beside the caret, and a character typed
- * over a selection that holds a token replaces the selection.
+ * arrow keys and Backspace/Delete enter the token beside the caret, and text entered over
+ * a selection that holds a token replaces the selection.
  */
 
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
@@ -102,21 +102,33 @@ function selectionHoldsToken(state: EditorState): boolean {
 }
 
 /**
- * Types a character over a selection that holds a token, as ProseMirror does for the
- * selections it does not leave to the browser. Typing over a non-editable token is left
- * to the browser otherwise, and WebKit puts the text at the end of the paragraph when
- * the selection runs backwards.
+ * Replaces a selection that holds a token with `text` in one transaction, before the
+ * browser edits it. Browsers do not reliably replace a selection over a non-editable
+ * token: WebKit puts the inserted text at the end of the paragraph when the selection
+ * runs backwards, and Chromium drops a composition that starts over it. Text the browser
+ * hands over at once (a key, an input method commit, an emoji picker, dictation,
+ * autocorrect) replaces the selection; a composition starts from the caret the empty
+ * replacement leaves, and the browser composes there.
+ *
+ * @returns whether the selection held a token and was replaced
  */
-function typeOverTokens(view: EditorView, event: KeyboardEvent): boolean {
+function replaceTokenSelection(view: EditorView, text: string): boolean {
   if (getFocusedToken(view.state) !== null || !selectionHoldsToken(view.state)) return false;
-  const text = String.fromCharCode(event.charCode);
-  if (/[\r\n]/.test(text)) return false;
   const { from, to } = view.state.selection;
-  const insert = () => view.state.tr.insertText(text, from, to).scrollIntoView();
-  if (!view.someProp('handleTextInput', (f) => f(view, from, to, text, insert))) {
-    view.dispatch(insert());
+  const replace = () => view.state.tr.insertText(text, from, to).scrollIntoView();
+  if (text === '' || !view.someProp('handleTextInput', (f) => f(view, from, to, text, replace))) {
+    view.dispatch(replace());
   }
   return true;
+}
+
+/** The text a beforeinput inserts as a whole, or null when it is not such an insertion. */
+function insertedText(event: InputEvent): string | null {
+  if (!event.cancelable || event.isComposing) return null;
+  if (event.inputType !== 'insertText' && event.inputType !== 'insertReplacementText') {
+    return null;
+  }
+  return event.data ?? event.dataTransfer?.getData('text/plain') ?? null;
 }
 
 function setPress(view: EditorView, pressPos: number | null): void {
@@ -263,6 +275,18 @@ export function createSelectionGuardPlugin(
       },
 
       handleDOMEvents: {
+        beforeinput(view, event) {
+          const text = insertedText(event);
+          if (text === null || text === '' || /[\r\n]/.test(text)) return false;
+          if (!replaceTokenSelection(view, text)) return false;
+          event.preventDefault();
+          return true;
+        },
+        compositionstart(view) {
+          // The composition itself stays with ProseMirror and the browser.
+          replaceTokenSelection(view, '');
+          return false;
+        },
         focus(view) {
           const pluginState = selectionGuardKey.getState(view.state);
           const prefocusClickPos = pluginState?.prefocusClickPos ?? null;
@@ -378,8 +402,6 @@ export function createSelectionGuardPlugin(
           return true;
         },
       },
-
-      handleKeyPress: typeOverTokens,
 
       handleKeyDown(view, event) {
         if (event.isComposing) return false;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { userEvent } from 'vitest/browser';
+import { commands, userEvent } from 'vitest/browser';
 import {
   afterLastToken,
   beforeFirstToken,
@@ -140,6 +140,17 @@ export function registerPointerCases(): void {
 
       await userEvent.keyboard('x');
       expect(m.value()).toBe('x owner:is:bob');
+    });
+
+    it('replaces a backward Shift+click selection with text inserted in one go', async () => {
+      const m = await mountEditor(TWO_TOKENS);
+      await userEvent.click(m.pm, { position: gapBetween(m, 0) });
+      await userEvent.click(m.pm, { position: beforeFirstToken(m), modifiers: ['Shift'] });
+      expectRangeOverTokens(m, 1);
+
+      // An input method commit, an emoji picker or dictation: a beforeinput insertText.
+      await commands.insertText('あ');
+      expect(m.value()).toBe('あ owner:is:bob');
     });
 
     it('selects every token with Shift+click from the start to the end', async () => {
