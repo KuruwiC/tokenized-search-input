@@ -4,6 +4,11 @@
  * positions gets a zero-width widget that gives the caret something to stand beside. The
  * widgets have no document positions; the visual spacing between tokens comes from CSS.
  *
+ * Between two non-editable inline boxes, Chromium and WebKit paint the caret at the start
+ * edge of the box after it. The widget is therefore placed after the caret, so that the
+ * caret is painted at the widget, in the middle of the spacing, rather than at the edge
+ * of the token that follows, whose margin is part of that spacing.
+ *
  * The widgets are also what a point between two tokens hit-tests to: each one's hit area
  * (a CSS pseudo-element) covers the spacing on both sides of it, and a press on it is
  * resolved to the widget's position (see {@link gapPosAtCoords}).
@@ -86,7 +91,7 @@ function buildGapDecorations(doc: ProseMirrorNode): DecorationSet {
   return DecorationSet.create(
     doc,
     findTokenGaps(doc).map((pos) =>
-      Decoration.widget(pos, renderGap, { side: -1, key: `gap:${pos}` })
+      Decoration.widget(pos, renderGap, { side: 1, key: `gap:${pos}` })
     )
   );
 }

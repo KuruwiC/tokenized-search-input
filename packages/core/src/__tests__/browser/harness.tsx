@@ -156,12 +156,73 @@ async function movePointerOffEditor(): Promise<void> {
   });
 }
 
+interface PaintedRect {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+async function decode(base64: string): Promise<ImageData> {
+  const blob = await (await fetch(`data:image/png;base64,${base64}`)).blob();
+  const bitmap = await createImageBitmap(blob);
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('no 2d context to decode a frame');
+  context.drawImage(bitmap, 0, 0);
+  return context.getImageData(0, 0, bitmap.width, bitmap.height);
+}
+
+/**
+ * How far a channel has to change for a pixel to count as painted. Chromium re-rasterises
+ * anti-aliased edges elsewhere in the editor by a level or two between frames.
+ */
+const PAINT_DELTA = 48;
+
+/** The client rect of the pixels that clearly differ between two frames, or null. */
+async function paintedRect(
+  element: HTMLElement,
+  before: string,
+  after: string
+): Promise<PaintedRect | null> {
+  const [a, b] = await Promise.all([decode(before), decode(after)]);
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (let y = 0; y < a.height; y += 1) {
+    for (let x = 0; x < a.width; x += 1) {
+      const i = (y * a.width + x) * 4;
+      let delta = 0;
+      for (let channel = i; channel < i + 3; channel += 1) {
+        delta = Math.max(delta, Math.abs((a.data[channel] ?? 0) - (b.data[channel] ?? 0)));
+      }
+      if (delta >= PAINT_DELTA) {
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+  if (maxX < 0) return null;
+  const box = element.getBoundingClientRect();
+  const scale = a.width / box.width;
+  return {
+    left: box.left + minX / scale,
+    right: box.left + (maxX + 1) / scale,
+    top: box.top + minY / scale,
+    bottom: box.top + (maxY + 1) / scale,
+  };
+}
+
 /**
  * `Range.getClientRects()` is empty for a caret at an element boundary even though the
  * browser draws it, so this compares a frame with `caret-color: transparent` against
  * frames with an opaque caret. The caret blinks, so frames are sampled until one differs.
+ * Returns where the caret was painted.
  */
-export async function expectCaretPainted(m: MountedEditor): Promise<void> {
+export async function expectCaretPainted(m: MountedEditor): Promise<PaintedRect> {
   await movePointerOffEditor();
   await waitForAnimations();
   expect(document.activeElement).toBe(m.pm);
@@ -172,9 +233,11 @@ export async function expectCaretPainted(m: MountedEditor): Promise<void> {
     const hidden = await frame(m.pm);
     expect(await frame(m.pm), 'baseline frame is stable').toBe(hidden);
     m.pm.style.caretColor = 'red';
-    await vi.waitFor(
+    return await vi.waitFor(
       async () => {
-        expect(await frame(m.pm)).not.toBe(hidden);
+        const painted = await paintedRect(m.pm, hidden, await frame(m.pm));
+        if (painted === null) throw new Error('no caret is painted');
+        return painted;
       },
       { timeout: 2500, interval: 80 }
     );
@@ -195,7 +258,44 @@ export async function expectCaretBetween(
   const caret = caretLocation(m);
   expect(caret.collapsed).toBe(true);
   expect({ tokensBefore: caret.tokensBefore, tokensAfter: caret.tokensAfter }).toEqual(expected);
-  await expectCaretPainted(m);
+  const painted = await expectCaretPainted(m);
+  expectPaintedBesideTokens(m, painted, expected.tokensBefore);
+}
+
+const sameRow = (a: PaintedRect, b: DOMRect) => a.top < b.bottom && a.bottom > b.top;
+
+/**
+ * The caret is painted on no token, and on the row of a neighbouring token it is painted
+ * on that token's side: after the token before it, before the token after it.
+ */
+function expectPaintedBesideTokens(
+  m: MountedEditor,
+  painted: PaintedRect,
+  tokensBefore: number
+): void {
+  const rects = tokenElements(m).map((token) => token.getBoundingClientRect());
+  const show = (rect: PaintedRect | DOMRect) =>
+    `[${rect.left.toFixed(1)}..${rect.right.toFixed(1)}] x [${rect.top.toFixed(1)}..${rect.bottom.toFixed(1)}]`;
+  const where = `caret painted at ${show(painted)}; tokens at ${rects.map(show).join(', ')}`;
+  rects.forEach((rect, index) => {
+    const overlaps =
+      sameRow(painted, rect) && painted.left < rect.right && painted.right > rect.left;
+    expect(overlaps, `caret overlaps token ${index}: ${where}`).toBe(false);
+  });
+  const before = rects[tokensBefore - 1];
+  if (before && sameRow(painted, before)) {
+    expect(
+      painted.left,
+      `caret is not after token ${tokensBefore - 1}: ${where}`
+    ).toBeGreaterThanOrEqual(before.right);
+  }
+  const after = rects[tokensBefore];
+  if (after && sameRow(painted, after)) {
+    expect(
+      painted.right,
+      `caret is not before token ${tokensBefore}: ${where}`
+    ).toBeLessThanOrEqual(after.left);
+  }
 }
 
 /** Arrow keys step through a token's own controls before leaving it, so crossing takes several presses. */

@@ -108,10 +108,11 @@ describe('token gap decorations', () => {
     const next = state.apply(state.tr.insertText('x', 2).setMeta('composition', 1));
 
     // Rebuilt, the gap between the tokens would be gone; mapped, the same widgets stay,
-    // the one beside the text being composed included.
+    // the one beside the text being composed included. That one comes after the caret, so
+    // it stays after the composed text, where the browser inserted the text before it.
     expect(gapsOf(next)).toEqual([
       { pos: 1, key: 'gap:1' },
-      { pos: 2, key: 'gap:2' },
+      { pos: 3, key: 'gap:2' },
       { pos: 4, key: 'gap:3' },
     ]);
   });

@@ -89,6 +89,26 @@ export function registerCaretCases(): void {
       expect(m.value()).toBe('head status:is:open mid owner:is:bob');
     });
 
+    it('leaves a token being edited with ArrowLeft into the gap before it', async () => {
+      const m = await mountEditor(TWO_TOKENS);
+      const value = tokenElements(m)[1]?.querySelector('.tsi-token-value')?.getBoundingClientRect();
+      const box = m.pm.getBoundingClientRect();
+      if (!value) throw new Error('no token value');
+      await userEvent.click(m.pm, {
+        position: {
+          x: value.left + value.width / 2 - box.left,
+          y: value.top + value.height / 2 - box.top,
+        },
+      });
+      expect(editingTokenIndex(m)).toBe(1);
+
+      await pressUntil('{ArrowLeft}', caretIsBetween(m, 1));
+      expect(editingTokenIndex(m)).toBe(-1);
+      await expectCaretBetween(m, { tokensBefore: 1, tokensAfter: 1 });
+      await userEvent.keyboard('mid');
+      expect(m.value()).toBe('status:is:open mid owner:is:bob');
+    });
+
     it('crosses tokens with ArrowRight and types at each stop', async () => {
       const m = await mountEditor(TWO_TOKENS);
       await userEvent.click(m.pm, { position: beforeFirstToken(m) });
