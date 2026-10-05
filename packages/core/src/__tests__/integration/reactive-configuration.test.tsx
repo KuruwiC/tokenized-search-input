@@ -9,7 +9,7 @@ import {
 import { isContextUpdated } from '../../plugins/shared/meta';
 import type { FieldDefinition } from '../../types';
 import { extendedFields } from '../fixtures';
-import { getInternalEditor } from '../helpers/get-editor';
+import { getInternalEditor, waitForEditor } from '../helpers/get-editor';
 
 afterEach(() => cleanup());
 
@@ -258,7 +258,7 @@ describe('reactive configuration', () => {
       />
     );
     const view = render(element('plain'));
-    await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+    await waitForEditor(ref);
     const freeTextCount = () =>
       ref.current?.getSnapshot().segments.filter((segment) => segment.type === 'freeText').length ??
       0;

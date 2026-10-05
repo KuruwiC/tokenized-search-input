@@ -15,7 +15,7 @@ import {
 import type { ValidationConfig, ValidationRule } from '../../types';
 import { Unique } from '../../validation/presets';
 import { basicFields } from '../fixtures';
-import { getInternalEditor } from '../helpers/get-editor';
+import { getInternalEditor, waitForEditor } from '../helpers/get-editor';
 
 const testFields = basicFields;
 
@@ -153,9 +153,7 @@ describe('DocumentRepairExtension - Integration Tests', () => {
     it('keeps an empty token the user is still in when an edit moves it, and removes the one left', async () => {
       const ref = createRef<TokenizedSearchInputRef>();
       render(<TokenizedSearchInput ref={ref} fields={testFields} />);
-      await waitFor(() => expect(getInternalEditor(ref.current)).not.toBeNull());
-      const editor = getInternalEditor(ref.current);
-      if (!editor) return;
+      const editor = await waitForEditor(ref);
       const empty = (id: string) => ({
         type: 'filterToken',
         attrs: { id, key: 'status', operator: 'is', value: '' },
@@ -240,9 +238,7 @@ describe('DocumentRepairExtension - Integration Tests', () => {
     async function mountWithEmptyToken(): Promise<Editor> {
       const ref = createRef<TokenizedSearchInputRef>();
       render(<TokenizedSearchInput ref={ref} fields={testFields} validation={validation} />);
-      await waitFor(() => expect(getInternalEditor(ref.current)).not.toBeNull());
-      const editor = getInternalEditor(ref.current);
-      if (!editor) throw new Error('editor is unavailable');
+      const editor = await waitForEditor(ref);
       act(() => {
         editor.commands.setContent({
           type: 'doc',
@@ -317,9 +313,7 @@ describe('DocumentRepairExtension - Integration Tests', () => {
           validation={{ rules: [deleteDoomed] }}
         />
       );
-      await waitFor(() => expect(getInternalEditor(ref.current)).not.toBeNull());
-      const editor = getInternalEditor(ref.current);
-      if (!editor) throw new Error('editor is unavailable');
+      const editor = await waitForEditor(ref);
       const existing = editor.state.doc.nodeAt(1);
       if (!existing) throw new Error('no token');
 

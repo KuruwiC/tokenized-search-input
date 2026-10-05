@@ -1,4 +1,4 @@
-import { render, waitFor, within } from '@testing-library/react';
+import { render, within } from '@testing-library/react';
 import type userEvent from '@testing-library/user-event';
 import type { Editor } from '@tiptap/core';
 import { createRef, type RefObject } from 'react';
@@ -10,6 +10,7 @@ import {
 import { getFocusedToken } from '../../plugins/token-focus';
 import type { FieldDefinition } from '../../types';
 import { extendedFields } from '../fixtures';
+import { waitForEditor } from './get-editor';
 
 export async function renderInput(
   defaultValue: string,
@@ -24,9 +25,7 @@ export async function renderInput(
       defaultValue={defaultValue}
     />
   );
-  await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-  const editor = ref.current?.getEditor();
-  if (!editor) throw new Error('editor not ready');
+  const editor = await waitForEditor(ref);
   return { ref: ref as RefObject<TokenizedSearchInputRef>, editor };
 }
 

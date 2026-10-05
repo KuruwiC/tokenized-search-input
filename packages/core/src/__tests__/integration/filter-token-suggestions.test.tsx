@@ -13,6 +13,8 @@ import {
 } from '../../editor/tokenized-search-input';
 import { getSuggestionState } from '../../plugins/suggestion';
 import type { FieldDefinition } from '../../types';
+import { waitForEditor } from '../helpers/get-editor';
+import { filterTokens } from '../helpers/token-queries';
 
 const enumFields: FieldDefinition[] = [
   {
@@ -167,9 +169,7 @@ describe('FilterTokenView - Suggestion Updates', () => {
       const user = userEvent.setup();
       const ref = createRef<TokenizedSearchInputRef>();
       render(<TokenizedSearchInput ref={ref} fields={statusFields} defaultValue={defaultValue} />);
-      await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-      const editor = ref.current?.getEditor();
-      if (!editor) throw new Error('editor not created');
+      const editor = await waitForEditor(ref);
       await user.click(screen.getByRole('group', { name: /Filter: status/i }));
       await screen.findByRole('listbox');
       return { user, ref, editor };
@@ -199,9 +199,7 @@ describe('FilterTokenView - Suggestion Updates', () => {
 
     it('shows the suggestions for a value set through the ref', async () => {
       const { ref, editor } = await openStatusSuggestions('status:is:p');
-      const [token] = (ref.current?.getSnapshot().segments ?? []).filter(
-        (segment) => segment.type === 'filter'
-      );
+      const [token] = filterTokens(ref);
       if (token?.type !== 'filter') throw new Error('filter token not found');
 
       act(() => {

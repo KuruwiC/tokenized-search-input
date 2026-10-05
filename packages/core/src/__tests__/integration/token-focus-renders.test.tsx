@@ -10,8 +10,9 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
-import type { QuerySnapshotFilterToken } from '../../types';
 import { extendedFields } from '../fixtures';
+import { waitForEditor } from '../helpers/get-editor';
+import { filterTokens } from '../helpers/token-queries';
 
 const renderedTokenIds = vi.hoisted(() => [] as string[]);
 
@@ -43,10 +44,8 @@ describe('Token focus renders', () => {
         defaultValue="status:is:active priority:is:high assignee:is:john"
       />
     );
-    await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-    const [status, priority] = (ref.current?.getSnapshot().segments ?? []).filter(
-      (segment): segment is QuerySnapshotFilterToken => segment.type === 'filter'
-    );
+    await waitForEditor(ref);
+    const [status, priority] = filterTokens(ref);
 
     await user.click(screen.getByRole('group', { name: /status/i }));
     await waitFor(() => expect(document.activeElement).toBe(valueInputOf(/status/i)));

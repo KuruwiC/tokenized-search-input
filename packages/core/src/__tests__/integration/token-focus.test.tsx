@@ -14,8 +14,10 @@ import {
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
 import { getFocusedToken, getTokenFocusMeta } from '../../plugins/token-focus';
-import type { FieldDefinition, QuerySnapshotFilterToken } from '../../types';
+import type { FieldDefinition } from '../../types';
 import { extendedFields } from '../fixtures';
+import { waitForEditor } from '../helpers/get-editor';
+import { filterTokens } from '../helpers/token-queries';
 
 afterEach(() => {
   cleanup();
@@ -26,7 +28,7 @@ async function renderInput(defaultValue: string, fields: FieldDefinition[] = ext
   const { container } = render(
     <TokenizedSearchInput ref={ref} fields={fields} defaultValue={defaultValue} />
   );
-  await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+  await waitForEditor(ref);
   return { ref, container };
 }
 
@@ -34,12 +36,6 @@ function getEditor(ref: RefObject<TokenizedSearchInputRef | null>): Editor {
   const editor = ref.current?.getEditor();
   if (!editor) throw new Error('editor not ready');
   return editor;
-}
-
-function filterTokenIds(ref: RefObject<TokenizedSearchInputRef>): string[] {
-  return (ref.current?.getSnapshot().segments ?? [])
-    .filter((segment): segment is QuerySnapshotFilterToken => segment.type === 'filter')
-    .map((segment) => segment.id);
 }
 
 function tokenGroup(name: RegExp): HTMLElement {
@@ -93,7 +89,7 @@ describe('Token focus', () => {
     it('puts the caret at the start of the value when asked to focus at the start', async () => {
       const { ref } = await renderInput('status:is:active');
       const editor = getEditor(ref);
-      const [id] = filterTokenIds(ref);
+      const [id] = filterTokens(ref).map((token) => token.id);
 
       act(() => {
         editor.commands.focusFilterToken(id, 'start');
@@ -111,7 +107,7 @@ describe('Token focus', () => {
       const user = userEvent.setup();
       const { ref, container } = await renderInput('status:is:active');
       const editor = getEditor(ref);
-      const [id] = filterTokenIds(ref);
+      const [id] = filterTokens(ref).map((token) => token.id);
       const group = tokenGroup(/status/i);
       const state = () => container.querySelector('.tsi-token')?.getAttribute('data-state');
       const deleteButton = () => group.querySelector('[data-token-block="delete"]');
@@ -155,9 +151,9 @@ describe('Token focus', () => {
           <TokenizedSearchInput ref={ref} fields={extendedFields} defaultValue="status:is:active" />
         </Profiler>
       );
-      await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+      await waitForEditor(ref);
       const editor = getEditor(ref);
-      const [id] = filterTokenIds(ref);
+      const [id] = filterTokens(ref).map((token) => token.id);
       commits.length = 0;
 
       act(() => {
@@ -243,7 +239,7 @@ describe('Token focus', () => {
 
       await user.keyboard(' ');
 
-      expect(filterTokenIds(ref)).toHaveLength(0);
+      expect(filterTokens(ref).map((token) => token.id)).toHaveLength(0);
     });
 
     it('moves on past an immutable token with the next arrow press', async () => {
@@ -273,7 +269,7 @@ describe('Token focus', () => {
 
       await user.keyboard(' ');
 
-      expect(filterTokenIds(ref)).toHaveLength(0);
+      expect(filterTokens(ref).map((token) => token.id)).toHaveLength(0);
     });
 
     it('keeps the value of an immutable token when focus leaves it', async () => {

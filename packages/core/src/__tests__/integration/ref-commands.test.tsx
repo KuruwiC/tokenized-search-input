@@ -1,4 +1,4 @@
-import { act, render, waitFor } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 import { createRef, type RefObject } from 'react';
 import { describe, expect, it } from 'vitest';
 import {
@@ -8,6 +8,7 @@ import {
 import { getFocusedToken } from '../../plugins/token-focus';
 import { getTokenMeta } from '../../plugins/token-meta-plugin';
 import { extendedFields } from '../fixtures';
+import { waitForEditor } from '../helpers/get-editor';
 import { filterTokens } from '../helpers/token-queries';
 
 const DEFAULT_VALUE = 'status:is:active assignee:is:john';
@@ -15,7 +16,7 @@ const DEFAULT_VALUE = 'status:is:active assignee:is:john';
 async function renderInput(defaultValue = DEFAULT_VALUE) {
   const ref = createRef<TokenizedSearchInputRef>();
   render(<TokenizedSearchInput ref={ref} fields={extendedFields} defaultValue={defaultValue} />);
-  await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+  await waitForEditor(ref);
   return ref as RefObject<TokenizedSearchInputRef>;
 }
 

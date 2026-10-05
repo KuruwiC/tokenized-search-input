@@ -11,6 +11,7 @@ import type { QuerySnapshot, QuerySnapshotFilterToken, ValidationRule } from '..
 import { getFilterTokens, getPlainText } from '../../utils/query-snapshot';
 import { Unique } from '../../validation/presets';
 import { basicFields, extendedFields } from '../fixtures';
+import { waitForEditor } from '../helpers/get-editor';
 
 function filterValues(snapshot: QuerySnapshot | undefined): string[] {
   return (snapshot?.segments ?? [])
@@ -251,8 +252,7 @@ describe('lifecycle callbacks', () => {
     it('replaces the content and requests validation in one transaction', async () => {
       const ref = createRef<TokenizedSearchInputRef>();
       render(<TokenizedSearchInput ref={ref} fields={extendedFields} />);
-      await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-      const editor = ref.current?.getEditor();
+      const editor = await waitForEditor(ref);
       const count = vi.fn();
       editor?.on('transaction', count);
 

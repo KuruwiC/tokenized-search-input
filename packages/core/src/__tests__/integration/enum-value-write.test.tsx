@@ -10,9 +10,11 @@ import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
-import type { FieldDefinition, QuerySnapshotFilterToken } from '../../types';
+import type { FieldDefinition } from '../../types';
 import { enumResolvers } from '../../utils/enum-value';
 import { RequireEnum } from '../../validation/presets';
+import { waitForEditor } from '../helpers/get-editor';
+import { filterTokens } from '../helpers/token-queries';
 
 afterEach(() => {
   cleanup();
@@ -36,18 +38,12 @@ async function renderStatus(
 ): Promise<RefObject<TokenizedSearchInputRef>> {
   const ref = createRef<TokenizedSearchInputRef>();
   render(<TokenizedSearchInput ref={ref} fields={[field]} defaultValue={defaultValue} />);
-  await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+  await waitForEditor(ref);
   return ref as RefObject<TokenizedSearchInputRef>;
 }
 
-function tokens(ref: RefObject<TokenizedSearchInputRef>): QuerySnapshotFilterToken[] {
-  return (ref.current?.getSnapshot().segments ?? []).filter(
-    (segment): segment is QuerySnapshotFilterToken => segment.type === 'filter'
-  );
-}
-
 async function updateValue(ref: RefObject<TokenizedSearchInputRef>, value: string) {
-  const [token] = tokens(ref);
+  const [token] = filterTokens(ref);
   act(() => {
     ref.current?.updateToken(token.id, { value });
   });
@@ -58,19 +54,19 @@ describe('values written for an enum field with options', () => {
   it('stores the option value for a value in another case', async () => {
     const ref = await renderStatus(statusField, 'status:is:active');
     const id = await updateValue(ref, 'INACTIVE');
-    expect(tokens(ref)[0]).toMatchObject({ id, value: 'inactive' });
+    expect(filterTokens(ref)[0]).toMatchObject({ id, value: 'inactive' });
   });
 
   it('stores the option value for the label of an option', async () => {
     const ref = await renderStatus(statusField, 'status:is:active');
     await updateValue(ref, 'pending review');
-    expect(tokens(ref)[0].value).toBe('pending');
+    expect(filterTokens(ref)[0].value).toBe('pending');
   });
 
   it('keeps a value that names no option as it was written', async () => {
     const ref = await renderStatus(statusField, 'status:is:active');
     await updateValue(ref, 'Archived');
-    expect(tokens(ref)[0].value).toBe('Archived');
+    expect(filterTokens(ref)[0].value).toBe('Archived');
   });
 
   it('uses the resolver of the field', async () => {
@@ -79,7 +75,7 @@ describe('values written for an enum field with options', () => {
       'status:is:active'
     );
     await updateValue(ref, 'INACTIVE');
-    expect(tokens(ref)[0].value).toBe('INACTIVE');
+    expect(filterTokens(ref)[0].value).toBe('INACTIVE');
   });
 
   it('leaves the value of an enum field without static options as it was written', async () => {
@@ -91,7 +87,7 @@ describe('values written for an enum field with options', () => {
     };
     const ref = await renderStatus(dynamic, 'status:is:active');
     await updateValue(ref, 'INACTIVE');
-    expect(tokens(ref)[0].value).toBe('INACTIVE');
+    expect(filterTokens(ref)[0].value).toBe('INACTIVE');
   });
 
   it('stores the option value for a value typed as text', async () => {
@@ -101,7 +97,7 @@ describe('values written for an enum field with options', () => {
     await user.click(combobox);
     await user.type(combobox, 'status:');
     await user.keyboard('INACTIVE');
-    await waitFor(() => expect(tokens(ref).map((t) => t.value)).toEqual(['inactive']));
+    await waitFor(() => expect(filterTokens(ref).map((t) => t.value)).toEqual(['inactive']));
   });
 });
 
@@ -115,8 +111,7 @@ describe('values of tokens created for an enum field with options', () => {
         validation={{ rules: [RequireEnum.rule({ onInvalid: 'reject' })] }}
       />
     );
-    await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-    const editor = ref.current?.getEditor();
+    const editor = await waitForEditor(ref);
 
     act(() => {
       editor
@@ -126,9 +121,11 @@ describe('values of tokens created for an enum field with options', () => {
         .run();
     });
 
-    await waitFor(() => expect(tokens(ref as RefObject<TokenizedSearchInputRef>).length).toBe(1));
+    await waitFor(() =>
+      expect(filterTokens(ref as RefObject<TokenizedSearchInputRef>).length).toBe(1)
+    );
     await new Promise((resolve) => setTimeout(resolve, 30));
-    expect(tokens(ref as RefObject<TokenizedSearchInputRef>).map((t) => t.value)).toEqual([
+    expect(filterTokens(ref as RefObject<TokenizedSearchInputRef>).map((t) => t.value)).toEqual([
       'active',
     ]);
   });

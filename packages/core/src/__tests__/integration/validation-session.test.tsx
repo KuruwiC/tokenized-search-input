@@ -19,11 +19,11 @@ import { enterTokenIn, leaveFocusedTokenIn, programEntry } from '../../plugins/t
 import { getTokenMeta } from '../../plugins/token-meta-plugin';
 import { applyTokenAction } from '../../tokens/filter-token/token-actions';
 import type { FieldDefinition, ValidationRule } from '../../types';
-import { findTokenById } from '../../utils/find-token';
 import { generateTokenId } from '../../utils/token-id';
 import { MaxCount, Unique } from '../../validation/presets';
 import { priorityField, statusField } from '../fixtures/fields';
-import { filterTokens } from '../helpers/token-queries';
+import { waitForEditor } from '../helpers/get-editor';
+import { filterTokens, tokenPos } from '../helpers/token-queries';
 
 afterEach(() => {
   cleanup();
@@ -47,19 +47,11 @@ async function renderEditor(
       {...props}
     />
   );
-  await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-  const editor = ref.current?.getEditor();
-  if (!editor) throw new Error('editor not created');
+  const editor = await waitForEditor(ref);
   return { ref: ref as RefObject<TokenizedSearchInputRef>, editor };
 }
 
 const values = (ref: RefObject<TokenizedSearchInputRef>) => filterTokens(ref).map((t) => t.value);
-
-function tokenPos(editor: Editor, id: string): number {
-  const found = findTokenById(editor.state.doc, id);
-  if (!found) throw new Error(`token ${id} not found`);
-  return found.pos;
-}
 
 function lastTokenId(editor: Editor): string {
   let id = '';
@@ -205,9 +197,7 @@ describe('changing the validation prop', () => {
         }}
       />
     );
-    await waitFor(() => expect(hostRef.current?.getEditor()).not.toBeNull());
-    const editor = hostRef.current?.getEditor();
-    if (!editor) throw new Error('editor not created');
+    const editor = await waitForEditor(hostRef);
     const ref = hostRef as RefObject<TokenizedSearchInputRef>;
 
     typeStatusAndLeave(editor, ['inactive']);

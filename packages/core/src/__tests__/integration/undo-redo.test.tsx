@@ -14,7 +14,7 @@ import {
 } from '../../editor/tokenized-search-input';
 import type { FieldDefinition } from '../../types';
 import { extendedFields } from '../fixtures';
-import { getInternalEditor } from '../helpers/get-editor';
+import { getInternalEditor, waitForEditor } from '../helpers/get-editor';
 
 afterEach(() => {
   cleanup();
@@ -103,9 +103,7 @@ describe('Undo/Redo', () => {
     async function renderTagInput(defaultValue?: string) {
       const ref = createRef<TokenizedSearchInputRef>();
       render(<TokenizedSearchInput ref={ref} fields={tagFields} defaultValue={defaultValue} />);
-      await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-      const editor = getInternalEditor(ref.current);
-      if (!editor) throw new Error('editor not created');
+      const editor = await waitForEditor(ref);
       return { ref, editor };
     }
 
@@ -161,9 +159,7 @@ describe('Undo/Redo', () => {
           defaultValue="hello"
         />
       );
-      await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-      const editor = getInternalEditor(ref.current);
-      if (!editor) throw new Error('editor not created');
+      const editor = await waitForEditor(ref);
       const freeText = () => screen.getByRole('group', { name: /Free text/i });
 
       await user.click(await screen.findByRole('group', { name: /Free text/i }));

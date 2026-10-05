@@ -15,7 +15,7 @@ import {
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
 import { extendedFields } from '../fixtures';
-import { getInternalEditor } from '../helpers/get-editor';
+import { getInternalEditor, waitForEditor } from '../helpers/get-editor';
 
 const testFields = extendedFields;
 
@@ -268,9 +268,7 @@ describe('Auto-tokenize - Integration Tests', () => {
           defaultValue={defaultValue}
         />
       );
-      await waitFor(() => expect(getInternalEditor(ref.current)).not.toBeNull());
-      const editor = getInternalEditor(ref.current);
-      if (!editor) throw new Error('editor is unavailable');
+      const editor = await waitForEditor(ref);
       return { ref, editor };
     }
 
@@ -310,9 +308,7 @@ describe('Auto-tokenize - Integration Tests', () => {
     it.each(['plain', 'tokenize'] as const)('stays text on Space in %s mode', async (mode) => {
       const ref = createRef<TokenizedSearchInputRef>();
       render(<TokenizedSearchInput ref={ref} fields={testFields} freeTextMode={mode} />);
-      await waitFor(() => expect(getInternalEditor(ref.current)).not.toBeNull());
-      const editor = getInternalEditor(ref.current);
-      if (!editor) return;
+      const editor = await waitForEditor(ref);
       for (const char of 'status:is:') {
         editor.view.dispatch(editor.state.tr.insertText(char));
       }

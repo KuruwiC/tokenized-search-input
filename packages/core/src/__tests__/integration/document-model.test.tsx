@@ -25,7 +25,8 @@ import type {
   QuerySnapshotFreeTextToken,
   ValidationRule,
 } from '../../types';
-import { findTokenById } from '../../utils/find-token';
+import { waitForEditor } from '../helpers/get-editor';
+import { tokenPos } from '../helpers/token-queries';
 
 afterEach(() => {
   cleanup();
@@ -55,9 +56,7 @@ async function renderWithRef(
 ): Promise<{ ref: RefObject<TokenizedSearchInputRef>; editor: Editor }> {
   const ref = createRef<TokenizedSearchInputRef>();
   render(<TokenizedSearchInput ref={ref} fields={fields} {...props} />);
-  await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-  const editor = ref.current?.getEditor();
-  if (!editor) throw new Error('editor not created');
+  const editor = await waitForEditor(ref);
   return { ref: ref as RefObject<TokenizedSearchInputRef>, editor };
 }
 
@@ -82,12 +81,6 @@ function pasteHTML(editor: Editor, html: string): void {
     editor.commands.focus('end');
     editor.view.pasteHTML(html, new Event('paste') as ClipboardEvent);
   });
-}
-
-function tokenPos(editor: Editor, id: string): number {
-  const found = findTokenById(editor.state.doc, id);
-  if (!found) throw new Error(`token ${id} not found`);
-  return found.pos;
 }
 
 function containsReactElement(value: unknown): boolean {
@@ -387,7 +380,7 @@ describe('Document model', () => {
           defaultValue="country:is:jp"
         />
       );
-      await waitFor(() => expect(inputRef.current?.getEditor()).not.toBeNull());
+      await waitForEditor(inputRef);
       await waitFor(() => expect(screen.getByText('Japan')).toBeInTheDocument());
       const editor = inputRef.current?.getEditor();
       if (!editor) throw new Error('editor not created');
@@ -424,7 +417,7 @@ describe('Document model', () => {
           defaultValue="country:is:jp"
         />
       );
-      await waitFor(() => expect(inputRef.current?.getEditor()).not.toBeNull());
+      await waitForEditor(inputRef);
       await waitFor(() => expect(screen.getByText('Japan')).toBeInTheDocument());
       const editor = inputRef.current?.getEditor();
       if (!editor) throw new Error('editor not created');
@@ -523,9 +516,7 @@ describe('Document model', () => {
           onTokensChange={onTokensChange}
         />
       );
-      await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-      const editor = ref.current?.getEditor();
-      if (!editor) throw new Error('editor not created');
+      const editor = await waitForEditor(ref);
       const [token] = filterSegments(ref.current?.getSnapshot() ?? { segments: [], text: '' });
       act(() => {
         ref.current?.setTokenDisplay(token.id, { displayValue: 'Shown active' });
@@ -561,7 +552,7 @@ describe('Document model', () => {
         />
       );
       const { rerender } = render(element('tokenize'));
-      await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+      await waitForEditor(ref);
       const read = () => ref.current?.getSnapshot() ?? { segments: [], text: '' };
       expect(freeTextSegments(read())).toHaveLength(2);
       const [token] = filterSegments(read());
@@ -579,7 +570,7 @@ describe('Document model', () => {
         <TokenizedSearchInput ref={ref} fields={statusFields} defaultValue="status:is:active" />
       );
       const { rerender } = render(element());
-      await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+      await waitForEditor(ref);
       const [token] = filterSegments(ref.current?.getSnapshot() ?? { segments: [], text: '' });
       const destroyed = ref.current?.getEditor();
       destroyed?.destroy();
@@ -609,7 +600,7 @@ describe('Document model', () => {
         />
       );
       const { rerender } = render(element());
-      await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
+      await waitForEditor(ref);
       const destroyed = ref.current?.getEditor();
       destroyed?.destroy();
 

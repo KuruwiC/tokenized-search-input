@@ -2,7 +2,7 @@
  * Integration tests for the accessible name of a token.
  */
 
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { cleanup, render } from '@testing-library/react';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -11,6 +11,7 @@ import {
 } from '../../editor/tokenized-search-input';
 import { Token } from '../../tokens/composition/token';
 import { extendedFields } from '../fixtures';
+import { waitForEditor } from '../helpers/get-editor';
 
 afterEach(() => {
   cleanup();
@@ -22,8 +23,7 @@ describe('Token aria-label', () => {
     render(
       <TokenizedSearchInput ref={ref} fields={extendedFields} defaultValue="status:is:active" />
     );
-    await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-    const editor = ref.current?.getEditor();
+    const editor = await waitForEditor(ref);
     const node = editor?.state.doc.firstChild?.firstChild;
     if (!editor || !node) throw new Error('token not found');
 
@@ -43,8 +43,7 @@ describe('Token aria-label', () => {
     render(
       <TokenizedSearchInput ref={ref} fields={extendedFields} defaultValue="status:is:active" />
     );
-    await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-    const editor = ref.current?.getEditor();
+    const editor = await waitForEditor(ref);
     const node = editor?.state.doc.firstChild?.firstChild;
     if (!editor || !node) throw new Error('token not found');
 

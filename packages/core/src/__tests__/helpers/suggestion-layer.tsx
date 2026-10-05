@@ -1,12 +1,13 @@
-import { render, waitFor } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
 import { createRef, type RefObject } from 'react';
-import { expect, vi } from 'vitest';
+import { vi } from 'vitest';
 import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
 import type { CustomSuggestion, FieldDefinition } from '../../types';
+import { waitForEditor } from './get-editor';
 
 export const fields: FieldDefinition[] = [
   { key: 'status', label: 'Status', type: 'enum', operators: ['is'], enumValues: ['a', 'b'] },
@@ -24,9 +25,7 @@ export async function renderInput(
 ): Promise<{ ref: RefObject<TokenizedSearchInputRef>; editor: Editor }> {
   const ref = createRef<TokenizedSearchInputRef>();
   render(<TokenizedSearchInput ref={ref} fields={fields} {...props} />);
-  await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-  const editor = ref.current?.getEditor();
-  if (!editor) throw new Error('editor not created');
+  const editor = await waitForEditor(ref);
   return { ref: ref as RefObject<TokenizedSearchInputRef>, editor };
 }
 

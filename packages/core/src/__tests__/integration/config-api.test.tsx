@@ -18,9 +18,7 @@ import {
 } from '../../editor/tokenized-search-input';
 import { Unique } from '../../validation/presets';
 import { basicFields } from '../fixtures/fields';
-
-// What createRef returns: React 19 types widen it to include null, React 18 types do not.
-type InputRef = ReturnType<typeof createRef<TokenizedSearchInputRef>>;
+import { filterTokens } from '../helpers/token-queries';
 
 describe('Config API', () => {
   describe('suggestions config', () => {
@@ -156,23 +154,19 @@ describe('Config API', () => {
       return ref;
     }
 
-    function filterSegments(ref: InputRef) {
-      return (ref.current?.getSnapshot().segments ?? []).filter((s) => s.type === 'filter');
-    }
-
     it('does not tokenize unknown fields when unknownFields is omitted', async () => {
       const ref = renderWithRef({ defaultValue: 'customField:is:value' });
 
       await waitFor(() => expect(ref.current?.getValue()).toBe('customField:is:value'));
       expect(document.querySelectorAll('.node-filterToken')).toHaveLength(0);
-      expect(filterSegments(ref)).toHaveLength(0);
+      expect(filterTokens(ref)).toHaveLength(0);
     });
 
     it('tokenizes unknown fields when unknownFields is provided without options', async () => {
       const ref = renderWithRef({ defaultValue: 'customField:value', unknownFields: {} });
 
       await waitFor(() => expect(document.querySelectorAll('.node-filterToken')).toHaveLength(1));
-      expect(filterSegments(ref)).toMatchObject([
+      expect(filterTokens(ref)).toMatchObject([
         { key: 'customField', operator: 'is', value: 'value' },
       ]);
     });
@@ -184,7 +178,7 @@ describe('Config API', () => {
       });
 
       await waitFor(() => expect(document.querySelectorAll('.node-filterToken')).toHaveLength(1));
-      expect(filterSegments(ref)).toMatchObject([
+      expect(filterTokens(ref)).toMatchObject([
         { key: 'customField', operator: 'starts_with', value: 'abc' },
       ]);
     });
@@ -196,7 +190,7 @@ describe('Config API', () => {
       });
 
       await waitFor(() => expect(document.querySelectorAll('.node-filterToken')).toHaveLength(1));
-      expect(filterSegments(ref)).toMatchObject([
+      expect(filterTokens(ref)).toMatchObject([
         { key: 'custom', operator: 'contains', value: 'value' },
       ]);
       await waitFor(() => {
@@ -212,7 +206,7 @@ describe('Config API', () => {
 
       await waitFor(() => expect(document.querySelectorAll('.node-filterToken')).toHaveLength(1));
       await waitFor(() =>
-        expect(filterSegments(ref)).toMatchObject([
+        expect(filterTokens(ref)).toMatchObject([
           {
             key: 'custom',
             operator: 'is',
