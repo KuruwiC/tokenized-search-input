@@ -46,17 +46,6 @@ jobs:
           node packages/core/scripts/verify-pack.mjs
           pnpm exec publint dist-packages/*.tgz --strict
 
-      - name: Verify the install URLs in the packed README
-        run: |
-          version=$(node -p "require('./packages/core/package.json').version")
-          readme=$(tar -xzOf dist-packages/*.tgz package/README.md)
-          expected="releases/download/v${version}/kuruwic-tokenized-search-input-${version}.tgz"
-          grep -qF "$expected" <<< "$readme"
-          if grep -oE 'releases/download/[^[:space:]"]+' <<< "$readme" | grep -vxF "$expected"; then
-            echo "The packed README links to a release other than v${version}." >&2
-            exit 1
-          fi
-
       - name: Verify packed artifact in consumer projects
         run: node packages/core/scripts/verify-consumer.mjs dist-packages/*.tgz
 

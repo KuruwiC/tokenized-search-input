@@ -35,4 +35,14 @@ for (const required of [
   }
 }
 
+// Every install URL in the packed README names this release's own tarball.
+const read = (entry) => execFileSync('tar', ['-xzOf', archive, entry], { encoding: 'utf8' });
+const { version } = JSON.parse(read('package/package.json'));
+const expectedUrl = `releases/download/v${version}/${archives[0]}`;
+const installUrls = read('package/README.md').match(/releases\/download\/[^\s"]+/g) ?? [];
+if (installUrls.length === 0 || installUrls.some((url) => url !== expectedUrl)) {
+  console.error(`The packed README links to a release other than v${version}.`);
+  process.exit(1);
+}
+
 console.log(`Verified packed artifact ${archives[0]}.`);
