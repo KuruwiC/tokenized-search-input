@@ -129,7 +129,10 @@ function runRequest<T>(
   return withTimeout(task, timeoutMs, request).finally(() => settleRequest(ref, request));
 }
 
-/** A token being edited holds DOM focus, so the editor itself is not focused while one is. */
+/**
+ * Custom suggestions may show when no token is focused, the editor itself holds DOM focus
+ * (a token being edited holds it instead), and the suggestion was not dismissed.
+ */
 function canSuggest(editor: Editor): boolean {
   return (
     canShowCustomSuggestion(editor.state) &&

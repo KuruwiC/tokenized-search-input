@@ -138,14 +138,14 @@ export function isDateOrDateTimeField(fieldDef: { type: string } | undefined): b
   return isDateField(fieldDef) || isDateTimeField(fieldDef);
 }
 
-/** `true` when the value is a date, otherwise the parse error; `false` for empty input. */
+/** `true` when the value is a date, otherwise the parse error; `false` for empty or whitespace-only input. */
 export function validateDateValue(value: string, config?: DateFormatConfig): boolean | string {
   if (!value?.trim()) return false;
   const result = parseDateFieldValue(value, { type: 'date', formatConfig: config });
   return result.ok ? true : result.error;
 }
 
-/** `true` when the value is a datetime, otherwise the parse error; `false` for empty input. */
+/** `true` when the value is a datetime, otherwise the parse error; `false` for empty or whitespace-only input. */
 export function validateDateTimeValue(
   value: string,
   config?: DateTimeFormatConfig

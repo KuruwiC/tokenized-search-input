@@ -51,7 +51,7 @@ export interface ParseOptions {
 export interface ParseDiagnostics {
   /** A quote was left open and runs to the end of the query. */
   incompleteQuote: boolean;
-  /** Keys that start a segment as `key<delimiter>` and match no field, each once. These stay free text unless `unknownFields` allows them. */
+  /** Keys that start a segment as `key<delimiter>` and match no field, each once. These stay free text unless an `unknownFields` template is given. */
   unknownFields: string[];
   /** Operators the editor knows that the field of the key does not allow, each pair once. The tokens keep them and are marked invalid by validation. */
   unknownOperators: { key: string; operator: string }[];

@@ -38,7 +38,8 @@ const javascriptArtifacts = listFiles(distRoot).filter(
 );
 // Keep this comfortably above the correctly externalized build while catching
 // accidental rebundling of runtime dependencies (which is several times larger).
-// The largest file, `index.js`, is under 200 kB.
+// The ceiling applies per file, and `index.js` holds all component code, so it leaves
+// that file room to grow while staying well below what a rebundled build produces.
 const maxJavascriptArtifactBytes = 300_000;
 const oversizedJavascriptArtifacts = javascriptArtifacts.filter(
   (path) => statSync(resolve(distRoot, path)).size > maxJavascriptArtifactBytes
