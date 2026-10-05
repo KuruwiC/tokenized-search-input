@@ -1,7 +1,10 @@
 name: Deploy Demo to GitHub Pages
 
+# Deploys the commit that CI passed on main, never one whose CI failed or is still running.
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -16,10 +19,17 @@ concurrency:
 
 jobs:
   build:
+    # `branches` also matches a pull request whose head branch is named main, so the event
+    # is checked as well.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
