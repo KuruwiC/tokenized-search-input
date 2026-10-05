@@ -525,35 +525,8 @@
     z-index: 10;
   }
 
-  :where(.tsi-input.tsi-input--expand-on-focus) {
-    flex-wrap: wrap;
-    max-height: max(
-      var(--tsi-min-height),
-      var(
-        --tsi-single-line-height,
-        calc(var(--tsi-token-size) + var(--tsi-token-gap-y) + var(--tsi-padding-y) * 2)
-      )
-    );
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  :where(.tsi-input.tsi-input--expand-on-focus)::-webkit-scrollbar {
-    display: none;
-  }
-
-  :where(.tsi-input.tsi-input--expand-on-focus) .ProseMirror p {
-    white-space: nowrap;
-    word-wrap: normal;
-    min-width: max-content;
-  }
-
-  :where(.tsi-container--clearable .tsi-input--expand-on-focus) .ProseMirror p {
-    padding-right: 1rem;
-  }
-
+  /* Collapsed, the input is the one-line presentation (tsi-input--single-line). Open, it
+     wraps its tokens and scrolls up and down instead. */
   :where(.tsi-container--expand-on-focus):focus-within :where(.tsi-input--expand-on-focus) {
     max-height: var(
       --tsi-expand-max-height,
@@ -582,6 +555,10 @@
     border-radius: 2px;
   }
 
+  :where(.tsi-container--expand-on-focus:focus-within .tsi-input--expand-on-focus) .ProseMirror {
+    overflow: visible;
+  }
+
   :where(.tsi-container--expand-on-focus):focus-within
     :where(.tsi-input--expand-on-focus)
     .ProseMirror
@@ -590,11 +567,6 @@
     word-wrap: break-word;
     min-width: auto;
     padding-right: 0;
-  }
-
-  :where(.tsi-container--expand-on-focus .tsi-placeholder) {
-    white-space: nowrap;
-    text-overflow: ellipsis;
   }
 
   :where(.tsi-container--expand-on-focus):focus-within :where(.tsi-placeholder) {
@@ -1262,13 +1234,13 @@
     top: 0;
   }
 
-  /* In singleLine mode (not expandOnFocus), end controls are vertically centered */
-  :where(.tsi-container--flex:not(.tsi-container--expand-on-focus)) .tsi-end-controls {
+  /* On one line the end controls are vertically centered; an open expandOnFocus input
+     keeps them on its first line, as the wrapping input does */
+  :where(.tsi-container--flex) .tsi-end-controls {
     align-self: center;
   }
 
-  /* In expandOnFocus mode, end controls are top-aligned (like normal wrap mode) */
-  :where(.tsi-container--expand-on-focus) .tsi-end-controls {
+  :where(.tsi-container--expand-on-focus):focus-within .tsi-end-controls {
     align-self: flex-start;
   }
 

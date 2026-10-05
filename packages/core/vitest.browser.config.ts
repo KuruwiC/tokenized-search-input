@@ -4,15 +4,16 @@ import { defineConfig } from 'vitest/config';
 
 const mobileFile = 'src/__tests__/browser/mobile.test.tsx';
 
-// Firefox runs the styling checks only; the interaction suites assume Chromium and WebKit caret
-// and pointer behaviour.
-const stylingFiles = [
+// Firefox runs the suites written to hold in every engine; the caret, pointer and composition
+// suites assume Chromium and WebKit behaviour.
+const crossEngineFiles = [
   'src/__tests__/browser/consumer-css.test.tsx',
   'src/__tests__/browser/container-shape.test.tsx',
   'src/__tests__/browser/edit-input-width.test.tsx',
   'src/__tests__/browser/expand-height.test.tsx',
   'src/__tests__/browser/focus-indicator.test.tsx',
   'src/__tests__/browser/popover-shape.test.tsx',
+  'src/__tests__/browser/single-line-scroll.test.tsx',
 ];
 
 // There is no mobile device in CI. A mobile run is a desktop engine with a phone viewport,
@@ -41,7 +42,7 @@ export default defineConfig({
       instances: [
         { browser: 'chromium', exclude: [mobileFile], viewport: desktop },
         { browser: 'webkit', exclude: [mobileFile], viewport: desktop },
-        { browser: 'firefox', include: stylingFiles, viewport: desktop },
+        { browser: 'firefox', include: crossEngineFiles, viewport: desktop },
         {
           browser: 'chromium',
           name: 'chromium-mobile',

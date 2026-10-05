@@ -5,7 +5,7 @@ import { clearDismissed, dismissSuggestion, getSuggestionState } from '../../plu
 import { createQuerySnapshot } from '../../serializer';
 import { interactionBoundary } from '../../suggestions/interaction-boundary';
 import type { QuerySnapshot } from '../../types';
-import { isWithinSuggestion } from '../../utils/dom-focus';
+import { isWithinSearchInput, isWithinSuggestion } from '../../utils/dom-focus';
 
 export interface UseFocusWiringOptions {
   editor: Editor | null;
@@ -43,12 +43,8 @@ export function useFocusWiring({
     const container = containerRef.current;
     if (!container) return;
 
-    // The suggestion overlay may render outside the container; it is still part of it.
-    const isInside = (target: EventTarget | null): boolean =>
-      target instanceof Element && (container.contains(target) || isWithinSuggestion(target));
-
     const handleContainerFocusOut = (e: FocusEvent) => {
-      if (isInside(e.relatedTarget)) return;
+      if (isWithinSearchInput(container, e.relatedTarget)) return;
 
       editor.commands.finalizeInput();
 
@@ -67,7 +63,7 @@ export function useFocusWiring({
     };
 
     const handleContainerFocusIn = (e: FocusEvent) => {
-      if (isInside(e.relatedTarget)) return;
+      if (isWithinSearchInput(container, e.relatedTarget)) return;
 
       if (onFocus) {
         const snapshot = createQuerySnapshot(editor.state, getSerializeOptions(editor));

@@ -11,6 +11,7 @@ import { useEditorConfigSync } from './hooks/use-editor-config-sync';
 import { useEditorSetup } from './hooks/use-editor-setup';
 import { useFieldSuggestions } from './hooks/use-field-suggestions';
 import { useFocusWiring } from './hooks/use-focus-wiring';
+import { useSingleLineScroll } from './hooks/use-single-line-scroll';
 import { useSuggestionHandlers } from './hooks/use-suggestion-handlers';
 import { useSuggestionScheduling } from './hooks/use-suggestion-scheduling';
 import {
@@ -47,6 +48,8 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       startAdornment,
       endAdornment,
     } = props;
+    // Both show one line: singleLine always, expandOnFocus while collapsed
+    const oneLine = singleLine || expandOnFocus;
 
     const config = useEditorConfig(props);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -102,10 +105,8 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       editor,
       updateSuggestions,
       updateCustomSuggestions,
-      singleLine,
-      expandOnFocus,
-      containerRef,
     });
+    useSingleLineScroll({ editor, containerRef, enabled: oneLine });
     // Last on purpose: see useRunHeldHandleCalls.
     useRunHeldHandleCalls(editor, heldCalls);
 
@@ -116,8 +117,8 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
         className={cn(
           'tsi-container',
           expandOnFocus && 'tsi-container--expand-on-focus',
-          clearable && (singleLine || expandOnFocus) && 'tsi-container--clearable',
-          (singleLine || expandOnFocus) && 'tsi-container--flex',
+          clearable && oneLine && 'tsi-container--clearable',
+          oneLine && 'tsi-container--flex',
           startAdornment && 'tsi-container--has-start-adornment',
           endAdornment && 'tsi-container--has-end-adornment',
           classNames?.container
@@ -133,10 +134,12 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
           editor={editor}
           className={cn(
             'tsi-input',
-            singleLine && !expandOnFocus && 'tsi-input--single-line',
+            // A collapsed expandOnFocus input is the one-line presentation; opening it adds
+            // the multi-line rules of tsi-input--expand-on-focus on top
+            oneLine && 'tsi-input--single-line',
             expandOnFocus && 'tsi-input--expand-on-focus',
-            singleLine || expandOnFocus ? 'tsi-input--flex-child' : 'tsi-input--full-width',
-            clearable && !singleLine && !expandOnFocus ? 'tsi-input--clear-pad' : '',
+            oneLine ? 'tsi-input--flex-child' : 'tsi-input--full-width',
+            clearable && !oneLine ? 'tsi-input--clear-pad' : '',
             disabled ? 'tsi-input--disabled' : '',
             classNames?.input
           )}
@@ -150,7 +153,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
                 visible={!isEmpty}
                 disabled={disabled}
                 className={classNames?.clearButton}
-                inline={singleLine || expandOnFocus}
+                inline={oneLine}
               />
             )}
 
