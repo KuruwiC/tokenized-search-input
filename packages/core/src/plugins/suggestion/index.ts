@@ -5,6 +5,7 @@ export {
   clearDismissed,
   closeSuggestion,
   dismissSuggestion,
+  dispatchCloseSuggestion,
   isSuggestionOpen,
   navigateSuggestion,
   openCustomSuggestion,

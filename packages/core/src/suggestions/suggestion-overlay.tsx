@@ -8,7 +8,7 @@ import { useSuggestionPosition } from '../hooks/use-suggestion-position';
 import { useVisualViewport } from '../hooks/use-visual-viewport';
 import type { DateTimeValue } from '../pickers/date-time-value';
 import {
-  closeSuggestion,
+  dispatchCloseSuggestion,
   isPickerType,
   isSuggestionOpen,
   resolveAnchorPos,
@@ -80,9 +80,7 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
 
   useEffect(() => {
     if (!editor.isEditable && !editor.isDestroyed && isSuggestionOpen(suggestionState)) {
-      const tr = editor.state.tr;
-      closeSuggestion(tr);
-      editor.view.dispatch(tr);
+      dispatchCloseSuggestion(editor.view);
     }
   }, [editor, editor.isEditable, suggestionState]);
 

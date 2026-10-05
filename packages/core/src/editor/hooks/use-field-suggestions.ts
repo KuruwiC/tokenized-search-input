@@ -1,7 +1,11 @@
 import type { Editor } from '@tiptap/core';
 import { useCallback } from 'react';
 import { getEditorContext } from '../../extensions/editor-context';
-import { closeSuggestion, getSuggestionState, openFieldSuggestion } from '../../plugins/suggestion';
+import {
+  dispatchCloseSuggestion,
+  getSuggestionState,
+  openFieldSuggestion,
+} from '../../plugins/suggestion';
 import { isInsideQuotes } from '../../serializer/quote-state';
 import {
   canShowFieldSuggestion,
@@ -19,12 +23,6 @@ export interface UseFieldSuggestionsOptions {
   matcher?: Matcher;
 }
 
-function closeSuggestionAndDispatch(editor: Editor): void {
-  const tr = editor.state.tr;
-  closeSuggestion(tr);
-  editor.view.dispatch(tr);
-}
-
 export function useFieldSuggestions(
   editor: Editor | null,
   options?: UseFieldSuggestionsOptions
@@ -38,7 +36,7 @@ export function useFieldSuggestions(
 
       // Close the suggestion before the content changes, so the metadata-only
       // transaction does not interfere with history grouping.
-      closeSuggestionAndDispatch(editor);
+      dispatchCloseSuggestion(editor.view);
 
       insertEmptyFilterToken(editor, field);
     },
@@ -56,20 +54,20 @@ export function useFieldSuggestions(
       if (!canShowFieldSuggestion(editor)) {
         // Only close if current type is 'field' (don't interfere with other suggestions)
         if (currentType === 'field') {
-          closeSuggestionAndDispatch(editor);
+          dispatchCloseSuggestion(editor.view);
         }
         return;
       }
 
       if (forceClose || !editor.isFocused || suggestionState?.dismissed) {
-        closeSuggestionAndDispatch(editor);
+        dispatchCloseSuggestion(editor.view);
         return;
       }
 
       const textBefore = getTextBeforeCursor(editor);
 
       if (isInsideQuotes(textBefore)) {
-        closeSuggestionAndDispatch(editor);
+        dispatchCloseSuggestion(editor.view);
         return;
       }
 

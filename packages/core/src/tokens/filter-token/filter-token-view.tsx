@@ -5,7 +5,7 @@ import { useTokenMeta } from '../../hooks/use-editor-store';
 import { getDateDisplayValue, getDateTimeDisplayValue } from '../../pickers/date-format';
 import { getApplicableDisplay } from '../../plugins/shared/meta';
 import {
-  closeSuggestion,
+  dispatchCloseSuggestion,
   getEditableValueText,
   getSuggestionState,
   navigateSuggestion,
@@ -105,9 +105,7 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
           }}
           className={classNames?.tokenLabel}
           onOpen={() => {
-            const tr = editor.state.tr;
-            closeSuggestion(tr);
-            editor.view.dispatch(tr);
+            dispatchCloseSuggestion(editor.view);
           }}
         />
       )}
@@ -122,9 +120,7 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
           dropdownClassName={classNames?.operatorDropdown}
           itemClassName={classNames?.operatorDropdownItem}
           onOpen={() => {
-            const tr = editor.state.tr;
-            closeSuggestion(tr);
-            editor.view.dispatch(tr);
+            dispatchCloseSuggestion(editor.view);
           }}
         />
       )}

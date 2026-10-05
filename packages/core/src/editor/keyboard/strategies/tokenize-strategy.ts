@@ -1,4 +1,4 @@
-import { closeSuggestion, isSuggestionOpen } from '../../../plugins/suggestion';
+import { dispatchCloseSuggestion, isSuggestionOpen } from '../../../plugins/suggestion';
 import { TOKEN_BOUNDARY } from '../../../serializer/quote-state';
 import { getTextBeforeCursor, tryAutoTokenize } from '../../auto-tokenize';
 import { canAutoTokenize, isTokenizeMode } from '../guards';
@@ -6,11 +6,7 @@ import type { KeyboardContext } from '../types';
 
 function closeSuggestionIfOpen(ctx: KeyboardContext): void {
   const { editor, suggestionState } = ctx;
-  if (isSuggestionOpen(suggestionState)) {
-    const tr = editor.state.tr;
-    closeSuggestion(tr);
-    editor.view.dispatch(tr);
-  }
+  if (isSuggestionOpen(suggestionState)) dispatchCloseSuggestion(editor.view);
 }
 
 /**

@@ -1,5 +1,5 @@
 import {
-  closeSuggestion,
+  dispatchCloseSuggestion,
   isSuggestionOpen,
   navigateSuggestion,
   suggestionEntries,
@@ -60,9 +60,7 @@ export function handleEnterOnSuggestion(
   }
 
   // No entry is active: the first Enter closes the list, the next one submits.
-  const tr = editor.state.tr;
-  closeSuggestion(tr);
-  editor.view.dispatch(tr);
+  dispatchCloseSuggestion(editor.view);
   return true;
 }
 
@@ -83,8 +81,6 @@ export function handleEscape(ctx: KeyboardContext): boolean {
     return false;
   }
 
-  const tr = editor.state.tr;
-  closeSuggestion(tr);
-  editor.view.dispatch(tr);
+  dispatchCloseSuggestion(editor.view);
   return true;
 }

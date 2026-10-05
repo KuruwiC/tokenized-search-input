@@ -1,4 +1,5 @@
 import type { Transaction } from '@tiptap/pm/state';
+import type { EditorView } from '@tiptap/pm/view';
 import type { DateTimeValue } from '../../pickers/date-time-value';
 import type { CustomSuggestion, EnumValue, FieldDefinition } from '../../types';
 import { positionAnchor, tokenAnchor } from './anchor';
@@ -189,6 +190,11 @@ export function updateSuggestionTimeControls(
 
 export function closeSuggestion(tr: Transaction): Transaction {
   return setSuggestion(tr, { close: true });
+}
+
+/** Closes the suggestion in a transaction of its own, when nothing else changes with it. */
+export function dispatchCloseSuggestion(view: EditorView): void {
+  view.dispatch(closeSuggestion(view.state.tr));
 }
 
 export function dismissSuggestion(tr: Transaction): Transaction {

@@ -5,7 +5,7 @@ import { getEditorContext } from '../../extensions/editor-context';
 import type { TokenDisplayContent } from '../../plugins/shared/meta';
 import {
   appendCustomSuggestions,
-  closeSuggestion,
+  dispatchCloseSuggestion,
   getSuggestionState,
   openCustomSuggestion,
   openFieldWithCustomSuggestion,
@@ -284,9 +284,7 @@ export function useCustomSuggestions(
       }
       chain.run();
 
-      const tr = editor.state.tr;
-      closeSuggestion(tr);
-      editor.view.dispatch(tr);
+      dispatchCloseSuggestion(editor.view);
     },
     [editor, config]
   );
@@ -344,9 +342,7 @@ export function useCustomSuggestions(
           // No custom suggestions - close if custom type is open, otherwise let field suggestions show
           const currentState = getSuggestionState(editor.state);
           if (currentState?.type === 'custom' || currentState?.type === 'fieldWithCustom') {
-            const tr = editor.state.tr;
-            closeSuggestion(tr);
-            editor.view.dispatch(tr);
+            dispatchCloseSuggestion(editor.view);
           }
           return;
         }
