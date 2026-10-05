@@ -131,8 +131,8 @@ describe('Validation System Integration', () => {
     });
   });
 
-  describe('Unique with onDuplicate reject', () => {
-    it('marks duplicate as invalid with default action (mark)', async () => {
+  describe('Unique with onDuplicate', () => {
+    it('marks the duplicate with onDuplicate mark', async () => {
       render(
         <TokenizedSearchInput
           fields={testFields}
@@ -144,9 +144,9 @@ describe('Validation System Integration', () => {
       await expectTokenCounts(2, 1);
     });
 
-    it('deletes later duplicates with onDuplicate reject on defaultValue', async () => {
-      // With forceCheck (initial load), all tokens are treated as fresh
-      // onDuplicate reject keeps first occurrence and deletes later ones
+    it("deletes the later duplicates with onDuplicate 'reject' on the initial content", async () => {
+      // The initial content counts as edited in every token, so
+      // onDuplicate 'reject' keeps the first occurrence and deletes the later ones
       render(
         <TokenizedSearchInput
           fields={testFields}
@@ -344,7 +344,7 @@ describe('Validation System Integration', () => {
   });
 
   describe('Unique with onDuplicate replace', () => {
-    it('deletes earlier token and keeps later one with delete-existing', async () => {
+    it("deletes the earlier token and keeps the later one with onDuplicate 'replace'", async () => {
       render(
         <TokenizedSearchInput
           fields={testFields}
@@ -353,7 +353,7 @@ describe('Validation System Integration', () => {
         />
       );
 
-      // With delete-existing, the later token (status:inactive) should survive
+      // With onDuplicate 'replace', the later token (status:inactive) should survive
       // and the earlier token (status:active) should be deleted
       await expectTokenCounts(1, 0);
 
@@ -364,8 +364,8 @@ describe('Validation System Integration', () => {
       });
     });
 
-    it('does not delete editing tokens with delete-existing', async () => {
-      // This test verifies that tokens with empty value (being edited) are not deleted
+    it("does not delete a token that is still being entered with onDuplicate 'replace'", async () => {
+      // A token with an empty value is still being entered and is not deleted
       render(
         <TokenizedSearchInput
           fields={testFields}
@@ -413,7 +413,7 @@ describe('Validation System Integration', () => {
         />
       );
 
-      // With delete-existing, only the latest token (status:pending) should survive
+      // With onDuplicate 'replace', only the latest token (status:pending) should survive
       await expectTokenCounts(1, 0);
 
       // The remaining token should be the latest one (pending)
@@ -605,7 +605,7 @@ describe('Validation System Integration', () => {
       }
     });
 
-    it('clears invalid state when remaining token is no longer duplicate after delete-existing', async () => {
+    it("clears invalid state when the remaining token is no longer a duplicate after onDuplicate 'replace'", async () => {
       render(
         <TokenizedSearchInput
           fields={testFields}
@@ -614,7 +614,7 @@ describe('Validation System Integration', () => {
         />
       );
 
-      // After delete-existing, only the last token remains and should be valid
+      // After 'replace', only the last token remains and should be valid
       await expectTokenCounts(1, 0);
     });
 
@@ -670,7 +670,7 @@ describe('Validation System Integration', () => {
       await expectTokenCounts(1, 0);
     });
 
-    it('unique with default strategy marks duplicates', async () => {
+    it('Unique marks duplicates by default (onDuplicate mark)', async () => {
       render(
         <TokenizedSearchInput
           fields={testFields}
@@ -681,7 +681,7 @@ describe('Validation System Integration', () => {
         />
       );
 
-      // With default mark strategy, duplicates should be marked but not deleted
+      // With the default onDuplicate 'mark', duplicates are marked but not deleted
       await expectTokenCounts(2, 1);
     });
 
@@ -699,7 +699,7 @@ describe('Validation System Integration', () => {
     });
   });
 
-  describe('onDuplicate replace protects edited token', () => {
+  describe('Unique violations', () => {
     it('unique rule returns violations with targets for duplicates', async () => {
       // Unique.rule() returns Violation[] with explicit targets: every duplicate except the survivor
       const capturedViolations: Array<{ ruleId: string; targetCount: number }> = [];
@@ -740,12 +740,12 @@ describe('Validation System Integration', () => {
     });
   });
 
-  // delete-new and delete-existing work regardless of whether the new token is added
-  // BEFORE or AFTER existing tokens.
+  // onDuplicate 'reject' and 'replace' decide by which tokens were edited, not by
+  // where the edited token sits relative to the others.
 
   describe('onDuplicate reject: position-independent behavior', () => {
-    it('delete-new preserves existing token on forceCheck', async () => {
-      // When setValue is called with duplicates, delete-new should delete the later (newer) tokens
+    it("onDuplicate 'reject' keeps the first token on setValue", async () => {
+      // setValue makes every token edited, so 'reject' deletes the later duplicates
       const TestComponent = () => {
         const ref = useRef<TokenizedSearchInputRef>(null);
         useEffect(() => {
@@ -765,7 +765,7 @@ describe('Validation System Integration', () => {
 
       render(<TestComponent />);
 
-      // After setValue with delete-new, later duplicate should be deleted
+      // After setValue with onDuplicate 'reject', the later duplicate should be deleted
       await waitFor(
         () => {
           const tokens = document.querySelectorAll('.node-filterToken');
@@ -783,8 +783,8 @@ describe('Validation System Integration', () => {
   });
 
   describe('onDuplicate replace: position-independent behavior', () => {
-    it('delete-existing preserves new token on forceCheck', async () => {
-      // When setValue is called with duplicates, delete-existing should delete the earlier (existing) tokens
+    it("onDuplicate 'replace' keeps the last token on setValue", async () => {
+      // setValue makes every token edited, so 'replace' deletes the earlier duplicates
       const TestComponent = () => {
         const ref = useRef<TokenizedSearchInputRef>(null);
         useEffect(() => {
@@ -804,7 +804,7 @@ describe('Validation System Integration', () => {
 
       render(<TestComponent />);
 
-      // After setValue with delete-existing, earlier duplicate should be deleted
+      // After setValue with onDuplicate 'replace', the earlier duplicate should be deleted
       await waitFor(
         () => {
           const tokens = document.querySelectorAll('.node-filterToken');
@@ -820,7 +820,7 @@ describe('Validation System Integration', () => {
       });
     });
 
-    it('delete-existing with 3 duplicates preserves only the last token', async () => {
+    it("onDuplicate 'replace' with 3 duplicates keeps only the last token on setValue", async () => {
       const TestComponent = () => {
         const ref = useRef<TokenizedSearchInputRef>(null);
         useEffect(() => {
@@ -839,7 +839,7 @@ describe('Validation System Integration', () => {
 
       render(<TestComponent />);
 
-      // After setValue with delete-existing, only the last token should remain
+      // After setValue with onDuplicate 'replace', only the last token should remain
       await waitFor(
         () => {
           const tokens = document.querySelectorAll('.node-filterToken');
@@ -856,28 +856,20 @@ describe('Validation System Integration', () => {
     });
   });
 
-  describe('new token BEFORE existing: position-independent tests', () => {
-    // These tests verify the core behavior using setValue which triggers forceCheck.
-    // The key insight: In forceCheck, "first position = existing, last position = new"
-    // This simulates what happens when a user creates a new token BEFORE an existing one.
+  describe('onDuplicate on setValue: the surviving token follows document order', () => {
+    // setValue replaces the content, so every token counts as edited and the tokens'
+    // order in the document alone decides which one survives: 'reject' keeps the first
+    // and 'replace' keeps the last.
 
-    it('delete-new: first token (simulating new BEFORE existing) should be kept', async () => {
-      // Scenario: User has `existingToken` and creates `newToken` BEFORE it
-      // Result in document: `newToken existingToken` (new is at position 0, existing at position 1)
-      //
-      // With delete-new + forceCheck:
-      // - "new" = later position (position 1) - this is the SECOND token
-      // - "existing" = first position (position 0) - this is the FIRST token
-      // - delete-new should delete the "new" one (second/later)
-      // - Result: first token remains
-      //
-      // This test verifies that the FIRST token is preserved (not deleted).
+    it("onDuplicate 'reject' keeps the first token on setValue", async () => {
+      // Both tokens are set at once, so both count as edited.
+      // onDuplicate 'reject' deletes the later one (the second token) and the first
+      // token remains.
       const TestComponent = () => {
         const ref = useRef<TokenizedSearchInputRef>(null);
         useEffect(() => {
           setTimeout(() => {
-            // Simulates: newToken was created BEFORE existingToken
-            // In forceCheck: later position = newer, so second token is "new"
+            // The second token is the later duplicate
             ref.current?.setValue('status:is:first status:is:second');
           }, 100);
         }, []);
@@ -892,7 +884,7 @@ describe('Validation System Integration', () => {
 
       render(<TestComponent />);
 
-      // delete-new preserves first occurrence
+      // 'reject' preserves the first occurrence
       await waitFor(
         () => {
           const tokens = document.querySelectorAll('.node-filterToken');
@@ -901,19 +893,15 @@ describe('Validation System Integration', () => {
         { timeout: 500 }
       );
 
-      // The remaining token should be "first" (first position = existing)
+      // The remaining token should be "first" (the first position)
       const token = document.querySelector('.node-filterToken');
       expect(token?.textContent).toContain('first');
     });
 
-    it('delete-existing: last token (simulating new AFTER existing) should be kept', async () => {
-      // Scenario: User has `existingToken` and creates `newToken` AFTER it
-      // Result in document: `existingToken newToken` (existing at position 0, new at position 1)
-      //
-      // With delete-existing + forceCheck:
-      // - "new" = later position (position 1) - triggers deletion
-      // - "existing" = first position (position 0) - gets deleted
-      // - Result: last token (new) remains
+    it("onDuplicate 'replace' keeps the last token on setValue", async () => {
+      // Both tokens are set at once, so both count as edited.
+      // onDuplicate 'replace' deletes the earlier one (the first token) and the last
+      // token remains.
       const TestComponent = () => {
         const ref = useRef<TokenizedSearchInputRef>(null);
         useEffect(() => {
@@ -932,7 +920,7 @@ describe('Validation System Integration', () => {
 
       render(<TestComponent />);
 
-      // delete-existing preserves last occurrence
+      // 'replace' preserves the last occurrence
       await waitFor(
         () => {
           const tokens = document.querySelectorAll('.node-filterToken');
@@ -941,12 +929,12 @@ describe('Validation System Integration', () => {
         { timeout: 500 }
       );
 
-      // The remaining token should be "second" (last position = new)
+      // The remaining token should be "second" (the last position)
       const token = document.querySelector('.node-filterToken');
       expect(token?.textContent).toContain('second');
     });
 
-    it('delete-new with 3 tokens: preserves only the first', async () => {
+    it("onDuplicate 'reject' with 3 duplicates keeps only the first token on setValue", async () => {
       const TestComponent = () => {
         const ref = useRef<TokenizedSearchInputRef>(null);
         useEffect(() => {
@@ -978,7 +966,7 @@ describe('Validation System Integration', () => {
       expect(token?.textContent).toContain('first');
     });
 
-    it('interactive: clicking existing token then adding duplicate via suggestion', async () => {
+    it("onDuplicate 'reject' marks a duplicate added through the suggestion list while it is focused", async () => {
       const user = userEvent.setup();
 
       // Start with existing token
@@ -1022,7 +1010,7 @@ describe('Validation System Integration', () => {
           { timeout: 1000 }
         );
 
-        // New token should be marked invalid (delete-new marks the new one)
+        // The new token is marked while the user is in it ('reject' deletes it only after they leave)
         await waitFor(() => {
           const invalidTokens = document.querySelectorAll('[data-invalid="true"]');
           expect(invalidTokens.length).toBeGreaterThanOrEqual(1);
@@ -1030,17 +1018,15 @@ describe('Validation System Integration', () => {
       }
     });
 
-    it('delete-new with setValue: first occurrence (position-based) is preserved', async () => {
-      // With setValue (forceCheck), delete-new uses position-based logic
-      // First occurrence in document order is preserved, regardless of which was "new"
-      // This is different from interactive blur scenario
+    it("onDuplicate 'reject' keeps the first occurrence in document order on setValue", async () => {
+      // setValue makes every token edited, so document order decides:
+      // the first occurrence is preserved. This differs from the interactive case,
+      // where the token edited in the focus session is the one deleted.
       const TestComponent = () => {
         const ref = useRef<TokenizedSearchInputRef>(null);
         useEffect(() => {
           setTimeout(() => {
-            // Simulates: new token at beginning, existing at end
-            // Document order: [new:inactive] [existing:active]
-            // With forceCheck, first occurrence (inactive) is preserved
+            // Document order: [inactive] [active]; the first occurrence (inactive) is preserved
             ref.current?.setValue('status:is:inactive status:is:active');
           }, 100);
         }, []);
@@ -1055,7 +1041,7 @@ describe('Validation System Integration', () => {
 
       render(<TestComponent />);
 
-      // delete-new preserves first occurrence
+      // 'reject' preserves the first occurrence
       await waitFor(
         () => {
           const tokens = document.querySelectorAll('.node-filterToken');
@@ -1070,10 +1056,9 @@ describe('Validation System Integration', () => {
     });
   });
 
-  describe('marking behavior during editing', () => {
-    it('delete-new with mark action shows invalid state on duplicates', async () => {
-      // Test that 'mark' action (not delete-new) shows invalid state without deleting
-      // This verifies the marking behavior works correctly
+  describe('onDuplicate mark and replace on the initial content', () => {
+    it("onDuplicate 'mark' marks the later duplicate without deleting it", async () => {
+      // 'mark' shows the invalid state without deleting
       render(
         <TokenizedSearchInput
           fields={testFields}
@@ -1099,9 +1084,8 @@ describe('Validation System Integration', () => {
       expect(tokenContent).toContain('inactive');
     });
 
-    it('delete-existing marks both duplicates invalid during forceCheck', async () => {
-      // With delete-existing on initial load (forceCheck), the existing token is deleted
-      // This test verifies the deletion happens correctly
+    it("onDuplicate 'replace' keeps only the last token of the initial content, unmarked", async () => {
+      // The initial content counts as edited in every token, so 'replace' deletes the earlier duplicate
       render(
         <TokenizedSearchInput
           fields={testFields}
@@ -1110,7 +1094,7 @@ describe('Validation System Integration', () => {
         />
       );
 
-      // After forceCheck, only the last token should remain
+      // Only the last token should remain
       await waitFor(() => {
         const tokens = document.querySelectorAll('.node-filterToken');
         expect(tokens.length).toBe(1);
@@ -1126,8 +1110,8 @@ describe('Validation System Integration', () => {
     });
   });
 
-  describe('action: mark - blur behavior consistency', () => {
-    it('mark action: marking state is consistent before and after blur', async () => {
+  describe("onDuplicate 'mark': marks stay the same across blur", () => {
+    it('keeps the marked token the same before and after blur', async () => {
       // The unique rule marks only the later (non-first) token as invalid.
       // This marking persists through blur.
       const user = userEvent.setup();
@@ -1193,7 +1177,7 @@ describe('Validation System Integration', () => {
   });
 
   describe('Validation with plaintext', () => {
-    it('marks the existing duplicate instead of deleting it when plaintext sits between tokens (delete-existing)', async () => {
+    it('marks the existing duplicate instead of deleting it when plaintext sits between tokens (onDuplicate replace)', async () => {
       // Initial state: `status:is:active "search term" priority:is:high`
       // Action: Add a new `status:` token via suggestion
       // Expected: existing `status:is:active` is marked but not deleted immediately
@@ -1250,7 +1234,7 @@ describe('Validation System Integration', () => {
       });
     });
 
-    it('should not delete immediately when adding duplicate via suggestion (delete-existing)', async () => {
+    it('should not delete immediately when adding duplicate via suggestion (onDuplicate replace)', async () => {
       const user = userEvent.setup();
 
       render(
@@ -1295,7 +1279,7 @@ describe('Validation System Integration', () => {
         { timeout: 1000 }
       );
 
-      // The existing token should be marked as invalid (delete-existing marks existing tokens)
+      // The existing token should be marked as invalid ('replace' marks it while the user is in the new token)
       // This should NOT be deleted immediately - only marked
       await waitFor(() => {
         const invalidTokens = document.querySelectorAll('.node-filterToken [data-invalid="true"]');
@@ -1303,7 +1287,7 @@ describe('Validation System Integration', () => {
       });
     });
 
-    it('should delete existing token only on blur when adding duplicate via suggestion', async () => {
+    it("deletes the existing token only on blur when adding a duplicate via suggestion (onDuplicate 'replace')", async () => {
       const user = userEvent.setup();
 
       render(
@@ -1348,7 +1332,7 @@ describe('Validation System Integration', () => {
         { timeout: 1000 }
       );
 
-      // The existing token should be marked invalid (delete-existing marks existing tokens)
+      // The existing token should be marked invalid ('replace' marks it while the user is in the new token)
       await waitFor(() => {
         const invalidTokens = document.querySelectorAll('.node-filterToken [data-invalid="true"]');
         expect(invalidTokens.length).toBe(1);
@@ -1390,8 +1374,8 @@ describe('Validation System Integration', () => {
       expect(token?.textContent).toContain('inactive');
     });
 
-    it('should delete existing token on value selection (delete-existing with blur)', async () => {
-      // Value selection triggers blur (exitTokenRight), which should execute delete-existing
+    it("deletes the existing token on value selection (onDuplicate 'replace', leaving the token)", async () => {
+      // Value selection leaves the token (exitTokenRight), which runs onDuplicate 'replace'
       // This is EXPECTED behavior: selecting a value completes the edit and triggers deletion
       const user = userEvent.setup();
 
@@ -1453,7 +1437,7 @@ describe('Validation System Integration', () => {
       if (!valueOption) throw new Error('Value option not found');
       await user.click(valueOption);
 
-      // After selecting value, existing token should be deleted (blur triggers delete-existing)
+      // After selecting value, existing token should be deleted (leaving the token runs 'replace')
       await waitFor(
         () => {
           const tokens = document.querySelectorAll('.node-filterToken');
@@ -1468,7 +1452,7 @@ describe('Validation System Integration', () => {
     });
 
     it('maintains space when multiple tokens are deleted simultaneously', async () => {
-      // This tests the case where delete-existing removes multiple tokens at once
+      // This tests the case where onDuplicate 'replace' removes multiple tokens at once
       // (e.g., pasting a string that violates multiple validation rules)
       const user = userEvent.setup();
       const ref = createRef<TokenizedSearchInputRef>();
@@ -1499,7 +1483,7 @@ describe('Validation System Integration', () => {
         expect(listbox).toBeTruthy();
       });
 
-      // Add duplicate status token (triggers delete-existing on first status)
+      // Add duplicate status token (leaving it deletes the first status)
       const statusOption = Array.from(document.querySelectorAll('[role="option"]')).find((el) =>
         el.textContent?.includes('Status')
       ) as HTMLElement;
@@ -1519,7 +1503,7 @@ describe('Validation System Integration', () => {
         await user.click(inactiveOption);
       }
 
-      // Now add duplicate priority token (triggers delete-existing on first priority)
+      // Now add duplicate priority token (leaving it deletes the first priority)
       await waitFor(() => {
         const listbox = document.querySelector('[role="listbox"]');
         expect(listbox).toBeTruthy();
@@ -1562,8 +1546,8 @@ describe('Validation System Integration', () => {
     });
   });
 
-  describe('freshTokenIds: paste duplicate handling', () => {
-    it('delete-new preserves first occurrence of each duplicate on paste', async () => {
+  describe('duplicates among pasted tokens', () => {
+    it("onDuplicate 'reject' keeps the first occurrence of each duplicate on paste", async () => {
       const ref = createRef<TokenizedSearchInputRef>();
 
       render(
@@ -1598,7 +1582,7 @@ describe('Validation System Integration', () => {
       expect(value).toContain('tag:is:ddd');
     });
 
-    it('delete-existing preserves last occurrence of each duplicate on paste', async () => {
+    it("onDuplicate 'replace' keeps the last occurrence of each duplicate on paste", async () => {
       const ref = createRef<TokenizedSearchInputRef>();
 
       render(
@@ -1636,7 +1620,7 @@ describe('Validation System Integration', () => {
       expect(tokenTexts[3]).toContain('aaa');
     });
 
-    it('mark action only marks fresh tokens when existing tokens present', async () => {
+    it("onDuplicate 'mark' marks only the later duplicate when setValue repeats an existing token", async () => {
       const ref = createRef<TokenizedSearchInputRef>();
 
       render(
@@ -1658,7 +1642,7 @@ describe('Validation System Integration', () => {
       let invalidTokens = document.querySelectorAll('.node-filterToken [data-invalid="true"]');
       expect(invalidTokens.length).toBe(0);
 
-      // Add duplicate token via setValue (this creates a mixed case: existing + fresh)
+      // Repeat the token via setValue
       ref.current?.setValue('tag:is:existing tag:is:existing');
 
       await waitFor(
@@ -1669,8 +1653,7 @@ describe('Validation System Integration', () => {
         { timeout: 2000 }
       );
 
-      // In mixed case (existing + fresh): only fresh token should be marked
-      // Since setValue replaces content, both tokens are new, so second one is marked
+      // setValue replaces the content, so both tokens are new and only the second one is marked
       await waitFor(
         () => {
           invalidTokens = document.querySelectorAll('.node-filterToken [data-invalid="true"]');
@@ -1690,10 +1673,11 @@ describe('Validation System Integration', () => {
     });
   });
 
-  // Focused/blurred tokens are treated as "fresh" for strategy decisions.
+  // A token the user edited in the focus session counts as edited, so the
+  // onDuplicate value decides about it when the user leaves it.
 
-  describe('Focus-based freshness', () => {
-    it('focused token is treated as fresh for onDuplicate reject', async () => {
+  describe('Tokens edited in the focus session', () => {
+    it("onDuplicate 'reject' deletes the token edited in the focus session", async () => {
       const user = userEvent.setup();
 
       render(
@@ -1715,8 +1699,8 @@ describe('Validation System Integration', () => {
       // Type a new duplicate and confirm with space
       await user.type(combobox, 'status:is:inactive ');
 
-      // The new duplicate should be deleted (reject strategy)
-      // because the focused/newly-created token is treated as "fresh"
+      // The new duplicate should be deleted ('reject')
+      // because it is the token edited in the focus session
       await waitFor(
         () => {
           const tokens = document.querySelectorAll('.node-filterToken');
@@ -1725,12 +1709,12 @@ describe('Validation System Integration', () => {
         { timeout: 2000 }
       );
 
-      // Original token should remain (reject keeps existing)
+      // The original token should remain ('reject' keeps the token that was not edited)
       const token = document.querySelector('.node-filterToken');
       expect(token?.textContent).toContain('active');
     });
 
-    it('focused token is treated as fresh for onDuplicate replace', async () => {
+    it("onDuplicate 'replace' keeps the token edited in the focus session", async () => {
       // Use delay to ensure each character is fully processed before the next
       const user = userEvent.setup({ delay: 10 });
 
@@ -1765,7 +1749,7 @@ describe('Validation System Integration', () => {
         { timeout: 2000 }
       );
 
-      // New token should remain (replace keeps new/fresh)
+      // The new token should remain ('replace' keeps the token that was edited)
       await waitFor(() => {
         const token = document.querySelector('.node-filterToken');
         expect(token?.textContent).toContain('inactive');
@@ -1777,10 +1761,10 @@ describe('Validation System Integration', () => {
   // not to an intermediate state with duplicates.
 
   describe('Undo behavior with validation', () => {
-    it('onDuplicate replace: undo restores original token after replace deletion', async () => {
+    it("onDuplicate 'replace': undo restores original token after replace deletion", async () => {
       // Scenario:
       // 1. Start with [status:active]
-      // 2. setValue to [status:active, status:inactive] -> replace deletes active
+      // 2. setValue to [status:active, status:inactive] -> 'replace' deletes active
       // 3. Undo -> restores to [status:active] (the state before setValue)
       const user = userEvent.setup();
       const ref = createRef<TokenizedSearchInputRef>();
@@ -1801,10 +1785,10 @@ describe('Validation System Integration', () => {
         expect(tokens[0]?.textContent).toContain('active');
       });
 
-      // Add duplicate via setValue (triggers replace: active deleted, inactive remains)
+      // Add duplicate via setValue ('replace' deletes active, inactive remains)
       ref.current?.setValue('status:is:active status:is:inactive');
 
-      // After replace: only inactive remains
+      // After 'replace': only inactive remains
       await waitFor(
         () => {
           const tokens = document.querySelectorAll('.node-filterToken');
@@ -1837,10 +1821,10 @@ describe('Validation System Integration', () => {
       expect(token?.textContent).toContain('active');
     });
 
-    it('onDuplicate reject: undo restores original token after reject deletion', async () => {
+    it("onDuplicate 'reject': undo restores original token after reject deletion", async () => {
       // Scenario:
       // 1. Start with [status:active]
-      // 2. setValue to [status:active, status:inactive] -> reject deletes inactive
+      // 2. setValue to [status:active, status:inactive] -> 'reject' deletes inactive
       // 3. Undo -> restores to [status:active] (the state before setValue)
       const user = userEvent.setup();
       const ref = createRef<TokenizedSearchInputRef>();
@@ -1861,10 +1845,10 @@ describe('Validation System Integration', () => {
         expect(tokens[0]?.textContent).toContain('active');
       });
 
-      // Add duplicate via setValue (triggers reject: inactive deleted, active remains)
+      // Add duplicate via setValue ('reject' deletes inactive, active remains)
       ref.current?.setValue('status:is:active status:is:inactive');
 
-      // After reject: only active remains (reject keeps first)
+      // After 'reject': only active remains ('reject' keeps the first)
       await waitFor(
         () => {
           const tokens = document.querySelectorAll('.node-filterToken');
@@ -1897,7 +1881,7 @@ describe('Validation System Integration', () => {
       expect(token?.textContent).toContain('active');
     });
 
-    it('onDuplicate mark: undo restores single token after marked duplicates', async () => {
+    it("onDuplicate 'mark': undo restores single token after marked duplicates", async () => {
       // Scenario:
       // 1. Start with [status:active]
       // 2. setValue to [status:active, status:inactive] -> second marked invalid
@@ -1923,7 +1907,7 @@ describe('Validation System Integration', () => {
       // Add duplicate via setValue
       ref.current?.setValue('status:is:active status:is:inactive');
 
-      // Mark strategy: both remain, second is marked
+      // onDuplicate 'mark': both remain, second is marked
       await waitFor(
         () => {
           const tokens = document.querySelectorAll('.node-filterToken');
@@ -1956,13 +1940,9 @@ describe('Validation System Integration', () => {
       expect(invalidTokens.length).toBe(0);
     });
 
-    it('onDuplicate replace with editing.length === 0: keeps last token', async () => {
-      // This test verifies the behavior when ALL tokens are "existing" (not editing).
-      // This happens on forceCheck (setValue/paste) when editingTokenIds is computed
-      // as all tokens (since no doc diff exists from empty state).
-      //
-      // Scenario: Start empty, setValue with duplicates
-      // Result: last token is kept (because all are "editing" on forceCheck)
+    it("onDuplicate 'replace' on setValue from an empty editor keeps the last token", async () => {
+      // Starting from an empty document, every token set by setValue is new and so
+      // counts as edited. 'replace' then keeps the last one.
       const ref = createRef<TokenizedSearchInputRef>();
 
       render(
@@ -1979,10 +1959,10 @@ describe('Validation System Integration', () => {
         expect(tokens.length).toBe(0);
       });
 
-      // setValue with duplicates (all tokens are "editing" since they're all new)
+      // setValue with duplicates (all tokens are new, so all count as edited)
       ref.current?.setValue('status:is:first status:is:second status:is:third');
 
-      // Replace keeps last editing token
+      // 'replace' keeps the last token
       await waitFor(
         () => {
           const tokens = document.querySelectorAll('.node-filterToken');
@@ -1999,7 +1979,7 @@ describe('Validation System Integration', () => {
       // Scenario:
       // 1. Start empty
       // 2. Paste "status:is:active" (single token, no duplicates)
-      // 3. Replace strategy runs (no duplicates, so token remains)
+      // 3. onDuplicate 'replace' runs (no duplicates, so the token remains)
       // 4. Undo -> editor becomes empty (this is EXPECTED - undo reverts to state BEFORE paste)
       const user = userEvent.setup();
       const ref = createRef<TokenizedSearchInputRef>();
@@ -2053,7 +2033,7 @@ describe('Validation System Integration', () => {
 
     it('restores the original token on undo after a pasted duplicate replaced it', async () => {
       // 1. Start with existing token [status:active]
-      // 2. Paste duplicate "status:inactive" -> replace deletes active, keeps inactive
+      // 2. Paste duplicate "status:inactive" -> 'replace' deletes active, keeps inactive
       // 3. Undo -> should restore [status:active], not become empty
       const user = userEvent.setup();
       const ref = createRef<TokenizedSearchInputRef>();
@@ -2074,11 +2054,10 @@ describe('Validation System Integration', () => {
         expect(tokens[0]?.textContent).toContain('active');
       });
 
-      // Simulate paste that creates a duplicate (triggers replace)
-      // Using setValue to simulate the paste + replace flow
+      // Simulate paste that creates a duplicate, using setValue to stand in for the paste
       ref.current?.setValue('status:is:active status:is:inactive');
 
-      // After replace: only inactive remains
+      // After 'replace': only inactive remains
       await waitFor(
         () => {
           const tokens = document.querySelectorAll('.node-filterToken');
@@ -2109,7 +2088,7 @@ describe('Validation System Integration', () => {
       );
     });
 
-    it('Undo via editor.commands.undo() after replace', async () => {
+    it("Undo via editor.commands.undo() after onDuplicate 'replace'", async () => {
       // Test using editor.commands.undo() directly instead of keyboard shortcut
       const ref = createRef<TokenizedSearchInputRef>();
 
@@ -2132,7 +2111,7 @@ describe('Validation System Integration', () => {
       // Simulate paste that creates a duplicate
       ref.current?.setValue('status:is:active status:is:inactive');
 
-      // After replace: only inactive remains
+      // After 'replace': only inactive remains
       await waitFor(
         () => {
           const tokens = document.querySelectorAll('.node-filterToken');
