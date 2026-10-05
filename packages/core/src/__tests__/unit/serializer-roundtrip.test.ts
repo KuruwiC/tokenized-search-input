@@ -24,6 +24,7 @@ describe('Serializer Round-trip', () => {
     },
     { key: 'assignee', label: 'Assignee', type: 'string', operators: ['is', 'is_not'] },
     { key: 'created', label: 'Created', type: 'date', operators: ['gt', 'lt'] },
+    { key: 'user.email', label: 'User Email', type: 'string', operators: ['is', 'contains'] },
   ];
 
   describe('filter tokens', () => {
@@ -32,6 +33,8 @@ describe('Serializer Round-trip', () => {
       'priority:gt:high',
       'assignee:is:john',
       'created:gt:2024-01-01',
+      'status:is_not:open',
+      'user.email:contains:@example.com',
     ];
 
     it.each(filterQueries)('round-trips filter query: %s', (query) => {
@@ -42,6 +45,13 @@ describe('Serializer Round-trip', () => {
 
     it('round-trips multiple filter tokens', () => {
       const query = 'status:is:open priority:gt:high';
+      const doc = parseQueryToDoc(query, fields, { freeTextMode: 'tokenize' }).doc;
+      const result = serializeDocToQuery(doc);
+      expect(result).toBe(query);
+    });
+
+    it('round-trips a filter value with an unquoted comma', () => {
+      const query = 'status:is:active,pending';
       const doc = parseQueryToDoc(query, fields, { freeTextMode: 'tokenize' }).doc;
       const result = serializeDocToQuery(doc);
       expect(result).toBe(query);
@@ -102,6 +112,20 @@ describe('Serializer Round-trip', () => {
       expect(result).toBe(query);
     });
 
+    it('round-trips free text between filters', () => {
+      const query = 'status:is:open keyword priority:gt:high';
+      const doc = parseQueryToDoc(query, fields, { freeTextMode: 'tokenize' }).doc;
+      const result = serializeDocToQuery(doc);
+      expect(result).toBe(query);
+    });
+
+    it('round-trips a query with every token type', () => {
+      const query = 'status:is:open "search term" assignee:is_not:john keyword';
+      const doc = parseQueryToDoc(query, fields, { freeTextMode: 'tokenize' }).doc;
+      const result = serializeDocToQuery(doc);
+      expect(result).toBe(query);
+    });
+
     it('round-trips complex mixed query', () => {
       const query = 'status:is:open "hello world" priority:gt:high search';
       const doc = parseQueryToDoc(query, fields, { freeTextMode: 'tokenize' }).doc;
@@ -150,6 +174,20 @@ describe('Serializer Round-trip', () => {
       const doc = parseQueryToDoc(query, fields, { freeTextMode: 'plain' }).doc;
       const result = serializeDocToQuery(doc);
       expect(result).toBe(query);
+    });
+
+    it('plain mode keeps free text between filters', () => {
+      const query = 'status:is:open freetext priority:gt:high';
+      const doc = parseQueryToDoc(query, fields, { freeTextMode: 'plain' }).doc;
+      const result = serializeDocToQuery(doc);
+      expect(result).toBe(query);
+    });
+
+    it('none mode removes free text between filters', () => {
+      const query = 'status:is:open freetext priority:gt:high';
+      const doc = parseQueryToDoc(query, fields, { freeTextMode: 'none' }).doc;
+      const result = serializeDocToQuery(doc);
+      expect(result).toBe('status:is:open priority:gt:high');
     });
 
     it('none mode removes free text', () => {
