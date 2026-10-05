@@ -1,7 +1,7 @@
 # Query grammar
 
 A query is the string form of the tokens in the search input. `serializeDocToQuery` and
-`createQuerySnapshot().text` write it, and `parseQueryToDoc` reads it. One tokenizer (`serializer/tokenize.ts`) cuts a query into segments, and one function,
+`createQuerySnapshot().text` write it, and `parseQueryToDoc` reads it. One tokenizer (`packages/core/src/serializer/tokenize.ts`) cuts a query into segments, and one function,
 `quote`, writes text that needs quotes. A query that cannot be read as written is not
 changed; it is reported in the `diagnostics` of the result.
 

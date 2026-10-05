@@ -95,7 +95,7 @@ The input and its callbacks use one string form for a query. A query is a list o
 | Free text | `hello` | free text (see `freeTextMode`) |
 | Quoted | `title:contains:"hello world"`, `"hello world"` | a value or free text that holds spaces |
 
-Inside quotes `\"` stands for `"` and `\\` for `\`. A filter whose operator the field does not allow keeps that operator and is marked invalid. The full grammar, including how free text that looks like a filter is quoted and which diagnostics `parseQueryToDoc` reports, is in [docs/query-grammar.md](docs/query-grammar.md).
+Inside quotes `\"` stands for `"` and `\\` for `\`. A filter whose operator the field does not allow keeps that operator and is marked invalid. The full grammar, including how free text that looks like a filter is quoted and which diagnostics `parseQueryToDoc` reports, is in [docs/query-grammar.md](https://github.com/KuruwiC/tokenized-search-input/blob/main/docs/query-grammar.md).
 
 ## Field Configuration
 
@@ -1046,7 +1046,7 @@ const { doc, diagnostics } = parseQueryToDoc('status:is:active "two words"', fie
 export const query = serializeDocToQuery(doc, { fields });
 ```
 
-Pass the same `fields` and `unknownFields` the editor uses so that free text that would read back as a filter is quoted. See [docs/query-grammar.md](docs/query-grammar.md) for the grammar.
+Pass the same `fields` and `unknownFields` the editor uses so that free text that would read back as a filter is quoted. See [docs/query-grammar.md](https://github.com/KuruwiC/tokenized-search-input/blob/main/docs/query-grammar.md) for the grammar.
 
 ### useAsyncTokenResolver
 
