@@ -1,5 +1,5 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
-import type { EditorState } from '@tiptap/pm/state';
+import type { EditorState, Transaction } from '@tiptap/pm/state';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { FreeTextMode } from '../types';
 import { isFilterToken, isFreeTextToken } from '../utils/node-predicates';
@@ -26,18 +26,20 @@ function hasTokenInsertion(oldState: EditorState, newState: EditorState): boolea
   return newCount > oldCount;
 }
 
-/** Text nodes that are direct children of the paragraph, so text inside tokens is excluded. */
-function collectFreeTextNodes(doc: ProseMirrorNode): Array<{ from: number; to: number }> {
+/**
+ * Deletes the free text of the document in `tr`: every text node of the paragraph. Text
+ * cannot sit inside a token, so the tokens are all that remains. Every removal of free
+ * text, in none mode or when changing to it, goes through here.
+ */
+export function removeFreeText(tr: Transaction): Transaction {
   const textNodes: Array<{ from: number; to: number }> = [];
-
-  doc.descendants((node, pos, parent) => {
-    if (node.isText && parent?.type.name === 'paragraph') {
-      textNodes.push({ from: pos, to: pos + node.nodeSize });
-    }
-    return true;
+  tr.doc.descendants((node, pos) => {
+    if (node.isText) textNodes.push({ from: pos, to: pos + node.nodeSize });
   });
-
-  return textNodes;
+  for (let i = textNodes.length - 1; i >= 0; i--) {
+    tr.delete(textNodes[i].from, textNodes[i].to);
+  }
+  return tr;
 }
 
 /**
@@ -68,21 +70,8 @@ export function createFreeTextSanitizerPlugin(getContext: () => FreeTextSanitize
         return null;
       }
 
-      const textNodes = collectFreeTextNodes(newState.doc);
-      if (textNodes.length === 0) {
-        return null;
-      }
-
-      const tr = newState.tr;
-      for (let i = textNodes.length - 1; i >= 0; i--) {
-        tr.delete(textNodes[i].from, textNodes[i].to);
-      }
-
-      if (!tr.docChanged) {
-        return null;
-      }
-
-      return markTextSanitized(tr);
+      const tr = removeFreeText(newState.tr);
+      return tr.docChanged ? markTextSanitized(tr) : null;
     },
   });
 }

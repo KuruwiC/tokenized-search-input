@@ -3,7 +3,10 @@ import type { EditorState } from '@tiptap/pm/state';
 import { getFreeTextStrategy } from '../plugins/auto-tokenize/free-text-strategy';
 import { createAutoTokenizePlugin } from '../plugins/auto-tokenize/plugin';
 import { tokenizeRange } from '../plugins/auto-tokenize/tokenize-range';
-import { createFreeTextSanitizerPlugin } from '../plugins/free-text-sanitizer-plugin';
+import {
+  createFreeTextSanitizerPlugin,
+  removeFreeText,
+} from '../plugins/free-text-sanitizer-plugin';
 import {
   isCleared,
   isSubmitted,
@@ -266,7 +269,7 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
 
       finalizeInput:
         () =>
-        ({ editor, tr, dispatch, chain }) => {
+        ({ editor, tr, dispatch }) => {
           const storage = getEditorContext(editor);
           const strategy = getFreeTextStrategy(storage.freeTextMode);
           const action = strategy.finalizeAction;
@@ -285,27 +288,8 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
             return true;
           }
 
-          if (action === 'remove') {
-            // Remove all text nodes from document (including whitespace-only)
-            const { doc } = editor.state;
-            const textNodes: Array<{ from: number; to: number }> = [];
-
-            doc.descendants((node, pos) => {
-              if (node.isText) {
-                textNodes.push({ from: pos, to: pos + node.nodeSize });
-              }
-              return true;
-            });
-
-            if (textNodes.length === 0) return true;
-
-            const chainCmd = chain();
-            for (let i = textNodes.length - 1; i >= 0; i--) {
-              chainCmd.deleteRange(textNodes[i]);
-            }
-            chainCmd.run();
-
-            return true;
+          if (action === 'remove' && dispatch) {
+            removeFreeText(tr);
           }
 
           return true;

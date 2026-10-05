@@ -3,6 +3,7 @@ import type { Transaction } from '@tiptap/pm/state';
 import type { EditorContextStorage } from '../extensions/editor-context';
 import { getFreeTextStrategy } from '../plugins/auto-tokenize/free-text-strategy';
 import { tokenizeRange } from '../plugins/auto-tokenize/tokenize-range';
+import { removeFreeText } from '../plugins/free-text-sanitizer-plugin';
 import type { FocusTransitionContext } from '../plugins/token-focus';
 import { isFreeTextToken } from '../utils/node-predicates';
 
@@ -45,9 +46,5 @@ export function applyFreeTextMode(
     }
   }
   tokenizeRange(tr, 0, tr.doc.content.size, context, focus);
-  if (context.freeTextMode === 'none') {
-    for (const { node, pos } of inlineNodesFromEnd(tr.doc)) {
-      if (node.isText) tr.delete(pos, pos + node.nodeSize);
-    }
-  }
+  if (context.freeTextMode === 'none') removeFreeText(tr);
 }
