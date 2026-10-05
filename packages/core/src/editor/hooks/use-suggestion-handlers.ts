@@ -9,7 +9,6 @@ import { applyTokenAction } from '../../tokens/filter-token/token-actions';
 import { findTokenById } from '../../utils/find-token';
 import { isFilterToken } from '../../utils/node-predicates';
 
-/** The id of the filter token being edited, if one is. */
 function focusedFilterTokenId(editor: Editor): string | null {
   const id = getFocusedToken(editor.state)?.id;
   if (id === undefined) return null;

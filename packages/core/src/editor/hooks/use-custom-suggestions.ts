@@ -97,7 +97,6 @@ function isReportable(signal: AbortSignal): boolean {
   return !signal.aborted || signal.reason instanceof RequestTimeoutError;
 }
 
-/** Aborts the request in `ref`, if any, and puts a new one there. */
 function startRequest(ref: MutableRefObject<AbortController | null>): AbortController {
   ref.current?.abort();
   const controller = new AbortController();
@@ -130,7 +129,7 @@ function runRequest<T>(
   return withTimeout(task, timeoutMs, request).finally(() => settleRequest(ref, request));
 }
 
-/** Whether suggestions for the text may be shown: it is being typed in, and not dismissed. */
+/** A token being edited holds DOM focus, so the editor itself is not focused while one is. */
 function canSuggest(editor: Editor): boolean {
   return (
     canShowCustomSuggestion(editor.state) &&
@@ -189,8 +188,7 @@ export function useCustomSuggestions(
   config: CustomSuggestionConfig | undefined
 ): UseCustomSuggestionsResult {
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // The request for the suggestions of the latest query, and the one for a next page. A
-  // request that was aborted has nothing to say any more.
+  // A request that was aborted has nothing to say any more.
   const suggestRequestRef = useRef<AbortController | null>(null);
   const loadMoreRequestRef = useRef<AbortController | null>(null);
 
@@ -293,7 +291,6 @@ export function useCustomSuggestions(
   const updateCustomSuggestions = useCallback(() => {
     if (!editor || !config) return;
 
-    // While a token is edited, DOM focus is in the token, not in the editor.
     if (!canSuggest(editor)) {
       cancelRequests();
       return;
@@ -308,7 +305,6 @@ export function useCustomSuggestions(
 
     const query = plainTextSegment.trim();
 
-    // A newer query supersedes the one waiting out its debounce or its response
     cancelRequests();
     const request = startRequest(suggestRequestRef);
     const { signal } = request;

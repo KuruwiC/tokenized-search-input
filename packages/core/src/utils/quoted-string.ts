@@ -1,23 +1,16 @@
 import { readQuoted } from '../serializer/tokenize';
 
-/** What makes text need quotes: any whitespace character (space, tab, CR, LF), a quote or a backslash. */
+/** Characters that force quoting: space, tab, CR, LF, a quote and a backslash. */
 const NEEDS_QUOTES = /[ \t\r\n"\\]/;
 
 export interface QuoteOptions {
-  /** Quote the text even when it would stand as written. */
   always?: boolean;
 }
 
 /**
  * Writes `text` as a value or as free text of a query. Quotes are added when the text
- * contains whitespace, a quote or a backslash, or when `always` is set. Inside quotes, `"`
- * and `\` are written as `\"` and `\\`; every other character stays as it is.
- *
- * @example
- * quote('hello') // 'hello'
- * quote('hello world') // '"hello world"'
- * quote('say "hi"') // '"say \\"hi\\""'
- * quote('a', { always: true }) // '"a"'
+ * contains a space, tab, CR, LF, quote or backslash, or when `always` is set. Inside quotes,
+ * `"` and `\` are written as `\"` and `\\`; every other character stays as it is.
  */
 export function quote(text: string, options: QuoteOptions = {}): string {
   if (!options.always && !NEEDS_QUOTES.test(text)) return text;
@@ -26,7 +19,6 @@ export function quote(text: string, options: QuoteOptions = {}): string {
 
 export interface Unquoted {
   value: string;
-  /** Whether the text started with a quote. */
   wasQuoted: boolean;
   /** Whether the last quote the text opens is closed. */
   closed: boolean;
@@ -38,10 +30,7 @@ export interface Unquoted {
  * for themselves.
  *
  * @example
- * unquote('hello') // { value: 'hello', wasQuoted: false, closed: true }
- * unquote('"hello world"') // { value: 'hello world', wasQuoted: true, closed: true }
  * unquote('"hello') // { value: 'hello', wasQuoted: true, closed: false }
- * unquote('"say \\"hi\\""') // { value: 'say "hi"', wasQuoted: true, closed: true }
  * unquote('"a\\nb"') // { value: 'a\\nb', wasQuoted: true, closed: true }
  */
 export function unquote(text: string): Unquoted {

@@ -8,7 +8,6 @@ export type DismissReason = 'pointer-outside' | 'escape' | 'focus-outside';
  * Closes an open suggestion on a pointer press outside it, on Escape, and, for a suggestion
  * that belongs to a token, on focus moving outside it.
  *
- * @param isOpen - Whether the suggestion overlay is currently open
  * @param isInside - Whether an element is inside the suggestion's interaction boundary
  * @param onDismiss - Called with what asked for it when the suggestion should close; returns
  *   true if it did

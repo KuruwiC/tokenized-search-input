@@ -30,7 +30,6 @@ declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     filterToken: {
       insertFilterToken: (attrs: InsertFilterTokenAttrs) => ReturnType;
-      /** Focuses the filter token `id` with the caret at `position` in its value. */
       focusFilterToken: (id: string, position?: TokenFocusEntry['position']) => ReturnType;
       /**
        * Leaves the focused token `id`, filter or free text, committing it with `value`

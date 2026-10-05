@@ -2,7 +2,7 @@ import type { Editor } from '@tiptap/core';
 import { getFocusedToken } from '../../plugins/token-focus';
 import type { FreeTextMode } from '../../types';
 
-// Uses ProseMirror plugin state instead of DOM queries for reliability.
+// Uses ProseMirror plugin state for reliability.
 export function isTokenFocused(editor: Editor): boolean {
   return getFocusedToken(editor.state) !== null;
 }

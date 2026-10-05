@@ -23,9 +23,7 @@ type EntryDraft =
   | { kind: 'custom'; suggestion: CustomSuggestion; key: string }
   | { kind: 'value'; value: EnumValue; key: string };
 
-/**
- * Fields by category: categories in order of first appearance, the default one last.
- */
+/** Fields by category: categories in order of first appearance, the default one last. */
 function fieldsByCategory(fields: readonly FieldDefinition[]): Array<[string, FieldDefinition[]]> {
   const categories = new Map<string, FieldDefinition[]>();
   for (const field of fields) {

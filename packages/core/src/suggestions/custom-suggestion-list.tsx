@@ -39,7 +39,6 @@ interface CustomSuggestionLoadMoreProps {
   labels?: PaginationLabels;
 }
 
-/** The row below the custom suggestions that asks for the next page once it scrolls into view. */
 export const CustomSuggestionLoadMore: React.FC<CustomSuggestionLoadMoreProps> = ({
   isLoadingMore,
   onLoadMore,

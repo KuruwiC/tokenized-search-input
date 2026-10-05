@@ -75,7 +75,6 @@ interface TokenAriaLabelState {
   immutable: boolean;
 }
 
-/** The accessible name of a token: what it is, then what can be done with it. */
 function tokenAriaLabel({ name, editing, editable, immutable }: TokenAriaLabelState): string {
   if (editing) return `${name}. Editing.`;
   if (!editable) return `${name}. Disabled.`;
@@ -91,7 +90,6 @@ export interface TokenProps {
   children: React.ReactNode;
   className?: string;
   ariaLabel?: string;
-  /** The token's validation failure, as computed by the validation plugin. */
   validation?: TokenValidation;
   dataAttrs?: Record<string, string>;
   /** Make token immutable (only deletable via X button or 2-stage Backspace). Default: false */
@@ -217,8 +215,6 @@ export function Token({
     [editor, id]
   );
 
-  // Keys no block handles: Escape closes the open suggestions and then leaves the token,
-  // Tab leaves it to either side.
   const handleTokenKey = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Escape') {

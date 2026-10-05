@@ -14,7 +14,6 @@ export function TokenIconSlot({
 }
 
 export interface TokenValueProps {
-  /** The text the document holds for the input */
   value: string;
   /** Writes the text the user edited to the document; false when the document did not change. */
   onChange: (value: string) => boolean;
@@ -57,9 +56,6 @@ function showText(input: HTMLInputElement | null, text: string): void {
  * would write the old value back into the input and then the new one, moving the caret
  * to the end on every edit. Instead the input's text is the user's edit, and the
  * document's text is written into it only where the two differ.
- *
- * It handles the keys pressed in its input; a view can handle keys of its own first
- * through `handleKey`.
  */
 export function TokenValue({
   value,
@@ -111,13 +107,11 @@ export function TokenValue({
         navigateRight();
         return true;
       case 'Backspace':
-        // Backspace at the start moves to the previous entry-focusable block or leaves the token
         if (!atStart || !collapsed) return false;
         e.preventDefault();
         navigateLeftEntry();
         return true;
       case 'Delete':
-        // Delete at the end moves to the next entry-focusable block or leaves the token
         if (!atEnd || !collapsed) return false;
         e.preventDefault();
         navigateRightEntry();
@@ -129,7 +123,6 @@ export function TokenValue({
           exitToken();
           return true;
         }
-        // Elsewhere the view may let the space in, for instance to quote the value
         if (onSpaceNotAtEnd?.({ atStart })) return false;
         e.preventDefault();
         return true;

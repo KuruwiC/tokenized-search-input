@@ -9,7 +9,6 @@ import { isHistoryTransaction as isHistoryStateTransaction } from '@tiptap/pm/hi
 import type { Transaction } from '@tiptap/pm/state';
 import type { ReactNode } from 'react';
 
-/** The validation outcome of one token: the rule that failed, its reason code, and an optional message. */
 export interface TokenValidation {
   ruleId: string;
   reason: string;
@@ -33,7 +32,6 @@ export interface TokenDisplayMeta extends TokenDisplayContent {
   forValue: string;
 }
 
-/** The display content that describes a token with the given key and value, if any. */
 export function getApplicableDisplay(
   display: TokenDisplayMeta | undefined,
   key: string,
@@ -190,7 +188,6 @@ export function markTokenValueTyped(tr: Transaction, tokenId: string): Transacti
   return tr.setMeta(TOKEN_VALUE_TYPED, tokenId);
 }
 
-/** The id of the token the user typed into on this transaction, if any. */
 export function getTokenValueTypedId(tr: Transaction): string | undefined {
   return tr.getMeta(TOKEN_VALUE_TYPED);
 }
@@ -207,7 +204,6 @@ export function isContextUpdated(tr: Transaction): boolean {
   return tr.getMeta(CONTEXT_UPDATED) === true;
 }
 
-/** Marks the transaction as the user submitting the query. */
 export function markSubmitted(tr: Transaction): Transaction {
   return tr.setMeta(SUBMITTED, true);
 }
@@ -216,7 +212,6 @@ export function isSubmitted(tr: Transaction): boolean {
   return tr.getMeta(SUBMITTED) === true;
 }
 
-/** Marks the transaction as clearing the query. */
 export function markCleared(tr: Transaction): Transaction {
   return tr.setMeta(CLEARED, true);
 }
@@ -237,7 +232,6 @@ export function isAutoTokenized(tr: Transaction): boolean {
   return tr.getMeta(AUTO_TOKENIZED) === true;
 }
 
-/** Marks the transaction as the document-repair plugin's own repair. */
 export function markDocumentRepaired(tr: Transaction): Transaction {
   return tr.setMeta(DOCUMENT_REPAIRED, true);
 }
@@ -246,7 +240,6 @@ export function isDocumentRepaired(tr: Transaction): boolean {
   return tr.getMeta(DOCUMENT_REPAIRED) === true;
 }
 
-/** Marks the transaction as the free text sanitizer's own removal of text. */
 export function markTextSanitized(tr: Transaction): Transaction {
   return tr.setMeta(TEXT_SANITIZED, true);
 }

@@ -34,7 +34,7 @@ export function TokenOperator({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdown = useTokenDropdown(triggerRef, onOpen);
   const { showsControls, isEditable } = useTokenFocusContext();
-  // A value outside `operators` can only be repaired by choosing one of them, even when there is one.
+  // A value outside `operators` can only be repaired by choosing one of them, even if only one exists.
   const choosable = operators.length > 1 || !operators.includes(value);
   const interactive = showsControls && choosable;
 

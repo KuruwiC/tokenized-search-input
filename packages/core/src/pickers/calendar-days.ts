@@ -1,7 +1,7 @@
 import { isDevelopment } from '../utils/env';
 import { fromInstant, pad, parseDateTimeValue, toInstant } from './date-time-value';
 
-/** The calendar cells of a picker are days; a day is `yyyy-MM-dd`, with no time zone. */
+// The calendar cells of a picker are days; a day is `yyyy-MM-dd`, with no time zone.
 
 /** The day a calendar cell shows, which is its local date. */
 export function toCalendarDay(cell: Date): string {

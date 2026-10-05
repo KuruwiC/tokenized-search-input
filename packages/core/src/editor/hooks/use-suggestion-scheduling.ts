@@ -51,7 +51,6 @@ export function useSuggestionScheduling({
     const handleSelectionUpdate = () => {
       debouncedUpdate();
 
-      // Collapsed while focus is outside the container.
       const collapsed = expandOnFocus && !containerRef.current?.matches(':focus-within');
       if (singleLine || collapsed) {
         try {

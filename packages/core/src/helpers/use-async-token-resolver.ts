@@ -73,7 +73,6 @@ interface PendingToken {
   startContent: ReactNode;
 }
 
-/** What the resolver reads about a filter token: its query facts, display, and whether it is being edited. */
 interface TokenView {
   key: string;
   value: string;

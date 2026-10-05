@@ -151,7 +151,6 @@ export function openFieldWithCustomSuggestion(
   });
 }
 
-/** Marks the next page of custom suggestions as asked for, or as no longer awaited. */
 export function setCustomLoadingMore(
   tr: Transaction,
   state: SuggestionState,

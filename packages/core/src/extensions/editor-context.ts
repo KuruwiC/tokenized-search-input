@@ -127,7 +127,7 @@ declare module '@tiptap/core' {
       finalizeInput: () => ReturnType;
       /**
        * Leaves the token being edited, finalizes the input and calls `onSubmit` with the
-       * query that leaves. Every way of submitting goes through this command.
+       * resulting query. Every way of submitting goes through this command.
        */
       submit: () => ReturnType;
       /**
@@ -221,13 +221,11 @@ export function getEditorContext(editor: object): EditorContextStorage {
   return context;
 }
 
-/** What writing the query of `editor` needs from its configuration. */
 export function getSerializeOptions(editor: object): SerializeDocOptions {
   const { delimiter, fields, unknownFields } = getEditorContext(editor);
   return { delimiter, fields, unknownFields };
 }
 
-/** What a focus transition in a transaction from `state` of `editor` needs to know. */
 export function getFocusContext(
   editor: Editor,
   state: EditorState = editor.state

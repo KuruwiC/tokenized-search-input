@@ -19,11 +19,7 @@ export type AtLeastOne<T> = readonly [T, ...T[]];
 export interface EnumValueWithLabel {
   value: string;
   label: string;
-  /**
-   * Icon to display before the label.
-   * Not persisted across Undo/Redo with dynamic enumValues.
-   * @see SuggestedFilterToken.startContent
-   */
+  /** Icon to display before the label. */
   icon?: ReactNode;
 }
 

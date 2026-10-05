@@ -35,7 +35,6 @@ function isEntered(token: ValidationToken, ctx: ValidationContext): boolean {
   return token.value !== '' && token.id !== ctx.focusedTokenId;
 }
 
-/** Whether a reject strategy may delete the token: it was edited and is fully entered. */
 function isRejectable(token: ValidationToken, ctx: ValidationContext): boolean {
   return ctx.isEditing(token) && isEntered(token, ctx);
 }

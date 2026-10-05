@@ -84,7 +84,6 @@ export const SuggestionAria: React.FC<SuggestionAriaProps> = ({
     if (editor.isDestroyed) return;
 
     const type = suggestionState?.type ?? null;
-    // Open only while the overlay has something to show
     const isOpen = isSuggestionOpen(suggestionState);
     const activeIndex = suggestionState?.activeIndex ?? -1;
     const popup = isPickerType(type) ? 'dialog' : 'listbox';

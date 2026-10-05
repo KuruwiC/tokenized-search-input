@@ -1,7 +1,7 @@
 /**
  * DOM focus detection utilities for token-based search input.
  *
- * Provides predicate functions and selectors for determining
+ * Provides predicate and lookup functions for determining
  * focus state relative to tokens and suggestion UI.
  */
 

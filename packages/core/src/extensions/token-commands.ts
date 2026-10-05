@@ -33,7 +33,6 @@ declare module '@tiptap/core' {
   }
 }
 
-/** Applies a `TokenPatch` to the filter token with the given id. */
 export function applyTokenPatch(
   tr: Transaction,
   id: string,
@@ -77,7 +76,6 @@ function mergeTokenDisplay(
   return Object.keys(next).length > 0 ? next : undefined;
 }
 
-/** The key and value a display describes. */
 export interface DisplayBinding {
   key: string;
   value: string;

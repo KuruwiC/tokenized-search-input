@@ -6,7 +6,7 @@ export interface FoundToken {
   pos: number;
 }
 
-/** Finds the token with the given id. Token ids are unique within a document. */
+/** Token ids are unique within a document, so the search stops at the first match. */
 export function findTokenById(doc: ProseMirrorNode, id: string): FoundToken | null {
   let found: FoundToken | null = null;
   doc.descendants((node, pos) => {

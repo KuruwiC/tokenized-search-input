@@ -60,7 +60,6 @@ export interface ValidationInput {
   rules: readonly ValidationRule[];
   /** Rules that run whether or not any are configured. They only mark. */
   implicitRules: readonly ValidationRule[];
-  /** The token the user is in, if any. */
   focusedTokenId: string | null;
   /**
    * What the user edited since they entered the token they are in. A token typed

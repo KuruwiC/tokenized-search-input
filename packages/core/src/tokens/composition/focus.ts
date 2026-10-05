@@ -88,7 +88,6 @@ export function entryBlock(
   return registry.edge(fromRight ? 'last' : 'first', { entryOnly: entry.target !== 'entry' });
 }
 
-/** Gives DOM focus to the block that `entry` enters the token at, with the caret at the entry's position. */
 export function focusEntryBlock(registry: FocusRegistry, entry: TokenFocusEntry): void {
   entryBlock(registry, entry)?.focus(entry.position);
 }
@@ -96,7 +95,6 @@ export function focusEntryBlock(registry: FocusRegistry, entry: TokenFocusEntry)
 export interface UseFocusableBlockOptions {
   id: string;
   ref: RefObject<HTMLElement | null>;
-  /** Handles a key pressed while the block holds focus; true when it was handled. */
   handleKey: (e: React.KeyboardEvent) => boolean;
   activate?: () => void;
   focus?: (position?: CursorPosition) => void;
@@ -104,7 +102,6 @@ export interface UseFocusableBlockOptions {
   available?: boolean;
   /** Whether this block can receive focus when entering the token via Backspace/Delete. Default: true */
   entryFocusable?: boolean;
-  /** Whether focus on this block is editing the token. Default: true */
   editsToken?: boolean;
 }
 

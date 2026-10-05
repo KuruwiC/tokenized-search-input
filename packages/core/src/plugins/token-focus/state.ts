@@ -24,7 +24,6 @@ export function programEntry(position: TokenFocusEntry['position'] = 'end'): Tok
   return { source: 'program', position, target: 'all' };
 }
 
-/** The token being edited, by id, and how focus entered it. */
 export interface FocusedToken {
   id: string;
   entry: TokenFocusEntry;
@@ -43,9 +42,9 @@ const tokenFocusKey = new PluginKey<TokenFocusPluginState>('tokenFocus');
 const NO_FOCUS: TokenFocusPluginState = { focused: null };
 
 /**
- * Whether the token `id` can receive focus in `doc`: it has to be in the document. Every
- * token has a block that can hold focus; which blocks those are follows from the token's
- * attributes, and an immutable token has only its delete button.
+ * Whether the token `id` can receive focus in `doc`, which only takes it being in the
+ * document: every token has a block that can hold focus, and an immutable token has only
+ * its delete button.
  */
 export function canFocusToken(doc: ProseMirrorNode, id: string): boolean {
   return findTokenById(doc, id) !== null;

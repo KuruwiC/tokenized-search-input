@@ -38,7 +38,6 @@ export interface TokenDropdownState {
   isOpen: boolean;
   /** The option the keys act on, or -1 for none. */
   activeIndex: number;
-  /** The id of the list, for the trigger's aria-controls while the list is shown. */
   listId: string;
   anchorRef: RefObject<HTMLElement | null>;
   listRef: Ref<HTMLDivElement>;
@@ -46,7 +45,6 @@ export interface TokenDropdownState {
   open: (activeIndex?: number) => void;
   close: () => void;
   setActiveIndex: (index: number) => void;
-  /** The id of option `index`, which the trigger names as active through aria-activedescendant. */
   optionId: (index: number) => string;
   /** The id of the active option while the list is open and has such an option, else undefined. */
   activeOptionId: (optionCount: number) => string | undefined;
@@ -60,10 +58,6 @@ export interface TokenDropdownState {
   handleListKey: (key: string, bounds?: ActiveBounds) => boolean;
 }
 
-/**
- * The open state of a token's dropdown, where its list goes, and the keys every list
- * shares. `anchorRef` is the trigger the list hangs from; `onOpen` runs when the list opens.
- */
 export function useTokenDropdown(
   anchorRef: RefObject<HTMLElement | null>,
   onOpen?: () => void
@@ -156,11 +150,6 @@ export function useTokenDropdown(
   };
 }
 
-/**
- * The keys of a trigger whose list is closed: Enter, Space and ArrowDown open it, the rest
- * move focus to a neighbouring block; Tab goes right and Shift+Tab left.
- * @returns whether the key was handled
- */
 export function handleClosedKey(
   { key, shiftKey }: Pick<React.KeyboardEvent, 'key' | 'shiftKey'>,
   open: () => void,

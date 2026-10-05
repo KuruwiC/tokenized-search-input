@@ -25,10 +25,7 @@ import type {
 } from '../tokenized-search-input.types';
 import { scheduleDocumentChange } from './schedule-document-change';
 
-/**
- * Replaces the whole content and validates it, in one transaction. Token meta of the
- * previous content is discarded.
- */
+/** Replaces the whole content; token meta of the previous content is discarded. */
 function setContentAndValidate(editor: Editor, doc: JSONContent): void {
   editor
     .chain()
@@ -58,7 +55,6 @@ function transformDoc(
   return tr.doc.toJSON() as JSONContent;
 }
 
-/** A handle call made while the editor was destroyed, held to run on the live editor. */
 type PendingCall =
   | { type: 'setValue'; doc: JSONContent }
   | { type: 'clear' }
@@ -86,7 +82,6 @@ function liveEditor(held: HeldHandleCalls): Editor | null {
   return held.live && !held.live.isDestroyed ? held.live : null;
 }
 
-/** Runs the held calls on `editor`, in call order. */
 function drain(held: HeldHandleCalls, editor: Editor): void {
   const { base, calls } = held;
   held.base = null;
@@ -99,7 +94,6 @@ function drain(held: HeldHandleCalls, editor: Editor): void {
   for (const call of calls) runPendingCall(editor, call);
 }
 
-/** Schedules a drain of `held` on the live editor, if there is one yet. */
 function scheduleDrain(held: HeldHandleCalls): void {
   const live = liveEditor(held);
   if (live) scheduleDocumentChange(live, () => drain(held, live));
@@ -110,11 +104,9 @@ function scheduleDrain(held: HeldHandleCalls): void {
  *
  * An ancestor's effect in the same commit can call the handle while `editor` is
  * still a destroyed instance, and a handle kept from before can be called after its
- * editor was replaced. Calls made through a destroyed editor are held in call order and
- * run on the live editor after its commit (see `useApplyPendingHandleWrites`), through
- * the same commands as on a live editor, starting from the document they were made
- * against. Calls made while held calls wait are held behind them, so they run in call
- * order. `getValue` and
+ * editor was replaced. Such calls are held in call order and run on the live editor
+ * after its commit (see `useApplyPendingHandleWrites`), starting from the document they
+ * were made against. Calls made while held calls wait queue behind them. `getValue` and
  * `getSnapshot` read the document the held calls produce; validation runs once they
  * are applied, so snapshots read in the meantime carry no validation.
  */
@@ -136,7 +128,6 @@ export function useTokenizedSearchInputRef(
     /** The document calls are made against: the live editor's, else `ed`'s. */
     const currentDoc = (ed: Editor): JSONContent =>
       (liveEditor(pendingHandleRef.current) ?? ed).getJSON();
-    /** The document after the held calls. */
     const readDoc = (ed: Editor): JSONContent => {
       const { base, calls } = pendingHandleRef.current;
       return calls.reduce<JSONContent>((doc, call) => {
@@ -164,7 +155,6 @@ export function useTokenizedSearchInputRef(
       held.calls.push(call);
       scheduleDrain(held);
     };
-    /** Whether a call has to wait: the editor is destroyed, or held calls wait before it. */
     const mustHold = (ed: Editor) => ed.isDestroyed || pendingHandleRef.current.calls.length > 0;
 
     return {
@@ -283,7 +273,6 @@ function runPendingCall(editor: Editor, call: PendingCall): void {
  * other hook that attaches to the editor: the calls set content, validate, set token
  * display, focus and submit, so they have to see the configuration synced from the
  * current props, the focus listeners and the suggestion scheduling already in place.
- * The calls stay held until they run.
  */
 export function useApplyPendingHandleWrites(
   editor: Editor | null,

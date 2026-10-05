@@ -29,7 +29,6 @@ declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     freeTextToken: {
       insertFreeTextToken: (attrs: InsertFreeTextTokenAttrs) => ReturnType;
-      /** Focuses the free text token `id` with the caret at `position` in its value. */
       focusFreeTextToken: (id: string, position?: TokenFocusEntry['position']) => ReturnType;
     };
   }

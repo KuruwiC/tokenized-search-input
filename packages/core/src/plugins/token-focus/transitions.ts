@@ -40,12 +40,11 @@ function focusedIn(tr: Transaction, ctx: FocusTransitionContext): FocusedToken |
 }
 
 /**
- * Leaves the focused token, if there is one, in `tr`: sets the value chosen in
- * `options`, commits what the user entered, closes the token's suggestion, clears the
- * token focus and puts the caret beside the token on the `direction` side. Every way
- * focus leaves a token goes through here. The undo history records the commit with the
- * rest of the transaction, and the repairs that follow decide for themselves whether
- * they are recorded.
+ * Leaves the focused token, if there is one, in `tr`: commits what the user entered,
+ * closes the token's suggestion, clears the token focus and puts the caret beside the
+ * token on the `direction` side. Every way focus leaves a token goes through here. The
+ * undo history records the commit with the rest of the transaction, and the repairs that
+ * follow decide for themselves whether they are recorded.
  *
  * @returns the id of the token left, or null when no token was focused
  */

@@ -205,7 +205,6 @@ export function TokenLabelCombobox({
         rightEntry: navigateRightEntry,
       });
     } else if (hasTextInput && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      // A character typed into the input
       return false;
     } else {
       // Escape drops what was typed

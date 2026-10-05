@@ -64,7 +64,7 @@ function minutesOfOffset(offset: DateTimeOffset): number {
 }
 
 /**
- * The only place a date or date-time string is read. Accepts
+ * Reads a date or date-time string strictly. Accepts
  * `yyyy-MM-dd` and `yyyy-MM-dd(T| )HH:mm[:ss[.S to .SSSSSSSSS]][Z|±HH:MM]`; a `date`
  * keeps only the date of the latter. Partial input (`2024`, `2024-03`, `20240305`) and
  * dates that do not exist (`2024-02-31`) are rejected.

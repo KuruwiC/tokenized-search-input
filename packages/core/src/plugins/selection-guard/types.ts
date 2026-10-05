@@ -4,7 +4,6 @@ import type { EditorView } from '@tiptap/pm/view';
 import { safeResolve } from '../../utils/safe-resolve';
 import type { FocusTransitionContext } from '../token-focus';
 
-/** What a selection guard key handler needs to handle a key press. */
 export interface SelectionGuardContext {
   view: EditorView;
   event: KeyboardEvent;
@@ -17,7 +16,6 @@ export interface SelectionGuardContext {
   focus: FocusTransitionContext;
 }
 
-/** A condition on the context of a key press. */
 export type Predicate = (ctx: SelectionGuardContext) => boolean;
 
 /** Handles a key press; returns true when it did, which stops the keys after it. */

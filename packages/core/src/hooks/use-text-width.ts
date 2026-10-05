@@ -26,11 +26,7 @@ function sizesToContent(): boolean {
   return fieldSizing;
 }
 
-/**
- * The width of `text` in the font of `element`, with the element's horizontal padding
- * and room for the caret. The font is read from the element, so the result follows
- * whatever style the consumer gives it.
- */
+/** Reads the font from `element` so the width follows whatever style the consumer gives it. */
 function measureTextWidth(element: HTMLElement, text: string): number | null {
   const context = getMeasureContext();
   if (!context) return null;

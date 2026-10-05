@@ -63,7 +63,6 @@ function deriveValueSuggestion(
   return { fieldKey, query, items: matchValueSuggestions(resolveField?.(fieldKey), query) };
 }
 
-/** Shows the value suggestions of the token the user typed into. */
 function typedValueSuggestionMeta(
   tr: Transaction,
   resolveField: SuggestionPluginOptions['resolveField']
@@ -152,8 +151,8 @@ export function createSuggestionPlugin(
         }
 
         const newType = meta.type ?? value.type;
-        // A suggestion that is closed or dismissed keeps none of the custom suggestions it had
         const newDismissed = meta.dismissed ?? value.dismissed;
+        // A suggestion that is closed or dismissed keeps none of the custom suggestions it had
         const closed = newType === null || newDismissed;
         const newItems = meta.items ?? value.items;
         const newCustomItems = closed ? [] : (meta.customItems ?? value.customItems);

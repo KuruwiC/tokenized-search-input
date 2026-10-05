@@ -8,7 +8,6 @@ interface DevWarningInput {
   defaultValue?: string | undefined;
 }
 
-/** Development-only warnings for configuration the component cannot honor. */
 export function useDevWarnings({ fields, initialDelimiter, defaultValue }: DevWarningInput): void {
   const mountedDelimiterRef = useRef(initialDelimiter);
   const mountedDefaultValueRef = useRef(defaultValue);

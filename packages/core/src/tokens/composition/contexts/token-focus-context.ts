@@ -30,7 +30,6 @@ interface FocusNavigationOptions {
 export interface FocusRegistry {
   register: (block: FocusableBlock) => () => void;
   get: (id: string) => FocusableBlock | undefined;
-  /** The first or last block, or undefined when no block is registered. */
   edge: (
     edge: 'first' | 'last',
     options?: Pick<FocusNavigationOptions, 'entryOnly'>
@@ -58,7 +57,6 @@ export interface TokenFocusContextValue {
    */
   showsControls: boolean;
   focusRegistry: FocusRegistry;
-  /** The block that holds DOM focus while the token is focused. */
   currentFocusId: string | null;
   setCurrentFocusId: (id: string | null) => void;
   /** Leaves the token to the right, committing it with `value` when one is given. */

@@ -8,7 +8,6 @@ import { findTokenById } from '../../utils/find-token';
 import { isFilterToken, isFreeTextToken } from '../../utils/node-predicates';
 import { type FieldResolutionSource, resolveField } from '../../utils/resolve-field';
 
-/** The attributes of a filter token that the user enters. */
 interface FilterTokenEditableAttrs {
   key: string;
   operator: string;
@@ -16,7 +15,6 @@ interface FilterTokenEditableAttrs {
   immutable: boolean;
 }
 
-/** The attributes of a free text token that the user enters. */
 interface FreeTextTokenEditableAttrs {
   value: string;
   quoted: boolean;
@@ -126,7 +124,6 @@ export function applyTokenAction(
   return true;
 }
 
-/** The stored form of a value typed for `field`: dates are kept in their canonical form. */
 function storedForm(field: FieldDefinition | null, value: string): string {
   if (field?.type === 'date' || field?.type === 'datetime') {
     return normalizeDateFieldValue(value, field);

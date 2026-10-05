@@ -25,12 +25,10 @@ export function isTokenSuggestionType(type: SuggestionType): type is 'value' | '
 
 export type CustomDisplayMode = 'prepend' | 'append';
 
-/** How far the pages of custom suggestions have been read. */
 interface CustomPagination {
   readonly hasMore: boolean;
   /** How many suggestions have been read, the offset of the next page. */
   readonly offset: number;
-  /** Whether a page has been asked for and has not arrived. */
   readonly isLoadingMore: boolean;
 }
 
