@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { packageRoot } from './package-paths.mjs';
 
 const tag = process.env.GITHUB_REF_NAME ?? '';
-const packageJson = JSON.parse(readFileSync(resolve('packages/core/package.json'), 'utf8'));
+const packageJson = JSON.parse(readFileSync(resolve(packageRoot, 'package.json'), 'utf8'));
 const expectedTag = `v${packageJson.version}`;
 
 if (tag !== expectedTag) {

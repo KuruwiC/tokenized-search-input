@@ -1,9 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-export const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-export const repositoryRoot = resolve(packageRoot, '../..');
+import { resolve } from 'node:path';
+import { packageRoot, repositoryRoot } from './package-paths.mjs';
 
 const { name, version } = JSON.parse(readFileSync(resolve(packageRoot, 'package.json'), 'utf8'));
 const archiveName = `${name.replace(/^@/, '').replace('/', '-')}-${version}.tgz`;

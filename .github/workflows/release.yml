@@ -43,7 +43,7 @@ jobs:
           mkdir -p dist-packages
           cd packages/core && pnpm pack --pack-destination ../../dist-packages
           cd ../..
-          node packages/core/scripts/verify-pack.mjs
+          node packages/core/scripts/verify-pack.mjs dist-packages/*.tgz
           pnpm exec publint dist-packages/*.tgz --strict
 
       - name: Verify packed artifact in consumer projects

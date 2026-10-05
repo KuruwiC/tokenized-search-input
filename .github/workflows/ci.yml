@@ -80,15 +80,22 @@ jobs:
       - name: Run browser tests
         run: pnpm --filter @kuruwic/tokenized-search-input test:browser
 
+  # The React versions to check, shared with verify-consumer.mjs.
+  react-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.read.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: read
+        run: echo "matrix=$(jq -c . packages/core/scripts/react-versions.json)" >> "$GITHUB_OUTPUT"
+
   react-peer-compatibility:
+    needs: react-versions
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
-          - react-version: 18.3.1
-            types-major: 18
-          - react-version: 19.1.1
-            types-major: 19
+        include: ${{ fromJSON(needs.react-versions.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
       - name: Install pnpm
@@ -101,13 +108,13 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Select React ${{ matrix.react-version }}
+      - name: Select React ${{ matrix.react }}
         run: >-
           pnpm add --filter @kuruwic/tokenized-search-input --save-dev --lockfile=false
-          react@${{ matrix.react-version }}
-          react-dom@${{ matrix.react-version }}
-          @types/react@${{ matrix.types-major }}
-          @types/react-dom@${{ matrix.types-major }}
+          react@${{ matrix.react }}
+          react-dom@${{ matrix.react }}
+          @types/react@${{ matrix.types }}
+          @types/react-dom@${{ matrix.types }}
       # The late Suspense commit tests take the React 19 path only when React 19 is what
       # the suite imports, so the job fails if the selection did not take effect.
       - name: Check the selected React version
@@ -119,7 +126,7 @@ jobs:
           if (got !== want) throw new Error(name + ' is ' + got + ', expected ' + want); }
           const types = require('@types/react/package.json').version;
           if (!types.startsWith(typesMajor + '.')) throw new Error('@types/react is ' + types + ', expected ' + typesMajor + '.x');"
-          ${{ matrix.react-version }} ${{ matrix.types-major }}
+          ${{ matrix.react }} ${{ matrix.types }}
       - name: Type check with the selected React types
         run: pnpm --filter @kuruwic/tokenized-search-input typecheck
       - name: Run the jsdom suite

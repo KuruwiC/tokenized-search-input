@@ -4,12 +4,10 @@
 // resolution, from ESM and from CommonJS.
 
 import { copyFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 import { rollup } from 'rollup';
 import { dts } from 'rollup-plugin-dts';
-
-const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+import { packageRoot } from './package-paths.mjs';
 
 for (const entry of ['index', 'utils']) {
   const bundle = await rollup({

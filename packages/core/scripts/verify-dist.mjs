@@ -1,9 +1,6 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
-import { dirname, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const distRoot = resolve(packageRoot, 'dist');
+import { relative, resolve } from 'node:path';
+import { distRoot, requiredDistArtifacts } from './package-paths.mjs';
 
 function listFiles(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -17,19 +14,7 @@ const leakedTestArtifacts = listFiles(distRoot).filter(
     path.startsWith('__tests__/') || path.includes('/__tests__/') || path.endsWith('.test.d.ts')
 );
 
-const requiredEntryArtifacts = [
-  'index.js',
-  'index.cjs',
-  'index.d.ts',
-  'index.d.cts',
-  'utils.js',
-  'utils.cjs',
-  'utils.d.ts',
-  'utils.d.cts',
-  'index.css',
-  'index.css.d.ts',
-];
-const missingEntryArtifacts = requiredEntryArtifacts.filter(
+const missingEntryArtifacts = requiredDistArtifacts.filter(
   (path) => !existsSync(resolve(distRoot, path))
 );
 

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { packageRoot, packedLicense, packedReadme } from './pack-files.mjs';
+import { packedLicense, packedReadme } from './pack-files.mjs';
+import { packageRoot } from './package-paths.mjs';
 
 const generated = [
   ['README.md', Buffer.from(packedReadme())],

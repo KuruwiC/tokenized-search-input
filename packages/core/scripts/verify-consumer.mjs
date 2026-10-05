@@ -1,5 +1,5 @@
-// Installs the packed tarball into minimal scratch projects (React 18 and 19) and
-// verifies what a real consumer sees: strict type resolution of the entry points
+// Installs the packed tarball into minimal scratch projects, one per React version in
+// react-versions.json, and verifies what a real consumer sees: strict type resolution of the entry points
 // (bundler resolution, and nodenext resolution from an ESM and a CommonJS file),
 // plain Node ESM/CJS imports, and the published dist.
 //
@@ -8,6 +8,7 @@
 
 import { execFileSync } from 'node:child_process';
 import {
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -17,17 +18,15 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { basename, join, relative, resolve } from 'node:path';
+import { packageRoot, repositoryRoot } from './package-paths.mjs';
 
-const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const repositoryRoot = resolve(packageRoot, '../..');
 const packageName = '@kuruwic/tokenized-search-input';
 
-const reactMatrix = [
-  { react: '18.3.1', types: '18' },
-  { react: '19.1.1', types: '19' },
-];
+// The React versions the CI compatibility job also installs.
+const reactMatrix = JSON.parse(
+  readFileSync(resolve(packageRoot, 'scripts/react-versions.json'), 'utf8')
+);
 
 const rootManifest = JSON.parse(readFileSync(resolve(repositoryRoot, 'package.json'), 'utf8'));
 const typescriptSpec = rootManifest.devDependencies.typescript;
@@ -128,7 +127,10 @@ function resolveTarball(scratchRoot) {
   if (process.argv[2]) {
     const tarball = resolve(process.argv[2]);
     if (!existsSync(tarball)) throw new Error(`Tarball not found: ${tarball}`);
-    return tarball;
+    // pnpm embeds the tarball's path in its store file names, which a deep path overflows.
+    const copy = join(scratchRoot, basename(tarball));
+    copyFileSync(tarball, copy);
+    return copy;
   }
   const destination = join(scratchRoot, 'pack');
   mkdirSync(destination);
@@ -250,7 +252,9 @@ try {
   verifyArchive(tarball);
   for (const entry of reactMatrix) verifyWithReact(scratchRoot, tarball, entry);
   succeeded = true;
-  console.log('\nVerified consumer installs for React 18 and 19.');
+  console.log(
+    `\nVerified consumer installs for React ${reactMatrix.map(({ react }) => react).join(', ')}.`
+  );
 } catch (error) {
   console.error(
     `\nConsumer verification failed: ${error instanceof Error ? error.message : error}`
