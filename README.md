@@ -846,6 +846,8 @@ Ids come from `getSnapshot()`; an unknown id is ignored. Display data is not par
 
 `getEditor()` is for reading and debugging. The editor's internals are outside semver, and writing through it directly (raw node attributes or `setContent`) is unsupported because it bypasses the undo policy of token edits and the per-token state. `setValue`, `clear`, `updateToken`, `deleteToken` and `setTokenDisplay` are the supported ways to change content. Calls made while the editor is being recreated (for example when a Suspense boundary settles late) are kept in call order and applied to the new editor.
 
+Call the methods that change content from event handlers, or after React has committed. Called from your own `useEffect` or `useLayoutEffect`, `setValue`, `clear`, `updateToken` and `deleteToken` dispatch the document change inside that commit. A change that creates token views, such as `setValue`, renders them with `flushSync`, and React warns that `flushSync` was called from inside a lifecycle method. To change content from an effect, defer the call, for example with `queueMicrotask`.
+
 ## Styling
 
 The component uses CSS variables for theming. Import the default styles:
