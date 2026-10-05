@@ -1,6 +1,7 @@
 /**
- * Integration tests for keyboard handling inside a token: a key event is handled by
- * the one block that holds focus, and a block's dropdown owns the keys it uses.
+ * Integration tests for the keys of a token's operator and label dropdowns: a key event is
+ * handled by the one block that holds focus, and a block's dropdown owns the keys it uses.
+ * The markup of the dropdowns is covered in token-dropdown-aria.test.tsx.
  */
 
 import { cleanup, screen, within } from '@testing-library/react';
@@ -26,8 +27,8 @@ afterEach(() => {
   actions.setKeyCalls = 0;
 });
 
-describe('Token keyboard handling', () => {
-  describe('operator dropdown', () => {
+describe('Token dropdown keys', () => {
+  describe('operator dropdown keys', () => {
     it('closes only the dropdown on Escape and keeps the token focused', async () => {
       const user = userEvent.setup();
       const { editor } = await renderInput('status:is:active');
@@ -128,7 +129,7 @@ describe('Token keyboard handling', () => {
     });
   });
 
-  describe('label combobox', () => {
+  describe('label combobox keys', () => {
     it('changes the field once when Tab picks an option in the text input', async () => {
       const user = userEvent.setup();
       const { ref } = await renderInput('status:is:active', { unknownFields: {} });
@@ -159,24 +160,6 @@ describe('Token keyboard handling', () => {
 
       expect(label).toHaveAttribute('aria-expanded', 'false');
       expect(focusedTokenId(editor)).toBe(id);
-    });
-
-    it('does not put a text input inside a button', async () => {
-      const user = userEvent.setup();
-      await renderInput('status:is:active', { unknownFields: {} });
-      const group = screen.getByRole('group', { name: /status/i });
-      await focusBlock(user, group, 'Select field');
-
-      await user.keyboard('{Enter}');
-
-      const input = await within(group).findByRole('combobox', { name: 'Select field' });
-      expect(input).toHaveAttribute('aria-expanded', 'true');
-      expect(document.querySelector('button input')).toBeNull();
-      expect(document.getElementById(input.getAttribute('aria-controls') ?? '')).toHaveAttribute(
-        'role',
-        'listbox'
-      );
-      expect(input).toHaveFocus();
     });
 
     it('changes the field once when Tab picks the text of a combobox without a list', async () => {

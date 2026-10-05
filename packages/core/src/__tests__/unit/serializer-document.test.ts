@@ -5,7 +5,7 @@ import { fieldsWithDotNotation } from '../fixtures';
 
 const testFields = fieldsWithDotNotation;
 
-describe('serializer', () => {
+describe('serializer document', () => {
   describe('parseQueryToDoc', () => {
     it('parses empty query', () => {
       const doc = parseQueryToDoc('', testFields).doc;
@@ -86,56 +86,6 @@ describe('serializer', () => {
       expect(content?.[1]?.type).toBe('text');
       expect(content?.[1]?.text).toBe('search');
     });
-
-    it('parses quoted text with escaped quotes', () => {
-      const doc = parseQueryToDoc('"say \\"hello\\""', testFields, {
-        freeTextMode: 'tokenize',
-      }).doc;
-      const content = doc.content?.[0]?.content;
-      expect(content?.[0]).toMatchObject({
-        type: 'freeTextToken',
-        attrs: {
-          value: 'say "hello"',
-          quoted: true,
-        },
-      });
-    });
-
-    it('parses quoted text with escaped backslash', () => {
-      const doc = parseQueryToDoc('"path\\\\to\\\\file"', testFields, {
-        freeTextMode: 'tokenize',
-      }).doc;
-      const content = doc.content?.[0]?.content;
-      expect(content?.[0]).toMatchObject({
-        type: 'freeTextToken',
-        attrs: {
-          value: 'path\\to\\file',
-          quoted: true,
-        },
-      });
-    });
-  });
-
-  describe('parseQueryToDoc with unknownFields', () => {
-    function filterAttrs(doc: ReturnType<typeof parseQueryToDoc>['doc']) {
-      return (doc.content?.[0]?.content ?? [])
-        .filter((node) => node.type === 'filterToken')
-        .map((node) => node.attrs);
-    }
-
-    it('does not tokenize unknown fields when unknownFields is not provided', () => {
-      expect(filterAttrs(parseQueryToDoc('custom:value', testFields).doc)).toEqual([]);
-    });
-
-    it('tokenizes unknown fields with the template operators', () => {
-      const doc = parseQueryToDoc('custom:value', testFields, {
-        unknownFields: { operators: ['contains'] },
-      }).doc;
-
-      expect(filterAttrs(doc)).toMatchObject([
-        { key: 'custom', operator: 'contains', value: 'value' },
-      ]);
-    });
   });
 
   describe('serializeDocToQuery', () => {
@@ -212,48 +162,6 @@ describe('serializer', () => {
         ],
       };
       expect(serializeDocToQuery(doc)).toBe('status:is:active,pending');
-    });
-
-    it('serializes freeTextToken with escaped quotes', () => {
-      const doc = {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            content: [
-              {
-                type: 'freeTextToken',
-                attrs: {
-                  value: 'say "hello"',
-                  quoted: true,
-                },
-              },
-            ],
-          },
-        ],
-      };
-      expect(serializeDocToQuery(doc)).toBe('"say \\"hello\\""');
-    });
-
-    it('serializes freeTextToken with escaped backslash', () => {
-      const doc = {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            content: [
-              {
-                type: 'freeTextToken',
-                attrs: {
-                  value: 'path\\to\\file',
-                  quoted: true,
-                },
-              },
-            ],
-          },
-        ],
-      };
-      expect(serializeDocToQuery(doc)).toBe('"path\\\\to\\\\file"');
     });
   });
 

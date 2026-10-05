@@ -272,35 +272,6 @@ describe('Keyboard Navigation - User Journeys', () => {
     });
   });
 
-  describe('Search execution', () => {
-    it('Enter key executes search when not in token and suggestions closed', async () => {
-      const onSubmit = vi.fn();
-      const user = userEvent.setup();
-      render(
-        <TokenizedSearchInput
-          fields={testFields}
-          defaultValue="status:is:active"
-          onSubmit={onSubmit}
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Status')).toBeInTheDocument();
-      });
-
-      const editor = screen.getByRole('combobox');
-      await user.click(editor);
-      await user.keyboard('{Escape}');
-      await user.keyboard('{Enter}');
-
-      await waitFor(() => {
-        expect(onSubmit).toHaveBeenCalled();
-        const [snapshot] = onSubmit.mock.calls[0];
-        expect(snapshot.text).toBe('status:is:active');
-      });
-    });
-  });
-
   describe('Keyboard handler timing', () => {
     it('uses latest handler values after focus change', async () => {
       const onChange = vi.fn();

@@ -1,6 +1,7 @@
 /**
  * Integration tests for the accessibility markup of the operator and label dropdowns: which
- * element is the combobox, and how it points at the list and at the active option.
+ * element is the combobox, and how it points at the list and at the active option. The keys
+ * of the dropdowns are covered in token-dropdown-keys.test.tsx.
  */
 
 import { cleanup, screen, within } from '@testing-library/react';
@@ -25,7 +26,7 @@ function activeOption(list: HTMLElement): HTMLElement {
   return option;
 }
 
-describe('operator dropdown', () => {
+describe('operator dropdown markup', () => {
   it('is a combobox that names the list and the active option while open', async () => {
     const user = userEvent.setup();
     await renderInput('status:is:active');
@@ -50,7 +51,7 @@ describe('operator dropdown', () => {
   });
 });
 
-describe('label combobox without a text input', () => {
+describe('label combobox markup without a text input', () => {
   it('is the combobox itself and names the active option while open', async () => {
     const user = userEvent.setup();
     await renderInput('status:is:active');
@@ -67,7 +68,7 @@ describe('label combobox without a text input', () => {
   });
 });
 
-describe('label combobox with a text input', () => {
+describe('label combobox markup with a text input', () => {
   it('moves the combobox to the input while the input is shown', async () => {
     const user = userEvent.setup();
     await renderInput('status:is:active', { unknownFields: {} });
@@ -85,6 +86,9 @@ describe('label combobox with a text input', () => {
     expect(trigger).not.toHaveAttribute('aria-expanded');
     expect(trigger).not.toHaveAttribute('aria-label');
     expect(within(trigger).getAllByRole('combobox')).toEqual([input]);
+    expect(input).toHaveFocus();
+    expect(document.querySelector('button input')).toBeNull();
+    expect(listOf(input)).toHaveAttribute('role', 'listbox');
 
     await user.keyboard('{Escape}');
     expect(trigger).toHaveAttribute('role', 'combobox');
@@ -92,7 +96,7 @@ describe('label combobox with a text input', () => {
   });
 });
 
-describe('label combobox without a list', () => {
+describe('label combobox markup without a list', () => {
   it('is a plain text input while the text is edited', async () => {
     const user = userEvent.setup();
     await renderInput('status:is:active', { fields: [statusField], unknownFields: {} });

@@ -1,6 +1,8 @@
 /**
  * Integration tests for the check every date and datetime field gets: a value the date
- * parser rejects marks the token, without any validate function on the field.
+ * parser rejects marks the token, without any validate function on the field. Which values
+ * the parser accepts is covered in unit/validation-implicit-rules.test.ts; these tests
+ * cover that the rule runs in the editor and that a field can turn it off.
  */
 import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -20,25 +22,23 @@ async function expectCounts(total: number, invalid: number) {
   await waitFor(() => expect(invalidTokenCount()).toBe(invalid));
 }
 
-describe('implicit validation of dates', () => {
-  it('marks a date that is partial or does not exist', async () => {
-    render(
-      <TokenizedSearchInput
-        fields={[statusField, dateField]}
-        defaultValue="created:gt:2024 created:lt:2024-02-31"
-      />
-    );
-    await expectCounts(2, 2);
-  });
-
-  it('accepts a complete date and a datetime with an offset or milliseconds', async () => {
+describe('implicit date validation in the editor', () => {
+  it('marks the dates the parser rejects and leaves the accepted ones unmarked', async () => {
     render(
       <TokenizedSearchInput
         fields={[statusField, dateField, datetimeField]}
-        defaultValue="created:gt:2024-03-05 updated:gt:2024-03-05T14:30:00+0900 updated:lt:2024-03-05T14:30:45.123Z"
+        defaultValue={[
+          // Partial or non-existent: marked
+          'created:gt:2024',
+          'created:lt:2024-02-31',
+          // A complete date, and a datetime with an offset or milliseconds: accepted
+          'created:gt:2024-03-05',
+          'updated:gt:2024-03-05T14:30:00+0900',
+          'updated:lt:2024-03-05T14:30:45.123Z',
+        ].join(' ')}
       />
     );
-    await expectCounts(3, 0);
+    await expectCounts(5, 2);
   });
 
   it('can be turned off for a field like any rule', async () => {

@@ -1,7 +1,8 @@
 /**
  * Integration tests for the document repair plugin.
  *
- * Tests token cleanup and the word boundary a removed token leaves, with full editor context.
+ * Tests the cleanup of empty tokens with full editor context. The word boundary a removed
+ * token leaves is covered in word-boundary.test.tsx.
  */
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
@@ -174,49 +175,6 @@ describe('DocumentRepairExtension - Integration Tests', () => {
         return true;
       });
       expect(ids).toEqual(['focused']);
-    });
-
-    it('leaves a space where a token between two words is removed', async () => {
-      const ref = createRef<TokenizedSearchInputRef>();
-
-      // Start with text on both sides of token
-      render(
-        <TokenizedSearchInput
-          ref={ref}
-          fields={testFields}
-          defaultValue="hello status:is:active world"
-        />
-      );
-
-      await waitFor(() => {
-        expect(ref.current).not.toBeNull();
-      });
-
-      const editor = getInternalEditor(ref.current);
-      expect(editor).not.toBeNull();
-      if (!editor) return;
-
-      // Find the token
-      let tokenPos: number | null = null;
-      let tokenSize = 0;
-      editor.state.doc.descendants((node, pos) => {
-        if (node.type.name === 'filterToken' && tokenPos === null) {
-          tokenPos = pos;
-          tokenSize = node.nodeSize;
-        }
-        return true;
-      });
-
-      expect(tokenPos).not.toBeNull();
-      if (tokenPos === null) return;
-
-      editor.commands.deleteRange({ from: tokenPos, to: tokenPos + tokenSize });
-
-      await waitFor(() => {
-        const value = ref.current?.getValue();
-        // After token removal, text should be preserved with space separator
-        expect(value).toBe('hello world');
-      });
     });
   });
 

@@ -130,6 +130,64 @@ describe('escapes inside quotes', () => {
   });
 });
 
+describe('escaped quotes and backslashes in quoted free text', () => {
+  it('parses quoted text with escaped quotes', () => {
+    const doc = parseDoc('"say \\"hello\\""', fields, { freeTextMode: 'tokenize' });
+    const content = doc.content?.[0]?.content;
+    expect(content?.[0]).toMatchObject({
+      type: 'freeTextToken',
+      attrs: {
+        value: 'say "hello"',
+        quoted: true,
+      },
+    });
+  });
+
+  it('parses quoted text with escaped backslash', () => {
+    const doc = parseDoc('"path\\\\to\\\\file"', fields, { freeTextMode: 'tokenize' });
+    const content = doc.content?.[0]?.content;
+    expect(content?.[0]).toMatchObject({
+      type: 'freeTextToken',
+      attrs: {
+        value: 'path\\to\\file',
+        quoted: true,
+      },
+    });
+  });
+
+  it('serializes freeTextToken with escaped quotes', () => {
+    expect(serializeDocToQuery(docOf(freeTextNode('say "hello"', true)))).toBe('"say \\"hello\\""');
+  });
+
+  it('serializes freeTextToken with escaped backslash', () => {
+    expect(serializeDocToQuery(docOf(freeTextNode('path\\to\\file', true)))).toBe(
+      '"path\\\\to\\\\file"'
+    );
+  });
+});
+
+describe('unknown fields in the document', () => {
+  function filterAttrs(doc: JSONContent) {
+    return tokenNodes(doc)
+      .filter((node) => node.type === 'filterToken')
+      .map((node) => node.attrs);
+  }
+
+  it('does not tokenize unknown fields when unknownFields is not provided', () => {
+    expect(filterAttrs(parseDoc('custom:value', fields))).toEqual([]);
+  });
+
+  it('tokenizes unknown fields with the template operators', () => {
+    const doc = parseDoc('custom:value', fields, {
+      unknownFields: { operators: ['contains'] },
+    });
+
+    expect(filterAttrs(doc)).toMatchObject([
+      { key: 'custom', operator: 'contains', value: 'value' },
+    ]);
+  });
+});
+
 describe('diagnostics', () => {
   it('lists an operator the field does not allow and keeps it on the token', () => {
     const { tokens, diagnostics } = parseQueryString('status:contains:foo', statusFields);

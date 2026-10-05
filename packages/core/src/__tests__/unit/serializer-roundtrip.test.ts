@@ -82,13 +82,6 @@ describe('Serializer Round-trip', () => {
       expect(result).toBe(query);
     });
 
-    it('round-trips quoted text with escaped quotes', () => {
-      const query = '"say \\"hello\\""';
-      const doc = parseQueryToDoc(query, fields, { freeTextMode: 'tokenize' }).doc;
-      const result = serializeDocToQuery(doc);
-      expect(result).toBe(query);
-    });
-
     it('round-trips multiple free text tokens', () => {
       const query = 'hello world';
       const doc = parseQueryToDoc(query, fields, { freeTextMode: 'tokenize' }).doc;
