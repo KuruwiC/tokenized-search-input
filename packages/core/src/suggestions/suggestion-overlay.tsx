@@ -74,7 +74,7 @@ export const SuggestionOverlay: React.FC<SuggestionOverlayProps> = ({
     suggestionRef,
     expandOnFocus
   );
-  const { getValueInput, restoreFocus } = useValueInput(editor, containerRef, anchorPos);
+  const { getValueInput, restoreFocus } = useValueInput(editor);
   useSuggestionDismissal(editor, suggestionState, containerRef, suggestionRef, getValueInput);
   const datePicker = useDatePickerState(editor, suggestionState, onDateChange);
 

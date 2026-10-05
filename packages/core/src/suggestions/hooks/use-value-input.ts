@@ -1,35 +1,33 @@
 import type { Editor } from '@tiptap/core';
-import { type RefObject, useCallback } from 'react';
-import {
-  findFocusedFilterToken,
-  findValueInput,
-  getContainingFilterToken,
-} from '../../utils/dom-focus';
+import { useCallback } from 'react';
+import { suggestionKey } from '../../plugins/suggestion';
+import { findValueInput } from '../../utils/dom-focus';
+import { findTokenById } from '../../utils/find-token';
+
+/**
+ * The value input of the token the suggestion is anchored to, which is where a value,
+ * date or datetime suggestion is operated from. Null when the suggestion belongs to the
+ * typed text rather than a token. Read from the current state: positions and elements
+ * change under a suggestion that stays open.
+ */
+export function findSuggestionValueInput(editor: Editor): HTMLInputElement | null {
+  const anchor = suggestionKey.getState(editor.state)?.anchor ?? null;
+  if (anchor === null || !('tokenId' in anchor)) return null;
+  const found = findTokenById(editor.state.doc, anchor.tokenId);
+  if (!found) return null;
+  const dom = editor.view.nodeDOM(found.pos);
+  return dom instanceof HTMLElement ? findValueInput(dom) : null;
+}
 
 /**
  * The value input of the token a suggestion belongs to, and a way to give it focus again,
  * for instance after a picker control took it.
  */
-export function useValueInput(
-  editor: Editor,
-  containerRef: RefObject<HTMLElement | null>,
-  anchorPos: number | null
-): { getValueInput: () => HTMLInputElement | null; restoreFocus: () => void } {
-  // Resolved when asked for: positions and elements change under it
-  const getValueInput = useCallback((): HTMLInputElement | null => {
-    let token = findFocusedFilterToken(containerRef.current);
-    if (!token && anchorPos !== null) {
-      try {
-        const { node } = editor.view.domAtPos(anchorPos);
-        token = getContainingFilterToken(
-          node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement
-        );
-      } catch {
-        return null;
-      }
-    }
-    return findValueInput(token);
-  }, [containerRef, anchorPos, editor]);
+export function useValueInput(editor: Editor): {
+  getValueInput: () => HTMLInputElement | null;
+  restoreFocus: () => void;
+} {
+  const getValueInput = useCallback(() => findSuggestionValueInput(editor), [editor]);
 
   const restoreFocus = useCallback(() => {
     requestAnimationFrame(() => {

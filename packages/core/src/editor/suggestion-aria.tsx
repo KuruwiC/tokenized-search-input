@@ -6,11 +6,9 @@ import {
   isPickerType,
   isSuggestionOpen,
   isTokenSuggestionType,
-  resolveAnchorPos,
-  type SuggestionState,
   suggestionKey,
 } from '../plugins/suggestion';
-import { findValueInput } from '../utils/dom-focus';
+import { findSuggestionValueInput } from '../suggestions/hooks/use-value-input';
 
 interface SuggestionAriaProps {
   editor: Editor;
@@ -34,18 +32,6 @@ function write(element: HTMLElement, relations: ComboboxRelations): void {
   };
   set('aria-controls', relations.isOpen ? relations.controls : undefined);
   set('aria-activedescendant', relations.isOpen ? relations.activeDescendant : undefined);
-}
-
-/** A suggestion of a token is operated from the value input of that token. */
-function findTokenValueInput(
-  editor: Editor,
-  state: SuggestionState | undefined
-): HTMLInputElement | null {
-  if (!state) return null;
-  const pos = resolveAnchorPos(editor.state.doc, state.anchor);
-  if (pos === null) return null;
-  const dom = editor.view.nodeDOM(pos);
-  return dom instanceof HTMLElement ? findValueInput(dom) : null;
 }
 
 /**
@@ -96,7 +82,7 @@ export const SuggestionAria: React.FC<SuggestionAriaProps> = ({
     };
 
     const belongsToToken = isOpen && isTokenSuggestionType(type);
-    const input = belongsToToken ? findTokenValueInput(editor, suggestionState) : null;
+    const input = belongsToToken ? findSuggestionValueInput(editor) : null;
     if (ownedInput.current !== input) release();
 
     if (input) {
