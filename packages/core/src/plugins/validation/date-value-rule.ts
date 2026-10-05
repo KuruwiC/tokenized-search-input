@@ -1,6 +1,7 @@
 import { parseDateFieldValue } from '../../pickers/date-format';
-import type { ValidationRule, Violation } from '../../types';
+import type { ValidationRule } from '../../types';
 import { type FieldResolutionSource, resolveField } from '../../utils/resolve-field';
+import { createRule } from '../../validation/presets';
 
 export const DATE_VALUE_RULE_ID = 'date-value';
 
@@ -11,25 +12,18 @@ export const DATE_VALUE_RULE_ID = 'date-value';
  * rule, it can be disabled per field with `validation: { 'date-value': false }`.
  */
 export function createDateValueRule(source: FieldResolutionSource): ValidationRule {
-  return {
-    id: DATE_VALUE_RULE_ID,
-    validate: (ctx) => {
-      const violations: Violation[] = [];
-      for (const token of ctx.tokens) {
-        if (token.type !== 'filter' || !token.value) continue;
-        const field = resolveField(source, token.key);
-        if (field?.type !== 'date' && field?.type !== 'datetime') continue;
-        const parsed = parseDateFieldValue(token.value, field);
-        if (parsed.ok) continue;
-        violations.push({
-          ruleId: DATE_VALUE_RULE_ID,
-          reason: 'invalid-value',
-          message: parsed.error,
-          action: 'mark',
-          targets: [{ tokenId: token.id }],
-        });
-      }
-      return violations;
-    },
-  };
+  return createRule(DATE_VALUE_RULE_ID, (token) => {
+    if (token.type !== 'filter' || !token.value) return null;
+    const field = resolveField(source, token.key);
+    if (field?.type !== 'date' && field?.type !== 'datetime') return null;
+    const parsed = parseDateFieldValue(token.value, field);
+    if (parsed.ok) return null;
+    return {
+      ruleId: DATE_VALUE_RULE_ID,
+      reason: 'invalid-value',
+      message: parsed.error,
+      action: 'mark',
+      targets: [{ tokenId: token.id }],
+    };
+  });
 }

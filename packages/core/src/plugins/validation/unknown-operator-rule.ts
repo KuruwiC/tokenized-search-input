@@ -1,5 +1,6 @@
-import type { ValidationRule, Violation } from '../../types';
+import type { ValidationRule } from '../../types';
 import { type FieldResolutionSource, resolveField } from '../../utils/resolve-field';
+import { createRule } from '../../validation/presets';
 
 export const UNKNOWN_OPERATOR_RULE_ID = 'unknown-operator';
 
@@ -9,23 +10,16 @@ export const UNKNOWN_OPERATOR_RULE_ID = 'unknown-operator';
  * `validation: { 'unknown-operator': false }`.
  */
 export function createUnknownOperatorRule(source: FieldResolutionSource): ValidationRule {
-  return {
-    id: UNKNOWN_OPERATOR_RULE_ID,
-    validate: (ctx) => {
-      const violations: Violation[] = [];
-      for (const token of ctx.tokens) {
-        if (token.type !== 'filter' || !token.value) continue;
-        const field = resolveField(source, token.key);
-        if (!field || (field.operators as readonly string[]).includes(token.operator)) continue;
-        violations.push({
-          ruleId: UNKNOWN_OPERATOR_RULE_ID,
-          reason: 'unknown-operator',
-          message: `Operator "${token.operator}" is not available for ${field.label}`,
-          action: 'mark',
-          targets: [{ tokenId: token.id }],
-        });
-      }
-      return violations;
-    },
-  };
+  return createRule(UNKNOWN_OPERATOR_RULE_ID, (token) => {
+    if (token.type !== 'filter' || !token.value) return null;
+    const field = resolveField(source, token.key);
+    if (!field || (field.operators as readonly string[]).includes(token.operator)) return null;
+    return {
+      ruleId: UNKNOWN_OPERATOR_RULE_ID,
+      reason: 'unknown-operator',
+      message: `Operator "${token.operator}" is not available for ${field.label}`,
+      action: 'mark',
+      targets: [{ tokenId: token.id }],
+    };
+  });
 }
