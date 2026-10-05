@@ -4,10 +4,15 @@
  */
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import {
+  TokenizedSearchInput,
+  type TokenizedSearchInputRef,
+} from '../../editor/tokenized-search-input';
 import type { FieldDefinition } from '../../types';
 import { basicFields } from '../fixtures';
+import { renderInput } from '../helpers/token-blocks';
 
 const testFields = basicFields;
 
@@ -159,6 +164,73 @@ describe('Token Editing - User Journeys', () => {
         expect(screen.getByRole('group', { name: /Filter: status/i })).toBeInTheDocument();
         expect(screen.getByRole('group', { name: /Free text: searchterm/i })).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Value input', () => {
+    async function editValue(query: string, group: RegExp) {
+      const user = userEvent.setup();
+      const rendered = await renderInput(query);
+      await user.click(screen.getByRole('group', { name: group }));
+      const input = await screen.findByPlaceholderText<HTMLInputElement>('...');
+      expect(input).toHaveFocus();
+      return { user, input, ...rendered };
+    }
+
+    it('removes the character after the caret on each Delete and the token once the value is empty', async () => {
+      const { user, input, ref } = await editValue('assignee:is:bob', /assignee/i);
+      input.setSelectionRange(0, 0);
+
+      for (const expected of ['ob', 'b', '']) {
+        await user.keyboard('{Delete}');
+        expect(input).toHaveFocus();
+        expect(input.value).toBe(expected);
+        expect(input.selectionStart).toBe(0);
+      }
+
+      await user.keyboard('{Delete}');
+      expect(ref.current?.getValue()).toBe('');
+    });
+
+    it('keeps the caret where it is while typing inside the value', async () => {
+      const { user, input, ref } = await editValue('assignee:is:bob', /assignee/i);
+      input.setSelectionRange(1, 1);
+
+      await user.keyboard('xy');
+      expect(input.value).toBe('bxyob');
+      expect(input.selectionStart).toBe(3);
+      expect(ref.current?.getValue()).toBe('assignee:is:bxyob');
+    });
+
+    it('shows the value the document keeps when an edit does not change it', async () => {
+      const { user, input, ref } = await editValue('status:is:active', /status/i);
+      input.setSelectionRange(0, 1);
+
+      // An enum value is stored in its own case, so this edit leaves the token as it is
+      await user.keyboard('A');
+      expect(ref.current?.getValue()).toBe('status:is:active');
+      expect(input.value).toBe('active');
+    });
+
+    it('keeps the caret where it is while typing inside a free text value', async () => {
+      const user = userEvent.setup();
+      const ref = createRef<TokenizedSearchInputRef>();
+      render(
+        <TokenizedSearchInput
+          ref={ref}
+          fields={testFields}
+          freeTextMode="tokenize"
+          defaultValue="hello"
+        />
+      );
+      await user.click(await screen.findByRole('group', { name: /Free text/i }));
+      const input = await screen.findByLabelText<HTMLInputElement>('Free text value');
+      input.setSelectionRange(2, 2);
+
+      await user.keyboard('xy');
+      expect(input.value).toBe('hexyllo');
+      expect(input.selectionStart).toBe(4);
+      expect(ref.current?.getValue()).toBe('hexyllo');
     });
   });
 

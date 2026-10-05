@@ -84,6 +84,22 @@ describe('mobile touch', () => {
     expect(tokenElements(m)).toHaveLength(1);
   });
 
+  it('keeps the caret where it is when text is entered inside a token value', async () => {
+    const m = await mountEditor(TWO_TOKENS);
+    const value = tokenElements(m)[1]?.querySelector('.tsi-token-value') ?? undefined;
+    await commands.tapEditor(centreOf(value, m));
+    expect(editingTokenIndex(m)).toBe(1);
+    const input = document.activeElement;
+    if (!(input instanceof HTMLInputElement)) throw new Error('the value input has no focus');
+    input.setSelectionRange(1, 1);
+
+    await commands.insertText('x');
+    await commands.insertText('y');
+    expect(input.value).toBe('bxyob');
+    expect(input.selectionStart).toBe(3);
+    expect(m.value()).toBe('status:is:open owner:is:bxyob');
+  });
+
   for (const inset of [1, 3]) {
     it(`enters the token after the gap when a tap lands ${inset}px inside its left edge`, async () => {
       const m = await mountEditor(TWO_TOKENS);

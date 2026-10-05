@@ -21,7 +21,7 @@ export const FreeTextTokenView: React.FC<NodeViewProps> = ({
   const rangeSelected = decorations.some((decoration) => decoration.spec?.rangeSelected === true);
   const validation = getDecorationValidation(decorations);
 
-  const handleValueChange = (newValue: string) => {
+  const handleValueChange = (newValue: string): boolean => {
     const tr = editor.state.tr;
     // A space typed into an unquoted token turns it into a quoted one.
     const changed = applyTokenAction(
@@ -31,6 +31,7 @@ export const FreeTextTokenView: React.FC<NodeViewProps> = ({
       editorContext
     );
     if (changed) editor.view.dispatch(tr);
+    return changed;
   };
 
   // Allow space insertion at non-end position for non-quoted tokens

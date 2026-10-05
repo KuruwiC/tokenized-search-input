@@ -214,11 +214,14 @@ function FilterTokenValue({
   });
 
   // The transaction that writes a typed value also shows the value suggestions for it
-  const handleInputChange = (inputText: string) => {
+  const handleInputChange = (inputText: string): boolean => {
     const tr = editor.state.tr;
-    if (!applyTokenAction(tr, tokenId, { type: 'setValue', value: inputText }, fieldSource)) return;
+    if (!applyTokenAction(tr, tokenId, { type: 'setValue', value: inputText }, fieldSource)) {
+      return false;
+    }
     markValueTyped(tr);
     editor.view.dispatch(tr);
+    return true;
   };
 
   const isValueSuggestionOpen = () => {

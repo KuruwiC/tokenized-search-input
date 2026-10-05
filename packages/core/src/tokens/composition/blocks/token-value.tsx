@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useLayoutEffect, useRef } from 'react';
 import { useTextWidth } from '../../../hooks/use-text-width';
 import { cn } from '../../../utils/cn';
 import { type CursorPosition, useTokenFocusContext } from '../contexts/token-focus-context';
@@ -14,8 +14,10 @@ export function TokenIconSlot({
 }
 
 export interface TokenValueProps {
+  /** The text the document holds for the input */
   value: string;
-  onChange: (value: string) => void;
+  /** Writes the text the user edited to the document; false when the document did not change. */
+  onChange: (value: string) => boolean;
   allowSpaces?: boolean;
   placeholder?: string;
   className?: string;
@@ -39,8 +41,22 @@ export interface TokenValueProps {
 }
 
 /**
+ * Writes `text` into the input only where the input shows something else, so text the
+ * input already shows keeps its caret and selection.
+ */
+function showText(input: HTMLInputElement | null, text: string): void {
+  if (input && input.value !== text) input.value = text;
+}
+
+/**
  * Token value input block (focusable).
  * Auto-sizing text input for token values.
+ *
+ * The document owns the value and the input owns the caret. The input is not a React
+ * controlled input: a node view re-renders only after the edit's transaction, so React
+ * would write the old value back into the input and then the new one, moving the caret
+ * to the end on every edit. Instead the input's text is the user's edit, and the
+ * document's text is written into it only where the two differ.
  *
  * It handles the keys pressed in its input; a view can handle keys of its own first
  * through `handleKey`.
@@ -81,7 +97,7 @@ export function TokenValue({
     const caret = input.selectionStart ?? 0;
     const collapsed = caret === (input.selectionEnd ?? 0);
     const atStart = caret === 0;
-    const atEnd = caret === value.length;
+    const atEnd = caret === input.value.length;
 
     switch (e.key) {
       case 'ArrowLeft':
@@ -142,8 +158,13 @@ export function TokenValue({
 
   const inputWidth = useTextWidth(inputRef, value || placeholder, showsControls);
 
+  useLayoutEffect(() => {
+    showText(inputRef.current, value);
+  }, [value]);
+
+  // An edit the document does not take leaves the document's text in the input
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value);
+    if (!onChange(e.target.value)) showText(e.target, value);
   };
 
   const handleFocus = () => {
@@ -167,7 +188,6 @@ export function TokenValue({
         ref={inputRef}
         type="text"
         data-token-block={blockProps['data-token-block']}
-        value={value}
         onChange={handleChange}
         onFocus={handleFocus}
         className={cn('tsi-token-value__input', className)}
