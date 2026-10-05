@@ -23,12 +23,6 @@ import type {
   TokenizedSearchInputRef,
 } from './tokenized-search-input.types';
 
-export type {
-  TokenDisplay,
-  TokenizedSearchInputProps,
-  TokenizedSearchInputRef,
-} from './tokenized-search-input.types';
-
 export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, TokenizedSearchInputProps>(
   function TokenizedSearchInputImpl(props, ref) {
     const {

@@ -9,10 +9,8 @@ import type { Editor } from '@tiptap/core';
 import type { Transaction } from '@tiptap/pm/state';
 import { createRef, Profiler, type RefObject } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
+import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import { getFocusedToken, getTokenFocusMeta } from '../../plugins/token-focus';
 import type { FieldDefinition } from '../../types';
 import { extendedFields } from '../fixtures';

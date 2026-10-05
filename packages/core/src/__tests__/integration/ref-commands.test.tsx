@@ -1,10 +1,8 @@
 import { act, render } from '@testing-library/react';
 import { createRef, type RefObject } from 'react';
 import { describe, expect, it } from 'vitest';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
+import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import { getFocusedToken } from '../../plugins/token-focus';
 import { getTokenMeta } from '../../plugins/token-meta-plugin';
 import { extendedFields } from '../fixtures';

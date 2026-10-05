@@ -7,10 +7,8 @@ import userEvent from '@testing-library/user-event';
 import { closeHistory } from '@tiptap/pm/history';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
+import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import { getSuggestionState } from '../../plugins/suggestion';
 import type { FieldDefinition } from '../../types';
 import { waitForEditor } from '../helpers/get-editor';

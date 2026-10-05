@@ -8,10 +8,8 @@ import userEvent from '@testing-library/user-event';
 import type { Editor } from '@tiptap/core';
 import { createRef, type RefObject } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
+import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import type { DateTimeValue } from '../../pickers/date-time-value';
 import { getFocusedToken } from '../../plugins/token-focus';
 import type { DateFieldDefinition, FieldDefinition } from '../../types';

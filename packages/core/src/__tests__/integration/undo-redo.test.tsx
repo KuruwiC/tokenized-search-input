@@ -8,10 +8,8 @@ import type { Editor } from '@tiptap/core';
 import { closeHistory } from '@tiptap/pm/history';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
+import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import type { FieldDefinition } from '../../types';
 import { extendedFields } from '../fixtures';
 import { getInternalEditor, waitForEditor } from '../helpers/get-editor';

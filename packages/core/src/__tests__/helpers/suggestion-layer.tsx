@@ -2,10 +2,8 @@ import { render } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
 import { createRef, type RefObject } from 'react';
 import { vi } from 'vitest';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
+import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import type { CustomSuggestion, FieldDefinition } from '../../types';
 import { waitForEditor } from './get-editor';
 

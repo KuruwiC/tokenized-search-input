@@ -6,10 +6,8 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef, useEffect, useRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
+import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import { getSuggestionState, type SuggestionType } from '../../plugins/suggestion';
 import type { FieldDefinition, ValidationRule } from '../../types';
 import { MaxCount, RequirePattern, Unique } from '../../validation/presets';

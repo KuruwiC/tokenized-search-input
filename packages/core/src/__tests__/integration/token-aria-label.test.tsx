@@ -5,10 +5,8 @@
 import { cleanup, render } from '@testing-library/react';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
+import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import { Token } from '../../tokens/composition/token';
 import { extendedFields } from '../fixtures';
 import { waitForEditor } from '../helpers/get-editor';

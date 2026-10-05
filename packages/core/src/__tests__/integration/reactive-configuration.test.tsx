@@ -2,10 +2,8 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { Editor } from '@tiptap/core';
 import type { Transaction } from '@tiptap/pm/state';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
+import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import { isContextUpdated } from '../../plugins/shared/meta';
 import type { FieldDefinition } from '../../types';
 import { extendedFields } from '../fixtures';

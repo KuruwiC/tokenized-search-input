@@ -1,11 +1,11 @@
 import { act, render, waitFor } from '@testing-library/react';
 import { createRef, useRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  type TokenDisplay,
-  TokenizedSearchInput,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
+import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type {
+  TokenDisplay,
+  TokenizedSearchInputRef,
+} from '../../editor/tokenized-search-input.types';
 import {
   type AsyncTokenResolverOptions,
   useAsyncTokenResolver,

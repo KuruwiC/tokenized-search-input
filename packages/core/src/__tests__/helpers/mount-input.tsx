@@ -1,11 +1,11 @@
 import { render } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
 import { createRef, type RefObject } from 'react';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputProps,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
+import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type {
+  TokenizedSearchInputProps,
+  TokenizedSearchInputRef,
+} from '../../editor/tokenized-search-input.types';
 import { basicFields } from '../fixtures';
 import { waitForEditor } from './get-editor';
 

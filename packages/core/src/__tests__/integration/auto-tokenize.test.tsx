@@ -10,10 +10,8 @@ import { TextSelection } from '@tiptap/pm/state';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { tryAutoTokenize } from '../../editor/auto-tokenize';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
+import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import { extendedFields } from '../fixtures';
 import { getInternalEditor, waitForEditor } from '../helpers/get-editor';
 import { mountInput } from '../helpers/mount-input';

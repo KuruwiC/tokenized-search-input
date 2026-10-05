@@ -6,11 +6,11 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import userEvent from '@testing-library/user-event';
 import { createRef, type RefObject } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputProps,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
+import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type {
+  TokenizedSearchInputProps,
+  TokenizedSearchInputRef,
+} from '../../editor/tokenized-search-input.types';
 import { localOffsetAt } from '../../pickers/date-time-value';
 import { getFocusedToken } from '../../plugins/token-focus';
 import { dateField, datetimeField, statusField } from '../fixtures/fields';

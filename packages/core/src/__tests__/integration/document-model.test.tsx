@@ -9,10 +9,8 @@ import type { Editor } from '@tiptap/core';
 import { closeHistory } from '@tiptap/pm/history';
 import { createRef, type RefObject } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
+import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import { getEditorContext } from '../../extensions/editor-context';
 import { useAsyncTokenResolver } from '../../helpers/use-async-token-resolver';
 import { requestValidationCheck, setTokenMeta } from '../../plugins/shared/meta';

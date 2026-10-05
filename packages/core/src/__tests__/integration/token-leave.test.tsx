@@ -8,11 +8,11 @@ import type { Editor } from '@tiptap/core';
 import { closeHistory } from '@tiptap/pm/history';
 import { createRef, type RefObject } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputProps,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
+import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type {
+  TokenizedSearchInputProps,
+  TokenizedSearchInputRef,
+} from '../../editor/tokenized-search-input.types';
 import { getFocusedToken } from '../../plugins/token-focus';
 import type { FieldDefinition } from '../../types';
 import { datetimeField, statusField } from '../fixtures/fields';
