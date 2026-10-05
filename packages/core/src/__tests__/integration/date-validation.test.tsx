@@ -7,18 +7,17 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
 import type { FieldDefinition } from '../../types';
 import { dateField, datetimeField, statusField } from '../fixtures/fields';
+import { invalidTokenCount } from '../helpers/token-queries';
 
 afterEach(() => {
   cleanup();
 });
 
-const invalidCount = () =>
-  document.querySelectorAll('.node-filterToken [data-invalid="true"]').length;
 const tokenCount = () => document.querySelectorAll('.node-filterToken').length;
 
 async function expectCounts(total: number, invalid: number) {
   await waitFor(() => expect(tokenCount()).toBe(total));
-  await waitFor(() => expect(invalidCount()).toBe(invalid));
+  await waitFor(() => expect(invalidTokenCount()).toBe(invalid));
 }
 
 describe('implicit validation of dates', () => {

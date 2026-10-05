@@ -14,13 +14,11 @@ import {
 import type { FieldDefinition } from '../../types';
 import { statusField } from '../fixtures/fields';
 import { getInternalEditor } from '../helpers/get-editor';
+import { invalidTokenCount } from '../helpers/token-queries';
 
 afterEach(() => {
   cleanup();
 });
-
-const invalidCount = () =>
-  document.querySelectorAll('.node-filterToken [data-invalid="true"]').length;
 
 describe('an operator the field does not allow', () => {
   it('stays on the token, which is marked invalid with the reason', async () => {
@@ -29,7 +27,7 @@ describe('an operator the field does not allow', () => {
       <TokenizedSearchInput ref={ref} fields={[statusField]} defaultValue="status:contains:foo" />
     );
 
-    await waitFor(() => expect(invalidCount()).toBe(1));
+    await waitFor(() => expect(invalidTokenCount()).toBe(1));
     expect(ref.current?.getSnapshot().segments).toMatchObject([
       {
         type: 'filter',
@@ -47,7 +45,7 @@ describe('an operator the field does not allow', () => {
     render(<TokenizedSearchInput fields={[statusField]} defaultValue="status:is_not:active" />);
 
     await waitFor(() => expect(document.querySelectorAll('.node-filterToken')).toHaveLength(1));
-    expect(invalidCount()).toBe(0);
+    expect(invalidTokenCount()).toBe(0);
   });
 
   it('can be switched off for a field like any rule', async () => {
@@ -55,7 +53,7 @@ describe('an operator the field does not allow', () => {
     render(<TokenizedSearchInput fields={[lenient]} defaultValue="status:contains:foo" />);
 
     await waitFor(() => expect(document.querySelectorAll('.node-filterToken')).toHaveLength(1));
-    expect(invalidCount()).toBe(0);
+    expect(invalidTokenCount()).toBe(0);
   });
 
   it('can be switched off for unknown fields through their template', async () => {
@@ -68,7 +66,7 @@ describe('an operator the field does not allow', () => {
     );
 
     await waitFor(() => expect(document.querySelectorAll('.node-filterToken')).toHaveLength(1));
-    expect(invalidCount()).toBe(0);
+    expect(invalidTokenCount()).toBe(0);
   });
 
   it('marks an unknown field whose template does not switch it off', async () => {
@@ -80,7 +78,7 @@ describe('an operator the field does not allow', () => {
       />
     );
 
-    await waitFor(() => expect(invalidCount()).toBe(1));
+    await waitFor(() => expect(invalidTokenCount()).toBe(1));
   });
 });
 
@@ -98,7 +96,7 @@ describe('repairing an operator the field does not allow', () => {
     const ref = createRef<TokenizedSearchInputRef>();
     render(<TokenizedSearchInput ref={ref} fields={[single]} defaultValue="name:contains:foo" />);
 
-    await waitFor(() => expect(invalidCount()).toBe(1));
+    await waitFor(() => expect(invalidTokenCount()).toBe(1));
     const editor = getInternalEditor(ref.current);
     if (!editor) throw new Error('editor unavailable');
     const segment = ref.current?.getSnapshot().segments[0];

@@ -7,8 +7,8 @@ import {
 } from '../../editor/tokenized-search-input';
 import { getFocusedToken } from '../../plugins/token-focus';
 import { getTokenMeta } from '../../plugins/token-meta-plugin';
-import type { QuerySnapshotFilterToken } from '../../types';
 import { extendedFields } from '../fixtures';
+import { filterTokens } from '../helpers/token-queries';
 
 const DEFAULT_VALUE = 'status:is:active assignee:is:john';
 
@@ -17,12 +17,6 @@ async function renderInput(defaultValue = DEFAULT_VALUE) {
   render(<TokenizedSearchInput ref={ref} fields={extendedFields} defaultValue={defaultValue} />);
   await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
   return ref as RefObject<TokenizedSearchInputRef>;
-}
-
-function filterTokens(ref: RefObject<TokenizedSearchInputRef>): QuerySnapshotFilterToken[] {
-  return (ref.current?.getSnapshot().segments ?? []).filter(
-    (segment): segment is QuerySnapshotFilterToken => segment.type === 'filter'
-  );
 }
 
 function tokenDisplay(ref: RefObject<TokenizedSearchInputRef>, id: string) {

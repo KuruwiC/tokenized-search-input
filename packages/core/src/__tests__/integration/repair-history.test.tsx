@@ -4,42 +4,16 @@
  * edit, such as removing an empty token the user left, is not recorded. Undo and redo
  * restore a document that already existed, which no repair changes.
  */
-import { act, cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup } from '@testing-library/react';
 import type { Editor, JSONContent } from '@tiptap/core';
 import { redoDepth, undoDepth } from '@tiptap/pm/history';
 import { TextSelection } from '@tiptap/pm/state';
-import { createRef } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
-import type { ValidationConfig } from '../../types';
 import { isToken } from '../../utils/node-predicates';
 import { Unique } from '../../validation/presets';
-import { basicFields } from '../fixtures';
-import { getInternalEditor } from '../helpers/get-editor';
+import { mountInput } from '../helpers/mount-input';
 
 afterEach(cleanup);
-
-async function mount(
-  defaultValue: string,
-  validation?: ValidationConfig
-): Promise<{ editor: Editor; value: () => string }> {
-  const ref = createRef<TokenizedSearchInputRef>();
-  render(
-    <TokenizedSearchInput
-      ref={ref}
-      fields={basicFields}
-      defaultValue={defaultValue}
-      validation={validation}
-    />
-  );
-  await waitFor(() => expect(getInternalEditor(ref.current)).not.toBeNull());
-  const editor = getInternalEditor(ref.current);
-  if (!editor) throw new Error('editor is unavailable');
-  return { editor, value: () => ref.current?.getValue() ?? '' };
-}
 
 function firstToken(editor: Editor): { id: string; pos: number; size: number } {
   let found: { id: string; pos: number; size: number } | null = null;
@@ -92,7 +66,7 @@ const json = (editor: Editor): JSONContent => editor.state.doc.toJSON();
 
 describe('repairs and the undo history', () => {
   it('undoes typing right before a token back to the document before it', async () => {
-    const { editor } = await mount('foo status:is:active');
+    const { editor } = await mountInput('foo status:is:active');
     const before = json(editor);
     const depth = undoDepth(editor.state);
     select(editor, firstToken(editor).pos);
@@ -105,7 +79,7 @@ describe('repairs and the undo history', () => {
   });
 
   it('records typing over a token and the space it needs as one undo step', async () => {
-    const { editor, value } = await mount('foo status:is:active bar');
+    const { editor, value } = await mountInput('foo status:is:active bar');
     const before = json(editor);
     const depth = undoDepth(editor.state);
     selectFirstToken(editor);
@@ -119,7 +93,7 @@ describe('repairs and the undo history', () => {
   });
 
   it('undoes deleting a token between two words without leaving the space it needed', async () => {
-    const { editor, value } = await mount('foo status:is:active bar');
+    const { editor, value } = await mountInput('foo status:is:active bar');
     const before = json(editor);
     const token = firstToken(editor);
 
@@ -137,7 +111,7 @@ describe('repairs and the undo history', () => {
   });
 
   it('records a paste and the repairs after it as one undo step', async () => {
-    const { editor, value } = await mount('foo status:is:active bar');
+    const { editor, value } = await mountInput('foo status:is:active bar');
     const before = json(editor);
     const depth = undoDepth(editor.state);
     selectFirstToken(editor);
@@ -151,8 +125,8 @@ describe('repairs and the undo history', () => {
   });
 
   it('records a pasted filter, the token it becomes, and a deletion by validation as one undo step', async () => {
-    const { editor, value } = await mount('foo status:is:active bar', {
-      rules: [Unique.rule('key', { onDuplicate: 'replace' })],
+    const { editor, value } = await mountInput('foo status:is:active bar', {
+      validation: { rules: [Unique.rule('key', { onDuplicate: 'replace' })] },
     });
     const before = json(editor);
     const depth = undoDepth(editor.state);
@@ -167,7 +141,7 @@ describe('repairs and the undo history', () => {
   });
 
   it('does not record removing an empty token the user left', async () => {
-    const { editor, value } = await mount('');
+    const { editor, value } = await mountInput('');
     editor.commands.setContent({
       type: 'doc',
       content: [
@@ -195,7 +169,7 @@ describe('repairs and the undo history', () => {
   });
 
   it('undoes a token inserted inside a word back to the exact word, and redoes it', async () => {
-    const { editor } = await mount('foobar');
+    const { editor } = await mountInput('foobar');
     const before = json(editor);
     act(() => {
       editor.commands.insertContentAt(4, {

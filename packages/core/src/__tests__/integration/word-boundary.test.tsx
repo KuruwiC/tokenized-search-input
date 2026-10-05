@@ -2,35 +2,14 @@
  * A token separates the words on either side of it, so removing it must not merge them.
  * Range deletion with Backspace/Delete is covered in range-deletion.test.tsx.
  */
-import { act, cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup } from '@testing-library/react';
 import type { Editor, JSONContent } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
-import { createRef } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
 import { isToken } from '../../utils/node-predicates';
-import { basicFields } from '../fixtures';
-import { getInternalEditor } from '../helpers/get-editor';
+import { mountInput } from '../helpers/mount-input';
 
 afterEach(cleanup);
-
-interface Mounted {
-  ref: React.RefObject<TokenizedSearchInputRef | null>;
-  editor: Editor;
-  value: () => string;
-}
-
-async function mount(defaultValue: string): Promise<Mounted> {
-  const ref = createRef<TokenizedSearchInputRef>();
-  render(<TokenizedSearchInput ref={ref} fields={basicFields} defaultValue={defaultValue} />);
-  await waitFor(() => expect(getInternalEditor(ref.current)).not.toBeNull());
-  const editor = getInternalEditor(ref.current);
-  if (!editor) throw new Error('editor is unavailable');
-  return { ref, editor, value: () => ref.current?.getValue() ?? '' };
-}
 
 function firstToken(editor: Editor): { pos: number; size: number; id: string } {
   let found: { pos: number; size: number; id: string } | null = null;
@@ -46,7 +25,7 @@ const paragraphText = (editor: Editor) => editor.state.doc.firstChild?.textConte
 
 describe('word boundary left by a removed token', () => {
   it('keeps the words apart when the token between them is deleted', async () => {
-    const { editor, value } = await mount('hello status:is:active world');
+    const { editor, value } = await mountInput('hello status:is:active world');
     const token = firstToken(editor);
 
     editor.commands.deleteRange({ from: token.pos, to: token.pos + token.size });
@@ -56,7 +35,7 @@ describe('word boundary left by a removed token', () => {
   });
 
   it('keeps the words apart when the token is deleted by id', async () => {
-    const { ref, editor, value } = await mount('foo status:is:active bar');
+    const { ref, editor, value } = await mountInput('foo status:is:active bar');
 
     act(() => {
       ref.current?.deleteToken(firstToken(editor).id);
@@ -66,7 +45,7 @@ describe('word boundary left by a removed token', () => {
   });
 
   it('keeps the typed text apart from the words around a token it replaced', async () => {
-    const { editor, value } = await mount('foo status:is:active bar');
+    const { editor, value } = await mountInput('foo status:is:active bar');
     const token = firstToken(editor);
     editor.view.dispatch(
       editor.state.tr.setSelection(
@@ -81,7 +60,7 @@ describe('word boundary left by a removed token', () => {
   });
 
   it('joins the words when the deleted range starts and ends inside them', async () => {
-    const { editor } = await mount('foo status:is:active bar');
+    const { editor } = await mountInput('foo status:is:active bar');
     const token = firstToken(editor);
 
     editor.commands.deleteRange({ from: token.pos - 1, to: token.pos + token.size + 1 });
@@ -90,7 +69,7 @@ describe('word boundary left by a removed token', () => {
   });
 
   it('puts typed text inside the words when the replaced range starts and ends inside them', async () => {
-    const { editor } = await mount('foo status:is:active bar');
+    const { editor } = await mountInput('foo status:is:active bar');
     const token = firstToken(editor);
     editor.view.dispatch(
       editor.state.tr.setSelection(
@@ -104,7 +83,7 @@ describe('word boundary left by a removed token', () => {
   });
 
   it('adds no space where a side already ends in whitespace', async () => {
-    const { editor } = await mount('');
+    const { editor } = await mountInput('');
     const content: JSONContent = {
       type: 'doc',
       content: [
@@ -127,7 +106,7 @@ describe('word boundary left by a removed token', () => {
   });
 
   it('adds no space where the token stood at the edge of the paragraph', async () => {
-    const { editor, value } = await mount('status:is:active bar');
+    const { editor, value } = await mountInput('status:is:active bar');
     const token = firstToken(editor);
 
     editor.commands.deleteRange({ from: token.pos, to: token.pos + token.size });

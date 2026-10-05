@@ -14,8 +14,10 @@ import {
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
 import { getFocusedToken } from '../../plugins/token-focus';
-import type { FieldDefinition, QuerySnapshotFilterToken } from '../../types';
+import type { FieldDefinition } from '../../types';
 import { datetimeField, statusField } from '../fixtures/fields';
+import { waitForEditor } from '../helpers/get-editor';
+import { filterTokens } from '../helpers/token-queries';
 
 afterEach(() => {
   cleanup();
@@ -29,19 +31,6 @@ function renderInput(props: Partial<TokenizedSearchInputProps> = {}) {
     <TokenizedSearchInput ref={ref} fields={[statusField, datetimeField]} {...props} />
   );
   return { ref: ref as RefObject<TokenizedSearchInputRef>, ...rendered };
-}
-
-async function editorOf(ref: RefObject<TokenizedSearchInputRef>): Promise<Editor> {
-  await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-  const editor = ref.current?.getEditor();
-  if (!editor) throw new Error('editor not ready');
-  return editor;
-}
-
-function filterTokens(ref: RefObject<TokenizedSearchInputRef>): QuerySnapshotFilterToken[] {
-  return (ref.current?.getSnapshot().segments ?? []).filter(
-    (segment): segment is QuerySnapshotFilterToken => segment.type === 'filter'
-  );
 }
 
 function tokenAttrs(editor: Editor, key: string): Record<string, unknown> | undefined {
@@ -59,7 +48,7 @@ describe('Leaving a token', () => {
       const user = userEvent.setup();
       const onChange = vi.fn();
       const { ref } = renderInput({ fields: [statusField, lockedDatetime], onChange });
-      const editor = await editorOf(ref);
+      const editor = await waitForEditor(ref);
       await user.click(screen.getByRole('combobox'));
       await user.keyboard('updated:');
       await waitFor(() => expect(getFocusedToken(editor.state)).not.toBeNull());
@@ -82,7 +71,7 @@ describe('Leaving a token', () => {
       const user = userEvent.setup();
       const onChange = vi.fn();
       const { ref, unmount } = renderInput({ onChange });
-      const editor = await editorOf(ref);
+      const editor = await waitForEditor(ref);
       await user.click(screen.getByRole('combobox'));
       await user.keyboard('status:');
       await waitFor(() => expect(screen.getByText('active')).toBeInTheDocument());
@@ -119,7 +108,7 @@ describe('Leaving a token', () => {
     it('moves DOM focus out of the token into the editor', async () => {
       const user = userEvent.setup();
       const { ref, container } = renderInput({ defaultValue: 'status:is:active' });
-      const editor = await editorOf(ref);
+      const editor = await waitForEditor(ref);
       await user.click(screen.getByRole('group', { name: /status/i }));
       await waitFor(() => expect(getFocusedToken(editor.state)).not.toBeNull());
 
@@ -138,7 +127,7 @@ describe('Leaving a token', () => {
     it('does not focus a token', async () => {
       const user = userEvent.setup();
       const { ref } = renderInput({ defaultValue: 'status:is:active', disabled: true });
-      const editor = await editorOf(ref);
+      const editor = await waitForEditor(ref);
       const [status] = filterTokens(ref);
 
       act(() => {
@@ -153,7 +142,7 @@ describe('Leaving a token', () => {
       const { ref, rerender } = renderInput({
         defaultValue: 'updated:gt:2024-01-06T10:30:00+0900',
       });
-      const editor = await editorOf(ref);
+      const editor = await waitForEditor(ref);
       const [updated] = filterTokens(ref);
       act(() => {
         editor.commands.focusFilterToken(updated.id, 'end');
@@ -180,7 +169,7 @@ describe('Leaving a token', () => {
         defaultValue: 'updated:gt:2024-01-06T10:30:00+0900',
         freeTextMode: 'tokenize',
       });
-      const editor = await editorOf(ref);
+      const editor = await waitForEditor(ref);
       const [updated] = filterTokens(ref);
       act(() => {
         editor.commands.focusFilterToken(updated.id, 'end');
@@ -197,7 +186,7 @@ describe('Leaving a token', () => {
 
     it('commits the token undo moves focus away from to a restored empty token', async () => {
       const { ref } = renderInput({ defaultValue: 'updated:gt:2024-01-06T10:30:00+0900' });
-      const editor = await editorOf(ref);
+      const editor = await waitForEditor(ref);
       const [updated] = filterTokens(ref);
       const end = () => editor.state.doc.content.size - 1;
       act(() => {

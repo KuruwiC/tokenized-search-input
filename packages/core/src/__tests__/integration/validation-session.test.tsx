@@ -1,7 +1,9 @@
 /**
  * How validation follows edits across undo, focus, configuration changes and token
  * creation: what counts as edited, what a deletion leaves behind, and what undo
- * restores.
+ * restores. A token is edited when the transactions being validated add or change it, or
+ * when the user edited it since entering the token they are in; where focus is does not
+ * make a token edited.
  */
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
@@ -16,11 +18,12 @@ import { getEditorContext, getFocusContext } from '../../extensions/editor-conte
 import { enterTokenIn, leaveFocusedTokenIn, programEntry } from '../../plugins/token-focus';
 import { getTokenMeta } from '../../plugins/token-meta-plugin';
 import { applyTokenAction } from '../../tokens/filter-token/token-actions';
-import type { FieldDefinition, QuerySnapshotFilterToken, ValidationRule } from '../../types';
+import type { FieldDefinition, ValidationRule } from '../../types';
 import { findTokenById } from '../../utils/find-token';
 import { generateTokenId } from '../../utils/token-id';
 import { MaxCount, Unique } from '../../validation/presets';
 import { priorityField, statusField } from '../fixtures/fields';
+import { filterTokens } from '../helpers/token-queries';
 
 afterEach(() => {
   cleanup();
@@ -48,12 +51,6 @@ async function renderEditor(
   const editor = ref.current?.getEditor();
   if (!editor) throw new Error('editor not created');
   return { ref: ref as RefObject<TokenizedSearchInputRef>, editor };
-}
-
-function filterTokens(ref: RefObject<TokenizedSearchInputRef>): QuerySnapshotFilterToken[] {
-  return (ref.current?.getSnapshot().segments ?? []).filter(
-    (segment): segment is QuerySnapshotFilterToken => segment.type === 'filter'
-  );
 }
 
 const values = (ref: RefObject<TokenizedSearchInputRef>) => filterTokens(ref).map((t) => t.value);
@@ -287,6 +284,81 @@ describe('undoing a deletion', () => {
     await settle();
 
     expect(values(ref)).toEqual(['active', 'inactive']);
+  });
+});
+
+describe('Unique with onDuplicate reject', () => {
+  it('deletes a duplicate that was just added', async () => {
+    const { ref, editor } = await renderEditor('status:is:active', [rejectKey()]);
+
+    act(() => {
+      editor.view.dispatch(
+        insertToken(editor, editor.state.doc.content.size - 1, 'status', 'inactive')
+      );
+    });
+
+    await waitFor(() => expect(filterTokens(ref).map((t) => t.value)).toEqual(['active']));
+  });
+
+  it('deletes a duplicate typed into a token once the user leaves it', async () => {
+    const { ref, editor } = await renderEditor('status:is:active', [rejectKey()]);
+    const end = editor.state.doc.content.size - 1;
+
+    // A token is created empty with the user in it, and they type a value.
+    act(() => {
+      const tr = insertToken(editor, end, 'status', '');
+      dispatchFocusingTokenAt(editor, tr, end);
+    });
+    const typed = { id: lastTokenId(editor) };
+    act(() => setValue(editor, typed.id, 'inactive'));
+    expect(filterTokens(ref)).toHaveLength(2);
+
+    act(() => focusToken(editor, null));
+
+    await waitFor(() => expect(filterTokens(ref).map((t) => t.value)).toEqual(['active']));
+  });
+
+  it('keeps an existing duplicate that is only clicked and then blurred', async () => {
+    const { ref, editor } = await renderEditor('status:is:active', [rejectKey()]);
+    const end = editor.state.doc.content.size - 1;
+    act(() => {
+      const tr = insertToken(editor, end, 'status', '');
+      dispatchFocusingTokenAt(editor, tr, end);
+    });
+    const typed = { id: lastTokenId(editor) };
+    act(() => setValue(editor, typed.id, 'inactive'));
+    act(() => focusToken(editor, null));
+    await waitFor(() => expect(filterTokens(ref)).toHaveLength(1));
+
+    // Undo brings the rejected duplicate back; undoing never deletes.
+    act(() => {
+      editor.commands.undo();
+    });
+    await waitFor(() => expect(filterTokens(ref).length).toBeGreaterThan(1));
+    const values = filterTokens(ref).map((t) => t.value);
+
+    // Entering a token and leaving it again edits neither.
+    act(() => focusToken(editor, filterTokens(ref)[0].id));
+    act(() => focusToken(editor, null));
+
+    expect(filterTokens(ref).map((t) => t.value)).toEqual(values);
+  });
+
+  it('deletes the added duplicate when an edit before the focused token shifts positions', async () => {
+    const { ref, editor } = await renderEditor('status:is:active priority:is:high', [rejectKey()]);
+    const [status, priority] = filterTokens(ref);
+    act(() => focusToken(editor, priority.id));
+
+    // One transaction inserts a duplicate before the status token, which moves it onto
+    // the position the focused priority token had, and blurs the priority token.
+    act(() => {
+      const tr = insertToken(editor, tokenPos(editor, status.id), 'status', 'inactive');
+      leaveFocusedTokenIn(tr, getFocusContext(editor));
+      editor.view.dispatch(tr);
+    });
+
+    await waitFor(() => expect(filterTokens(ref).map((t) => t.value)).toEqual(['active', 'high']));
+    expect(filterTokens(ref)[0].id).toBe(status.id);
   });
 });
 

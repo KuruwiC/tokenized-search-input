@@ -2,40 +2,14 @@
  * Pasted text is read as a query in place: only what turns into tokens changes, and
  * the caret stays at the end of what was pasted.
  */
-import { act, cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
-import { createRef } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
-import type { FreeTextMode } from '../../types';
 import { isToken } from '../../utils/node-predicates';
-import { basicFields } from '../fixtures';
-import { getInternalEditor } from '../helpers/get-editor';
+import { mountInput } from '../helpers/mount-input';
 
 afterEach(cleanup);
-
-async function mount(
-  defaultValue: string,
-  freeTextMode: FreeTextMode = 'plain'
-): Promise<{ editor: Editor; value: () => string }> {
-  const ref = createRef<TokenizedSearchInputRef>();
-  render(
-    <TokenizedSearchInput
-      ref={ref}
-      fields={basicFields}
-      defaultValue={defaultValue}
-      freeTextMode={freeTextMode}
-    />
-  );
-  await waitFor(() => expect(getInternalEditor(ref.current)).not.toBeNull());
-  const editor = getInternalEditor(ref.current);
-  if (!editor) throw new Error('editor is unavailable');
-  return { editor, value: () => ref.current?.getValue() ?? '' };
-}
 
 /** Pastes `text` at `pos` and returns the number of steps the paste and its follow-ups made. */
 function pasteAt(editor: Editor, pos: number, text: string): number {
@@ -72,7 +46,7 @@ function tokenEnd(editor: Editor): number {
 
 describe('pasted text', () => {
   it('stays in place with the caret after it when nothing in it is a token', async () => {
-    const { editor } = await mount('hello world');
+    const { editor } = await mountInput('hello world');
 
     // After "hello ".
     const steps = pasteAt(editor, 7, 'big ');
@@ -83,7 +57,7 @@ describe('pasted text', () => {
   });
 
   it('becomes a token in place, with the caret right after it', async () => {
-    const { editor, value } = await mount('hello world');
+    const { editor, value } = await mountInput('hello world');
 
     const steps = pasteAt(editor, 7, 'status:is:active ');
 
@@ -94,7 +68,7 @@ describe('pasted text', () => {
   });
 
   it('leaves the text before and after the token untouched', async () => {
-    const { editor, value } = await mount('abc');
+    const { editor, value } = await mountInput('abc');
 
     const steps = pasteAt(editor, 4, ' def status:is:active ghi');
 
@@ -105,7 +79,7 @@ describe('pasted text', () => {
   });
 
   it('becomes a free text token in tokenize mode, with the caret after it', async () => {
-    const { editor, value } = await mount('', 'tokenize');
+    const { editor, value } = await mountInput('', { freeTextMode: 'tokenize' });
 
     pasteAt(editor, 1, 'foo');
 

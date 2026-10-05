@@ -4,7 +4,6 @@
  */
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Editor } from '@tiptap/core';
 import { createRef, type RefObject } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -15,6 +14,7 @@ import {
 import { localOffsetAt } from '../../pickers/date-time-value';
 import { getFocusedToken } from '../../plugins/token-focus';
 import { dateField, datetimeField, statusField } from '../fixtures/fields';
+import { waitForEditor } from '../helpers/get-editor';
 
 afterEach(() => {
   cleanup();
@@ -26,13 +26,6 @@ function renderInput(props: Partial<TokenizedSearchInputProps> = {}) {
     <TokenizedSearchInput ref={ref} fields={[statusField, dateField, datetimeField]} {...props} />
   );
   return ref as RefObject<TokenizedSearchInputRef>;
-}
-
-async function editorOf(ref: RefObject<TokenizedSearchInputRef>): Promise<Editor> {
-  await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-  const editor = ref.current?.getEditor();
-  if (!editor) throw new Error('editor not ready');
-  return editor;
 }
 
 /** The first filter token of the document, which is there even while its value is empty. */
@@ -52,7 +45,7 @@ function firstFilter(ref: RefObject<TokenizedSearchInputRef>): { id: string; val
 /** Renders the input with one token, focuses it and waits for its picker. */
 async function openPicker(defaultValue: string) {
   const ref = renderInput({ defaultValue });
-  const editor = await editorOf(ref);
+  const editor = await waitForEditor(ref);
   act(() => {
     editor.commands.focusFilterToken(firstFilter(ref).id, 'end');
   });
@@ -63,7 +56,7 @@ async function openPicker(defaultValue: string) {
 /** Starts a token for `updated` by typing, so its value is empty, and waits for its picker. */
 async function openEmptyPicker() {
   const ref = renderInput();
-  const editor = await editorOf(ref);
+  const editor = await waitForEditor(ref);
   await userEvent.setup().click(screen.getByRole('combobox'));
   await userEvent.setup().keyboard('updated:');
   await waitFor(() => expect(getFocusedToken(editor.state)).not.toBeNull());

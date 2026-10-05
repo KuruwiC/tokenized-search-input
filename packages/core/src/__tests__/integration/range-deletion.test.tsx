@@ -1,26 +1,11 @@
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
-import { createRef } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  TokenizedSearchInput,
-  type TokenizedSearchInputRef,
-} from '../../editor/tokenized-search-input';
 import { isToken } from '../../utils/node-predicates';
-import { basicFields } from '../fixtures';
-import { getInternalEditor } from '../helpers/get-editor';
+import { mountInput } from '../helpers/mount-input';
 
 afterEach(cleanup);
-
-async function mount(defaultValue: string): Promise<{ editor: Editor; value: () => string }> {
-  const ref = createRef<TokenizedSearchInputRef>();
-  render(<TokenizedSearchInput ref={ref} fields={basicFields} defaultValue={defaultValue} />);
-  await waitFor(() => expect(getInternalEditor(ref.current)).not.toBeNull());
-  const editor = getInternalEditor(ref.current);
-  if (!editor) throw new Error('editor is unavailable');
-  return { editor, value: () => ref.current?.getValue() ?? '' };
-}
 
 function tokenRanges(editor: Editor): { from: number; to: number }[] {
   const ranges: { from: number; to: number }[] = [];
@@ -46,7 +31,7 @@ describe('range deletion', () => {
     'Backspace',
     'Delete',
   ])('removes every selected token with %s and keeps the surrounding words apart', async (key) => {
-    const { editor, value } = await mount('foo status:is:active priority:is:high bar');
+    const { editor, value } = await mountInput('foo status:is:active priority:is:high bar');
     selectTokens(editor);
 
     fireEvent.keyDown(editor.view.dom, { key });
@@ -59,7 +44,7 @@ describe('range deletion', () => {
   });
 
   it('leaves an empty paragraph when the selected tokens were all there was', async () => {
-    const { editor, value } = await mount('status:is:active priority:is:high');
+    const { editor, value } = await mountInput('status:is:active priority:is:high');
     selectTokens(editor);
 
     fireEvent.keyDown(editor.view.dom, { key: 'Backspace' });

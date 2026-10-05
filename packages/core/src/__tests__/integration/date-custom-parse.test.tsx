@@ -16,6 +16,8 @@ import type { DateTimeValue } from '../../pickers/date-time-value';
 import { getFocusedToken } from '../../plugins/token-focus';
 import type { DateFieldDefinition, FieldDefinition } from '../../types';
 import { statusField } from '../fixtures/fields';
+import { waitForEditor } from '../helpers/get-editor';
+import { invalidTokenCount } from '../helpers/token-queries';
 
 afterEach(() => {
   cleanup();
@@ -42,13 +44,6 @@ const dayFirstField: DateFieldDefinition = {
   },
 };
 
-async function editorOf(ref: RefObject<TokenizedSearchInputRef>): Promise<Editor> {
-  await waitFor(() => expect(ref.current?.getEditor()).not.toBeNull());
-  const editor = ref.current?.getEditor();
-  if (!editor) throw new Error('editor not ready');
-  return editor;
-}
-
 function firstFilter(editor: Editor): { id: string; value: string } {
   let found: { id: string; value: string } | undefined;
   editor.state.doc.descendants((node) => {
@@ -61,9 +56,6 @@ function firstFilter(editor: Editor): { id: string; value: string } {
   return found;
 }
 
-const invalidCount = () =>
-  document.querySelectorAll('.node-filterToken [data-invalid="true"]').length;
-
 function renderInput(fields: FieldDefinition[], defaultValue?: string) {
   const ref = createRef<TokenizedSearchInputRef>();
   render(<TokenizedSearchInput ref={ref} fields={fields} defaultValue={defaultValue} />);
@@ -74,7 +66,7 @@ describe('a date field with a custom parse', () => {
   it('stores what is typed in canonical form and does not mark the stored value', async () => {
     const user = userEvent.setup();
     const ref = renderInput([statusField, dayFirstField]);
-    const editor = await editorOf(ref);
+    const editor = await waitForEditor(ref);
     await user.click(screen.getByRole('combobox'));
     await user.keyboard('created:');
     await waitFor(() => expect(getFocusedToken(editor.state)).not.toBeNull());
@@ -83,13 +75,13 @@ describe('a date field with a custom parse', () => {
     await user.keyboard('{Enter}');
 
     await waitFor(() => expect(firstFilter(editor).value).toBe('2024-03-05'));
-    await waitFor(() => expect(invalidCount()).toBe(0));
+    await waitFor(() => expect(invalidTokenCount()).toBe(0));
   });
 
   it('accepts a stored canonical value given as the default value', async () => {
     renderInput([statusField, dayFirstField], 'created:gt:2024-03-05');
     await waitFor(() => expect(document.querySelectorAll('.node-filterToken').length).toBe(1));
-    await waitFor(() => expect(invalidCount()).toBe(0));
+    await waitFor(() => expect(invalidTokenCount()).toBe(0));
   });
 
   it('shows the stored value through the custom format', async () => {
@@ -99,7 +91,7 @@ describe('a date field with a custom parse', () => {
 
   it('opens the picker on the stored date', async () => {
     const ref = renderInput([statusField, dayFirstField], 'created:gt:2024-03-05');
-    const editor = await editorOf(ref);
+    const editor = await waitForEditor(ref);
     act(() => {
       editor.commands.focusFilterToken(firstFilter(editor).id, 'end');
     });
@@ -133,7 +125,7 @@ describe('a picker that hands over a value that cannot be written', () => {
 
   async function open() {
     const ref = renderInput([statusField, pickerField], 'created:gt:2024-03-05');
-    const editor = await editorOf(ref);
+    const editor = await waitForEditor(ref);
     act(() => {
       editor.commands.focusFilterToken(firstFilter(editor).id, 'end');
     });
