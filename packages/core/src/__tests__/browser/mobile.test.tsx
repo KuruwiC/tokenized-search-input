@@ -3,6 +3,7 @@ import { commands, userEvent } from 'vitest/browser';
 import { registerCaretCases } from './caret-cases';
 import {
   afterLastToken,
+  centreOf,
   editingTokenIndex,
   expectCaretBetween,
   gapBetween,
@@ -23,13 +24,6 @@ describe('mobile environment', () => {
 
 registerCaretCases();
 registerPointerCases();
-
-function centreOf(element: Element | undefined, m: { pm: HTMLElement }): { x: number; y: number } {
-  const rect = element?.getBoundingClientRect();
-  if (!rect) throw new Error('no element to tap');
-  const box = m.pm.getBoundingClientRect();
-  return { x: rect.left + rect.width / 2 - box.left, y: rect.top + rect.height / 2 - box.top };
-}
 
 /** A point `inset` pixels inside the left or right edge of an element, at its middle height. */
 function insideEdge(
@@ -78,7 +72,7 @@ describe('mobile touch', () => {
 
   it('removes a token when its delete button is tapped', async () => {
     const m = await mountEditor(TWO_TOKENS);
-    await commands.tapEditor(centreOf(deleteButtonOf(m, 0), m));
+    await commands.tapEditor(centreOf(m, deleteButtonOf(m, 0)));
 
     expect(m.value()).toBe('owner:is:bob');
     expect(tokenElements(m)).toHaveLength(1);
@@ -86,8 +80,8 @@ describe('mobile touch', () => {
 
   it('keeps the caret where it is when text is entered inside a token value', async () => {
     const m = await mountEditor(TWO_TOKENS);
-    const value = tokenElements(m)[1]?.querySelector('.tsi-token-value') ?? undefined;
-    await commands.tapEditor(centreOf(value, m));
+    const value = tokenElements(m)[1]?.querySelector('.tsi-token-value');
+    await commands.tapEditor(centreOf(m, value));
     expect(editingTokenIndex(m)).toBe(1);
     const input = document.activeElement;
     if (!(input instanceof HTMLInputElement)) throw new Error('the value input has no focus');

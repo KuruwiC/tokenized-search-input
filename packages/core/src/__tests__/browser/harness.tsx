@@ -90,6 +90,13 @@ function relativeToEditor(m: MountedEditor, clientX: number, clientY: number): P
   return { x: clientX - box.left, y: clientY - box.top };
 }
 
+/** The centre of `element`, relative to the editor. */
+export function centreOf(m: MountedEditor, element: Element | null | undefined): Point {
+  const rect = element?.getBoundingClientRect();
+  if (!rect) throw new Error('no element to point at');
+  return relativeToEditor(m, rect.left + rect.width / 2, rect.top + rect.height / 2);
+}
+
 export function gapBetween(m: MountedEditor, index: number): Point {
   const tokens = tokenElements(m);
   const left = tokens[index]?.getBoundingClientRect();

@@ -4,6 +4,7 @@ import {
   afterLastToken,
   beforeFirstToken,
   caretLocation,
+  centreOf,
   editingTokenIndex,
   expectCaretBetween,
   gapBetween,
@@ -34,15 +35,7 @@ export function registerCaretCases(): void {
 
     it('sits right after a token when editing of that token is left with Escape', async () => {
       const m = await mountEditor(TWO_TOKENS);
-      const first = tokenElements(m)[0]?.getBoundingClientRect();
-      const box = m.pm.getBoundingClientRect();
-      if (!first) throw new Error('no token');
-      await userEvent.click(m.pm, {
-        position: {
-          x: first.left + first.width / 2 - box.left,
-          y: first.top + first.height / 2 - box.top,
-        },
-      });
+      await userEvent.click(m.pm, { position: centreOf(m, tokenElements(m)[0]) });
       expect(editingTokenIndex(m)).toBe(0);
 
       await userEvent.keyboard('{Escape}');
@@ -91,15 +84,8 @@ export function registerCaretCases(): void {
 
     it('leaves a token being edited with ArrowLeft into the gap before it', async () => {
       const m = await mountEditor(TWO_TOKENS);
-      const value = tokenElements(m)[1]?.querySelector('.tsi-token-value')?.getBoundingClientRect();
-      const box = m.pm.getBoundingClientRect();
-      if (!value) throw new Error('no token value');
-      await userEvent.click(m.pm, {
-        position: {
-          x: value.left + value.width / 2 - box.left,
-          y: value.top + value.height / 2 - box.top,
-        },
-      });
+      const value = tokenElements(m)[1]?.querySelector('.tsi-token-value');
+      await userEvent.click(m.pm, { position: centreOf(m, value) });
       expect(editingTokenIndex(m)).toBe(1);
 
       await pressUntil('{ArrowLeft}', caretIsBetween(m, 1));

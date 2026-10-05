@@ -4,6 +4,7 @@ import {
   afterLastToken,
   beforeFirstToken,
   caretLocation,
+  centreOf,
   editingTokenIndex,
   expectCaretBetween,
   gapBetween,
@@ -15,16 +16,6 @@ import {
 
 const TWO_TOKENS = 'status:is:open owner:is:bob';
 const THREE_TOKENS = 'p:is:1 q:is:2 r:is:3';
-
-function middleOfToken(m: MountedEditor, index: number): Point {
-  const token = tokenElements(m)[index]?.getBoundingClientRect();
-  const box = m.pm.getBoundingClientRect();
-  if (!token) throw new Error(`no token ${index}`);
-  return {
-    x: token.left + token.width / 2 - box.left,
-    y: token.top + token.height / 2 - box.top,
-  };
-}
 
 /** The cursor shown over a point given relative to the editor. */
 function cursorAt(m: MountedEditor, point: Point): string {
@@ -109,7 +100,7 @@ export function registerPointerCases(): void {
 
     it('enters editing when a token is clicked', async () => {
       const m = await mountEditor(TWO_TOKENS);
-      await userEvent.click(m.pm, { position: middleOfToken(m, 1) });
+      await userEvent.click(m.pm, { position: centreOf(m, tokenElements(m)[1]) });
       expect(editingTokenIndex(m)).toBe(1);
       expect(tokenElements(m)[1]?.contains(document.activeElement)).toBe(true);
 
