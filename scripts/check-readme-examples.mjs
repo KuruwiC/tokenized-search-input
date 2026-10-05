@@ -21,10 +21,9 @@ import {
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
+import { packageRoot, repositoryRoot } from '../packages/core/scripts/package-paths.mjs';
 
-const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const packageRoot = resolve(repositoryRoot, 'packages/core');
 const readmePath = resolve(repositoryRoot, 'README.md');
 const packageName = JSON.parse(readFileSync(resolve(packageRoot, 'package.json'), 'utf8')).name;
 
