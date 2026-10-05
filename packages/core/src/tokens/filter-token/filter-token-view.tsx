@@ -2,7 +2,11 @@ import type { NodeViewProps } from '@tiptap/react';
 import { getEditorContext } from '../../extensions/editor-context';
 import { useEditorContextUpdate } from '../../hooks/use-editor-context-update';
 import { useTokenMeta } from '../../hooks/use-editor-selector';
-import { getDateDisplayValue, getDateTimeDisplayValue } from '../../pickers/date-format';
+import {
+  getDateDisplayValue,
+  getDateTimeDisplayValue,
+  isDateOrDateTimeField,
+} from '../../pickers/date-format';
 import { getApplicableDisplay } from '../../plugins/shared/meta';
 import {
   dispatchCloseSuggestion,
@@ -37,8 +41,6 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
   const classNames = editorContext.classNames;
   const fieldSource = { fields, unknownFields: editorContext.unknownFields };
   const fieldDef = resolveField(fieldSource, key) ?? undefined;
-  const isDateField = fieldDef?.type === 'date';
-  const isDateTimeField = fieldDef?.type === 'datetime';
   const operatorLabels = fieldDef?.operatorLabels
     ? { ...globalOperatorLabels, ...fieldDef.operatorLabels }
     : globalOperatorLabels;
@@ -141,7 +143,7 @@ export const FilterTokenView: React.FC<NodeViewProps> = ({
           editableText={getEditableValueText(fieldDef, rawValue)}
           valueDisplayString={valueDisplayString}
           valueSuggestionsDisabled={valueSuggestionsDisabled}
-          baseAllowSpaces={fieldDef?.allowSpaces || isDateField || isDateTimeField}
+          baseAllowSpaces={fieldDef?.allowSpaces || isDateOrDateTimeField(fieldDef)}
           startContent={startContent}
           endContent={endContent}
           valueClassName={classNames?.tokenValue}

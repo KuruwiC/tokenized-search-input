@@ -3,7 +3,11 @@ import { useCallback } from 'react';
 import { getEditorContext } from '../../extensions/editor-context';
 import { useDebouncedPickerSync } from '../../hooks/use-debounced-picker-sync';
 import { useEditorSelector } from '../../hooks/use-editor-selector';
-import { parseDateFieldValue } from '../../pickers/date-format';
+import {
+  isDateOrDateTimeField,
+  isDateTimeField,
+  parseDateFieldValue,
+} from '../../pickers/date-format';
 import {
   type DateTimeValue,
   fromInstant,
@@ -56,7 +60,7 @@ export function useDatePickerState(
     : undefined;
   const parseTyped = useCallback(
     (input: string): DateTimeValue | null => {
-      if (pickerField?.type !== 'date' && pickerField?.type !== 'datetime') return null;
+      if (!isDateOrDateTimeField(pickerField)) return null;
       const parsed = parseDateFieldValue(input, pickerField);
       return parsed.ok ? parsed.value : null;
     },
@@ -75,7 +79,7 @@ export function useDatePickerState(
   // picker last committed: partial input only moves the calendar. While there is no
   // value, the state is all there is to go by.
   const settled = complete ?? suggestionState?.dateValue ?? null;
-  const timeRequired = pickerField?.type === 'datetime' && pickerField.timeRequired === true;
+  const timeRequired = isDateTimeField(pickerField) && pickerField.timeRequired === true;
   const isUTC =
     settled?.time !== undefined ? settled.offset === 'Z' : (suggestionState?.isUTC ?? false);
   const includeTime =

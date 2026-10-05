@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/core';
 import { useCallback } from 'react';
 import { getEditorContext, getFocusContext } from '../../extensions/editor-context';
-import { toStoredValue } from '../../pickers/date-format';
+import { isDateOrDateTimeField, toStoredValue } from '../../pickers/date-format';
 import { checkDateTimeValue, type DateTimeValue } from '../../pickers/date-time-value';
 import { closeSuggestion } from '../../plugins/suggestion';
 import { getFocusedTokenId, leaveTokenIn } from '../../plugins/token-focus';
@@ -55,7 +55,7 @@ export function useSuggestionHandlers({
       if (id === null) return;
 
       const fieldDef = getEditorContext(editor).fields.find((f) => f.key === fieldKey);
-      if (fieldDef?.type !== 'date' && fieldDef?.type !== 'datetime') return;
+      if (!isDateOrDateTimeField(fieldDef)) return;
 
       // A custom picker's value is not checked by the compiler: only one that can be written is stored
       const checked = checkDateTimeValue(value);

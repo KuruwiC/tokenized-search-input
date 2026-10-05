@@ -1,6 +1,6 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Transaction } from '@tiptap/pm/state';
-import { normalizeDateFieldValue } from '../../pickers/date-format';
+import { isDateOrDateTimeField, normalizeDateFieldValue } from '../../pickers/date-format';
 import { recordInHistory } from '../../plugins/shared/meta';
 import type { FieldDefinition } from '../../types';
 import { resolveStoredValue } from '../../utils/enum-value';
@@ -125,7 +125,7 @@ export function applyTokenAction(
 }
 
 function storedForm(field: FieldDefinition | null, value: string): string {
-  if (field?.type === 'date' || field?.type === 'datetime') {
+  if (isDateOrDateTimeField(field)) {
     return normalizeDateFieldValue(value, field);
   }
   return value;

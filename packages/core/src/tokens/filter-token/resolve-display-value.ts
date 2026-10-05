@@ -1,4 +1,4 @@
-import { parseDateFieldValue } from '../../pickers/date-format';
+import { isDateField, isDateTimeField, parseDateFieldValue } from '../../pickers/date-format';
 import type { DateTimeValue } from '../../pickers/date-time-value';
 import type { TokenDisplayContent } from '../../plugins/shared/meta';
 import type {
@@ -32,11 +32,11 @@ export interface ResolveDisplayValueResult {
  */
 function dateText(input: ResolveDisplayValueInput): string | null {
   const { rawValue, fieldDef, getDateDisplayValue, getDateTimeDisplayValue } = input;
-  if (fieldDef?.type === 'date' && getDateDisplayValue) {
+  if (isDateField(fieldDef) && getDateDisplayValue) {
     const parsed = parseDateFieldValue(rawValue, fieldDef);
     return parsed.ok ? getDateDisplayValue(parsed.value, fieldDef.formatConfig) : rawValue;
   }
-  if (fieldDef?.type === 'datetime' && getDateTimeDisplayValue) {
+  if (isDateTimeField(fieldDef) && getDateTimeDisplayValue) {
     const parsed = parseDateFieldValue(rawValue, fieldDef);
     return parsed.ok ? getDateTimeDisplayValue(parsed.value, fieldDef.formatConfig) : rawValue;
   }

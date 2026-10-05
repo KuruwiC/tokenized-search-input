@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/core';
 import type { Transaction } from '@tiptap/pm/state';
 import { useEffect, useRef } from 'react';
-import { parseDateFieldValue } from '../../pickers/date-format';
+import { isDateOrDateTimeField, parseDateFieldValue } from '../../pickers/date-format';
 import { markTokenValueTyped } from '../../plugins/shared/meta';
 import {
   getSuggestionState,
@@ -87,7 +87,7 @@ export function useValueSuggestions({
     if (isEnumField && fieldDef?.type === 'enum' && fieldDef.enumValues) {
       openValueSuggestion(tr, fieldKey, fieldDef.enumValues, value, tokenId);
       editor.view.dispatch(tr);
-    } else if (fieldDef?.type === 'date' || fieldDef?.type === 'datetime') {
+    } else if (isDateOrDateTimeField(fieldDef)) {
       const parsed = value ? parseDateFieldValue(value, fieldDef) : null;
       const current = parsed?.ok ? parsed.value : null;
       if (fieldDef.type === 'date') {

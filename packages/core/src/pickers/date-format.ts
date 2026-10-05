@@ -126,15 +126,24 @@ export function getDateTimeDisplayValue(
   return `${reading} (${value.offset})`;
 }
 
-export function isDateField(fieldDef: { type: string } | undefined): boolean {
+/** Whether `fieldDef` is a `date` field, narrowing it to one. */
+export function isDateField<F extends { type: string }>(
+  fieldDef: F | null | undefined
+): fieldDef is F & { type: 'date' } {
   return fieldDef?.type === 'date';
 }
 
-export function isDateTimeField(fieldDef: { type: string } | undefined): boolean {
+/** Whether `fieldDef` is a `datetime` field, narrowing it to one. */
+export function isDateTimeField<F extends { type: string }>(
+  fieldDef: F | null | undefined
+): fieldDef is F & { type: 'datetime' } {
   return fieldDef?.type === 'datetime';
 }
 
-export function isDateOrDateTimeField(fieldDef: { type: string } | undefined): boolean {
+/** Whether `fieldDef` is a `date` or `datetime` field, narrowing it to one of them. */
+export function isDateOrDateTimeField<F extends { type: string }>(
+  fieldDef: F | null | undefined
+): fieldDef is F & { type: 'date' | 'datetime' } {
   return isDateField(fieldDef) || isDateTimeField(fieldDef);
 }
 
