@@ -133,7 +133,7 @@ describe('Validation System Integration', () => {
     });
   });
 
-  describe('Unique.reject strategy', () => {
+  describe('Unique with onDuplicate reject', () => {
     it('marks duplicate as invalid with default action (mark)', async () => {
       render(
         <TokenizedSearchInput
@@ -146,9 +146,9 @@ describe('Validation System Integration', () => {
       await expectTokenCounts(2, 1);
     });
 
-    it('deletes later duplicates with Unique.reject on defaultValue', async () => {
+    it('deletes later duplicates with onDuplicate reject on defaultValue', async () => {
       // With forceCheck (initial load), all tokens are treated as fresh
-      // Unique.reject keeps first occurrence and deletes later ones
+      // onDuplicate reject keeps first occurrence and deletes later ones
       render(
         <TokenizedSearchInput
           fields={testFields}
@@ -345,7 +345,7 @@ describe('Validation System Integration', () => {
     });
   });
 
-  describe('Unique.replace strategy', () => {
+  describe('Unique with onDuplicate replace', () => {
     it('deletes earlier token and keeps later one with delete-existing', async () => {
       render(
         <TokenizedSearchInput
@@ -405,7 +405,7 @@ describe('Validation System Integration', () => {
     });
   });
 
-  describe('Unique.replace with 3+ duplicates', () => {
+  describe('onDuplicate replace with 3+ duplicates', () => {
     it('deletes all earlier tokens and keeps only the latest one', async () => {
       render(
         <TokenizedSearchInput
@@ -701,7 +701,7 @@ describe('Validation System Integration', () => {
     });
   });
 
-  describe('Unique.replace protects edited token', () => {
+  describe('onDuplicate replace protects edited token', () => {
     it('unique rule returns violations with targets for duplicates', async () => {
       // Unique.rule() returns Violation[] with explicit targets: every duplicate except the survivor
       const capturedViolations: Array<{ ruleId: string; targetCount: number }> = [];
@@ -745,7 +745,7 @@ describe('Validation System Integration', () => {
   // delete-new and delete-existing work regardless of whether the new token is added
   // BEFORE or AFTER existing tokens.
 
-  describe('Unique.reject: position-independent behavior', () => {
+  describe('onDuplicate reject: position-independent behavior', () => {
     it('delete-new preserves existing token on forceCheck', async () => {
       // When setValue is called with duplicates, delete-new should delete the later (newer) tokens
       const TestComponent = () => {
@@ -784,7 +784,7 @@ describe('Validation System Integration', () => {
     });
   });
 
-  describe('Unique.replace: position-independent behavior', () => {
+  describe('onDuplicate replace: position-independent behavior', () => {
     it('delete-existing preserves new token on forceCheck', async () => {
       // When setValue is called with duplicates, delete-existing should delete the earlier (existing) tokens
       const TestComponent = () => {
@@ -1695,7 +1695,7 @@ describe('Validation System Integration', () => {
   // Focused/blurred tokens are treated as "fresh" for strategy decisions.
 
   describe('Focus-based freshness', () => {
-    it('focused token is treated as fresh for Unique.reject', async () => {
+    it('focused token is treated as fresh for onDuplicate reject', async () => {
       const user = userEvent.setup();
 
       render(
@@ -1732,7 +1732,7 @@ describe('Validation System Integration', () => {
       expect(token?.textContent).toContain('active');
     });
 
-    it('focused token is treated as fresh for Unique.replace', async () => {
+    it('focused token is treated as fresh for onDuplicate replace', async () => {
       // Use delay to ensure each character is fully processed before the next
       const user = userEvent.setup({ delay: 10 });
 
@@ -1779,7 +1779,7 @@ describe('Validation System Integration', () => {
   // not to an intermediate state with duplicates.
 
   describe('Undo behavior with validation', () => {
-    it('Unique.replace: undo restores original token after replace deletion', async () => {
+    it('onDuplicate replace: undo restores original token after replace deletion', async () => {
       // Scenario:
       // 1. Start with [status:active]
       // 2. setValue to [status:active, status:inactive] -> replace deletes active
@@ -1839,7 +1839,7 @@ describe('Validation System Integration', () => {
       expect(token?.textContent).toContain('active');
     });
 
-    it('Unique.reject: undo restores original token after reject deletion', async () => {
+    it('onDuplicate reject: undo restores original token after reject deletion', async () => {
       // Scenario:
       // 1. Start with [status:active]
       // 2. setValue to [status:active, status:inactive] -> reject deletes inactive
@@ -1899,7 +1899,7 @@ describe('Validation System Integration', () => {
       expect(token?.textContent).toContain('active');
     });
 
-    it('Unique.mark: undo restores single token after marked duplicates', async () => {
+    it('onDuplicate mark: undo restores single token after marked duplicates', async () => {
       // Scenario:
       // 1. Start with [status:active]
       // 2. setValue to [status:active, status:inactive] -> second marked invalid
@@ -1958,7 +1958,7 @@ describe('Validation System Integration', () => {
       expect(invalidTokens.length).toBe(0);
     });
 
-    it('Unique.replace with editing.length === 0: keeps last token', async () => {
+    it('onDuplicate replace with editing.length === 0: keeps last token', async () => {
       // This test verifies the behavior when ALL tokens are "existing" (not editing).
       // This happens on forceCheck (setValue/paste) when editingTokenIds is computed
       // as all tokens (since no doc diff exists from empty state).

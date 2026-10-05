@@ -1,5 +1,5 @@
 /**
- * Integration tests for validation undo behavior with Unique.replace strategy.
+ * Integration tests for validation undo behavior of Unique with onDuplicate replace.
  * Tests that token replacement via validation is undoable as a single operation.
  */
 import { cleanup, render, waitFor } from '@testing-library/react';
@@ -34,8 +34,8 @@ afterEach(() => {
   cleanup();
 });
 
-describe('Validation undo with Unique.replace', () => {
-  it('replaces earlier token with later one using Unique.replace', async () => {
+describe('Validation undo with onDuplicate replace', () => {
+  it('replaces earlier token with later one using onDuplicate replace', async () => {
     const ref = createRef<TokenizedSearchInputRef>();
 
     render(
@@ -101,7 +101,7 @@ describe('Validation undo with Unique.replace', () => {
     expect(value).not.toMatch(/status:is:active(?!\s*status:is:inactive)/);
   });
 
-  it('handles undo of setValue operation with Unique.replace', async () => {
+  it('handles undo of setValue operation with onDuplicate replace', async () => {
     const ref = createRef<TokenizedSearchInputRef>();
 
     render(

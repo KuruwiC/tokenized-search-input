@@ -121,7 +121,7 @@ describe('Config API', () => {
       });
     });
 
-    it('uses Unique.reject strategy to delete duplicates', async () => {
+    it('uses Unique with onDuplicate reject to delete duplicates', async () => {
       const handleChange = vi.fn();
 
       render(
@@ -135,7 +135,7 @@ describe('Config API', () => {
         />
       );
 
-      // With Unique.reject strategy, the duplicate token should be removed
+      // With Unique with onDuplicate reject, the duplicate token should be removed
       await waitFor(() => {
         expect(handleChange).toHaveBeenCalled();
         const lastCall = handleChange.mock.calls[handleChange.mock.calls.length - 1];
