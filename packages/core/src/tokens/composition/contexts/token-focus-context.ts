@@ -3,11 +3,21 @@ import { createContext, useContext } from 'react';
 
 export type CursorPosition = 'start' | 'end';
 
+export interface BlockFocusOptions {
+  /**
+   * False when a pointer press moves focus, so the block does not show the keyboard focus
+   * indicator. Left out, the browser decides.
+   */
+  focusVisible?: boolean;
+}
+
+export const POINTER_FOCUS: BlockFocusOptions = { focusVisible: false };
+
 /** A block of a token that can hold DOM focus and handles the keys pressed while it does. */
 export interface FocusableBlock {
   id: string;
   element: RefObject<HTMLElement | null>;
-  focus: (position?: CursorPosition) => void;
+  focus: (position?: CursorPosition, options?: BlockFocusOptions) => void;
   /**
    * Handles a key pressed while the block holds focus.
    * @returns whether the key was handled; an unhandled one falls to the token's own keys
@@ -21,7 +31,7 @@ export interface FocusableBlock {
   editsToken: boolean;
 }
 
-interface FocusNavigationOptions {
+interface FocusNavigationOptions extends BlockFocusOptions {
   /** Only blocks that can receive focus when entering the token via Backspace/Delete. */
   entryOnly?: boolean;
   position?: CursorPosition;

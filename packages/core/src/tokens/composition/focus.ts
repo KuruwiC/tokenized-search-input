@@ -1,8 +1,13 @@
 import type { RefObject } from 'react';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import type { TokenFocusEntry } from '../../plugins/token-focus';
-import type { CursorPosition, FocusableBlock, FocusRegistry } from './contexts/token-focus-context';
-import { useTokenFocusContext } from './contexts/token-focus-context';
+import type {
+  BlockFocusOptions,
+  CursorPosition,
+  FocusableBlock,
+  FocusRegistry,
+} from './contexts/token-focus-context';
+import { POINTER_FOCUS, useTokenFocusContext } from './contexts/token-focus-context';
 
 function compareDomOrder(a: FocusableBlock, b: FocusableBlock): number {
   const aElement = a.element.current;
@@ -45,11 +50,11 @@ function createFocusRegistry({ onExitLeft, onExitRight }: FocusExits): FocusRegi
 
     edge: (edge, { entryOnly = false } = {}) => edgeBlock(edge, entryOnly),
 
-    focusEdge: (edge, { entryOnly = false, position } = {}) => {
-      edgeBlock(edge, entryOnly)?.focus(position);
+    focusEdge: (edge, { entryOnly = false, position, ...focusOptions } = {}) => {
+      edgeBlock(edge, entryOnly)?.focus(position, focusOptions);
     },
 
-    focusAdjacent: (fromId, direction, { entryOnly = false, position } = {}) => {
+    focusAdjacent: (fromId, direction, { entryOnly = false, position, ...focusOptions } = {}) => {
       const all = inDomOrder();
       const index = all.findIndex((block) => block.id === fromId);
       if (index === -1) return;
@@ -58,7 +63,7 @@ function createFocusRegistry({ onExitLeft, onExitRight }: FocusExits): FocusRegi
       const beyond = forward ? all.slice(index + 1) : all.slice(0, index).reverse();
       const target = beyond.find((block) => !entryOnly || block.entryFocusable !== false);
       if (target) {
-        target.focus(position ?? (forward ? 'start' : 'end'));
+        target.focus(position ?? (forward ? 'start' : 'end'), focusOptions);
         return;
       }
       if (forward) onExitRight();
@@ -89,7 +94,7 @@ export function entryBlock(
 }
 
 export function focusEntryBlock(registry: FocusRegistry, entry: TokenFocusEntry): void {
-  entryBlock(registry, entry)?.focus(entry.position);
+  entryBlock(registry, entry)?.focus(entry.position, entry.source === 'click' ? POINTER_FOCUS : {});
 }
 
 export interface UseFocusableBlockOptions {
@@ -97,7 +102,7 @@ export interface UseFocusableBlockOptions {
   ref: RefObject<HTMLElement | null>;
   handleKey: (e: React.KeyboardEvent) => boolean;
   activate?: () => void;
-  focus?: (position?: CursorPosition) => void;
+  focus?: (position?: CursorPosition, options?: BlockFocusOptions) => void;
   /** Whether this block is available for focus navigation. Default: true */
   available?: boolean;
   /** Whether this block can receive focus when entering the token via Backspace/Delete. Default: true */
@@ -126,8 +131,18 @@ export interface UseFocusableBlockResult {
   };
 }
 
-function focusElement(element: HTMLElement, position?: CursorPosition): void {
-  element.focus();
+/** FocusOptions with `focusVisible`, which the DOM types in use do not have yet. */
+interface VisibleFocusOptions extends FocusOptions {
+  focusVisible?: boolean;
+}
+
+export function focusElement(
+  element: HTMLElement,
+  position?: CursorPosition,
+  options?: BlockFocusOptions
+): void {
+  const focusOptions: VisibleFocusOptions = { focusVisible: options?.focusVisible };
+  element.focus(focusOptions);
   if (!(element instanceof HTMLInputElement)) return;
   if (position === 'start') element.setSelectionRange(0, 0);
   else if (position === 'end')
@@ -164,9 +179,9 @@ export function useFocusableBlock(options: UseFocusableBlockOptions): UseFocusab
     return focusRegistry.register({
       id,
       element: ref,
-      focus: (position) => {
-        if (focus) focus(position);
-        else if (ref.current) focusElement(ref.current, position);
+      focus: (position, focusOptions) => {
+        if (focus) focus(position, focusOptions);
+        else if (ref.current) focusElement(ref.current, position, focusOptions);
         setCurrentFocusId(id);
       },
       handleKey: (e) => handlersRef.current.handleKey(e),

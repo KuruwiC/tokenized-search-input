@@ -6,7 +6,12 @@ import type { FieldDefinition, LabelResolver, Matcher } from '../../../types';
 import { cn } from '../../../utils/cn';
 import { resolveLabel } from '../../../utils/label-resolve';
 import { useTokenConfig } from '../contexts/token-config-context';
-import { type CursorPosition, useTokenFocusContext } from '../contexts/token-focus-context';
+import {
+  type BlockFocusOptions,
+  type CursorPosition,
+  POINTER_FOCUS,
+  useTokenFocusContext,
+} from '../contexts/token-focus-context';
 import { useFocusableBlock } from '../focus';
 import { getSortedFields } from './field-compatibility';
 import { handleClosedKey, TokenDropdown, useTokenDropdown } from './token-dropdown';
@@ -37,7 +42,11 @@ export interface TokenLabelComboboxProps {
   labelResolver?: LabelResolver;
 }
 
-type Leaving = { direction: 'next' | 'prev'; position?: CursorPosition };
+type Leaving = {
+  direction: 'next' | 'prev';
+  position?: CursorPosition;
+  focusOptions?: BlockFocusOptions;
+};
 
 /**
  * Token label combobox block (focusable).
@@ -108,7 +117,10 @@ export function TokenLabelCombobox({
     const leaving = leavingRef.current;
     if (dropdown.isOpen || !leaving) return;
     leavingRef.current = null;
-    focusRegistry.focusAdjacent('label', leaving.direction, { position: leaving.position });
+    focusRegistry.focusAdjacent('label', leaving.direction, {
+      position: leaving.position,
+      ...leaving.focusOptions,
+    });
   }, [dropdown.isOpen, focusRegistry]);
 
   const openDropdown = () => {
@@ -144,10 +156,11 @@ export function TokenLabelCombobox({
   const leave = (
     direction: Leaving['direction'],
     position?: Leaving['position'],
-    chosenKey?: string
+    chosenKey?: string,
+    focusOptions?: BlockFocusOptions
   ): true => {
     settle(chosenKey);
-    leavingRef.current = { direction, position };
+    leavingRef.current = { direction, position, focusOptions };
     return true;
   };
 
@@ -329,7 +342,7 @@ export function TokenLabelCombobox({
               </>
             ),
           }))}
-          onSelect={(key) => leave('next', 'end', key)}
+          onSelect={(key) => leave('next', 'end', key, POINTER_FOCUS)}
           className="tsi-token-label-combobox__dropdown"
           optionClassName="tsi-token-label-combobox__option"
           empty={<div className="tsi-token-label-combobox__empty">No matching fields</div>}

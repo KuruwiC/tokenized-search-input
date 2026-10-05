@@ -1,8 +1,12 @@
 import { useCallback, useLayoutEffect, useRef } from 'react';
 import { useTextWidth } from '../../../hooks/use-text-width';
 import { cn } from '../../../utils/cn';
-import { type CursorPosition, useTokenFocusContext } from '../contexts/token-focus-context';
-import { useFocusableBlock } from '../focus';
+import {
+  type BlockFocusOptions,
+  type CursorPosition,
+  useTokenFocusContext,
+} from '../contexts/token-focus-context';
+import { focusElement, useFocusableBlock } from '../focus';
 
 export function TokenIconSlot({
   children,
@@ -74,15 +78,8 @@ export function TokenValue({
   const inputRef = useRef<HTMLInputElement>(null);
   const { showsControls, exitToken, currentFocusId } = useTokenFocusContext();
 
-  const focusInput = useCallback((position?: CursorPosition) => {
-    const input = inputRef.current;
-    if (!input) return;
-    input.focus();
-    if (position === 'start') {
-      input.setSelectionRange(0, 0);
-    } else {
-      input.setSelectionRange(input.value.length, input.value.length);
-    }
+  const focusInput = useCallback((position?: CursorPosition, options?: BlockFocusOptions) => {
+    if (inputRef.current) focusElement(inputRef.current, position ?? 'end', options);
   }, []);
 
   const handleKey = (e: React.KeyboardEvent): boolean => {

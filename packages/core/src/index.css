@@ -1088,6 +1088,17 @@
     background-color: var(--tsi-muted-darker);
   }
 
+  /* Keyboard focus on a part of a token. The token clips what is drawn outside it, so the
+     outline is drawn inside the part. */
+  :where(
+      .tsi-token-operator--interactive,
+      .tsi-token-label-combobox,
+      .tsi-token-delete
+    ):focus-visible {
+    outline: 2px solid var(--tsi-border-focus);
+    outline-offset: -2px;
+  }
+
   :where(.tsi-token-delete__icon) {
     width: var(--tsi-icon-size-xs);
     height: var(--tsi-icon-size-xs);

@@ -26,7 +26,11 @@ import { TokenLabelCombobox } from './blocks/token-label-combobox';
 import { TokenOperator } from './blocks/token-operator';
 import { TokenValue } from './blocks/token-value';
 import { TokenConfigContext, type TokenConfigContextValue } from './contexts/token-config-context';
-import { TokenFocusContext, type TokenFocusContextValue } from './contexts/token-focus-context';
+import {
+  POINTER_FOCUS,
+  TokenFocusContext,
+  type TokenFocusContextValue,
+} from './contexts/token-focus-context';
 import { entryBlock, focusEntryBlock, useFocusRegistry } from './focus';
 
 /** The key code of every key event an input method that is composing text reports. */
@@ -155,7 +159,7 @@ export function Token({
 
   const handleActivate = useCallback(() => {
     if (getFocusedTokenId(editor.state) === id) {
-      focusRegistry.focusEdge('first', { entryOnly: true, position: 'end' });
+      focusRegistry.focusEdge('first', { entryOnly: true, position: 'end', ...POINTER_FOCUS });
       return;
     }
     enterToken(editor, id, CLICK_ENTRY);
@@ -177,7 +181,7 @@ export function Token({
         case 'label':
         case 'operator': {
           const block = focusRegistry.get(target);
-          block?.focus('end');
+          block?.focus('end', POINTER_FOCUS);
           block?.activate?.();
           return;
         }

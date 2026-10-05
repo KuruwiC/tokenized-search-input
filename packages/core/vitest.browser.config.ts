@@ -6,7 +6,10 @@ const mobileFile = 'src/__tests__/browser/mobile.test.tsx';
 
 // Firefox runs the styling checks only; the interaction suites assume Chromium and WebKit caret
 // and pointer behaviour.
-const stylingFiles = ['src/__tests__/browser/consumer-css.test.tsx'];
+const stylingFiles = [
+  'src/__tests__/browser/consumer-css.test.tsx',
+  'src/__tests__/browser/focus-indicator.test.tsx',
+];
 
 // There is no mobile device in CI. A mobile run is a desktop engine with a phone viewport,
 // touch support and an Android Chrome user agent, on WebKit as well as Chromium so that both

@@ -111,7 +111,7 @@ describe('useFocusRegistry', () => {
 
       registry.focusEdge('first', { position: 'start' });
 
-      expect(block.focus).toHaveBeenCalledWith('start');
+      expect(block.focus).toHaveBeenCalledWith('start', {});
     });
 
     it('skips blocks that cannot be entered when asked for entry-focusable ones', () => {
@@ -171,8 +171,8 @@ describe('useFocusRegistry', () => {
       registry.focusAdjacent('operator', 'next');
       registry.focusAdjacent('operator', 'prev');
 
-      expect(value.focus).toHaveBeenCalledWith('start');
-      expect(label.focus).toHaveBeenCalledWith('end');
+      expect(value.focus).toHaveBeenCalledWith('start', {});
+      expect(label.focus).toHaveBeenCalledWith('end', {});
     });
 
     it('takes the position it is given', () => {
@@ -181,7 +181,16 @@ describe('useFocusRegistry', () => {
 
       registry.focusAdjacent('operator', 'next', { position: 'end' });
 
-      expect(value.focus).toHaveBeenCalledWith('end');
+      expect(value.focus).toHaveBeenCalledWith('end', {});
+    });
+
+    it('passes on whether the block shows the keyboard focus indicator', () => {
+      const [operator, value] = [createBlock('operator'), createBlock('value')];
+      const { registry } = setup([operator, value]);
+
+      registry.focusAdjacent('operator', 'next', { focusVisible: false });
+
+      expect(value.focus).toHaveBeenCalledWith('start', { focusVisible: false });
     });
 
     it('passes over blocks that cannot be entered when asked for entry-focusable ones', () => {
@@ -308,8 +317,15 @@ describe('focusEntryBlock', () => {
     const [label, value, remove] = blocks();
     focusEntryBlock(registryWith([label, value, remove]), entry({ source: 'program' }));
 
-    expect(value.focus).toHaveBeenCalledWith('end');
+    expect(value.focus).toHaveBeenCalledWith('end', {});
     expect(label.focus).not.toHaveBeenCalled();
+  });
+
+  it('keeps the keyboard focus indicator hidden on a block a click enters', () => {
+    const [label, value, remove] = blocks();
+    focusEntryBlock(registryWith([label, value, remove]), entry({ source: 'click' }));
+
+    expect(value.focus).toHaveBeenCalledWith('end', { focusVisible: false });
   });
 
   it('enters from the right at the last block that counts', () => {
@@ -319,7 +335,7 @@ describe('focusEntryBlock', () => {
       entry({ source: 'keyboard', position: 'end', target: 'entry' })
     );
 
-    expect(remove.focus).toHaveBeenCalledWith('end');
+    expect(remove.focus).toHaveBeenCalledWith('end', {});
   });
 
   it('enters from the left at the first block that counts', () => {
@@ -329,7 +345,7 @@ describe('focusEntryBlock', () => {
       entry({ source: 'keyboard', position: 'start', target: 'entry' })
     );
 
-    expect(label.focus).toHaveBeenCalledWith('start');
+    expect(label.focus).toHaveBeenCalledWith('start', {});
   });
 });
 
