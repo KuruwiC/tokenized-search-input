@@ -8,9 +8,12 @@ import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
 import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
-import { getFocusedToken } from '../../plugins/token-focus';
+import { getFocusContext } from '../../extensions/editor-context';
+import { markAutoTokenized, markTextSanitized } from '../../plugins/shared/meta';
+import { enterTokenIn, getFocusedToken, programEntry } from '../../plugins/token-focus';
 import type { QuerySnapshot } from '../../types';
 import { extendedFields } from '../fixtures';
+import { waitForEditor } from '../helpers/get-editor';
 
 afterEach(() => {
   cleanup();
@@ -134,5 +137,43 @@ describe('Search Execution', () => {
     expect(editor && getFocusedToken(editor.state)).toBeNull();
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onSubmit.mock.calls[0]?.[0].text).toBe('assignee:is:johnX');
+  });
+  it('removes the free text in none mode when submit leaves an empty token before it', async () => {
+    const ref = createRef<TokenizedSearchInputRef>();
+    const onSubmit = vi.fn<(snapshot: QuerySnapshot) => void>();
+    render(
+      <TokenizedSearchInput
+        ref={ref}
+        fields={extendedFields}
+        defaultValue="priority:is:high"
+        freeTextMode="none"
+        onSubmit={onSubmit}
+      />
+    );
+    const editor = await waitForEditor(ref);
+    // Free text the none mode has not read yet, after an empty token being filled in.
+    const { schema } = editor.state;
+    const tr = editor.state.tr;
+    tr.insert(1, [
+      schema.nodes.filterToken.create({ id: 'empty', key: 'status', operator: 'is', value: '' }),
+      schema.text(' hello '),
+    ]);
+    enterTokenIn(tr, getFocusContext(editor), 'empty', programEntry('end'));
+    editor.view.dispatch(markTextSanitized(markAutoTokenized(tr)));
+    expect(editor.state.doc.textContent).toContain('hello');
+    expect(getFocusedToken(editor.state)?.id).toBe('empty');
+
+    await act(async () => {
+      ref.current?.submit();
+    });
+
+    const nodes: string[] = [];
+    editor.state.doc.descendants((node) => {
+      if (node.isText) nodes.push(`text:${node.text}`);
+      else if (node.isInline) nodes.push(`${node.attrs.key}:${node.attrs.value}`);
+    });
+    expect(nodes).toEqual(['priority:high']);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit.mock.calls[0]?.[0].text).toBe('priority:is:high');
   });
 });
