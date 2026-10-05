@@ -2,15 +2,77 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { type EditorState, Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
 import { Mapping } from '@tiptap/pm/transform';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
+import type { ReactNode } from 'react';
 import { isToken } from '../utils/node-predicates';
 import { generateTokenId } from '../utils/token-id';
-import {
-  getTokenMetaWrites,
-  isContentReset,
-  type TokenMeta,
-  type TokenMetaPatch,
-  type TokenValidation,
-} from './shared/meta';
+import { isContentReset } from './shared/meta';
+
+export interface TokenValidation {
+  ruleId: string;
+  reason: string;
+  message?: string;
+}
+
+/** How a token presents its value. Not part of the query. */
+export interface TokenDisplayContent {
+  displayValue?: string;
+  startContent?: ReactNode;
+  endContent?: ReactNode;
+}
+
+/**
+ * Display content together with the key and value it was resolved for. It
+ * describes the token only while the token still has that key and value, so an
+ * edit makes it inapplicable and undoing the edit makes it apply again.
+ */
+export interface TokenDisplayMeta extends TokenDisplayContent {
+  forKey: string;
+  forValue: string;
+}
+
+export function getApplicableDisplay(
+  display: TokenDisplayMeta | undefined,
+  key: string,
+  value: string
+): TokenDisplayMeta | undefined {
+  return display && display.forKey === key && display.forValue === value ? display : undefined;
+}
+
+/** Per-token state derived from or attached to the document, keyed by token id. */
+export interface TokenMeta {
+  validation?: TokenValidation;
+  display?: TokenDisplayMeta;
+}
+
+/**
+ * A change to one token's meta. A member that is present replaces the stored one,
+ * and `undefined` removes it; an absent member is left unchanged.
+ */
+export interface TokenMetaPatch {
+  validation?: TokenValidation | undefined;
+  display?: TokenDisplayMeta | undefined;
+}
+
+interface TokenMetaWrite {
+  id: string;
+  patch: TokenMetaPatch;
+}
+
+/** Transaction meta key of the token meta writes. */
+const TOKEN_META = 'tokenMeta';
+
+/**
+ * Records a change to a token's meta on the transaction. Writes on one
+ * transaction apply in the order they were made.
+ */
+export function setTokenMeta(tr: Transaction, id: string, patch: TokenMetaPatch): Transaction {
+  const writes: TokenMetaWrite[] = tr.getMeta(TOKEN_META) ?? [];
+  return tr.setMeta(TOKEN_META, [...writes, { id, patch }]);
+}
+
+function getTokenMetaWrites(tr: Transaction): readonly TokenMetaWrite[] {
+  return tr.getMeta(TOKEN_META) ?? [];
+}
 
 /**
  * Per-token state that is not part of the query: validation results and display

@@ -1,6 +1,6 @@
 import { isDateField, isDateTimeField, parseDateFieldValue } from '../../pickers/date-format';
 import type { DateTimeValue } from '../../pickers/date-time-value';
-import type { TokenDisplayContent } from '../../plugins/shared/meta';
+import type { TokenDisplayContent } from '../../plugins/token-meta-plugin';
 import type {
   DateFormatConfig,
   DateTimeFormatConfig,

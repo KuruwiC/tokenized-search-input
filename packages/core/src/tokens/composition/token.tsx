@@ -4,7 +4,6 @@ import { NodeViewWrapper } from '@tiptap/react';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getEditorContext } from '../../extensions/editor-context';
 import { useTokenFocus } from '../../hooks/use-editor-selector';
-import type { TokenValidation } from '../../plugins/shared/meta';
 import {
   dismissSuggestion,
   getSuggestionState,
@@ -16,6 +15,7 @@ import {
   type LeaveDirection,
   type TokenFocusEntry,
 } from '../../plugins/token-focus';
+import type { TokenValidation } from '../../plugins/token-meta-plugin';
 import { getValidationDescriptionId } from '../../plugins/token-meta-plugin';
 import { cn } from '../../utils/cn';
 import { resolveField } from '../../utils/resolve-field';

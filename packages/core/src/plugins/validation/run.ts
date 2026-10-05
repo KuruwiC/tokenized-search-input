@@ -12,7 +12,8 @@ import { findTokenById } from '../../utils/find-token';
 import { isFilterToken, isFreeTextToken } from '../../utils/node-predicates';
 import { type FieldResolutionSource, resolveField } from '../../utils/resolve-field';
 import { ensureTokenId } from '../../utils/token-id';
-import { setTokenMeta, type TokenValidation, withoutHistory } from '../shared/meta';
+import { withoutHistory } from '../shared/meta';
+import { setTokenMeta, type TokenValidation } from '../token-meta-plugin';
 
 function collectTokens(doc: ProseMirrorNode): ValidationToken[] {
   const tokens: ValidationToken[] = [];

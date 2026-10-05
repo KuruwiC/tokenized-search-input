@@ -7,60 +7,7 @@
 
 import { isHistoryTransaction as isHistoryStateTransaction } from '@tiptap/pm/history';
 import type { Transaction } from '@tiptap/pm/state';
-import type { ReactNode } from 'react';
 
-export interface TokenValidation {
-  ruleId: string;
-  reason: string;
-  message?: string;
-}
-
-/** How a token presents its value. Not part of the query. */
-export interface TokenDisplayContent {
-  displayValue?: string;
-  startContent?: ReactNode;
-  endContent?: ReactNode;
-}
-
-/**
- * Display content together with the key and value it was resolved for. It
- * describes the token only while the token still has that key and value, so an
- * edit makes it inapplicable and undoing the edit makes it apply again.
- */
-export interface TokenDisplayMeta extends TokenDisplayContent {
-  forKey: string;
-  forValue: string;
-}
-
-export function getApplicableDisplay(
-  display: TokenDisplayMeta | undefined,
-  key: string,
-  value: string
-): TokenDisplayMeta | undefined {
-  return display && display.forKey === key && display.forValue === value ? display : undefined;
-}
-
-/** Per-token state derived from or attached to the document, keyed by token id. */
-export interface TokenMeta {
-  validation?: TokenValidation;
-  display?: TokenDisplayMeta;
-}
-
-/**
- * A change to one token's meta. A member that is present replaces the stored one,
- * and `undefined` removes it; an absent member is left unchanged.
- */
-export interface TokenMetaPatch {
-  validation?: TokenValidation | undefined;
-  display?: TokenDisplayMeta | undefined;
-}
-
-export interface TokenMetaWrite {
-  id: string;
-  patch: TokenMetaPatch;
-}
-
-const TOKEN_META = 'tokenMeta';
 const CONTENT_RESET = 'contentReset';
 const VALIDATION_CHECK_REQUESTED = 'validationCheckRequested';
 const CONTENT_ENTERED = 'contentEntered';
@@ -77,19 +24,6 @@ const TEXT_SANITIZED = 'freeTextSanitized';
 const ADD_TO_HISTORY = 'addToHistory';
 const COMPOSITION = 'composition';
 const APPENDED_TRANSACTION = 'appendedTransaction';
-
-/**
- * Records a change to a token's meta on the transaction. Writes on one
- * transaction apply in the order they were made.
- */
-export function setTokenMeta(tr: Transaction, id: string, patch: TokenMetaPatch): Transaction {
-  const writes: TokenMetaWrite[] = tr.getMeta(TOKEN_META) ?? [];
-  return tr.setMeta(TOKEN_META, [...writes, { id, patch }]);
-}
-
-export function getTokenMetaWrites(tr: Transaction): readonly TokenMetaWrite[] {
-  return tr.getMeta(TOKEN_META) ?? [];
-}
 
 /**
  * Marks the transaction as replacing the whole content, which discards every

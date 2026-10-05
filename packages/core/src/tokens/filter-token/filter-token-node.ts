@@ -1,13 +1,13 @@
 import { type Editor, mergeAttributes, Node } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import { getEditorContext, getFocusContext } from '../../extensions/editor-context';
-import { setTokenMeta, type TokenDisplayContent } from '../../plugins/shared/meta';
 import {
   getFocusedTokenId,
   type LeaveDirection,
   leaveTokenIn,
   type TokenFocusEntry,
 } from '../../plugins/token-focus';
+import { setTokenMeta, type TokenDisplayContent } from '../../plugins/token-meta-plugin';
 import { isFilterToken } from '../../utils/node-predicates';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
 import { focusTokenCommand, focusTokenOnEnter, tokenNodeViewOptions } from '../token-node';

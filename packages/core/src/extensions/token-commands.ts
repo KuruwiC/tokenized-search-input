@@ -1,14 +1,13 @@
 import { type Content, Extension } from '@tiptap/core';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 import type { TokenDisplay, TokenPatch } from '../editor/tokenized-search-input.types';
+import { markContentReset, markProgrammaticEdit } from '../plugins/shared/meta';
 import {
   getApplicableDisplay,
-  markContentReset,
-  markProgrammaticEdit,
+  getTokenMeta,
   setTokenMeta,
   type TokenDisplayContent,
-} from '../plugins/shared/meta';
-import { getTokenMeta } from '../plugins/token-meta-plugin';
+} from '../plugins/token-meta-plugin';
 import { applyTokenAction } from '../tokens/filter-token/token-actions';
 import { findTokenById } from '../utils/find-token';
 import { isFilterToken } from '../utils/node-predicates';

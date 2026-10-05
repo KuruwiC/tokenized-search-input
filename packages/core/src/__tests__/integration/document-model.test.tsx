@@ -13,9 +13,9 @@ import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
 import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import { getEditorContext } from '../../extensions/editor-context';
 import { useAsyncTokenResolver } from '../../helpers/use-async-token-resolver';
-import { requestValidationCheck, setTokenMeta } from '../../plugins/shared/meta';
+import { requestValidationCheck } from '../../plugins/shared/meta';
 import { getSuggestionState } from '../../plugins/suggestion';
-import { tokenMetaKey } from '../../plugins/token-meta-plugin';
+import { setTokenMeta, tokenMetaKey } from '../../plugins/token-meta-plugin';
 import type {
   FieldDefinition,
   QuerySnapshot,

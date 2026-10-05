@@ -8,10 +8,9 @@ import {
   isProgrammaticEdit,
   isRecordedInHistory,
   isValidationCheckRequested,
-  type TokenValidation,
 } from '../shared/meta';
 import { getFocusedTokenId, getTokenFocusMeta } from '../token-focus';
-import { tokenMetaKey } from '../token-meta-plugin';
+import { type TokenValidation, tokenMetaKey } from '../token-meta-plugin';
 import { createImplicitRules } from './implicit-rules';
 import { applyPlan, type Edits, planValidation, recordEdits } from './run';
 

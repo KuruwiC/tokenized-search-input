@@ -2,9 +2,8 @@ import type { Editor } from '@tiptap/core';
 import type { ReactNode, RefObject } from 'react';
 import { useCallback, useRef } from 'react';
 import type { TokenDisplay, TokenizedSearchInputRef } from '../editor/tokenized-search-input.types';
-import { getApplicableDisplay } from '../plugins/shared/meta';
 import { getFocusedTokenId } from '../plugins/token-focus';
-import { getTokenMeta } from '../plugins/token-meta-plugin';
+import { getApplicableDisplay, getTokenMeta } from '../plugins/token-meta-plugin';
 import { findTokenById } from '../utils/find-token';
 import { isFilterToken } from '../utils/node-predicates';
 

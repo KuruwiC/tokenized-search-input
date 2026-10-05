@@ -2,7 +2,6 @@ import type { Editor } from '@tiptap/core';
 import type { Transaction } from '@tiptap/pm/state';
 import { type MutableRefObject, useCallback, useEffect, useRef } from 'react';
 import { getEditorContext } from '../../extensions/editor-context';
-import type { TokenDisplayContent } from '../../plugins/shared/meta';
 import {
   appendCustomSuggestions,
   dispatchCloseSuggestion,
@@ -12,6 +11,7 @@ import {
   setCustomLoadingMore,
 } from '../../plugins/suggestion';
 import { getFocusedToken } from '../../plugins/token-focus';
+import type { TokenDisplayContent } from '../../plugins/token-meta-plugin';
 import { isInsideQuotes } from '../../serializer/quote-state';
 import {
   canShowCustomSuggestion,

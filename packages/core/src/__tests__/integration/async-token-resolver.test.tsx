@@ -10,8 +10,7 @@ import {
   type AsyncTokenResolverOptions,
   useAsyncTokenResolver,
 } from '../../helpers/use-async-token-resolver';
-import { getApplicableDisplay } from '../../plugins/shared/meta';
-import { getTokenMeta } from '../../plugins/token-meta-plugin';
+import { getApplicableDisplay, getTokenMeta } from '../../plugins/token-meta-plugin';
 import type { FieldDefinition } from '../../types';
 
 // What createRef returns: React 19 types widen it to include null, React 18 types do not.

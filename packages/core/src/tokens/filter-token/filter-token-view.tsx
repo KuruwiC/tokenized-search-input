@@ -7,14 +7,13 @@ import {
   getDateTimeDisplayValue,
   isDateOrDateTimeField,
 } from '../../pickers/date-format';
-import { getApplicableDisplay } from '../../plugins/shared/meta';
 import {
   dispatchCloseSuggestion,
   getEditableValueText,
   getSuggestionState,
   navigateSuggestion,
 } from '../../plugins/suggestion';
-import { getDecorationValidation } from '../../plugins/token-meta-plugin';
+import { getApplicableDisplay, getDecorationValidation } from '../../plugins/token-meta-plugin';
 import { isInsideQuotes } from '../../serializer/quote-state';
 import { type EnumValue, type FieldDefinition, getOperatorSelectLabel } from '../../types';
 import { getEnumValue } from '../../utils/enum-value';
