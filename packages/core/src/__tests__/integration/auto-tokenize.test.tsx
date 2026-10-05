@@ -12,6 +12,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { tryAutoTokenize } from '../../editor/auto-tokenize';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
 import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
+import { getFocusContext } from '../../extensions/editor-context';
+import { enterTokenIn, getFocusedTokenId, programEntry } from '../../plugins/token-focus';
+import { findTokenById } from '../../utils/find-token';
 import { extendedFields } from '../fixtures';
 import { getInternalEditor, waitForEditor } from '../helpers/get-editor';
 import { mountInput } from '../helpers/mount-input';
@@ -333,6 +336,28 @@ describe('Auto-tokenize - Integration Tests', () => {
         if (node.type.name === 'filterToken') keys.push(node.attrs.key);
       });
       expect(keys).toEqual(['status', 'priority']);
+    });
+  });
+
+  describe('empty tokens of the same field elsewhere', () => {
+    it('focuses the token the delimiter inserts', async () => {
+      const { editor } = await mountInput('');
+      const { schema } = editor.state;
+      const emptyStatus = (id: string) =>
+        schema.nodes.filterToken.create({ id, key: 'status', operator: 'is', value: '' });
+      const tr = editor.state.tr;
+      tr.insert(1, [schema.text('status '), emptyStatus('first'), emptyStatus('second')]);
+      tr.setSelection(TextSelection.create(tr.doc, 1 + 'status'.length));
+      enterTokenIn(tr, getFocusContext(editor), 'second', programEntry('end'));
+      editor.view.dispatch(tr);
+
+      expect(tryAutoTokenize(editor, ':')).toBe(true);
+
+      const focusedId = getFocusedTokenId(editor.state);
+      expect(focusedId).not.toBe('first');
+      expect(focusedId).not.toBe('second');
+      const focused = focusedId === null ? undefined : findTokenById(editor.state.doc, focusedId);
+      expect(focused?.node.attrs).toMatchObject({ key: 'status', value: '' });
     });
   });
 

@@ -4,28 +4,8 @@ import { tokenizeRange } from '../plugins/auto-tokenize/tokenize-range';
 import { markAutoTokenized, withoutHistory } from '../plugins/shared/meta';
 import { findLastWordBoundary, isInsideQuotes, TOKEN_BOUNDARY } from '../serializer/quote-state';
 import type { FieldDefinition } from '../types';
-import { isFilterToken } from '../utils/node-predicates';
 import { resolveField } from '../utils/resolve-field';
-
-function focusEmptyFilterToken(editor: Editor, fieldKey: string): void {
-  if (editor.isDestroyed) return;
-
-  let tokenId: string | null = null;
-  editor.state.doc.descendants((node) => {
-    if (isFilterToken(node) && node.attrs.key === fieldKey && !node.attrs.value) {
-      tokenId = String(node.attrs.id);
-      return false;
-    }
-    return true;
-  });
-
-  // Set the plugin focus state synchronously. Deferring this until the next
-  // animation frame leaves a window where subsequent keystrokes are inserted
-  // into the editor instead of the newly-created token input.
-  if (tokenId !== null) {
-    editor.commands.focusFilterToken(tokenId, 'end');
-  }
-}
+import { generateTokenId } from '../utils/token-id';
 
 /** The paragraph text before the caret, each token read as `TOKEN_BOUNDARY`. */
 function getTextBeforeCursor(editor: Editor): string {
@@ -54,21 +34,22 @@ function getCurrentWord(editor: Editor): { word: string; from: number; to: numbe
  */
 function insertEmptyFilterToken(editor: Editor, field: FieldDefinition): void {
   const { from, to } = getCurrentWord(editor);
-  // Deleting the word and inserting the token share one history entry. The empty token
-  // is not recorded in the history: entering its value is. When the user leaves it
-  // empty, its removal is not recorded either.
+  const id = generateTokenId();
+  // Deleting the word, inserting the token and focusing it share one transaction and one
+  // history entry, so no keystroke lands in the editor before the token has focus. The
+  // empty token is not recorded in the history: entering its value is. When the user
+  // leaves it empty, its removal is not recorded either.
   editor
     .chain()
     .focus()
     .deleteRange({ from, to })
-    .insertFilterToken({ key: field.key, operator: field.operators[0], value: '' })
+    .insertFilterToken({ id, key: field.key, operator: field.operators[0], value: '' })
+    .focusFilterToken(id, 'end')
     .command(({ tr }) => {
       withoutHistory(tr);
       return true;
     })
     .run();
-
-  focusEmptyFilterToken(editor, field.key);
 }
 
 /**

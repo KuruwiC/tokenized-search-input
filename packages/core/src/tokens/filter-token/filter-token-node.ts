@@ -15,6 +15,8 @@ import { createFilterTokenAttrs } from './create-attrs';
 import { FilterTokenView } from './filter-token-view';
 
 export interface InsertFilterTokenAttrs {
+  /** The id the token gets; a new one when omitted. */
+  id?: string;
   key: string;
   operator: string;
   value?: string;
@@ -126,6 +128,7 @@ export const FilterTokenNode = Node.create({
         ({ tr, state, dispatch }) => {
           const { schema, selection } = state;
           const tokenAttrs = createFilterTokenAttrs({
+            id: attrs.id,
             key: attrs.key,
             operator: attrs.operator,
             value: attrs.value,
