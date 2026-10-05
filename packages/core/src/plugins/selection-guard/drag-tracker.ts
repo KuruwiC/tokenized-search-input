@@ -6,7 +6,10 @@ export interface DragTrackerCallbacks {
   onDragMove: (pos: number) => void;
   /** Called when the press ends; `wasDrag` is whether the threshold was exceeded */
   onDragEnd: (wasDrag: boolean) => void;
-  /** Called once when tracking stops (mouseup, window blur, or button release) */
+  /**
+   * Called once when tracking stops (mouseup, window blur, or button release), after
+   * `onDragEnd`, so the press can still be read while its end is handled
+   */
   onCleanup: () => void;
 }
 
@@ -37,29 +40,25 @@ export function createDragTracker(
 
   const cleanupListeners = () => {
     document.removeEventListener('mousemove', onMouseMove);
-    document.removeEventListener('mouseup', onMouseUp);
-    window.removeEventListener('blur', onWindowBlur);
+    document.removeEventListener('mouseup', end);
+    window.removeEventListener('blur', end);
   };
 
-  const cleanup = (fromMouseUp: boolean) => {
+  // Every way a press ends (mouseup, window blur, a button released off-window) ends it
+  // here, in the same order: the end is handled before the press is released.
+  const end = () => {
     if (cleanedUp) return;
     cleanedUp = true;
 
     cleanupListeners();
-
-    // A press that ends without a mouseup (blur, button released off-window) still ends
-    // here, so a click next to a token is handled.
-    if (!fromMouseUp) {
-      callbacks.onDragEnd(isDragging);
-    }
-
+    callbacks.onDragEnd(isDragging);
     callbacks.onCleanup();
   };
 
   const onMouseMove = (e: MouseEvent) => {
     // The primary button is no longer down: its mouseup went elsewhere.
     if (cleanedUp || !(e.buttons & 1)) {
-      cleanup(false);
+      end();
       return;
     }
 
@@ -79,19 +78,9 @@ export function createDragTracker(
     }
   };
 
-  const onMouseUp = () => {
-    const wasDrag = isDragging;
-    cleanup(true);
-    callbacks.onDragEnd(wasDrag);
-  };
-
-  const onWindowBlur = () => {
-    cleanup(false);
-  };
-
   document.addEventListener('mousemove', onMouseMove);
-  document.addEventListener('mouseup', onMouseUp);
-  window.addEventListener('blur', onWindowBlur);
+  document.addEventListener('mouseup', end);
+  window.addEventListener('blur', end);
 
-  return { cleanup: () => cleanup(false) };
+  return { cleanup: end };
 }

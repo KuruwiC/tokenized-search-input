@@ -79,6 +79,16 @@ export function registerPointerCases(): void {
       expect(m.value()).toBe('status:is:open gap owner:is:bob');
     });
 
+    it('puts the caret in the gap that is clicked while the editor has focus', async () => {
+      const m = await mountEditor(TWO_TOKENS);
+      await userEvent.click(m.pm, { position: afterLastToken(m) });
+      await userEvent.keyboard('{Escape}');
+      expect(document.activeElement).toBe(m.pm);
+
+      await userEvent.click(m.pm, { position: gapBetween(m, 0) });
+      await expectCaretBetween(m, { tokensBefore: 1, tokensAfter: 1 });
+    });
+
     it('puts the caret in the right gap when there are several', async () => {
       const m = await mountEditor(THREE_TOKENS);
       await userEvent.click(m.pm, { position: gapBetween(m, 1) });
