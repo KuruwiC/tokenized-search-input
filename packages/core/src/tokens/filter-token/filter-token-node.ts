@@ -3,19 +3,14 @@ import { ReactNodeViewRenderer } from '@tiptap/react';
 import { getEditorContext, getFocusContext } from '../../extensions/editor-context';
 import { setTokenMeta, type TokenDisplayContent } from '../../plugins/shared/meta';
 import {
-  enterTokenIn,
-  getFocusedToken,
   getFocusedTokenId,
   type LeaveDirection,
   leaveTokenIn,
-  programEntry,
   type TokenFocusEntry,
 } from '../../plugins/token-focus';
-import { findTokenById } from '../../utils/find-token';
 import { isFilterToken } from '../../utils/node-predicates';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
-import { TOKEN_NODE_CLASS, updateTokenNodeView } from '../composition/node-view-update';
-import { isHistoryShortcut } from '../history-shortcut';
+import { focusTokenCommand, focusTokenOnEnter, tokenNodeViewOptions } from '../token-node';
 import { createFilterTokenAttrs } from './create-attrs';
 import { FilterTokenView } from './filter-token-view';
 
@@ -121,42 +116,7 @@ export const FilterTokenNode = Node.create({
   },
 
   addNodeView() {
-    const editor = this.editor;
-
-    return ReactNodeViewRenderer(FilterTokenView, {
-      className: TOKEN_NODE_CLASS,
-      update: updateTokenNodeView,
-      stopEvent: ({ event }) => {
-        if (!editor.isEditable) {
-          return false;
-        }
-
-        // Undo and redo go to the editor, which owns the history of token edits
-        if (event instanceof KeyboardEvent && isHistoryShortcut(event)) {
-          return false;
-        }
-
-        const target = event.target as HTMLElement;
-
-        // Always stop events on form elements and token blocks to allow interaction
-        if (target.closest('input, select, button, [data-token-block]')) {
-          return true;
-        }
-
-        // mousedown is passed to ProseMirror for drag selection handling
-        // the selection guard plugin catches it and calls preventDefault() to block NodeSelection
-        if (event.type === 'mousedown') {
-          return false;
-        }
-
-        // Stop click events to let React handle them (buttons, form inputs)
-        if (event.type === 'click') {
-          return true;
-        }
-
-        return false;
-      },
-    });
+    return ReactNodeViewRenderer(FilterTokenView, tokenNodeViewOptions(this.editor));
   },
 
   addCommands() {
@@ -187,14 +147,7 @@ export const FilterTokenNode = Node.create({
           return true;
         },
 
-      focusFilterToken:
-        (id: string, position: TokenFocusEntry['position'] = 'end') =>
-        ({ tr, state, dispatch, editor }) => {
-          const found = findTokenById(tr.doc, id);
-          if (!found || !isFilterToken(found.node)) return false;
-          if (!dispatch) return true;
-          return enterTokenIn(tr, getFocusContext(editor, state), id, programEntry(position));
-        },
+      focusFilterToken: focusTokenCommand(isFilterToken),
 
       leaveToken:
         (id: string, direction: LeaveDirection, value?: string) =>
@@ -207,20 +160,6 @@ export const FilterTokenNode = Node.create({
   },
 
   addKeyboardShortcuts() {
-    return {
-      // When in editor (not in token), Enter on a token selects it
-      Enter: ({ editor }) => {
-        if (!editor.isEditable) return false;
-
-        const { selection } = editor.state;
-        const node = editor.state.doc.nodeAt(selection.from);
-
-        if (node && isFilterToken(node) && getFocusedToken(editor.state) === null) {
-          return editor.commands.focusFilterToken(String(node.attrs.id), 'end');
-        }
-
-        return false;
-      },
-    };
+    return { Enter: focusTokenOnEnter(isFilterToken) };
   },
 });
