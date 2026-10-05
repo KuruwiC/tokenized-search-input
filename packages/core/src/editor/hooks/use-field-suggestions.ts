@@ -1,7 +1,6 @@
 import type { Editor } from '@tiptap/core';
 import { useCallback } from 'react';
 import { getEditorContext } from '../../extensions/editor-context';
-import { withoutHistory } from '../../plugins/shared/meta';
 import { closeSuggestion, getSuggestionState, openFieldSuggestion } from '../../plugins/suggestion';
 import { isInsideQuotes } from '../../serializer/quote-state';
 import {
@@ -10,7 +9,7 @@ import {
 } from '../../suggestions/suggestion-guards';
 import type { FieldDefinition, Matcher } from '../../types';
 import { filterItems } from '../../utils/filter-items';
-import { focusEmptyFilterToken, getQueryFromText, getTextBeforeCursor } from '../auto-tokenize';
+import { getQueryFromText, getTextBeforeCursor, insertEmptyFilterToken } from '../auto-tokenize';
 
 export interface UseFieldSuggestionsOptions {
   /**
@@ -41,36 +40,7 @@ export function useFieldSuggestions(
       // transaction does not interfere with history grouping.
       closeSuggestionAndDispatch(editor);
 
-      const textBefore = getTextBeforeCursor(editor);
-      const query = getQueryFromText(textBefore);
-
-      // Deleting the query and inserting the token share one history entry.
-      const chain = editor.chain().focus();
-
-      if (query.length > 0) {
-        const { state } = editor;
-        const { selection } = state;
-        const from = selection.from - query.length;
-        const to = selection.from;
-        chain.deleteRange({ from, to });
-      }
-
-      chain
-        .insertFilterToken({
-          key: field.key,
-          operator: field.operators[0] || 'is',
-          value: '',
-        })
-        .command(({ tr }) => {
-          // The empty token is not recorded in the history: entering its value is. When the
-          // user leaves it empty, its removal is not recorded either.
-          withoutHistory(tr);
-          return true;
-        })
-        .run();
-
-      // Focusing the token's value input opens its value suggestions (useValueSuggestions).
-      focusEmptyFilterToken(editor, field.key);
+      insertEmptyFilterToken(editor, field);
     },
     [editor]
   );

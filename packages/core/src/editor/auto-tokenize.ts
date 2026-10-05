@@ -3,10 +3,11 @@ import { getEditorContext, getFocusContext } from '../extensions/editor-context'
 import { tokenizeRange } from '../plugins/auto-tokenize/tokenize-range';
 import { markAutoTokenized, withoutHistory } from '../plugins/shared/meta';
 import { findLastWordBoundary, isInsideQuotes, TOKEN_BOUNDARY } from '../serializer/quote-state';
+import type { FieldDefinition } from '../types';
 import { isFilterToken } from '../utils/node-predicates';
 import { resolveField } from '../utils/resolve-field';
 
-function focusEmptyFilterToken(editor: Editor, fieldKey: string, onFocused?: () => void): void {
+function focusEmptyFilterToken(editor: Editor, fieldKey: string): void {
   if (editor.isDestroyed) return;
 
   let tokenId: string | null = null;
@@ -23,7 +24,6 @@ function focusEmptyFilterToken(editor: Editor, fieldKey: string, onFocused?: () 
   // into the editor instead of the newly-created token input.
   if (tokenId !== null) {
     editor.commands.focusFilterToken(tokenId, 'end');
-    onFocused?.();
   }
 }
 
@@ -46,26 +46,29 @@ function getCurrentWord(editor: Editor): { word: string; from: number; to: numbe
   return { word, from, to };
 }
 
-function insertEmptyFilterToken(
-  editor: Editor,
-  from: number,
-  to: number,
-  key: string,
-  operator: string
-): void {
-  // The empty token is not recorded in the history: entering its value is. When the
-  // user leaves it empty, its removal is not recorded either.
+/**
+ * Replaces the word before the caret with an empty filter token for `field` and puts
+ * focus in the token's value, which opens its value suggestions. Every way a field is
+ * chosen for a new token, by its delimiter or from the field suggestions, goes through
+ * here.
+ */
+function insertEmptyFilterToken(editor: Editor, field: FieldDefinition): void {
+  const { from, to } = getCurrentWord(editor);
+  // Deleting the word and inserting the token share one history entry. The empty token
+  // is not recorded in the history: entering its value is. When the user leaves it
+  // empty, its removal is not recorded either.
   editor
     .chain()
+    .focus()
     .deleteRange({ from, to })
-    .insertFilterToken({ key, operator, value: '' })
+    .insertFilterToken({ key: field.key, operator: field.operators[0], value: '' })
     .command(({ tr }) => {
       withoutHistory(tr);
       return true;
     })
     .run();
 
-  focusEmptyFilterToken(editor, key);
+  focusEmptyFilterToken(editor, field.key);
 }
 
 /**
@@ -86,7 +89,7 @@ export function tryAutoTokenize(editor: Editor, trigger: string): boolean {
     const field = resolveField(context, word);
     if (!field) return false;
 
-    insertEmptyFilterToken(editor, from, to, field.key, field.operators[0]);
+    insertEmptyFilterToken(editor, field);
     return true;
   }
 
@@ -112,4 +115,4 @@ function getPlainTextSegment(editor: Editor): { text: string; from: number; to: 
   return { text: textAfterToken, from, to };
 }
 
-export { focusEmptyFilterToken, getPlainTextSegment, getQueryFromText, getTextBeforeCursor };
+export { getPlainTextSegment, getQueryFromText, getTextBeforeCursor, insertEmptyFilterToken };
