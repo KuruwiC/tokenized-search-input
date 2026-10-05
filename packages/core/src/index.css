@@ -285,9 +285,16 @@
 @layer components {
   /* --- Container --- */
 
+  /* The box grows with its tokens, so its radius stops at half its height on one line: a pill
+     value draws a pill on one line and a rounded box once the tokens wrap, instead of an
+     ellipse that clips them. Written here rather than on :root to follow --tsi-radius and
+     --tsi-min-height set on any ancestor. The input inherits this radius. */
   :where(.tsi-container) {
     position: relative;
-    border-radius: var(--tsi-radius);
+    border-radius: min(
+      var(--tsi-radius),
+      calc(var(--tsi-min-height) / 2 + var(--tsi-border-width))
+    );
     border: var(--tsi-border-width) solid var(--tsi-border);
     background-color: var(--tsi-background);
     transition: border-color 150ms;

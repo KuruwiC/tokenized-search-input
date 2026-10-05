@@ -8,6 +8,7 @@ const mobileFile = 'src/__tests__/browser/mobile.test.tsx';
 // and pointer behaviour.
 const stylingFiles = [
   'src/__tests__/browser/consumer-css.test.tsx',
+  'src/__tests__/browser/container-shape.test.tsx',
   'src/__tests__/browser/edit-input-width.test.tsx',
   'src/__tests__/browser/focus-indicator.test.tsx',
   'src/__tests__/browser/popover-shape.test.tsx',

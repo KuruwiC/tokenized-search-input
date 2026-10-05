@@ -73,6 +73,46 @@ export async function mountEditor(
   return { ref, editor, pm, value: () => ref.current?.getValue() ?? '' };
 }
 
+export interface Around {
+  width?: string;
+  variables?: Record<string, string>;
+  attributes?: Record<string, string>;
+}
+
+export interface MountedAround extends MountedEditor {
+  /** The element around the input, where a page sets its theme. */
+  wrapper: HTMLElement;
+  container: HTMLElement;
+  input: HTMLElement;
+}
+
+/**
+ * Mounts the editor and sets a width, CSS variables or attributes on the element around it,
+ * where a page sets them, rather than on :root.
+ */
+export async function mountEditorAround(
+  defaultValue: string,
+  props: Partial<TokenizedSearchInputProps>,
+  { width, variables = {}, attributes = {} }: Around
+): Promise<MountedAround> {
+  const m = await mountEditor(defaultValue, props);
+  const wrapper = m.pm.closest('.tsi-root')?.parentElement;
+  const container = m.pm.closest<HTMLElement>('.tsi-container');
+  const input = m.pm.closest<HTMLElement>('.tsi-input');
+  if (!wrapper || !container || !input) throw new Error('editor did not render');
+  if (width) wrapper.style.width = width;
+  for (const [name, value] of Object.entries(variables)) wrapper.style.setProperty(name, value);
+  for (const [name, value] of Object.entries(attributes)) wrapper.setAttribute(name, value);
+  await finishAnimations();
+  return { ...m, wrapper, container, input };
+}
+
+/** Focuses the editor at its start or end and waits for DOM focus, which comes a frame later. */
+export async function focusEditor(m: MountedEditor, position: 'start' | 'end'): Promise<void> {
+  m.editor.commands.focus(position);
+  await vi.waitFor(() => expect(document.activeElement).toBe(m.pm));
+}
+
 /**
  * Edits the last token the way code enters a token, with the caret at the end of its value.
  * The styling tests set up editing without a pointer press, so they do not depend on where
@@ -86,6 +126,35 @@ export async function editLastToken(m: MountedEditor): Promise<void> {
   if (!id) throw new Error('no filter token to edit');
   enterToken(m.editor, id, programEntry());
   await vi.waitFor(() => expect(document.activeElement).toBeInstanceOf(HTMLInputElement));
+}
+
+export function radiusOf(element: Element): number {
+  return Number.parseFloat(getComputedStyle(element).borderTopLeftRadius);
+}
+
+/**
+ * Whether a point lies inside the rounded box of `element`, `inset` pixels in from its border
+ * box (its border width, for the area that clips its content). Radii larger than half a side
+ * are scaled down as CSS does, so a 9999px radius draws a stadium.
+ */
+export function insideRoundedBox(element: Element, x: number, y: number, inset = 0): boolean {
+  const outer = element.getBoundingClientRect();
+  const box = {
+    left: outer.left + inset,
+    right: outer.right - inset,
+    top: outer.top + inset,
+    bottom: outer.bottom - inset,
+  };
+  const scale = Math.min(
+    1,
+    outer.width / 2 / radiusOf(element),
+    outer.height / 2 / radiusOf(element)
+  );
+  const radius = Math.max(0, radiusOf(element) * scale - inset);
+  if (x < box.left || x > box.right || y < box.top || y > box.bottom) return false;
+  const cx = Math.min(Math.max(x, box.left + radius), box.right - radius);
+  const cy = Math.min(Math.max(y, box.top + radius), box.bottom - radius);
+  return Math.hypot(x - cx, y - cy) <= radius;
 }
 
 export function tokenElements(m: MountedEditor): HTMLElement[] {

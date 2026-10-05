@@ -4,9 +4,12 @@ import type { FieldDefinition } from '../../index';
 import {
   editLastToken,
   finishAnimations,
+  focusEditor,
+  insideRoundedBox,
   type MountedEditor,
-  mountEditor,
+  mountEditorAround,
   pressUntil,
+  radiusOf,
   tokenElements,
 } from './harness';
 
@@ -23,16 +26,6 @@ const fields: FieldDefinition[] = [
 /** A pill-shaped theme, set where pages set it: on an element around the input, not on :root. */
 const PILL = { '--tsi-radius': '9999px', '--tsi-radius-inner': '9999px' };
 
-function setTheme(m: MountedEditor, variables: Record<string, string>): void {
-  const wrapper = m.pm.closest('.tsi-root')?.parentElement;
-  if (!wrapper) throw new Error('no element around the input');
-  for (const [name, value] of Object.entries(variables)) wrapper.style.setProperty(name, value);
-}
-
-function radiusOf(element: Element): number {
-  return Number.parseFloat(getComputedStyle(element).borderTopLeftRadius);
-}
-
 async function openPopover(selector: string): Promise<HTMLElement> {
   return vi.waitFor(() => {
     const popover = document.querySelector<HTMLElement>(selector);
@@ -42,8 +35,7 @@ async function openPopover(selector: string): Promise<HTMLElement> {
 }
 
 async function openSuggestions(m: MountedEditor): Promise<HTMLElement> {
-  m.editor.commands.focus('end');
-  await vi.waitFor(() => expect(document.activeElement).toBe(m.pm));
+  await focusEditor(m, 'end');
   const popover = await openPopover('.tsi-dropdown');
   await vi.waitFor(() =>
     expect(popover.querySelectorAll('.tsi-suggestion-item').length).toBeGreaterThan(1)
@@ -66,19 +58,6 @@ async function openDatePicker(m: MountedEditor): Promise<HTMLElement> {
   return openPopover('.tsi-dropdown--date');
 }
 
-/**
- * Whether a point lies inside the rounded box of `element`. Radii larger than half a side
- * are scaled down as CSS does, so a 9999px radius draws a stadium.
- */
-function insideRoundedBox(element: Element, x: number, y: number): boolean {
-  const box = element.getBoundingClientRect();
-  const radius = Math.min(radiusOf(element), box.width / 2, box.height / 2);
-  if (x < box.left || x > box.right || y < box.top || y > box.bottom) return false;
-  const cx = Math.min(Math.max(x, box.left + radius), box.right - radius);
-  const cy = Math.min(Math.max(y, box.top + radius), box.bottom - radius);
-  return Math.hypot(x - cx, y - cy) <= radius;
-}
-
 /** The corners of what an option shows (icon, label, key), a pixel inside each edge. */
 function contentCorners(option: Element): [number, number][] {
   const rects = [...option.children].map((child) => child.getBoundingClientRect());
@@ -96,8 +75,7 @@ function contentCorners(option: Element): [number, number][] {
 
 describe('popovers under a pill theme', () => {
   it('keeps the suggestion list a rounded box that shows its first and last options whole', async () => {
-    const m = await mountEditor('', { fields });
-    setTheme(m, PILL);
+    const m = await mountEditorAround('', { fields }, { variables: PILL });
     const popover = await openSuggestions(m);
 
     const options = [...popover.querySelectorAll('.tsi-suggestion-item')];
@@ -111,16 +89,14 @@ describe('popovers under a pill theme', () => {
   });
 
   it('keeps the operator dropdown a rounded box', async () => {
-    const m = await mountEditor('status:is:open', { fields });
-    setTheme(m, PILL);
+    const m = await mountEditorAround('status:is:open', { fields }, { variables: PILL });
     const popover = await openOperatorDropdown(m);
 
     expect(radiusOf(popover)).toBeLessThanOrEqual(12);
   });
 
   it('keeps the date picker a rounded box and its checkboxes square', async () => {
-    const m = await mountEditor('created:is:2024-01-15', { fields });
-    setTheme(m, PILL);
+    const m = await mountEditorAround('created:is:2024-01-15', { fields }, { variables: PILL });
     const popover = await openDatePicker(m);
 
     const checkboxes = popover.querySelectorAll('input[type="checkbox"]');
@@ -130,35 +106,37 @@ describe('popovers under a pill theme', () => {
   });
 
   it('still draws the input and its tokens as pills', async () => {
-    const m = await mountEditor('status:is:open', { fields });
-    setTheme(m, PILL);
+    const m = await mountEditorAround('status:is:open', { fields }, { variables: PILL });
 
     const container = m.pm.closest('.tsi-container');
     if (!container) throw new Error('no container');
-    expect(radiusOf(container)).toBe(9999);
+    // On one line the box is rounded by half its height
+    expect(radiusOf(container)).toBe(container.getBoundingClientRect().height / 2);
     for (const token of tokenElements(m)) expect(radiusOf(token)).toBe(9999);
   });
 });
 
 describe('the popover radius', () => {
   it('stays at the default radius of the default theme', async () => {
-    const m = await mountEditor('', { fields });
+    const m = await mountEditorAround('', { fields }, {});
     const popover = await openSuggestions(m);
 
     expect(getComputedStyle(popover).borderTopLeftRadius).toBe('8px');
   });
 
   it('follows a smaller --tsi-radius set around the input', async () => {
-    const m = await mountEditor('', { fields });
-    setTheme(m, { '--tsi-radius': '2px' });
+    const m = await mountEditorAround('', { fields }, { variables: { '--tsi-radius': '2px' } });
     const popover = await openSuggestions(m);
 
     expect(getComputedStyle(popover).borderTopLeftRadius).toBe('2px');
   });
 
   it('follows --tsi-popover-radius set around the input', async () => {
-    const m = await mountEditor('', { fields });
-    setTheme(m, { ...PILL, '--tsi-popover-radius': '4px' });
+    const m = await mountEditorAround(
+      '',
+      { fields },
+      { variables: { ...PILL, '--tsi-popover-radius': '4px' } }
+    );
     const popover = await openSuggestions(m);
 
     expect(getComputedStyle(popover).borderTopLeftRadius).toBe('4px');
