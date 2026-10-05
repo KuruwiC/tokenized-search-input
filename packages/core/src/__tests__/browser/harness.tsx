@@ -107,6 +107,32 @@ export async function mountEditorAround(
   return { ...m, wrapper, container, input };
 }
 
+/** Narrows the editor so that its first row holds the first token and `room` pixels after it. */
+async function wrapAfterFirstToken(m: MountedAround, room: number): Promise<void> {
+  const paragraph = m.pm.querySelector('p');
+  const node = tokenElements(m)[0]?.closest('.tsi-token-node');
+  if (!paragraph || !node) throw new Error('no first token to wrap after');
+  const line = paragraph.getBoundingClientRect();
+  const nodeRight =
+    node.getBoundingClientRect().right + Number.parseFloat(getComputedStyle(node).marginRight);
+  const slack = m.wrapper.getBoundingClientRect().width - line.width;
+  m.wrapper.style.width = `${nodeRight + room - line.left + slack}px`;
+  await finishAnimations();
+}
+
+/** Two or three characters fit in it, a token does not. */
+export const WRAP_ROOM = 60;
+
+/** Mounts the editor narrowed so that only the first token and {@link WRAP_ROOM} fit on its first row. */
+export async function mountWrapped(
+  value: string,
+  props: Partial<TokenizedSearchInputProps> = {}
+): Promise<MountedAround> {
+  const m = await mountEditorAround(value, props, {});
+  await wrapAfterFirstToken(m, WRAP_ROOM);
+  return m;
+}
+
 /** Focuses the editor at its start or end and waits for DOM focus, which comes a frame later. */
 export async function focusEditor(m: MountedEditor, position: 'start' | 'end'): Promise<void> {
   m.editor.commands.focus(position);
@@ -424,6 +450,44 @@ function expectPaintedBesideTokens(
       `caret is not before token ${tokensBefore}: ${where}`
     ).toBeLessThanOrEqual(after.left);
   }
+}
+
+/**
+ * The caret is painted on the row of the text on its `side` (-1: the character before it,
+ * 1: the character after it) and at that character's edge.
+ */
+export async function expectCaretWithText(m: MountedEditor, side: -1 | 1): Promise<void> {
+  const { head } = m.editor.state.selection;
+  const text = m.editor.view.coordsAtPos(head, side);
+  const painted = await expectCaretPainted(m);
+  const where = `caret painted at [${painted.left.toFixed(1)}..${painted.right.toFixed(1)}] x [${painted.top.toFixed(1)}..${painted.bottom.toFixed(1)}], text edge at ${text.left.toFixed(1)} x [${text.top.toFixed(1)}..${text.bottom.toFixed(1)}]`;
+  expect(
+    painted.top < text.bottom && painted.bottom > text.top,
+    `not on the text's row: ${where}`
+  ).toBe(true);
+  expect(
+    Math.abs(painted.left - text.left),
+    `not at the text's edge: ${where}`
+  ).toBeLessThanOrEqual(3);
+}
+
+/** Firefox leaves out a clipboardData given to the ClipboardEvent constructor. */
+function clipboardEvent(type: 'copy' | 'paste', data: DataTransfer): Event {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'clipboardData', { value: data });
+  return event;
+}
+
+export function paste(m: MountedEditor, text: string): void {
+  const data = new DataTransfer();
+  data.setData('text/plain', text);
+  m.pm.dispatchEvent(clipboardEvent('paste', data));
+}
+
+export function copied(m: MountedEditor): string {
+  const data = new DataTransfer();
+  m.pm.dispatchEvent(clipboardEvent('copy', data));
+  return data.getData('text/plain');
 }
 
 /** Arrow keys step through a token's own controls before leaving it, so crossing takes several presses. */

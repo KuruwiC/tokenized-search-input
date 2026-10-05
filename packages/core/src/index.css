@@ -588,9 +588,10 @@
     margin-inline: var(--tsi-token-gap);
   }
 
-  /* The gap widget between tokens stays zero-width so the caret sits in the middle of
+  /* The gap widget next to a token stays zero-width so the caret sits in the middle of
      the space; its hit area covers the space on both sides, so a press or a tap there
-     lands on the gap rather than on the token next to it. A ProseMirror widget is
+     lands on the gap rather than on the token next to it. After text, it covers only the
+     token's side, leaving the text to be pointed at as text. A ProseMirror widget is
      non-editable and would show the default cursor, so the text cursor is set here. */
 
   :where(._tsi-token-gap) {
@@ -606,6 +607,11 @@
     width: calc(var(--tsi-token-gap) * 2);
     height: calc(var(--tsi-token-size) + var(--tsi-token-gap-y));
     transform: translateY(-50%);
+  }
+
+  :where(._tsi-token-gap--after-text)::before {
+    left: 0;
+    width: var(--tsi-token-gap);
   }
 
   /* Range Selection - Default styling via parent class from Decoration */

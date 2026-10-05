@@ -4,9 +4,11 @@ import {
   afterLastToken,
   beforeFirstToken,
   expectCaretBetween,
+  expectCaretWithText,
   gapBetween,
   type MountedEditor,
   mountEditor,
+  mountWrapped,
   tokenElements,
 } from './harness';
 
@@ -149,5 +151,19 @@ describe('IME composition', () => {
     await userEvent.keyboard('{Backspace}{Backspace}');
     expect(m.value()).toBe('status:is:open 日 owner:is:bob');
     await expectCaretBetween(m, { tokensBefore: 1, tokensAfter: 1 });
+  });
+
+  it('commits composed text at the end of a row before a token that wrapped to the next', async () => {
+    const m = await mountWrapped(TWO_TOKENS);
+    m.editor.chain().focus().setTextSelection(2).run();
+    await expect.poll(() => document.activeElement).toBe(m.pm);
+
+    await compose(m, ['に'], '日');
+    expect(m.value()).toBe('status:is:open 日 owner:is:bob');
+    await expectCaretWithText(m, -1);
+
+    await compose(m, ['ほ'], '本');
+    expect(m.value()).toBe('status:is:open 日本 owner:is:bob');
+    await expectCaretWithText(m, -1);
   });
 });

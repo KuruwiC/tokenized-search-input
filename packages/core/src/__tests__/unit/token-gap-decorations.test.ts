@@ -57,16 +57,33 @@ describe('token gap decorations', () => {
     ]);
   });
 
-  it('leaves positions next to text alone, since the text anchors the caret there', () => {
+  it('anchors the end of text before a token and leaves the start of text after one to the text', () => {
     const state = stateOf(paragraph(schema.text('foo'), token('a'), schema.text('bar')));
 
-    expect(gapsOf(state)).toEqual([]);
+    expect(gapsOf(state)).toEqual([{ pos: 4, key: 'gap:4:after-text' }]);
   });
 
-  it('anchors only the token side of a paragraph that mixes text and tokens', () => {
+  it('anchors both sides of a token that follows text', () => {
     const state = stateOf(paragraph(schema.text('foo'), token('a')));
 
-    expect(gapsOf(state)).toEqual([{ pos: 5, key: 'gap:5' }]);
+    expect(gapsOf(state)).toEqual([
+      { pos: 4, key: 'gap:4:after-text' },
+      { pos: 5, key: 'gap:5' },
+    ]);
+  });
+
+  it('marks the anchor after text, whose hit area covers only the token side', () => {
+    const view = new EditorView(document.createElement('div'), {
+      state: stateOf(paragraph(token('a'), schema.text('foo'), token('b'))),
+    });
+    try {
+      const anchors = [...view.dom.querySelectorAll('._tsi-token-gap')];
+      expect(
+        anchors.map((anchor) => anchor.classList.contains('_tsi-token-gap--after-text'))
+      ).toEqual([false, true, false]);
+    } finally {
+      view.destroy();
+    }
   });
 
   it('adds nothing to an empty paragraph or to plain text', () => {
@@ -92,6 +109,7 @@ describe('token gap decorations', () => {
 
     expect(gapsOf(next)).toEqual([
       { pos: 1, key: 'gap:1' },
+      { pos: 3, key: 'gap:3:after-text' },
       { pos: 4, key: 'gap:4' },
     ]);
   });
@@ -103,18 +121,25 @@ describe('token gap decorations', () => {
     expect(decorationsOf(next)).toBe(decorationsOf(state));
   });
 
-  it('maps the widgets instead of rebuilding them while a composition is in progress', () => {
-    const state = stateOf(paragraph(token('a'), token('b')));
-    const next = state.apply(state.tr.insertText('x', 2).setMeta('composition', 1));
+  it('drops the widgets beside the text being composed and maps the others', () => {
+    const compose = (state: EditorState, text: string, pos: number) =>
+      gapsOf(state.apply(state.tr.insertText(text, pos).setMeta('composition', 1)));
+    const tokens = stateOf(paragraph(token('a'), token('b')));
+    const textBeforeToken = stateOf(paragraph(schema.text('foo'), token('a')));
 
-    // Rebuilt, the gap between the tokens would be gone; mapped, the same widgets stay,
-    // the one beside the text being composed included. That one comes after the caret, so
-    // it stays after the composed text, where the browser inserted the text before it.
-    expect(gapsOf(next)).toEqual([
-      { pos: 1, key: 'gap:1' },
+    expect(compose(tokens, 'x', 1)).toEqual([
       { pos: 3, key: 'gap:2' },
       { pos: 4, key: 'gap:3' },
     ]);
+    expect(compose(tokens, 'x', 2)).toEqual([
+      { pos: 1, key: 'gap:1' },
+      { pos: 4, key: 'gap:3' },
+    ]);
+    expect(compose(tokens, 'status', 3)).toEqual([
+      { pos: 1, key: 'gap:1' },
+      { pos: 2, key: 'gap:2' },
+    ]);
+    expect(compose(textBeforeToken, 'x', 4)).toEqual([{ pos: 6, key: 'gap:5' }]);
   });
 
   it('rebuilds the widgets once the view is no longer composing', () => {
@@ -126,6 +151,7 @@ describe('token gap decorations', () => {
 
       expect(gapsOf(view.state)).toEqual([
         { pos: 1, key: 'gap:1' },
+        { pos: 3, key: 'gap:3:after-text' },
         { pos: 4, key: 'gap:4' },
       ]);
     } finally {
