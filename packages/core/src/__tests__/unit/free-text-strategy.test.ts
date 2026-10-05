@@ -6,7 +6,7 @@ import {
   freeTextStrategies,
   getFreeTextStrategy,
   type ParsedFreeTextToken,
-} from '../../plugins/auto-tokenize/free-text-strategy';
+} from '../../serializer/free-text-strategy';
 
 describe('FreeTextStrategy', () => {
   describe('tokenize strategy', () => {

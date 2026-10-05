@@ -1,6 +1,5 @@
 import { type Editor, Extension, type JSONContent } from '@tiptap/core';
 import type { EditorState } from '@tiptap/pm/state';
-import { getFreeTextStrategy } from '../plugins/auto-tokenize/free-text-strategy';
 import { createAutoTokenizePlugin } from '../plugins/auto-tokenize/plugin';
 import { tokenizeRange } from '../plugins/auto-tokenize/tokenize-range';
 import {
@@ -16,6 +15,7 @@ import {
 } from '../plugins/shared/meta';
 import { type FocusTransitionContext, leaveFocusedTokenIn } from '../plugins/token-focus';
 import { createQuerySnapshot, parseQueryToDoc, type SerializeDocOptions } from '../serializer';
+import { getFreeTextStrategy } from '../serializer/free-text-strategy';
 import {
   type ClassNames,
   type CustomSuggestion,

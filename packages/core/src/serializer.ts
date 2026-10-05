@@ -13,11 +13,8 @@
  */
 import type { JSONContent } from '@tiptap/core';
 import type { EditorState } from '@tiptap/pm/state';
-import {
-  getFreeTextStrategy,
-  type ParsedFreeTextToken,
-} from './plugins/auto-tokenize/free-text-strategy';
 import { getTokenMeta } from './plugins/token-meta-plugin';
+import { getFreeTextStrategy, type ParsedFreeTextToken } from './serializer/free-text-strategy';
 import { readWord } from './serializer/read-word';
 import { filterSegment, freeTextSegment, textSegment, trimSpaces } from './serializer/segments';
 import { splitAtDelimiter, tokenizeQuery } from './serializer/tokenize';

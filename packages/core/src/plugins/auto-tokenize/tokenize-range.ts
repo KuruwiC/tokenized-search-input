@@ -9,11 +9,11 @@ import {
   parseTokenText,
   type SerializedToken,
 } from '../../serializer';
+import { getFreeTextStrategy } from '../../serializer/free-text-strategy';
 import { createFilterTokenAttrs } from '../../tokens/filter-token/create-attrs';
 import type { FieldDefinition, FreeTextMode, UnknownFieldTemplate } from '../../types';
 import { isFreeTextToken, isToken } from '../../utils/node-predicates';
 import { enterTokenIn, type FocusTransitionContext, programEntry } from '../token-focus';
-import { getFreeTextStrategy } from './free-text-strategy';
 
 export interface TokenizeContext {
   fields: FieldDefinition[];

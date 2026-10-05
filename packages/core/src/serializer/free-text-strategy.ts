@@ -1,7 +1,7 @@
 import type { JSONContent } from '@tiptap/core';
-import { quote } from '../../serializer/quoted-string';
-import type { FreeTextMode } from '../../types';
-import { generateTokenId } from '../../utils/token-id';
+import type { FreeTextMode } from '../types';
+import { generateTokenId } from '../utils/token-id';
+import { quote } from './quoted-string';
 
 export interface ParsedFreeTextToken {
   type: 'freeText';
