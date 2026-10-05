@@ -13,6 +13,7 @@ import {
   EditorContextExtension,
   getFocusContext,
   getSerializeOptions,
+  parseQueryToContent,
 } from '../../extensions/editor-context';
 import { KeyboardShortcutsExtension } from '../../extensions/keyboard-shortcuts';
 import { SelectAllShortcut } from '../../extensions/select-all-shortcut';
@@ -30,7 +31,7 @@ import {
 } from '../../plugins/token-focus';
 import { TokenGapExtension } from '../../plugins/token-gap-decorations';
 import { ValidationExtension } from '../../plugins/validation';
-import { createQuerySnapshot, parseQueryToDoc } from '../../serializer';
+import { createQuerySnapshot } from '../../serializer';
 import { FilterTokenNode } from '../../tokens/filter-token/filter-token-node';
 import { FreeTextTokenNode } from '../../tokens/free-text-token/free-text-token-node';
 import type { QuerySnapshot } from '../../types';
@@ -112,13 +113,7 @@ export function useEditorSetup({
     TokenCommandsExtension,
   ]);
   const [initialContent] = useState(() =>
-    defaultValue
-      ? parseQueryToDoc(defaultValue, initialContext.fields, {
-          freeTextMode: initialContext.freeTextMode,
-          unknownFields: initialContext.unknownFields,
-          delimiter: initialContext.delimiter,
-        }).doc
-      : ''
+    defaultValue ? parseQueryToContent(defaultValue, initialContext) : ''
   );
 
   // useEditor compares these with the editor's options on every render and calls

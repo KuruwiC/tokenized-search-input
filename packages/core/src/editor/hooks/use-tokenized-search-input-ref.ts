@@ -7,7 +7,11 @@ import {
   useImperativeHandle,
   useRef,
 } from 'react';
-import { getEditorContext, getSerializeOptions } from '../../extensions/editor-context';
+import {
+  getEditorContext,
+  getSerializeOptions,
+  parseQueryToContent,
+} from '../../extensions/editor-context';
 import {
   applyTokenPatch,
   type DisplayBinding,
@@ -15,7 +19,7 @@ import {
   setTokenDisplayById,
 } from '../../extensions/token-commands';
 import { requestValidationCheck } from '../../plugins/shared/meta';
-import { createQuerySnapshot, parseQueryToDoc, serializeDocToQuery } from '../../serializer';
+import { createQuerySnapshot, serializeDocToQuery } from '../../serializer';
 import { findTokenById } from '../../utils/find-token';
 import { isFilterToken } from '../../utils/node-predicates';
 import { scheduleDocumentChange } from '../schedule-document-change';
@@ -117,14 +121,8 @@ export function useTokenizedSearchInputRef(
   const heldCallsRef = useRef<HeldHandleCalls>({ base: null, calls: [], live: null });
 
   useImperativeHandle(ref, () => {
-    const parseValue = (ed: Editor, value: string) => {
-      const context = getEditorContext(ed);
-      return parseQueryToDoc(value, context.fields, {
-        freeTextMode: context.freeTextMode,
-        unknownFields: context.unknownFields,
-        delimiter: context.delimiter,
-      }).doc;
-    };
+    const parseValue = (ed: Editor, value: string) =>
+      parseQueryToContent(value, getEditorContext(ed));
     /** The document calls are made against: the live editor's, else `ed`'s. */
     const currentDoc = (ed: Editor): JSONContent =>
       (liveEditor(heldCallsRef.current) ?? ed).getJSON();

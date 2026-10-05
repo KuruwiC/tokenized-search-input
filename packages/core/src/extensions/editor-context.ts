@@ -1,4 +1,4 @@
-import { type Editor, Extension } from '@tiptap/core';
+import { type Editor, Extension, type JSONContent } from '@tiptap/core';
 import type { EditorState } from '@tiptap/pm/state';
 import { getFreeTextStrategy } from '../plugins/auto-tokenize/free-text-strategy';
 import { createAutoTokenizePlugin } from '../plugins/auto-tokenize/plugin';
@@ -15,7 +15,7 @@ import {
   markSubmitted,
 } from '../plugins/shared/meta';
 import { type FocusTransitionContext, leaveFocusedTokenIn } from '../plugins/token-focus';
-import { createQuerySnapshot, type SerializeDocOptions } from '../serializer';
+import { createQuerySnapshot, parseQueryToDoc, type SerializeDocOptions } from '../serializer';
 import {
   type ClassNames,
   type CustomSuggestion,
@@ -227,6 +227,12 @@ export function getEditorContext(editor: object): EditorContextStorage {
 export function getSerializeOptions(editor: object): SerializeDocOptions {
   const { delimiter, fields, unknownFields } = getEditorContext(editor);
   return { delimiter, fields, unknownFields };
+}
+
+/** Reads `query` into editor content as the configuration in `context` reads it. */
+export function parseQueryToContent(query: string, context: EditorContextStorage): JSONContent {
+  const { fields, freeTextMode, unknownFields, delimiter } = context;
+  return parseQueryToDoc(query, fields, { freeTextMode, unknownFields, delimiter }).doc;
 }
 
 export function getFocusContext(
