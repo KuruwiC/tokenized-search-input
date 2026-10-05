@@ -54,6 +54,12 @@ export default defineConfig({
         tapEditor: async ({ iframe }, position: { x: number; y: number }) => {
           await iframe.locator('.ProseMirror').tap({ position });
         },
+        pressMouse: async ({ page }) => {
+          await page.mouse.down();
+        },
+        releaseMouse: async ({ page }) => {
+          await page.mouse.up();
+        },
       },
     },
   },

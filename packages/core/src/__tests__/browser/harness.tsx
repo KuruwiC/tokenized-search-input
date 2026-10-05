@@ -3,7 +3,7 @@ import { cleanup, render } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
 import { createRef, type RefObject } from 'react';
 import { afterEach, expect, vi } from 'vitest';
-import { page, userEvent } from 'vitest/browser';
+import { commands, page, userEvent } from 'vitest/browser';
 import {
   type FieldDefinition,
   TokenizedSearchInput,
@@ -11,19 +11,7 @@ import {
   type TokenizedSearchInputRef,
 } from '../../index';
 
-let lastPressPointerType = '';
-document.addEventListener(
-  'pointerdown',
-  (event) => {
-    lastPressPointerType = event.pointerType;
-  },
-  true
-);
-
-afterEach(() => {
-  cleanup();
-  lastPressPointerType = '';
-});
+afterEach(cleanup);
 
 export const fields: FieldDefinition[] = [
   { key: 'status', label: 'Status', type: 'string', operators: ['is'] },
@@ -168,22 +156,6 @@ async function frame(pm: HTMLElement): Promise<string> {
   return page.screenshot({ element: pm, save: false, base64: true, caret: 'initial' });
 }
 
-/**
- * Moves the pointer to the bottom-right corner of the viewport, away from the editor. A
- * pointer left over the editor hovers whatever moves under it: WebKit updates hover on a
- * timer after layout changes, so a token that slides under the pointer (after the token
- * before it is removed) starts its hover transition at an unpredictable moment.
- *
- * After a tap there is no pointer to move away, and moving the mouse would only clear the
- * hover that the tap left on the tapped element until Chromium restores it on a timer.
- */
-async function movePointerOffEditor(): Promise<void> {
-  if (lastPressPointerType === 'touch') return;
-  await userEvent.hover(document.documentElement, {
-    position: { x: window.innerWidth - 1, y: window.innerHeight - 1 },
-  });
-}
-
 interface PaintedRect {
   left: number;
   right: number;
@@ -201,31 +173,21 @@ async function decode(base64: string): Promise<ImageData> {
   return context.getImageData(0, 0, bitmap.width, bitmap.height);
 }
 
-/**
- * How far a channel has to change for a pixel to count as painted. Chromium re-rasterises
- * anti-aliased edges elsewhere in the editor by a level or two between frames.
- */
-const PAINT_DELTA = 48;
+/** A caret colour that nothing else in the editor is painted in. */
+const CARET_COLOR = 'rgb(255, 0, 255)';
+const isCaretPixel = (r: number, g: number, b: number) => r > 200 && g < 80 && b > 200;
 
-/** The client rect of the pixels that clearly differ between two frames, or null. */
-async function paintedRect(
-  element: HTMLElement,
-  before: string,
-  after: string
-): Promise<PaintedRect | null> {
-  const [a, b] = await Promise.all([decode(before), decode(after)]);
+/** The client rect of the caret-coloured pixels in a frame of `element`, or null. */
+async function caretRectIn(element: HTMLElement, shot: string): Promise<PaintedRect | null> {
+  const image = await decode(shot);
   let minX = Infinity;
   let maxX = -Infinity;
   let minY = Infinity;
   let maxY = -Infinity;
-  for (let y = 0; y < a.height; y += 1) {
-    for (let x = 0; x < a.width; x += 1) {
-      const i = (y * a.width + x) * 4;
-      let delta = 0;
-      for (let channel = i; channel < i + 3; channel += 1) {
-        delta = Math.max(delta, Math.abs((a.data[channel] ?? 0) - (b.data[channel] ?? 0)));
-      }
-      if (delta >= PAINT_DELTA) {
+  for (let y = 0; y < image.height; y += 1) {
+    for (let x = 0; x < image.width; x += 1) {
+      const i = (y * image.width + x) * 4;
+      if (isCaretPixel(image.data[i] ?? 0, image.data[i + 1] ?? 0, image.data[i + 2] ?? 0)) {
         minX = Math.min(minX, x);
         maxX = Math.max(maxX, x);
         minY = Math.min(minY, y);
@@ -235,7 +197,7 @@ async function paintedRect(
   }
   if (maxX < 0) return null;
   const box = element.getBoundingClientRect();
-  const scale = a.width / box.width;
+  const scale = image.width / box.width;
   return {
     left: box.left + minX / scale,
     right: box.left + (maxX + 1) / scale,
@@ -244,36 +206,77 @@ async function paintedRect(
   };
 }
 
+/** Where the caret is painted in the current frame of the editor, or null. */
+export async function paintedCaret(m: MountedEditor): Promise<PaintedRect | null> {
+  return caretRectIn(m.pm, await frame(m.pm));
+}
+
+/** Events of the press that holds the caret steady in WebKit, kept from the page. */
+const HOLD_EVENTS = ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'] as const;
+
+function swallowHoldEvent(event: Event): void {
+  event.stopImmediatePropagation();
+  // Keeps the press from moving focus or the selection out of the editor.
+  if (event.type === 'mousedown') event.preventDefault();
+}
+
+/**
+ * Keeps the caret of the focused editor from blinking until the returned function is
+ * called, and paints it in {@link CARET_COLOR}. A blinking caret is missing from every
+ * frame taken in its off phase, and how many frames fit in a time budget depends on how
+ * busy the machine is.
+ *
+ * Chromium stops the blinking with `caret-animation: manual`. WebKit does not support that
+ * property, but stops blinking off while a mouse button is held down, so the primary
+ * button is held in the bottom-right corner of the viewport, away from the editor, with
+ * its events kept from the page. Held there, the caret is shown again at its next blink
+ * and then stays.
+ */
+export async function holdCaretSteady(m: MountedEditor): Promise<() => Promise<void>> {
+  const style = m.pm.style;
+  const previousColor = style.caretColor;
+  style.caretColor = CARET_COLOR;
+  if (CSS.supports('caret-animation', 'manual')) {
+    style.setProperty('caret-animation', 'manual');
+    await settle();
+    return async () => {
+      style.removeProperty('caret-animation');
+      style.caretColor = previousColor;
+    };
+  }
+  for (const type of HOLD_EVENTS) window.addEventListener(type, swallowHoldEvent, true);
+  await userEvent.hover(document.documentElement, {
+    position: { x: window.innerWidth - 1, y: window.innerHeight - 1 },
+  });
+  await commands.pressMouse();
+  return async () => {
+    await commands.releaseMouse();
+    await settle();
+    for (const type of HOLD_EVENTS) window.removeEventListener(type, swallowHoldEvent, true);
+    style.caretColor = previousColor;
+  };
+}
+
 /**
  * `Range.getClientRects()` is empty for a caret at an element boundary even though the
- * browser draws it, so this compares a frame with `caret-color: transparent` against
- * frames with an opaque caret. The caret blinks, so frames are sampled until one differs.
+ * browser draws it, so the caret is found in a frame of the editor by its colour.
  * Returns where the caret was painted.
  */
 export async function expectCaretPainted(m: MountedEditor): Promise<PaintedRect> {
-  await movePointerOffEditor();
   await finishAnimations();
   expect(document.activeElement).toBe(m.pm);
-  const previous = m.pm.style.caretColor;
+  const release = await holdCaretSteady(m);
   try {
-    m.pm.style.caretColor = 'transparent';
-    await settle();
-    const hidden = await frame(m.pm);
-    expect(
-      await paintedRect(m.pm, hidden, await frame(m.pm)),
-      'baseline frame is stable'
-    ).toBeNull();
-    m.pm.style.caretColor = 'red';
     return await vi.waitFor(
       async () => {
-        const painted = await paintedRect(m.pm, hidden, await frame(m.pm));
+        const painted = await paintedCaret(m);
         if (painted === null) throw new Error('no caret is painted');
         return painted;
       },
       { timeout: 2500, interval: 80 }
     );
   } finally {
-    m.pm.style.caretColor = previous;
+    await release();
   }
 }
 

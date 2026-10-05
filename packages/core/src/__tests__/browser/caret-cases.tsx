@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import {
   afterLastToken,
@@ -8,13 +8,18 @@ import {
   editingTokenIndex,
   expectCaretBetween,
   gapBetween,
+  holdCaretSteady,
   type MountedEditor,
   mountEditor,
+  paintedCaret,
   pressUntil,
   tokenElements,
 } from './harness';
 
 const TWO_TOKENS = 'status:is:open owner:is:bob';
+
+/** Longer than one blink cycle of the caret in Chromium (1 s) and WebKit (about 1.06 s). */
+const BLINK_CYCLE_MS = 1200;
 
 const caretIsBetween = (m: MountedEditor, tokensBefore: number) => () => {
   const caret = caretLocation(m);
@@ -23,6 +28,24 @@ const caretIsBetween = (m: MountedEditor, tokensBefore: number) => () => {
 
 export function registerCaretCases(): void {
   describe('caret', () => {
+    it('stays painted without blinking while it is checked', async () => {
+      const m = await mountEditor(TWO_TOKENS);
+      await userEvent.click(m.pm, { position: afterLastToken(m) });
+      const release = await holdCaretSteady(m);
+      try {
+        await vi.waitFor(async () => expect(await paintedCaret(m)).not.toBeNull(), {
+          timeout: 2500,
+          interval: 80,
+        });
+        const start = performance.now();
+        while (performance.now() - start < BLINK_CYCLE_MS) {
+          expect(await paintedCaret(m)).not.toBeNull();
+        }
+      } finally {
+        await release();
+      }
+    });
+
     it('sits between two adjacent tokens and types there', async () => {
       const m = await mountEditor(TWO_TOKENS);
       await userEvent.click(m.pm, { position: gapBetween(m, 0) });
