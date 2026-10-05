@@ -26,6 +26,32 @@ function middleOfToken(m: MountedEditor, index: number): Point {
   };
 }
 
+/** The cursor shown over a point given relative to the editor. */
+function cursorAt(m: MountedEditor, point: Point): string {
+  const box = m.pm.getBoundingClientRect();
+  const element = document.elementFromPoint(box.left + point.x, box.top + point.y);
+  if (!element) throw new Error(`nothing at ${point.x},${point.y}`);
+  return getComputedStyle(element).cursor;
+}
+
+/** Points in the space beside each token: before the first, between each pair, after the last. */
+function spacesBesideTokens(m: MountedEditor): Point[] {
+  const box = m.pm.getBoundingClientRect();
+  const rects = tokenElements(m).map((token) => token.getBoundingClientRect());
+  const at = (x: number, rect: DOMRect) => ({
+    x: x - box.left,
+    y: rect.top + rect.height / 2 - box.top,
+  });
+  const first = rects[0];
+  const last = rects[rects.length - 1];
+  if (!first || !last) throw new Error('no tokens');
+  return [
+    at(first.left - 2, first),
+    ...rects.slice(1).map((_, index) => gapBetween(m, index)),
+    at(last.right + 2, last),
+  ];
+}
+
 function expectRangeOverTokens(m: MountedEditor, tokensSelected: number): void {
   const caret = caretLocation(m);
   expect(caret.collapsed).toBe(false);
@@ -35,6 +61,15 @@ function expectRangeOverTokens(m: MountedEditor, tokensSelected: number): void {
 
 export function registerPointerCases(): void {
   describe('pointer', () => {
+    it('shows the text cursor over the space beside each token', async () => {
+      const m = await mountEditor(THREE_TOKENS);
+      const points = spacesBesideTokens(m);
+      expect(points).toHaveLength(4);
+      for (const point of points) {
+        expect(cursorAt(m, point), `cursor at ${point.x},${point.y}`).toBe('text');
+      }
+    });
+
     it('puts the caret in the gap between two tokens when the gap is clicked', async () => {
       const m = await mountEditor(TWO_TOKENS);
       await userEvent.click(m.pm, { position: gapBetween(m, 0) });
