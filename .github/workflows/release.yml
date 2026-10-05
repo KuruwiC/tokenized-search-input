@@ -6,13 +6,29 @@ on:
       - "v*"
 
 jobs:
+  tag:
+    name: Verify release tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Verify release tag
+        run: node packages/core/scripts/verify-tag.mjs
+
+  # Builds, packs and validates the tarball that the release publishes.
   ci:
     name: CI
     uses: ./.github/workflows/ci.yml
 
   release:
-    name: Build and Release
-    needs: ci
+    name: Release
+    needs: [tag, ci]
     runs-on: ubuntu-latest
 
     permissions:
@@ -22,32 +38,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Download packed artifact
+        uses: actions/download-artifact@v4
         with:
-          node-version: 20
-          cache: "pnpm"
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Verify release tag
-        run: node packages/core/scripts/verify-tag.mjs
-
-      - name: Build, pack, and validate artifact
-        run: |
-          mkdir -p dist-packages
-          cd packages/core && pnpm pack --pack-destination ../../dist-packages
-          cd ../..
-          node packages/core/scripts/verify-pack.mjs dist-packages/*.tgz
-          pnpm exec publint dist-packages/*.tgz --strict
-
-      - name: Verify packed artifact in consumer projects
-        run: node packages/core/scripts/verify-consumer.mjs dist-packages/*.tgz
+          name: package-tarball
+          path: dist-packages
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

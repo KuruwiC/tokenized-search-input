@@ -8,7 +8,68 @@ on:
   workflow_call:
 
 jobs:
-  build:
+  # Everything that does not depend on the Node version, once. Packing builds the package
+  # (prepack runs `pnpm build`, which validates dist), and the tarball it makes is the one
+  # artifact every later check and the release use.
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and pack package
+        run: pnpm --dir packages/core pack --pack-destination "$GITHUB_WORKSPACE/dist-packages"
+
+      - name: Type-check README examples
+        run: pnpm docs:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unused exports and files
+        run: pnpm lint:unused
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Audit production dependencies
+        run: pnpm audit --prod
+
+      - name: Validate package metadata
+        run: pnpm exec publint packages/core --pack false --strict
+
+      - name: Validate packed artifact
+        run: |
+          node packages/core/scripts/verify-pack.mjs dist-packages/*.tgz
+          pnpm exec publint dist-packages/*.tgz --strict
+
+      - name: Build demo
+        run: pnpm build:demo
+
+      - name: Upload packed artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-tarball
+          path: dist-packages/*.tgz
+          if-no-files-found: error
+
+  # What depends on the Node version: the test suite, and installing the packed artifact.
+  node:
+    name: Node ${{ matrix.node-version }}
+    needs: check
     runs-on: ubuntu-latest
 
     strategy:
@@ -31,35 +92,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build and validate package
-        run: pnpm build
-
-      - name: Type-check README examples
-        run: pnpm docs:check
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Unused exports and files
-        run: pnpm lint:unused
-
-      - name: Type check
-        run: pnpm typecheck
-
       - name: Test with coverage thresholds
         run: pnpm test:coverage
 
-      - name: Audit production dependencies
-        run: pnpm audit --prod
+      - name: Download packed artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: package-tarball
+          path: dist-packages
 
-      - name: Validate package metadata
-        run: pnpm exec publint packages/core --pack false --strict
-
-      - name: Verify packed package in consumer projects
-        run: node packages/core/scripts/verify-consumer.mjs
-
-      - name: Build demo
-        run: pnpm build:demo
+      - name: Verify packed artifact in consumer projects
+        run: node packages/core/scripts/verify-consumer.mjs dist-packages/*.tgz
 
   browser:
     runs-on: ubuntu-latest
