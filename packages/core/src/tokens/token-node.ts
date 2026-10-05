@@ -10,8 +10,8 @@ import {
 } from '../plugins/token-focus';
 import { findTokenById } from '../utils/find-token';
 import { TOKEN_NODE_CLASS, updateTokenNodeView } from './composition/node-view-update';
+import { enterToken } from './enter-token';
 import { isHistoryShortcut } from './history-shortcut';
-import { enterToken } from './token-focus';
 
 type TokenNodePredicate = (node: ProseMirrorNode) => boolean;
 

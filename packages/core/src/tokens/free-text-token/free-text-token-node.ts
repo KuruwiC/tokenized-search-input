@@ -5,7 +5,7 @@ import { programEntry, type TokenFocusEntry } from '../../plugins/token-focus';
 import { quote } from '../../serializer/quoted-string';
 import { isFreeTextToken } from '../../utils/node-predicates';
 import { ensureTokenId, generateTokenId } from '../../utils/token-id';
-import { enterToken } from '../token-focus';
+import { enterToken } from '../enter-token';
 import { focusTokenCommand, focusTokenOnEnter, tokenNodeViewOptions } from '../token-node';
 import { FreeTextTokenView } from './free-text-token-view';
 
