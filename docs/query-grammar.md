@@ -82,8 +82,8 @@ operator of the `unknownFields` template; the operators of other fields do not c
   is still the operator of the token, so what was written is kept. The token is listed in
   `diagnostics.unknownOperators`, and the `unknown-operator` validation rule marks it
   invalid. The token shows its operator and offers the operators of the field, so it can be
-  repaired. A field can switch the rule off with `validation: { 'unknown-operator': false }`;
-  fields that an `unknownFields` template makes cannot, as the template has no `validation`.
+  repaired. A field can switch the rule off with `validation: { 'unknown-operator': false }`,
+  and the `unknownFields` template can do the same for every field it makes.
 - It is none of these, as in `time:10:30` or `status:matches:x`: it belongs to the value, and
   the operator is the first one of the field. Only a word that looks like an operator counts
   as an unknown operator, because `key:word:rest` is also the shorthand of a value that holds

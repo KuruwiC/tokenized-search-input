@@ -43,7 +43,7 @@ Or add directly to your `package.json`:
 }
 ```
 
-The package has three entry points: `@kuruwic/tokenized-search-input` (the component, hooks, pickers and every public type), `@kuruwic/tokenized-search-input/utils` (pure functions: matchers, validation rules, serialization and date helpers) and `@kuruwic/tokenized-search-input/styles` (the default CSS). It needs Node.js 20 or later to install and build.
+The package has three entry points: `@kuruwic/tokenized-search-input` (the component, hooks, pickers and their types), `@kuruwic/tokenized-search-input/utils` (pure functions: matchers, validation rules, serialization and date helpers) and `@kuruwic/tokenized-search-input/styles` (the default CSS). It needs Node.js 20 or later to install and build.
 
 ## Quick Start
 
@@ -82,7 +82,7 @@ export function App() {
 }
 ```
 
-Every public type is exported from the root entry, so `import type { FieldDefinition } from '@kuruwic/tokenized-search-input'` works without reaching into the package.
+The types of the component, its fields, tokens, snapshots and validation are exported from the root entry, so `import type { FieldDefinition } from '@kuruwic/tokenized-search-input'` works without reaching into the package. The option and result types of the `utils` functions are exported from `utils`, next to the functions.
 
 ### Query syntax
 
