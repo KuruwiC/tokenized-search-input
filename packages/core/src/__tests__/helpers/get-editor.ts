@@ -9,7 +9,6 @@ export function getInternalEditor(ref: TokenizedSearchInputRef | null): Editor |
   return ref?.getEditor() ?? null;
 }
 
-/** Resolves with the live editor once the input behind `ref` has created it. */
 export async function waitForEditor(
   ref: RefObject<TokenizedSearchInputRef | null>
 ): Promise<Editor> {

@@ -3,7 +3,7 @@
 // (bundler resolution, and nodenext resolution from an ESM and a CommonJS file),
 // plain Node ESM/CJS imports, and the published dist.
 //
-// Usage: node scripts/verify-consumer.mjs [path/to/package.tgz]
+// Usage: node packages/core/scripts/verify-consumer.mjs [path/to/package.tgz]
 // Without an argument the package is packed into the scratch directory first.
 
 import { execFileSync } from 'node:child_process';

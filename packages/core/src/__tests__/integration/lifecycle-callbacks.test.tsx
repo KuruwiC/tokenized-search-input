@@ -22,10 +22,6 @@ afterEach(() => cleanup());
 
 describe('lifecycle callbacks', () => {
   describe('onChange', () => {
-    /**
-     * Whitespace between plaintext segments is preserved: "hello world" does not become
-     * "helloworld".
-     */
     it('preserves whitespace in getPlainText output', async () => {
       const onChange = vi.fn();
       const user = userEvent.setup();

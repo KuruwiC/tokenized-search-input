@@ -135,7 +135,7 @@ describe('Config API', () => {
         />
       );
 
-      // With Unique with onDuplicate reject, the duplicate token should be removed
+      // With onDuplicate reject, the duplicate token should be removed
       await waitFor(() => {
         expect(handleChange).toHaveBeenCalled();
         const lastCall = handleChange.mock.calls[handleChange.mock.calls.length - 1];

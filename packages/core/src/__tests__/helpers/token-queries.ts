@@ -9,6 +9,5 @@ export function filterTokens(ref: RefObject<TokenizedSearchInputRef>): QuerySnap
   );
 }
 
-/** How many rendered tokens are marked invalid. */
 export const invalidTokenCount = () =>
   document.querySelectorAll('.node-filterToken [data-invalid="true"]').length;

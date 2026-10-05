@@ -11,7 +11,6 @@ import {
   type TokenizedSearchInputRef,
 } from '../../index';
 
-/** The `pointerType` of the last press in the current test. */
 let lastPressPointerType = '';
 document.addEventListener(
   'pointerdown',
