@@ -16,6 +16,7 @@ import {
 } from '../../editor/tokenized-search-input';
 import { extendedFields } from '../fixtures';
 import { getInternalEditor, waitForEditor } from '../helpers/get-editor';
+import { mountInput } from '../helpers/mount-input';
 
 const testFields = extendedFields;
 
@@ -318,6 +319,22 @@ describe('Auto-tokenize - Integration Tests', () => {
       expect(result).toBe(false);
       expect(editor.state.doc.firstChild?.childCount).toBe(1);
       expect(editor.state.doc.textContent).toBe('status:is:');
+    });
+  });
+
+  describe('a token between an unclosed quote and the caret', () => {
+    it('ends the quote, so the word after the token still tokenizes', async () => {
+      const { editor } = await mountInput('status:is:active');
+      editor.commands.insertContentAt(1, '"abc ');
+      editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+      editor.commands.insertContent(' priority');
+
+      expect(tryAutoTokenize(editor, ':')).toBe(true);
+      const keys: string[] = [];
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === 'filterToken') keys.push(node.attrs.key);
+      });
+      expect(keys).toEqual(['status', 'priority']);
     });
   });
 

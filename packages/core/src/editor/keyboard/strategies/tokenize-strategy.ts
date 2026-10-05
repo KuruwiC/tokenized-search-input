@@ -1,4 +1,5 @@
 import { closeSuggestion, isSuggestionOpen } from '../../../plugins/suggestion';
+import { TOKEN_BOUNDARY } from '../../../serializer/quote-state';
 import { getTextBeforeCursor, tryAutoTokenize } from '../../auto-tokenize';
 import { canAutoTokenize, isTokenizeMode } from '../guards';
 import type { KeyboardContext } from '../types';
@@ -80,7 +81,7 @@ export function handleQuote(ctx: KeyboardContext): boolean {
 
   const textBefore = getTextBeforeCursor(editor);
   // Only trigger at word boundary (start, after space, or after token)
-  if (textBefore && !textBefore.endsWith(' ') && !textBefore.endsWith('\ufffc')) {
+  if (textBefore && !textBefore.endsWith(' ') && !textBefore.endsWith(TOKEN_BOUNDARY)) {
     return false;
   }
 

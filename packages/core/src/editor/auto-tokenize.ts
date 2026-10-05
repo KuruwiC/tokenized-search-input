@@ -2,7 +2,7 @@ import type { Editor } from '@tiptap/core';
 import { getEditorContext, getFocusContext } from '../extensions/editor-context';
 import { tokenizeRange } from '../plugins/auto-tokenize/tokenize-range';
 import { markAutoTokenized, withoutHistory } from '../plugins/shared/meta';
-import { findLastWordBoundary, isInsideQuotes } from '../serializer/quote-state';
+import { findLastWordBoundary, isInsideQuotes, TOKEN_BOUNDARY } from '../serializer/quote-state';
 import { isFilterToken } from '../utils/node-predicates';
 import { resolveField } from '../utils/resolve-field';
 
@@ -27,14 +27,10 @@ function focusEmptyFilterToken(editor: Editor, fieldKey: string, onFocused?: () 
   }
 }
 
-// A token node reads as U+FFFC; it becomes a space so it still ends a word.
+/** The paragraph text before the caret, each token read as `TOKEN_BOUNDARY`. */
 function getTextBeforeCursor(editor: Editor): string {
-  const { state } = editor;
-  const { selection } = state;
-  const { $from } = selection;
-
-  const textBefore = $from.parent.textBetween(0, $from.parentOffset, undefined, '\ufffc');
-  return textBefore.replaceAll('\ufffc', ' ');
+  const { $from } = editor.state.selection;
+  return $from.parent.textBetween(0, $from.parentOffset, undefined, TOKEN_BOUNDARY);
 }
 
 function getQueryFromText(text: string): string {
@@ -106,17 +102,10 @@ export function tryAutoTokenize(editor: Editor, trigger: string): boolean {
 
 /** The text between the last token and the caret, and the document range it covers. */
 function getPlainTextSegment(editor: Editor): { text: string; from: number; to: number } {
-  const { state } = editor;
-  const { selection } = state;
-  const { $from } = selection;
+  const rawText = getTextBeforeCursor(editor);
+  const textAfterToken = rawText.slice(rawText.lastIndexOf(TOKEN_BOUNDARY) + 1);
 
-  const rawText = $from.parent.textBetween(0, $from.parentOffset, undefined, '\ufffc');
-
-  const lastTokenIndex = rawText.lastIndexOf('\ufffc');
-
-  const textAfterToken = lastTokenIndex === -1 ? rawText : rawText.slice(lastTokenIndex + 1);
-
-  const cursorPos = selection.from;
+  const cursorPos = editor.state.selection.from;
   const from = cursorPos - textAfterToken.length;
   const to = cursorPos;
 

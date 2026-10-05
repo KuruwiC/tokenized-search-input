@@ -1,7 +1,10 @@
 import { readQuoted } from './tokenize';
 
-/** Object replacement character: a token node in the text before the caret. */
-const TOKEN_BOUNDARY = '￼';
+/**
+ * What a token node reads as in the text of its paragraph. A token ends the word and any
+ * quote before it: a quote never spans a token.
+ */
+export const TOKEN_BOUNDARY = '\ufffc';
 
 function isSpace(char: string): boolean {
   // Also a non-breaking space, which a contenteditable inserts for a typed space.
