@@ -15,7 +15,9 @@
 
 /* ============================================
    Design Tokens (CSS Custom Properties)
-   Must be outside @layer to be accessible everywhere
+   Must be outside @layer to be accessible everywhere.
+   Derived values are computed at the use site: a var() in a value declared
+   here resolves on :root and would ignore sizes set on an ancestor.
    ============================================ */
 
 :root {
@@ -54,15 +56,6 @@
   --tsi-selection: hsl(0 0% 65%);
   --tsi-selection-foreground: hsl(0 0% 9%);
   --tsi-expand-max-lines: 4;
-  /* max-height = (token-size × 4 rows) + (gap × 3 spaces) + (padding-y × top/bottom) */
-  --tsi-expand-max-height: calc(
-    var(--tsi-token-size) *
-    4 +
-    var(--tsi-token-gap-y) *
-    3 +
-    var(--tsi-padding-y) *
-    2
-  );
 
   /* === Size Variants === */
   /* Icon sizes */
@@ -92,14 +85,6 @@
   --tsi-dropdown-max-width: 24rem;
   --tsi-dropdown-max-height: 12rem;
   --tsi-scrollbar-width: 4px;
-
-  /* Computed values */
-  --tsi-single-line-height: calc(
-    var(--tsi-token-size) +
-    var(--tsi-token-gap-y) +
-    var(--tsi-padding-y) *
-    2
-  );
 }
 
 .dark,
@@ -287,8 +272,7 @@
 
   /* The box grows with its tokens, so its radius stops at half its height on one line: a pill
      value draws a pill on one line and a rounded box once the tokens wrap, instead of an
-     ellipse that clips them. Written here rather than on :root to follow --tsi-radius and
-     --tsi-min-height set on any ancestor. The input inherits this radius. */
+     ellipse that clips them. The input inherits this radius. */
   :where(.tsi-container) {
     position: relative;
     border-radius: min(
@@ -511,9 +495,22 @@
 
   /* Expand on Focus */
 
+  /* One row is a line of the paragraph (a token and its vertical gap) inside the editor's
+     vertical padding; the box is never lower than its minimum height. The root keeps the
+     place of the collapsed box, borders included, while the box floats open. */
   :where(.tsi-root--expand-on-focus) {
     position: relative;
-    min-height: calc(var(--tsi-single-line-height) + var(--tsi-border-width) * 2);
+    min-height: calc(
+      max(
+        var(--tsi-min-height),
+        var(
+          --tsi-single-line-height,
+          calc(var(--tsi-token-size) + var(--tsi-token-gap-y) + var(--tsi-padding-y) * 2)
+        )
+      ) +
+      var(--tsi-border-width) *
+      2
+    );
   }
 
   :where(.tsi-container--expand-on-focus) {
@@ -530,7 +527,13 @@
 
   :where(.tsi-input.tsi-input--expand-on-focus) {
     flex-wrap: wrap;
-    max-height: var(--tsi-single-line-height);
+    max-height: max(
+      var(--tsi-min-height),
+      var(
+        --tsi-single-line-height,
+        calc(var(--tsi-token-size) + var(--tsi-token-gap-y) + var(--tsi-padding-y) * 2)
+      )
+    );
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: none;
@@ -552,7 +555,15 @@
   }
 
   :where(.tsi-container--expand-on-focus):focus-within :where(.tsi-input--expand-on-focus) {
-    max-height: var(--tsi-expand-max-height);
+    max-height: var(
+      --tsi-expand-max-height,
+      calc(
+        (var(--tsi-token-size) + var(--tsi-token-gap-y)) *
+        var(--tsi-expand-max-lines) +
+        var(--tsi-padding-y) *
+        2
+      )
+    );
     overflow-x: hidden;
     overflow-y: auto;
     scrollbar-width: thin;
@@ -845,8 +856,7 @@
   /* === Popover (shared by the suggestion dropdown and the dropdowns of a token) === */
 
   /* A popover takes the control radius only up to 0.75rem: a pill-shaped input must not turn
-     the list into a stadium that clips its first and last rows. The default is written here,
-     not on :root, so that it follows --tsi-radius set on any ancestor. */
+     the list into a stadium that clips its first and last rows. */
   :where(.tsi-popover) {
     z-index: var(--tsi-z-dropdown);
     border-radius: var(--tsi-popover-radius, min(var(--tsi-radius), 0.75rem));
