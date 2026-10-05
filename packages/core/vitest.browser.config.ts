@@ -10,6 +10,7 @@ const stylingFiles = [
   'src/__tests__/browser/consumer-css.test.tsx',
   'src/__tests__/browser/edit-input-width.test.tsx',
   'src/__tests__/browser/focus-indicator.test.tsx',
+  'src/__tests__/browser/popover-shape.test.tsx',
 ];
 
 // There is no mobile device in CI. A mobile run is a desktop engine with a phone viewport,

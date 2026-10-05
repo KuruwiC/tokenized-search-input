@@ -893,6 +893,7 @@ All styles are customizable via `--tsi-*` CSS variables. Override them in your C
   --tsi-token-gap-y: 0.25rem;
   --tsi-radius: 0.5rem;
   --tsi-radius-inner: 0.25rem;
+  /* --tsi-popover-radius: unset by default, see below */
   --tsi-border-width: 1px;
 
   /* Focus ring */
@@ -908,7 +909,7 @@ All styles are customizable via `--tsi-*` CSS variables. Override them in your C
 }
 ```
 
-`--tsi-token-gap` is the space between tokens, set as the margin of each token. Overrides of the color variables on `:root` only reach the light palette: while the system prefers dark, the dark palette is selected by `:root:not([data-theme="light"])`, which wins over `:root`. Override colors for the dark palette under that selector (inside `@media (prefers-color-scheme: dark)`) and under `.dark, [data-theme="dark"]`, or pin the page to the light palette with `data-theme="light"`.
+`--tsi-token-gap` is the space between tokens, set as the margin of each token. `--tsi-popover-radius` is the corner radius of the suggestion list, the token dropdowns and the date pickers; left unset, they take `--tsi-radius` capped at `0.75rem`, so a pill-shaped input (`--tsi-radius: 9999px`) does not turn them into stadiums that clip their first and last rows. Overrides of the color variables on `:root` only reach the light palette: while the system prefers dark, the dark palette is selected by `:root:not([data-theme="light"])`, which wins over `:root`. Override colors for the dark palette under that selector (inside `@media (prefers-color-scheme: dark)`) and under `.dark, [data-theme="dark"]`, or pin the page to the light palette with `data-theme="light"`.
 
 ### Dark Mode
 

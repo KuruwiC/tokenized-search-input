@@ -837,9 +837,12 @@
 
   /* === Popover (shared by the suggestion dropdown and the dropdowns of a token) === */
 
+  /* A popover takes the control radius only up to 0.75rem: a pill-shaped input must not turn
+     the list into a stadium that clips its first and last rows. The default is written here,
+     not on :root, so that it follows --tsi-radius set on any ancestor. */
   :where(.tsi-popover) {
     z-index: var(--tsi-z-dropdown);
-    border-radius: var(--tsi-radius);
+    border-radius: var(--tsi-popover-radius, min(var(--tsi-radius), 0.75rem));
     border: 1px solid var(--tsi-border);
     background-color: var(--tsi-background);
     box-shadow: var(--tsi-shadow);
@@ -1775,7 +1778,8 @@
   :where(.tsi-include-time-checkbox) {
     width: var(--tsi-icon-size-md);
     height: var(--tsi-icon-size-md);
-    border-radius: var(--tsi-radius-inner);
+    /* A checkbox stays square however round the tokens are */
+    border-radius: min(var(--tsi-radius-inner), 0.25rem);
     border: 1px solid var(--tsi-border);
     color: var(--tsi-foreground);
     cursor: pointer;
@@ -1821,7 +1825,8 @@
   :where(.tsi-utc-checkbox) {
     width: var(--tsi-icon-size-md);
     height: var(--tsi-icon-size-md);
-    border-radius: var(--tsi-radius-inner);
+    /* A checkbox stays square however round the tokens are */
+    border-radius: min(var(--tsi-radius-inner), 0.25rem);
     border: 1px solid var(--tsi-border);
     color: var(--tsi-foreground);
   }
