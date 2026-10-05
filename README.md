@@ -937,26 +937,37 @@ The dark palette applies automatically when the system prefers a dark color sche
 }
 ```
 
+### Page CSS
+
+The defaults sit in two cascade layers, `base` and `components`, so your own rules override them when they are outside any layer or in a layer declared after those two; `classNames` and the `--tsi-*` variables work that way. Generic page CSS is kept away from the inside of `.tsi-container`: universal resets such as `* { margin: 0 }` and element rules such as `button { padding: 1rem }` or `:focus-visible { outline: 2px solid }` do not change the spacing, borders and backgrounds of the component or its buttons and inputs. A few rules outside any layer roll those values back to the component's own with `revert-layer`. These rules are as specific as one class, so a single-class rule of yours declared after the stylesheet (a `classNames` class from CSS Modules, for example) still applies, while more specific selectors such as `.app button` or `button:hover` still reach the inside. To keep a global reset away from the component entirely, put it in a layer below the component's:
+
+```css
+@layer reset, base, components;
+@import "@kuruwic/tokenized-search-input/styles";
+
+@layer reset {
+  button { padding: 0.5rem 1rem; }
+}
+```
+
 ### Tailwind CSS Integration
 
-Component styles use `:where()` and CSS layers, so Tailwind utilities can override defaults without increasing selector specificity.
-
-**Tailwind v4:**
+Tailwind v4 puts its preflight and its utilities in cascade layers, so utilities passed through `classNames` override the defaults and preflight does not reach the inside of the component. Import the stylesheet after Tailwind:
 
 ```css
 @import "tailwindcss";
 @import "@kuruwic/tokenized-search-input/styles";
 ```
 
-**Tailwind v3 (with PostCSS):**
+**Tailwind v3:** import the stylesheet from JavaScript, before the CSS that holds your `@tailwind` directives:
 
-```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@import "@kuruwic/tokenized-search-input/styles";
+<!-- not-example: imports the application's own stylesheet -->
+```tsx
+import "@kuruwic/tokenized-search-input/styles";
+import "./index.css"; // @tailwind base; @tailwind components; @tailwind utilities;
 ```
+
+Do not `@import` it into the CSS that Tailwind v3 processes: v3 takes over `@layer base` and `@layer components` and drops the component rules whose classes it does not find in your content. v3 emits its utilities outside any layer, so they override the defaults only when they come after the stylesheet.
 
 Then use `classNames` to apply Tailwind utilities:
 

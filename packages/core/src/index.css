@@ -208,6 +208,47 @@
 }
 
 /* ============================================
+   Isolation (unlayered)
+   Unlayered page CSS wins over every layered rule, so a generic rule such as
+   `* { margin: 0 }` or `button { padding: 1rem }` would undo the layout of
+   the component and the reset above. These rules are unlayered too and more
+   specific than element and universal selectors; `revert-layer` drops the
+   unlayered value and falls back to the layered ones: this stylesheet's, or a
+   utility layer the page declares later. A page rule of one class declared
+   after this stylesheet still applies.
+   ============================================ */
+
+/* The box of every element: token spacing, borders and backgrounds */
+.tsi-container,
+.tsi-container *,
+.tsi-container *::before,
+.tsi-container *::after {
+  margin: revert-layer;
+  padding: revert-layer;
+  border: revert-layer;
+  border-radius: revert-layer;
+  background: revert-layer;
+}
+
+/* What the base layer resets on form elements and paragraphs */
+.tsi-container :where(button, input, fieldset, p, label) {
+  appearance: revert-layer;
+  box-shadow: revert-layer;
+  color: revert-layer;
+  font: revert-layer;
+  line-height: revert-layer;
+  cursor: revert-layer;
+  outline: revert-layer;
+  outline-offset: revert-layer;
+}
+
+/* Page rules on :focus or :focus-visible are one class more specific. */
+.tsi-container :where(.ProseMirror, button, input, [tabindex]):focus {
+  outline: revert-layer;
+  outline-offset: revert-layer;
+}
+
+/* ============================================
    Components Layer
    All component selectors use :where() for zero specificity,
    and are placed in @layer components so that Tailwind's

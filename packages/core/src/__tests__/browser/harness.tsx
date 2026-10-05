@@ -2,7 +2,7 @@ import '../../index.css';
 import { cleanup, render } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
 import { createRef, type RefObject } from 'react';
-import { afterEach, expect, vi } from 'vitest';
+import { afterEach, expect, onTestFinished, vi } from 'vitest';
 import { commands, page, userEvent } from 'vitest/browser';
 import {
   type FieldDefinition,
@@ -10,6 +10,8 @@ import {
   type TokenizedSearchInputProps,
   type TokenizedSearchInputRef,
 } from '../../index';
+import { programEntry } from '../../plugins/token-focus';
+import { enterToken } from '../../tokens/enter-token';
 
 afterEach(cleanup);
 
@@ -43,6 +45,14 @@ export async function finishAnimations(): Promise<void> {
   await settle();
 }
 
+/** Adds a stylesheet after the library's for the rest of the test. */
+export function addStyleSheet(css: string): void {
+  const style = document.createElement('style');
+  style.textContent = css;
+  document.head.append(style);
+  onTestFinished(() => style.remove());
+}
+
 export async function mountEditor(
   defaultValue: string,
   props: Partial<TokenizedSearchInputProps> = {}
@@ -61,6 +71,21 @@ export async function mountEditor(
   const editor = ref.current?.getEditor();
   if (!editor) throw new Error('editor handle is unavailable');
   return { ref, editor, pm, value: () => ref.current?.getValue() ?? '' };
+}
+
+/**
+ * Edits the last token the way code enters a token, with the caret at the end of its value.
+ * The styling tests set up editing without a pointer press, so they do not depend on where
+ * an engine puts the caret on a click.
+ */
+export async function editLastToken(m: MountedEditor): Promise<void> {
+  let id: string | undefined;
+  m.editor.state.doc.descendants((node) => {
+    if (node.type.name === 'filterToken') id = String(node.attrs.id);
+  });
+  if (!id) throw new Error('no filter token to edit');
+  enterToken(m.editor, id, programEntry());
+  await vi.waitFor(() => expect(document.activeElement).toBeInstanceOf(HTMLInputElement));
 }
 
 export function tokenElements(m: MountedEditor): HTMLElement[] {

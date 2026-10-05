@@ -118,8 +118,8 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Install Chromium and WebKit
-        run: pnpm --filter @kuruwic/tokenized-search-input exec playwright install --with-deps chromium webkit
+      - name: Install Chromium, WebKit and Firefox
+        run: pnpm --filter @kuruwic/tokenized-search-input exec playwright install --with-deps chromium webkit firefox
       - name: Run browser tests
         run: pnpm --filter @kuruwic/tokenized-search-input test:browser
 
