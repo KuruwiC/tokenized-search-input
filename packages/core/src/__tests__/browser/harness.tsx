@@ -11,7 +11,20 @@ import {
   type TokenizedSearchInputRef,
 } from '../../index';
 
-afterEach(cleanup);
+/** The `pointerType` of the last press in the current test. */
+let lastPressPointerType = '';
+document.addEventListener(
+  'pointerdown',
+  (event) => {
+    lastPressPointerType = event.pointerType;
+  },
+  true
+);
+
+afterEach(() => {
+  cleanup();
+  lastPressPointerType = '';
+});
 
 export const fields: FieldDefinition[] = [
   { key: 'status', label: 'Status', type: 'string', operators: ['is'] },
@@ -32,9 +45,14 @@ export interface MountedEditor {
 
 const settle = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
-/** Resolves once every running CSS animation (the token insert animation) has finished. */
-export async function waitForAnimations(): Promise<void> {
-  await vi.waitFor(() => expect(document.getAnimations()).toHaveLength(0));
+/**
+ * Jumps every running CSS animation and transition (the token insert animation, colour
+ * transitions) to its end state and waits for that state to be painted. Waiting for them to
+ * run out instead depends on the page rendering frames, which a loaded machine can stall for
+ * longer than any fixed wait.
+ */
+export async function finishAnimations(): Promise<void> {
+  for (const animation of document.getAnimations()) animation.finish();
   await settle();
 }
 
@@ -52,7 +70,7 @@ export async function mountEditor(
   await vi.waitFor(() => {
     expect(container.querySelectorAll('.tsi-token')).toHaveLength(expectedTokens);
   });
-  await waitForAnimations();
+  await finishAnimations();
   const editor = ref.current?.getEditor();
   if (!editor) throw new Error('editor handle is unavailable');
   return { ref, editor, pm, value: () => ref.current?.getValue() ?? '' };
@@ -149,8 +167,12 @@ async function frame(pm: HTMLElement): Promise<string> {
  * pointer left over the editor hovers whatever moves under it: WebKit updates hover on a
  * timer after layout changes, so a token that slides under the pointer (after the token
  * before it is removed) starts its hover transition at an unpredictable moment.
+ *
+ * After a tap there is no pointer to move away, and moving the mouse would only clear the
+ * hover that the tap left on the tapped element until Chromium restores it on a timer.
  */
 async function movePointerOffEditor(): Promise<void> {
+  if (lastPressPointerType === 'touch') return;
   await userEvent.hover(document.documentElement, {
     position: { x: window.innerWidth - 1, y: window.innerHeight - 1 },
   });
@@ -224,14 +246,17 @@ async function paintedRect(
  */
 export async function expectCaretPainted(m: MountedEditor): Promise<PaintedRect> {
   await movePointerOffEditor();
-  await waitForAnimations();
+  await finishAnimations();
   expect(document.activeElement).toBe(m.pm);
   const previous = m.pm.style.caretColor;
   try {
     m.pm.style.caretColor = 'transparent';
     await settle();
     const hidden = await frame(m.pm);
-    expect(await frame(m.pm), 'baseline frame is stable').toBe(hidden);
+    expect(
+      await paintedRect(m.pm, hidden, await frame(m.pm)),
+      'baseline frame is stable'
+    ).toBeNull();
     m.pm.style.caretColor = 'red';
     return await vi.waitFor(
       async () => {

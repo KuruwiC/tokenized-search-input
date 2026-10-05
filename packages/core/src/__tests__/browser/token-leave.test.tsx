@@ -3,11 +3,11 @@ import { userEvent } from 'vitest/browser';
 import {
   afterLastToken,
   editingTokenIndex,
+  finishAnimations,
   type MountedEditor,
   mountEditor,
   type Point,
   tokenElements,
-  waitForAnimations,
 } from './harness';
 
 /** Starts a token of the immutable `lock` field after `status:is:a` and types a value. */
@@ -16,7 +16,7 @@ async function editLockToken(): Promise<MountedEditor> {
   await userEvent.click(m.pm, { position: afterLastToken(m) });
   await userEvent.keyboard(' lock:');
   await vi.waitFor(() => expect(editingTokenIndex(m)).toBe(1));
-  await waitForAnimations();
+  await finishAnimations();
   await userEvent.keyboard('jp');
   return m;
 }
