@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { quote, unquote } from '../../utils/quoted-string';
+import { quote, unquote } from '../../serializer/quoted-string';
 
 describe('unquote', () => {
   describe('unquoted strings', () => {

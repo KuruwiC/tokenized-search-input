@@ -1,4 +1,4 @@
-import { readQuoted } from './tokenize';
+import { readQuoted } from './quoted-string';
 
 /**
  * What a token node reads as in the text of its paragraph. A token ends the word and any

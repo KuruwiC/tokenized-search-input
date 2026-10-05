@@ -1,4 +1,35 @@
-import { readQuoted } from '../serializer/tokenize';
+export interface QuotedRun {
+  /** What the run stands for, with the escapes resolved. */
+  value: string;
+  /** The index after the closing quote, or the end of the text when the run is not closed. */
+  end: number;
+  closed: boolean;
+}
+
+/**
+ * Reads the quoted run whose opening quote is at `start`. Inside quotes `\"` stands for
+ * `"` and `\\` for `\`; a backslash before any other character stays a backslash, and
+ * every other character, a newline or a tab included, stands for itself. This is the one
+ * place that knows how quotes and escapes work.
+ */
+export function readQuoted(text: string, start: number): QuotedRun {
+  let value = '';
+  let i = start + 1;
+  while (i < text.length) {
+    const char = text[i];
+    if (char === '"') return { value, end: i + 1, closed: true };
+    if (char === '\\') {
+      const next = text[i + 1];
+      if (next === undefined) break;
+      value += next === '"' || next === '\\' ? next : char + next;
+      i += 2;
+    } else {
+      value += char;
+      i++;
+    }
+  }
+  return { value, end: text.length, closed: false };
+}
 
 /** Characters that force quoting: space, tab, CR, LF, a quote and a backslash. */
 const NEEDS_QUOTES = /[ \t\r\n"\\]/;

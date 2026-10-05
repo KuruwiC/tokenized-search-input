@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { readQuoted, tokenizeQuery } from '../../serializer/tokenize';
+import { readQuoted } from '../../serializer/quoted-string';
+import { tokenizeQuery } from '../../serializer/tokenize';
 
 describe('readQuoted', () => {
   it.each([

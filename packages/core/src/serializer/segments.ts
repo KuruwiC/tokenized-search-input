@@ -1,5 +1,5 @@
-import { quote } from '../utils/quoted-string';
 import type { FieldResolutionSource } from '../utils/resolve-field';
+import { quote } from './quoted-string';
 import { readsAsFilter } from './read-word';
 
 /** A filter token as a segment of a query, or `null` for a token without a value. */
