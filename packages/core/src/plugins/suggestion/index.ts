@@ -15,7 +15,6 @@ export {
   openValueSuggestion,
   setCustomLoadingMore,
   setSuggestion,
-  setSuggestionLoading,
   updateSuggestionActiveIndex,
   updateSuggestionDateValue,
   updateSuggestionTimeControls,

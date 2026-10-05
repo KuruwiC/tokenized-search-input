@@ -4,14 +4,14 @@ import { getEditorContext, getFocusContext } from '../../extensions/editor-conte
 import { toStoredValue } from '../../pickers/date-format';
 import { checkDateTimeValue, type DateTimeValue } from '../../pickers/date-time-value';
 import { closeSuggestion } from '../../plugins/suggestion';
-import { getFocusedToken, leaveTokenIn } from '../../plugins/token-focus';
+import { getFocusedTokenId, leaveTokenIn } from '../../plugins/token-focus';
 import { applyTokenAction } from '../../tokens/filter-token/token-actions';
 import { findTokenById } from '../../utils/find-token';
 import { isFilterToken } from '../../utils/node-predicates';
 
 function focusedFilterTokenId(editor: Editor): string | null {
-  const id = getFocusedToken(editor.state)?.id;
-  if (id === undefined) return null;
+  const id = getFocusedTokenId(editor.state);
+  if (id === null) return null;
   const found = findTokenById(editor.state.doc, id);
   return found && isFilterToken(found.node) ? id : null;
 }

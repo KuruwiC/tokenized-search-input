@@ -12,7 +12,7 @@ import {
   isSuggestionOpen,
 } from '../../plugins/suggestion';
 import {
-  getFocusedToken,
+  getFocusedTokenId,
   type LeaveDirection,
   type TokenFocusEntry,
 } from '../../plugins/token-focus';
@@ -154,7 +154,7 @@ export function Token({
   }, [entry, editor, focusRegistry]);
 
   const handleActivate = useCallback(() => {
-    if (getFocusedToken(editor.state)?.id === id) {
+    if (getFocusedTokenId(editor.state) === id) {
       focusRegistry.focusEdge('first', { entryOnly: true, position: 'end' });
       return;
     }
@@ -193,7 +193,7 @@ export function Token({
   const handleContainerFocus = useCallback(
     (e: React.FocusEvent) => {
       if (!editor.isEditable || e.target !== containerRef.current) return;
-      if (getFocusedToken(editor.state)?.id === id) return;
+      if (getFocusedTokenId(editor.state) === id) return;
       enterToken(editor, id, CLICK_ENTRY);
     },
     [editor, id]
@@ -201,7 +201,7 @@ export function Token({
 
   const handleBlur = useCallback(
     (e: React.FocusEvent) => {
-      if (getFocusedToken(editor.state)?.id !== id) return;
+      if (getFocusedTokenId(editor.state) !== id) return;
 
       const relatedTarget = e.relatedTarget as Node | null;
       if (relatedTarget && containerRef.current?.contains(relatedTarget)) return;

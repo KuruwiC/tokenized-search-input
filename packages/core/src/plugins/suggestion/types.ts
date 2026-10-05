@@ -48,7 +48,6 @@ export interface SuggestionState {
   /** The pages of `customItems`; a suggestion that closes takes it back to the start. */
   custom: CustomPagination;
   activeIndex: number;
-  isLoading: boolean;
   anchor: SuggestionAnchor | null;
   /** The date or date-time the picker last committed, or the token's when it opened. */
   dateValue: DateTimeValue | null;
@@ -75,7 +74,6 @@ export interface SetSuggestionMeta {
   customItems?: readonly CustomSuggestion[];
   custom?: CustomPagination;
   activeIndex?: number;
-  isLoading?: boolean;
   anchor?: SuggestionAnchor | null;
   dateValue?: DateTimeValue | null;
   isUTC?: boolean;
@@ -102,7 +100,6 @@ export const initialSuggestionState: SuggestionState = {
   customItems: [],
   custom: { hasMore: false, offset: 0, isLoadingMore: false },
   activeIndex: -1,
-  isLoading: false,
   anchor: null,
   dateValue: null,
   isUTC: false,

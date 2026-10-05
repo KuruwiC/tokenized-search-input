@@ -37,7 +37,7 @@ import type { QuerySnapshot } from '../../types';
 import { getAllTokens } from '../../utils/query-snapshot';
 import { areTokenListsEqual, type ComparableToken, confirmTokens } from '../../utils/token-events';
 import { isEditorEmpty } from '../editor-state';
-import { scheduleDocumentChange } from './schedule-document-change';
+import { scheduleDocumentChange } from '../schedule-document-change';
 
 function readSnapshot(editor: Editor): QuerySnapshot {
   return createQuerySnapshot(editor.state, getSerializeOptions(editor));

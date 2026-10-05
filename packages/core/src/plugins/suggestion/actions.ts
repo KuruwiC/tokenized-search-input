@@ -39,7 +39,6 @@ export function openFieldSuggestion(
     custom: initialSuggestionState.custom,
     customDisplayMode: null,
     activeIndex: -1,
-    isLoading: false,
     anchor: positionAnchor(anchorPos),
     dismissed: false,
   });
@@ -58,7 +57,6 @@ export function openValueSuggestion(
     query,
     items,
     activeIndex: -1,
-    isLoading: false,
     anchor: tokenAnchor(tokenId),
     dismissed: false,
   });
@@ -76,7 +74,6 @@ export function openDateSuggestion(
     query: '',
     items: [],
     activeIndex: -1,
-    isLoading: false,
     anchor: tokenAnchor(tokenId),
     dateValue: currentValue,
     isUTC: false,
@@ -97,7 +94,6 @@ export function openDateTimeSuggestion(
     query: '',
     items: [],
     activeIndex: -1,
-    isLoading: false,
     anchor: tokenAnchor(tokenId),
     dateValue: currentValue,
     isUTC: currentValue?.offset === 'Z',
@@ -121,7 +117,6 @@ export function openCustomSuggestion(
     customItems,
     custom: { hasMore, offset: customItems.length, isLoadingMore: false },
     activeIndex: -1,
-    isLoading: false,
     anchor: positionAnchor(anchorPos),
     dismissed: false,
   });
@@ -144,7 +139,6 @@ export function openFieldWithCustomSuggestion(
     customItems,
     custom: { hasMore, offset: customItems.length, isLoadingMore: false },
     activeIndex: -1,
-    isLoading: false,
     anchor: positionAnchor(anchorPos),
     dismissed: false,
     customDisplayMode: displayMode,
@@ -233,10 +227,6 @@ export function navigateSuggestion(
   }
 
   updateSuggestionActiveIndex(tr, newIndex);
-}
-
-export function setSuggestionLoading(tr: Transaction, isLoading: boolean): Transaction {
-  return setSuggestion(tr, { isLoading });
 }
 
 /**

@@ -3,7 +3,7 @@ import { type RefObject, useEffect } from 'react';
 import { getSerializeOptions } from '../../extensions/editor-context';
 import { clearDismissed, dismissSuggestion, getSuggestionState } from '../../plugins/suggestion';
 import { createQuerySnapshot } from '../../serializer';
-import { interactionBoundary } from '../../suggestions/suggestion-type';
+import { interactionBoundary } from '../../suggestions/interaction-boundary';
 import type { QuerySnapshot } from '../../types';
 import { isWithinSuggestion } from '../../utils/dom-focus';
 

@@ -14,7 +14,7 @@ import { useFocusWiring } from './hooks/use-focus-wiring';
 import { useSuggestionHandlers } from './hooks/use-suggestion-handlers';
 import { useSuggestionScheduling } from './hooks/use-suggestion-scheduling';
 import {
-  useApplyPendingHandleWrites,
+  useRunHeldHandleCalls,
   useTokenizedSearchInputRef,
 } from './hooks/use-tokenized-search-input-ref';
 import { SuggestionAria } from './suggestion-aria';
@@ -87,7 +87,7 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
 
     const handleSubmit = useCallback((snapshot: QuerySnapshot) => onSubmit?.(snapshot), [onSubmit]);
     const handleClear = useCallback(() => onClear?.(), [onClear]);
-    const pending = useTokenizedSearchInputRef(ref, editor);
+    const heldCalls = useTokenizedSearchInputRef(ref, editor);
     useEditorConfigSync(editor, config, {
       onFieldSelect: handleFieldSelect,
       onValueSelect: handleValueSelect,
@@ -112,8 +112,8 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       expandOnFocus,
       containerRef,
     });
-    // Last on purpose: see useApplyPendingHandleWrites.
-    useApplyPendingHandleWrites(editor, pending);
+    // Last on purpose: see useRunHeldHandleCalls.
+    useRunHeldHandleCalls(editor, heldCalls);
 
     const containerElement = (
       <div

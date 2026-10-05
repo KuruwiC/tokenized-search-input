@@ -18,12 +18,12 @@ import { requestValidationCheck } from '../../plugins/shared/meta';
 import { createQuerySnapshot, parseQueryToDoc, serializeDocToQuery } from '../../serializer';
 import { findTokenById } from '../../utils/find-token';
 import { isFilterToken } from '../../utils/node-predicates';
+import { scheduleDocumentChange } from '../schedule-document-change';
 import type {
   TokenDisplay,
   TokenizedSearchInputRef,
   TokenPatch,
 } from '../tokenized-search-input.types';
-import { scheduleDocumentChange } from './schedule-document-change';
 
 /** Replaces the whole content; token meta of the previous content is discarded. */
 function setContentAndValidate(editor: Editor, doc: JSONContent): void {
@@ -55,7 +55,7 @@ function transformDoc(
   return tr.doc.toJSON() as JSONContent;
 }
 
-type PendingCall =
+type HeldCall =
   | { type: 'setValue'; doc: JSONContent }
   | { type: 'clear' }
   | { type: 'updateToken'; id: string; patch: TokenPatch }
@@ -73,7 +73,7 @@ interface HeldHandleCalls {
   /** The document the calls were made against. */
   base: JSONContent | null;
   /** In call order. */
-  calls: PendingCall[];
+  calls: HeldCall[];
   /** The editor the calls run on: the last one whose commit happened. */
   live: Editor | null;
 }
@@ -91,7 +91,7 @@ function drain(held: HeldHandleCalls, editor: Editor): void {
   if (base && !editor.state.doc.eq(editor.schema.nodeFromJSON(base))) {
     setContentAndValidate(editor, base);
   }
-  for (const call of calls) runPendingCall(editor, call);
+  for (const call of calls) runHeldCall(editor, call);
 }
 
 function scheduleDrain(held: HeldHandleCalls): void {
@@ -105,7 +105,7 @@ function scheduleDrain(held: HeldHandleCalls): void {
  * An ancestor's effect in the same commit can call the handle while `editor` is
  * still a destroyed instance, and a handle kept from before can be called after its
  * editor was replaced. Such calls are held in call order and run on the live editor
- * after its commit (see `useApplyPendingHandleWrites`), starting from the document they
+ * after its commit (see `useRunHeldHandleCalls`), starting from the document they
  * were made against. Calls made while held calls wait queue behind them. `getValue` and
  * `getSnapshot` read the document the held calls produce; validation runs once they
  * are applied, so snapshots read in the meantime carry no validation.
@@ -114,7 +114,7 @@ export function useTokenizedSearchInputRef(
   ref: ForwardedRef<TokenizedSearchInputRef>,
   editor: Editor | null
 ): MutableRefObject<HeldHandleCalls> {
-  const pendingHandleRef = useRef<HeldHandleCalls>({ base: null, calls: [], live: null });
+  const heldCallsRef = useRef<HeldHandleCalls>({ base: null, calls: [], live: null });
 
   useImperativeHandle(ref, () => {
     const parseValue = (ed: Editor, value: string) => {
@@ -127,9 +127,9 @@ export function useTokenizedSearchInputRef(
     };
     /** The document calls are made against: the live editor's, else `ed`'s. */
     const currentDoc = (ed: Editor): JSONContent =>
-      (liveEditor(pendingHandleRef.current) ?? ed).getJSON();
+      (liveEditor(heldCallsRef.current) ?? ed).getJSON();
     const readDoc = (ed: Editor): JSONContent => {
-      const { base, calls } = pendingHandleRef.current;
+      const { base, calls } = heldCallsRef.current;
       return calls.reduce<JSONContent>((doc, call) => {
         switch (call.type) {
           case 'setValue':
@@ -148,14 +148,14 @@ export function useTokenizedSearchInputRef(
       }, base ?? currentDoc(ed));
     };
     const readState = (ed: Editor) =>
-      pendingHandleRef.current.calls.length > 0 ? stateFromDoc(ed, readDoc(ed)) : ed.state;
-    const hold = (ed: Editor, call: PendingCall) => {
-      const held = pendingHandleRef.current;
+      heldCallsRef.current.calls.length > 0 ? stateFromDoc(ed, readDoc(ed)) : ed.state;
+    const hold = (ed: Editor, call: HeldCall) => {
+      const held = heldCallsRef.current;
       held.base ??= currentDoc(ed);
       held.calls.push(call);
       scheduleDrain(held);
     };
-    const mustHold = (ed: Editor) => ed.isDestroyed || pendingHandleRef.current.calls.length > 0;
+    const mustHold = (ed: Editor) => ed.isDestroyed || heldCallsRef.current.calls.length > 0;
 
     return {
       setValue: (value: string) => {
@@ -230,10 +230,10 @@ export function useTokenizedSearchInputRef(
     };
   }, [editor]);
 
-  return pendingHandleRef;
+  return heldCallsRef;
 }
 
-function runPendingCall(editor: Editor, call: PendingCall): void {
+function runHeldCall(editor: Editor, call: HeldCall): void {
   switch (call.type) {
     case 'setValue':
       setContentAndValidate(editor, call.doc);
@@ -262,7 +262,7 @@ function runPendingCall(editor: Editor, call: PendingCall): void {
       return;
     default: {
       const unhandled: never = call;
-      throw new Error(`Unhandled pending handle call: ${JSON.stringify(unhandled)}`);
+      throw new Error(`Unhandled held handle call: ${JSON.stringify(unhandled)}`);
     }
   }
 }
@@ -274,13 +274,13 @@ function runPendingCall(editor: Editor, call: PendingCall): void {
  * display, focus and submit, so they have to see the configuration synced from the
  * current props, the focus listeners and the suggestion scheduling already in place.
  */
-export function useApplyPendingHandleWrites(
+export function useRunHeldHandleCalls(
   editor: Editor | null,
-  pending: MutableRefObject<HeldHandleCalls>
+  held: MutableRefObject<HeldHandleCalls>
 ): void {
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
-    pending.current.live = editor;
-    scheduleDrain(pending.current);
-  }, [editor, pending]);
+    held.current.live = editor;
+    scheduleDrain(held.current);
+  }, [editor, held]);
 }

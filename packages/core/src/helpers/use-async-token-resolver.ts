@@ -3,7 +3,7 @@ import type { ReactNode, RefObject } from 'react';
 import { useCallback, useRef } from 'react';
 import type { TokenDisplay, TokenizedSearchInputRef } from '../editor/tokenized-search-input';
 import { getApplicableDisplay } from '../plugins/shared/meta';
-import { getFocusedToken } from '../plugins/token-focus';
+import { getFocusedTokenId } from '../plugins/token-focus';
 import { getTokenMeta } from '../plugins/token-meta-plugin';
 import { findTokenById } from '../utils/find-token';
 import { isFilterToken } from '../utils/node-predicates';
@@ -94,7 +94,7 @@ function toTokenDisplay(data: ResolvedTokenData): TokenDisplay {
 
 /** A token is confirmed while the user is not editing it. */
 function isConfirmed(editor: Editor, id: string): boolean {
-  return getFocusedToken(editor.state)?.id !== id;
+  return getFocusedTokenId(editor.state) !== id;
 }
 
 function readToken(editor: Editor, id: string): TokenView | null {

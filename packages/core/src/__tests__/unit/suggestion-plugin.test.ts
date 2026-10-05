@@ -9,6 +9,7 @@ import {
   createSuggestionPlugin,
   dismissSuggestion,
   getSuggestionState,
+  isPickerType,
   navigateSuggestion,
   openCustomSuggestion,
   openDateSuggestion,
@@ -16,9 +17,9 @@ import {
   openFieldSuggestion,
   openFieldWithCustomSuggestion,
   openValueSuggestion,
+  type SuggestionType,
   setCustomLoadingMore,
   setSuggestion,
-  setSuggestionLoading,
   updateSuggestionActiveIndex,
   updateSuggestionDateValue,
   updateSuggestionTimeControls,
@@ -50,7 +51,6 @@ describe('SuggestionPlugin', () => {
         customItems: [],
         custom: { hasMore: false, offset: 0, isLoadingMore: false },
         activeIndex: -1,
-        isLoading: false,
         anchor: null,
         dateValue: null,
         isUTC: false,
@@ -372,40 +372,6 @@ describe('SuggestionPlugin', () => {
     });
   });
 
-  describe('setSuggestionLoading', () => {
-    it('sets loading state', () => {
-      const state = createEditorState();
-
-      // Open suggestions
-      const tr1 = openValueSuggestion(state.tr, 'status', []);
-      const state1 = state.apply(tr1);
-
-      // Set loading
-      const tr2 = setSuggestionLoading(state1.tr, true);
-      const state2 = state1.apply(tr2);
-      const suggestionState = getSuggestionState(state2);
-
-      expect(suggestionState?.isLoading).toBe(true);
-    });
-
-    it('clears loading state', () => {
-      const state = createEditorState();
-
-      // Open with loading
-      const tr1 = openValueSuggestion(state.tr, 'status', []);
-      let newState = state.apply(tr1);
-      const tr2 = setSuggestionLoading(newState.tr, true);
-      newState = newState.apply(tr2);
-
-      // Clear loading
-      const tr3 = setSuggestionLoading(newState.tr, false);
-      newState = newState.apply(tr3);
-      const suggestionState = getSuggestionState(newState);
-
-      expect(suggestionState?.isLoading).toBe(false);
-    });
-  });
-
   describe('state preservation', () => {
     it('preserves state for transactions without meta', () => {
       const state = createEditorState();
@@ -432,7 +398,7 @@ describe('SuggestionPlugin', () => {
       // Call setSuggestion twice on the same transaction with different properties
       const tr = state.tr;
       setSuggestion(tr, { query: 'test', items: testFields });
-      setSuggestion(tr, { isLoading: true });
+      setSuggestion(tr, { isUTC: true });
 
       const newState = state.apply(tr);
       const suggestionState = getSuggestionState(newState);
@@ -440,7 +406,7 @@ describe('SuggestionPlugin', () => {
       // Both properties should be merged
       expect(suggestionState?.query).toBe('test');
       expect(suggestionState?.items).toEqual(testFields);
-      expect(suggestionState?.isLoading).toBe(true);
+      expect(suggestionState?.isUTC).toBe(true);
     });
 
     it('closeSuggestion after merged write takes precedence', () => {
@@ -477,17 +443,17 @@ describe('SuggestionPlugin', () => {
       expect(suggestionState?.items).toEqual([]);
     });
 
-    it('merges a query update and setSuggestionLoading on same transaction', () => {
+    it('merges a query update and an active index update on the same transaction', () => {
       const state = createEditorState();
 
       // Open suggestions first
       const tr1 = openFieldSuggestion(state.tr, testFields, '');
       const state1 = state.apply(tr1);
 
-      // Update query and loading on the same transaction
+      // Update query and active index on the same transaction
       const tr2 = state1.tr;
       setSuggestion(tr2, { query: 'sta', items: [testFields[0]], activeIndex: -1 });
-      setSuggestionLoading(tr2, true);
+      updateSuggestionActiveIndex(tr2, 0);
 
       const newState = state1.apply(tr2);
       const suggestionState = getSuggestionState(newState);
@@ -495,7 +461,7 @@ describe('SuggestionPlugin', () => {
       // Both should be applied
       expect(suggestionState?.query).toBe('sta');
       expect(suggestionState?.items).toEqual([testFields[0]]);
-      expect(suggestionState?.isLoading).toBe(true);
+      expect(suggestionState?.activeIndex).toBe(0);
     });
 
     it('ignores clearDismissed after closeSuggestion in same transaction', () => {
@@ -688,5 +654,19 @@ describe('SuggestionPlugin', () => {
       expect(closed?.isUTC).toBe(false);
       expect(closed?.includeTime).toBe(false);
     });
+  });
+});
+
+describe('isPickerType', () => {
+  it.each<[SuggestionType, boolean]>([
+    ['date', true],
+    ['datetime', true],
+    ['field', false],
+    ['value', false],
+    ['custom', false],
+    ['fieldWithCustom', false],
+    [null, false],
+  ])('%s -> %s', (type, expected) => {
+    expect(isPickerType(type)).toBe(expected);
   });
 });

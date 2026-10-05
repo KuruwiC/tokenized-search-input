@@ -75,7 +75,6 @@ function typedValueSuggestionMeta(
     type: 'value',
     ...derived,
     activeIndex: -1,
-    isLoading: false,
     anchor: { tokenId },
     dismissed: false,
   };
@@ -185,7 +184,6 @@ export function createSuggestionPlugin(
           customItems: newCustomItems,
           custom: closed ? initialSuggestionState.custom : (meta.custom ?? value.custom),
           activeIndex: newActiveIndex,
-          isLoading: meta.isLoading ?? value.isLoading,
           anchor: meta.anchor !== undefined ? meta.anchor : value.anchor,
           dateValue: meta.dateValue !== undefined ? meta.dateValue : value.dateValue,
           isUTC: meta.isUTC ?? value.isUTC,

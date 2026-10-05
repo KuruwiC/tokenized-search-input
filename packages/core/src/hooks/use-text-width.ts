@@ -27,7 +27,7 @@ function sizesToContent(): boolean {
 }
 
 /** Reads the font from `element` so the width follows whatever style the consumer gives it. */
-function measureTextWidth(element: HTMLElement, text: string): number | null {
+function measureInputWidth(element: HTMLElement, text: string): number | null {
   const context = getMeasureContext();
   if (!context) return null;
 
@@ -55,7 +55,7 @@ export function useTextWidth(
     if (!active || sizesToContent()) return;
     const element = ref.current;
     if (!element) return;
-    const measured = measureTextWidth(element, text);
+    const measured = measureInputWidth(element, text);
     setWidth(measured === null ? undefined : Math.max(MIN_WIDTH, measured));
   }, [ref, text, active]);
 

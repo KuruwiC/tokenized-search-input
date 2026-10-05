@@ -5,6 +5,7 @@ import { setTokenMeta, type TokenDisplayContent } from '../../plugins/shared/met
 import {
   enterTokenIn,
   getFocusedToken,
+  getFocusedTokenId,
   type LeaveDirection,
   leaveTokenIn,
   programEntry,
@@ -198,7 +199,7 @@ export const FilterTokenNode = Node.create({
       leaveToken:
         (id: string, direction: LeaveDirection, value?: string) =>
         ({ tr, state, dispatch, editor }) => {
-          if (getFocusedToken(state)?.id !== id) return false;
+          if (getFocusedTokenId(state) !== id) return false;
           if (dispatch) leaveTokenIn(tr, getFocusContext(editor, state), id, { direction, value });
           return true;
         },

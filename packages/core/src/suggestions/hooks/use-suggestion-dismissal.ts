@@ -6,7 +6,7 @@ import {
   type SuggestionState,
   suggestionKey,
 } from '../../plugins/suggestion';
-import { interactionBoundary } from '../suggestion-type';
+import { interactionBoundary } from '../interaction-boundary';
 import { type DismissReason, useDismissManager } from './use-dismiss-manager';
 
 export function useSuggestionDismissal(

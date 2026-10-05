@@ -10,7 +10,7 @@ import {
 } from '../../extensions/editor-context';
 import { markContextUpdated, requestValidationCheck } from '../../plugins/shared/meta';
 import { applyFreeTextMode } from '../free-text-mode';
-import { scheduleDocumentChange } from './schedule-document-change';
+import { scheduleDocumentChange } from '../schedule-document-change';
 
 /**
  * The only place that writes configuration into the editor context storage after
