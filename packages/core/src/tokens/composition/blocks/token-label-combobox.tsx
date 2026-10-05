@@ -88,7 +88,6 @@ export function TokenLabelCombobox({
   const filteredFields = useMemo(() => {
     return getSortedFields(field, selectableFields, {
       inputQuery: hasUserEdited ? inputValue : '',
-      excludeCurrent: false,
       matcher: suggestionMatcher,
     });
   }, [field, selectableFields, inputValue, hasUserEdited, suggestionMatcher]);
@@ -116,10 +115,7 @@ export function TokenLabelCombobox({
     pendingRef.current = true;
     setInputValue(label);
     setHasUserEdited(false);
-    const sortedFields = getSortedFields(field, selectableFields, {
-      inputQuery: '',
-      excludeCurrent: false,
-    });
+    const sortedFields = getSortedFields(field, selectableFields);
     dropdown.open(field ? sortedFields.findIndex((f) => f.key === field.key) : -1);
   };
 

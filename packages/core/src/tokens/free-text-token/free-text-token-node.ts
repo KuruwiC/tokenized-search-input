@@ -12,8 +12,7 @@ import { FreeTextTokenView } from './free-text-token-view';
 export interface InsertFreeTextTokenAttrs {
   value?: string;
   quoted?: boolean;
-  focus?: boolean;
-  /** Where the caret goes in the value of a quoted token that receives focus. */
+  /** Where the caret goes in the value of a quoted token, which receives focus. */
   position?: TokenFocusEntry['position'];
 }
 
@@ -120,8 +119,8 @@ export const FreeTextTokenNode = Node.create({
             dispatch(tr);
           }
 
-          // Focus the token after insertion if it's quoted
-          if (attrs.focus !== false && attrs.quoted) {
+          // A quoted token is entered to type its value
+          if (attrs.quoted) {
             // Use requestAnimationFrame to ensure the node is rendered
             requestAnimationFrame(() => {
               if (editor.isDestroyed || !editor.isEditable) return;

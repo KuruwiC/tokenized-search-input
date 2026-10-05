@@ -4,8 +4,6 @@ import { defaultMatcher } from '../../../utils/matcher';
 export interface SortOptions {
   /** Input query for filtering */
   inputQuery?: string;
-  /** Exclude current field from results */
-  excludeCurrent?: boolean;
   /**
    * Matcher function for filtering suggestions.
    * @default matchers.fuzzy
@@ -54,15 +52,11 @@ export function getSortedFields(
   allFields: readonly FieldDefinition[],
   options: SortOptions = {}
 ): FieldDefinition[] {
-  const { inputQuery = '', excludeCurrent = false, matcher = defaultMatcher } = options;
+  const { inputQuery = '', matcher = defaultMatcher } = options;
 
-  let filtered = allFields.filter((f) => getMatchScore(f, inputQuery, matcher) > 0);
+  const filtered = allFields.filter((f) => getMatchScore(f, inputQuery, matcher) > 0);
 
-  if (excludeCurrent && currentField) {
-    filtered = filtered.filter((f) => f.key !== currentField.key);
-  }
-
-  return [...filtered].sort((a, b) => {
+  return filtered.sort((a, b) => {
     const compatScoreA = getFieldScore(a, currentField);
     const compatScoreB = getFieldScore(b, currentField);
 
