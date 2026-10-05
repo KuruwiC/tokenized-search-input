@@ -2,7 +2,7 @@ import type { Editor } from '@tiptap/core';
 import { type RefObject, useCallback, useEffect, useRef } from 'react';
 import { getEditorContext } from '../extensions/editor-context';
 import { useEditorContextUpdate } from '../hooks/use-editor-context-update';
-import { useEditorSelector } from '../hooks/use-editor-store';
+import { useEditorSelector } from '../hooks/use-editor-selector';
 import { usePluginState } from '../hooks/use-plugin-state';
 import { useSuggestionPosition } from '../hooks/use-suggestion-position';
 import { useVisualViewport } from '../hooks/use-visual-viewport';

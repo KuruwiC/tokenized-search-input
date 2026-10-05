@@ -1,34 +1,8 @@
 import type { Editor } from '@tiptap/core';
 import type { PluginKey } from '@tiptap/pm/state';
-import { useEffect, useState } from 'react';
+import { useEditorSelector } from './use-editor-selector';
 
-/** The state of the plugin under `pluginKey`, re-read after every transaction; `undefined` without an editor or plugin. */
-export function usePluginState<T>(editor: Editor | null, pluginKey: PluginKey<T>): T | undefined {
-  const [state, setState] = useState<T | undefined>(() => {
-    if (!editor) return undefined;
-    return pluginKey.getState(editor.state);
-  });
-
-  useEffect(() => {
-    if (!editor) {
-      setState(undefined);
-      return;
-    }
-
-    const initialState = pluginKey.getState(editor.state);
-    setState(initialState);
-
-    const handleTransaction = () => {
-      const newState = pluginKey.getState(editor.state);
-      setState(newState);
-    };
-
-    editor.on('transaction', handleTransaction);
-
-    return () => {
-      editor.off('transaction', handleTransaction);
-    };
-  }, [editor, pluginKey]);
-
-  return state;
+/** The state of the plugin under `pluginKey`, re-rendering only when that state changes. */
+export function usePluginState<T>(editor: Editor, pluginKey: PluginKey<T>): T | undefined {
+  return useEditorSelector(editor, (state) => pluginKey.getState(state));
 }

@@ -1,7 +1,7 @@
 import type { NodeViewProps } from '@tiptap/react';
 import { getEditorContext } from '../../extensions/editor-context';
 import { useEditorContextUpdate } from '../../hooks/use-editor-context-update';
-import { useTokenMeta } from '../../hooks/use-editor-store';
+import { useTokenMeta } from '../../hooks/use-editor-selector';
 import { getDateDisplayValue, getDateTimeDisplayValue } from '../../pickers/date-format';
 import { getApplicableDisplay } from '../../plugins/shared/meta';
 import {

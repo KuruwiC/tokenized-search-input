@@ -3,7 +3,7 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { NodeViewWrapper } from '@tiptap/react';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getEditorContext } from '../../extensions/editor-context';
-import { useTokenFocus } from '../../hooks/use-editor-store';
+import { useTokenFocus } from '../../hooks/use-editor-selector';
 import type { TokenValidation } from '../../plugins/shared/meta';
 import {
   dismissSuggestion,
