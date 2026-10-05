@@ -1,6 +1,6 @@
 import type { JSONContent } from '@tiptap/core';
 import { describe, expect, it, vi } from 'vitest';
-import { type NodeVisitor, visitDocument } from '../../utils/node-visitor';
+import { type NodeVisitor, visitDocument } from '../../serializer/node-visitor';
 
 describe('NodeVisitor', () => {
   describe('visitDocument', () => {

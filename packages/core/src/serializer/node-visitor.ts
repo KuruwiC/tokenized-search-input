@@ -1,5 +1,5 @@
 import type { JSONContent } from '@tiptap/core';
-import { NODE_TYPE_NAMES } from './node-predicates';
+import { NODE_TYPE_NAMES } from '../utils/node-predicates';
 
 /**
  * Visitor interface for processing TipTap document nodes.

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
+import { useScrollActiveIntoView } from '../hooks/use-scroll-active-into-view';
 import { cn } from '../utils/cn';
-import { useScrollActiveIntoView } from '../utils/scroll-into-view';
 
 export interface SuggestionGroup {
   /** Items next to each other with the same key form one group. */

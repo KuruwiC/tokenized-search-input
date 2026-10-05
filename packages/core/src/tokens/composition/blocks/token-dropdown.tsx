@@ -8,8 +8,8 @@ import {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { useScrollActiveIntoView } from '../../../hooks/use-scroll-active-into-view';
 import { cn } from '../../../utils/cn';
-import { useScrollActiveIntoView } from '../../../utils/scroll-into-view';
 import type { CursorPosition } from '../contexts/token-focus-context';
 
 const NO_ACTIVE_OPTION = -1;
