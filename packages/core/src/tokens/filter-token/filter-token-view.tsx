@@ -1,5 +1,5 @@
 import type { NodeViewProps } from '@tiptap/react';
-import { getEditorContext, resolveField } from '../../extensions/editor-context';
+import { getEditorContext } from '../../extensions/editor-context';
 import { useEditorContextUpdate } from '../../hooks/use-editor-context-update';
 import { useTokenMeta } from '../../hooks/use-editor-store';
 import { getDateDisplayValue, getDateTimeDisplayValue } from '../../pickers/date-format';
@@ -14,6 +14,7 @@ import { getDecorationValidation } from '../../plugins/token-meta-plugin';
 import { isInsideQuotes } from '../../serializer/quote-state';
 import { type EnumValue, type FieldDefinition, getOperatorSelectLabel } from '../../types';
 import { getEnumValue } from '../../utils/enum-value';
+import { resolveField } from '../../utils/resolve-field';
 import { Token, TokenIconSlot, useTokenConfig, useTokenFocusContext } from '../composition';
 import { resolveDisplayValue } from './resolve-display-value';
 import { applyTokenAction, type FilterTokenAction } from './token-actions';

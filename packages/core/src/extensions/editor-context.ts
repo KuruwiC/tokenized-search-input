@@ -31,8 +31,6 @@ import {
   type ValidationConfig,
 } from '../types';
 
-export { resolveField } from '../utils/resolve-field';
-
 /**
  * @example
  * // Custom format with fallback to standard

@@ -9,11 +9,11 @@ import type { Editor } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { tryAutoTokenize } from '../../editor/auto-tokenize';
 import {
   TokenizedSearchInput,
   type TokenizedSearchInputRef,
 } from '../../editor/tokenized-search-input';
-import { tryAutoTokenize } from '../../editor/use-auto-tokenize';
 import { extendedFields } from '../fixtures';
 import { getInternalEditor } from '../helpers/get-editor';
 

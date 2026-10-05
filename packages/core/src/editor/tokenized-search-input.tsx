@@ -5,9 +5,11 @@ import { SuggestionOverlay } from '../suggestions/suggestion-overlay';
 import type { QuerySnapshot } from '../types';
 import { cn } from '../utils/cn';
 import { ClearButton } from './clear-button';
+import { useCustomSuggestions } from './hooks/use-custom-suggestions';
 import { useEditorConfig } from './hooks/use-editor-config';
 import { useEditorConfigSync } from './hooks/use-editor-config-sync';
 import { useEditorSetup } from './hooks/use-editor-setup';
+import { useFieldSuggestions } from './hooks/use-field-suggestions';
 import { useFocusWiring } from './hooks/use-focus-wiring';
 import { useSuggestionHandlers } from './hooks/use-suggestion-handlers';
 import { useSuggestionScheduling } from './hooks/use-suggestion-scheduling';
@@ -20,8 +22,6 @@ import type {
   TokenizedSearchInputProps,
   TokenizedSearchInputRef,
 } from './tokenized-search-input.types';
-import { useCustomSuggestions } from './use-custom-suggestions';
-import { useFieldSuggestions } from './use-field-suggestions';
 
 export type {
   TokenDisplay,

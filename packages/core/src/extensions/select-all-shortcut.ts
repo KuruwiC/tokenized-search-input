@@ -5,8 +5,8 @@ import { Extension } from '@tiptap/core';
  * default may skip the non-editable token elements. ArrowLeft/Right, Backspace and
  * Delete are handled by the selection guard plugin.
  */
-export const TokenNavigation = Extension.create({
-  name: 'tokenNavigation',
+export const SelectAllShortcut = Extension.create({
+  name: 'selectAllShortcut',
 
   addKeyboardShortcuts() {
     return {

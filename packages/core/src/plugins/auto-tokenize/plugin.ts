@@ -11,7 +11,6 @@ import {
 import type { FocusTransitionContext } from '../token-focus';
 import { type TokenizeContext, tokenizeRange } from './tokenize-range';
 
-/** Marks a transaction whose text was already read as a query. */
 const autoTokenizeKey = new PluginKey('autoTokenize');
 
 /**

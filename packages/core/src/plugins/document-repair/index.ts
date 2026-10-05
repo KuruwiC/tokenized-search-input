@@ -1,8 +1,9 @@
 import { Extension } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
-import { type EditorState, Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
+import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
 import { getFocusContext } from '../../extensions/editor-context';
 import {
+  getDispatchedTransaction,
   isCompositionTransaction,
   isDocumentRepaired,
   isHistoryTransaction,
@@ -10,16 +11,12 @@ import {
   markDocumentRepaired,
   withoutHistory,
 } from '../shared/meta';
-import { getFocusedToken } from '../token-focus';
+import { getFocusedTokenId } from '../token-focus';
 import { removeEmptyTokens } from './empty-token-cleanup';
 import { focusRestoredEmptyToken } from './history-empty-token-focus';
 import { keepWordsApart } from './word-boundary';
 
 const documentRepairKey = new PluginKey('documentRepair');
-
-function focusedTokenId(state: EditorState): string | null {
-  return getFocusedToken(state)?.id ?? null;
-}
 
 /**
  * The document at the start of the dispatch `transactions` belong to. A transaction that
@@ -28,8 +25,7 @@ function focusedTokenId(state: EditorState): string | null {
 function dispatchStartDoc(transactions: readonly Transaction[]): ProseMirrorNode | undefined {
   const [first] = transactions;
   if (!first) return undefined;
-  const root = (first.getMeta('appendedTransaction') as Transaction | undefined) ?? first;
-  return root.before;
+  return getDispatchedTransaction(first).before;
 }
 
 /**
@@ -65,8 +61,8 @@ export const DocumentRepairExtension = Extension.create({
           );
           if (skip) return null;
 
-          const left = focusedTokenId(oldState);
-          const focused = focusedTokenId(newState);
+          const left = getFocusedTokenId(oldState);
+          const focused = getFocusedTokenId(newState);
           const docChanged = transactions.some((tr) => tr.docChanged);
           const focusLeft = left !== null && left !== focused;
           if (!docChanged && !focusLeft) return null;

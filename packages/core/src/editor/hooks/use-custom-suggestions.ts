@@ -1,8 +1,8 @@
 import type { Editor } from '@tiptap/core';
 import type { Transaction } from '@tiptap/pm/state';
 import { type MutableRefObject, useCallback, useEffect, useRef } from 'react';
-import { getEditorContext } from '../extensions/editor-context';
-import type { TokenDisplayContent } from '../plugins/shared/meta';
+import { getEditorContext } from '../../extensions/editor-context';
+import type { TokenDisplayContent } from '../../plugins/shared/meta';
 import {
   appendCustomSuggestions,
   closeSuggestion,
@@ -10,10 +10,13 @@ import {
   openCustomSuggestion,
   openFieldWithCustomSuggestion,
   setCustomLoadingMore,
-} from '../plugins/suggestion';
-import { getFocusedToken } from '../plugins/token-focus';
-import { isInsideQuotes } from '../serializer/quote-state';
-import { canShowCustomSuggestion, isSuggestionDismissed } from '../suggestions/suggestion-guards';
+} from '../../plugins/suggestion';
+import { getFocusedToken } from '../../plugins/token-focus';
+import { isInsideQuotes } from '../../serializer/quote-state';
+import {
+  canShowCustomSuggestion,
+  isSuggestionDismissed,
+} from '../../suggestions/suggestion-guards';
 import type {
   CustomSuggestion,
   CustomSuggestionConfig,
@@ -24,9 +27,9 @@ import type {
   SuggestedFilterToken,
   SuggestFnReturn,
   SuggestionErrorContext,
-} from '../types';
-import { isFilterToken } from '../utils/node-predicates';
-import { getPlainTextSegment } from './use-auto-tokenize';
+} from '../../types';
+import { isFilterToken } from '../../utils/node-predicates';
+import { getPlainTextSegment } from '../auto-tokenize';
 
 function toDisplayContent(token: SuggestedFilterToken): TokenDisplayContent | undefined {
   const display: TokenDisplayContent = {};

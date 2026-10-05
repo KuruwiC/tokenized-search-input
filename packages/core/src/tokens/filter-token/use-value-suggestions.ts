@@ -6,6 +6,7 @@ import { markTokenValueTyped } from '../../plugins/shared/meta';
 import {
   getSuggestionState,
   isAnchoredToToken,
+  isPickerType,
   openDateSuggestion,
   openDateTimeSuggestion,
   openValueSuggestion,
@@ -76,7 +77,7 @@ export function useValueSuggestions({
     if (
       currentState &&
       isAnchoredToToken(currentState.anchor, tokenId) &&
-      (currentState.type === 'date' || currentState.type === 'datetime')
+      isPickerType(currentState.type)
     ) {
       return;
     }

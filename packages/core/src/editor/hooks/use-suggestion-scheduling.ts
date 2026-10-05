@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/core';
 import { type RefObject, useEffect, useRef } from 'react';
-import { getFocusedToken } from '../../plugins/token-focus';
+import { getFocusedTokenId } from '../../plugins/token-focus';
 
 export interface UseSuggestionSchedulingOptions {
   editor: Editor | null;
@@ -69,10 +69,10 @@ export function useSuggestionScheduling({
     // Leaving a token returns to the text, where other suggestions apply. Focus can end
     // without a transition naming it, when the focused token leaves the document, so the
     // focus before and after each transaction is compared.
-    let focusedId = getFocusedToken(editor.state)?.id ?? null;
+    let focusedId = getFocusedTokenId(editor.state);
     const handleTransaction = () => {
       const left = focusedId !== null;
-      focusedId = getFocusedToken(editor.state)?.id ?? null;
+      focusedId = getFocusedTokenId(editor.state);
       if (left && focusedId === null) {
         requestAnimationFrame(() => {
           updateSuggestionsRef.current();

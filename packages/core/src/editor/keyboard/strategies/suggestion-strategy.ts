@@ -1,9 +1,10 @@
 import {
   closeSuggestion,
+  isSuggestionOpen,
   navigateSuggestion,
   suggestionEntries,
 } from '../../../plugins/suggestion';
-import { isSuggestionOpen, isTokenFocused } from '../guards';
+import { isTokenFocused } from '../guards';
 import type { KeyboardCallbacks, KeyboardContext } from '../types';
 
 export function handleArrowDown(ctx: KeyboardContext): boolean {

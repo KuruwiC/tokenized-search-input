@@ -64,7 +64,7 @@ export interface TokenMetaWrite {
 
 const TOKEN_META = 'tokenMeta';
 const CONTENT_RESET = 'contentReset';
-const FORCE_VALIDATION_CHECK = 'forceValidationCheck';
+const VALIDATION_CHECK_REQUESTED = 'validationCheckRequested';
 const CONTENT_ENTERED = 'contentEntered';
 const PROGRAMMATIC_EDIT = 'programmaticEdit';
 const TOKEN_VALUE_TYPED = 'tokenValueTyped';
@@ -78,6 +78,7 @@ const TEXT_SANITIZED = 'freeTextSanitized';
 // Keys owned by ProseMirror and its history plugin. They are named here and nowhere else.
 const ADD_TO_HISTORY = 'addToHistory';
 const COMPOSITION = 'composition';
+const APPENDED_TRANSACTION = 'appendedTransaction';
 
 /**
  * Records a change to a token's meta on the transaction. Writes on one
@@ -109,11 +110,11 @@ export function isContentReset(tr: Transaction): boolean {
  * change. No token counts as edited, so a check only marks.
  */
 export function requestValidationCheck(tr: Transaction): Transaction {
-  return tr.setMeta(FORCE_VALIDATION_CHECK, true);
+  return tr.setMeta(VALIDATION_CHECK_REQUESTED, true);
 }
 
 export function isValidationCheckRequested(tr: Transaction): boolean {
-  return tr.getMeta(FORCE_VALIDATION_CHECK) === true;
+  return tr.getMeta(VALIDATION_CHECK_REQUESTED) === true;
 }
 
 /**
@@ -173,6 +174,11 @@ export function isRecordedInHistory(tr: Transaction): boolean {
 /** Whether the transaction is part of an IME composition. */
 export function isCompositionTransaction(tr: Transaction): boolean {
   return tr.getMeta(COMPOSITION) !== undefined;
+}
+
+/** The dispatched transaction that a plugin appended `tr` after, or `tr` itself when it was dispatched. */
+export function getDispatchedTransaction(tr: Transaction): Transaction {
+  return (tr.getMeta(APPENDED_TRANSACTION) as Transaction | undefined) ?? tr;
 }
 
 /**

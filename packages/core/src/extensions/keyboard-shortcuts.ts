@@ -1,7 +1,6 @@
-import { Extension } from '@tiptap/core';
-import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { type Editor, Extension } from '@tiptap/core';
+import { type EditorState, Plugin, PluginKey } from '@tiptap/pm/state';
 import {
-  buildContext,
   handleArrowDown,
   handleArrowUp,
   handleDelimiter,
@@ -12,11 +11,17 @@ import {
   handleQuote,
   handleSpace,
   handleTab,
+  type KeyboardContext,
 } from '../editor/keyboard';
 import { getSuggestionState } from '../plugins/suggestion';
 import { getEditorContext } from './editor-context';
 
 const delimiterKeyPluginKey = new PluginKey('delimiterKey');
+
+function keyboardContext(editor: Editor, state: EditorState): KeyboardContext {
+  const { freeTextMode, delimiter } = getEditorContext(editor);
+  return { editor, freeTextMode, suggestionState: getSuggestionState(state), delimiter };
+}
 
 // Requires EditorContextExtension to be configured with fields and callbacks.
 export const KeyboardShortcutsExtension = Extension.create({
@@ -28,18 +33,7 @@ export const KeyboardShortcutsExtension = Extension.create({
   addKeyboardShortcuts() {
     const getCallbacks = () => getEditorContext(this.editor).callbacks;
 
-    const getContext = () => {
-      const suggestionState = getSuggestionState(this.editor.state);
-      const ctx = getEditorContext(this.editor);
-      return buildContext(
-        this.editor,
-        ctx.fields,
-        ctx.freeTextMode,
-        ctx.unknownFields,
-        suggestionState,
-        ctx.delimiter
-      );
-    };
+    const getContext = () => keyboardContext(this.editor, this.editor.state);
 
     const ifEditable = (handler: () => boolean): (() => boolean) => {
       return () => {
@@ -76,24 +70,8 @@ export const KeyboardShortcutsExtension = Extension.create({
           handleKeyDown(view, event) {
             if (!editor.isEditable) return false;
 
-            const ctx = getEditorContext(editor);
-            const { delimiter } = ctx;
-
-            if (event.key !== delimiter || delimiter.length !== 1) {
-              return false;
-            }
-
-            const suggestionState = getSuggestionState(view.state);
-            const keyboardCtx = buildContext(
-              editor,
-              ctx.fields,
-              ctx.freeTextMode,
-              ctx.unknownFields,
-              suggestionState,
-              delimiter
-            );
-
-            return handleDelimiter(keyboardCtx);
+            if (event.key !== getEditorContext(editor).delimiter) return false;
+            return handleDelimiter(keyboardContext(editor, view.state));
           },
         },
       }),

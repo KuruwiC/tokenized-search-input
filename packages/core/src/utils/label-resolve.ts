@@ -1,7 +1,5 @@
 import type { FieldDefinition, LabelResolver } from '../types';
 
-export type { LabelResolver } from '../types';
-
 /**
  * Built-in resolvers for resolveLabel.
  */

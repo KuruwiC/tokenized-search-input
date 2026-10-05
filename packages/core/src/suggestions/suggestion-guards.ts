@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/core';
 import type { EditorState } from '@tiptap/pm/state';
 import { getEditorContext } from '../extensions/editor-context';
-import { getSuggestionState } from '../plugins/suggestion';
+import { getSuggestionState, isTokenSuggestionType } from '../plugins/suggestion';
 import { getFocusedToken } from '../plugins/token-focus';
 
 /**
@@ -16,10 +16,7 @@ export function canShowFieldSuggestion(editor: Editor): boolean {
 
   if (getFocusedToken(state) !== null) return false;
 
-  const currentType = suggestionState?.type;
-  if (currentType === 'value' || currentType === 'date' || currentType === 'datetime') {
-    return false;
-  }
+  if (isTokenSuggestionType(suggestionState?.type ?? null)) return false;
 
   return true;
 }
@@ -36,10 +33,8 @@ export function canShowValueSuggestion(editor: Editor): boolean {
 
   if (getFocusedToken(state) === null) return false;
 
-  const currentType = suggestionState?.type;
-  if (currentType === 'field' || currentType === 'custom' || currentType === 'fieldWithCustom') {
-    return false;
-  }
+  const currentType = suggestionState?.type ?? null;
+  if (currentType !== null && !isTokenSuggestionType(currentType)) return false;
 
   return true;
 }
@@ -53,10 +48,7 @@ export function canShowCustomSuggestion(state: EditorState): boolean {
 
   if (getFocusedToken(state) !== null) return false;
 
-  const currentType = suggestionState?.type;
-  if (currentType === 'value' || currentType === 'date' || currentType === 'datetime') {
-    return false;
-  }
+  if (isTokenSuggestionType(suggestionState?.type ?? null)) return false;
 
   return true;
 }

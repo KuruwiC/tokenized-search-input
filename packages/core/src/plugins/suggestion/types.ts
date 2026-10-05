@@ -10,6 +10,19 @@ export type SuggestionType =
   | 'fieldWithCustom'
   | null;
 
+/** Whether the suggestion is a date or date-time picker, which only an explicit choice closes. */
+export function isPickerType(type: SuggestionType): type is 'date' | 'datetime' {
+  return type === 'date' || type === 'datetime';
+}
+
+/**
+ * Whether the suggestion belongs to a token: value, date and datetime suggestions edit a
+ * token's value, while field and custom suggestions belong to the text typed in the paragraph.
+ */
+export function isTokenSuggestionType(type: SuggestionType): type is 'value' | 'date' | 'datetime' {
+  return type === 'value' || isPickerType(type);
+}
+
 export type CustomDisplayMode = 'prepend' | 'append';
 
 /** How far the pages of custom suggestions have been read. */

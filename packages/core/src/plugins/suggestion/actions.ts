@@ -8,6 +8,7 @@ import {
   type CustomDisplayMode,
   initialSuggestionState,
   isCloseMeta,
+  isPickerType,
   type SuggestionMeta,
   type SuggestionState,
 } from './types';
@@ -250,7 +251,7 @@ export function isSuggestionOpen(
     return false;
   }
 
-  if (state.type === 'date' || state.type === 'datetime') {
+  if (isPickerType(state.type)) {
     return true;
   }
 

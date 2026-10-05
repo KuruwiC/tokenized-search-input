@@ -1,13 +1,16 @@
 import type { Editor } from '@tiptap/core';
 import { useCallback } from 'react';
-import { getEditorContext } from '../extensions/editor-context';
-import { withoutHistory } from '../plugins/shared/meta';
-import { closeSuggestion, getSuggestionState, openFieldSuggestion } from '../plugins/suggestion';
-import { isInsideQuotes } from '../serializer/quote-state';
-import { canShowFieldSuggestion, getCurrentSuggestionType } from '../suggestions/suggestion-guards';
-import type { FieldDefinition, Matcher } from '../types';
-import { filterItems } from '../utils/filter-items';
-import { focusEmptyFilterToken, getQueryFromText, getTextBeforeCursor } from './use-auto-tokenize';
+import { getEditorContext } from '../../extensions/editor-context';
+import { withoutHistory } from '../../plugins/shared/meta';
+import { closeSuggestion, getSuggestionState, openFieldSuggestion } from '../../plugins/suggestion';
+import { isInsideQuotes } from '../../serializer/quote-state';
+import {
+  canShowFieldSuggestion,
+  getCurrentSuggestionType,
+} from '../../suggestions/suggestion-guards';
+import type { FieldDefinition, Matcher } from '../../types';
+import { filterItems } from '../../utils/filter-items';
+import { focusEmptyFilterToken, getQueryFromText, getTextBeforeCursor } from '../auto-tokenize';
 
 export interface UseFieldSuggestionsOptions {
   /**

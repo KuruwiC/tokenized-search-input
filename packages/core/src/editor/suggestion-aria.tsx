@@ -3,12 +3,13 @@ import { useRef } from 'react';
 import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
 import { usePluginState } from '../hooks/use-plugin-state';
 import {
+  isPickerType,
   isSuggestionOpen,
+  isTokenSuggestionType,
   resolveAnchorPos,
   type SuggestionState,
   suggestionKey,
 } from '../plugins/suggestion';
-import { isPickerType } from '../suggestions/suggestion-type';
 import { findValueInput } from '../utils/dom-focus';
 
 interface SuggestionAriaProps {
@@ -95,7 +96,7 @@ export const SuggestionAria: React.FC<SuggestionAriaProps> = ({
         popup === 'listbox' && activeIndex >= 0 ? `${optionIdPrefix}-${activeIndex}` : undefined,
     };
 
-    const belongsToToken = isOpen && (type === 'value' || isPickerType(type));
+    const belongsToToken = isOpen && isTokenSuggestionType(type);
     const input = belongsToToken ? findTokenValueInput(editor, suggestionState) : null;
     if (ownedInput.current !== input) release();
 

@@ -24,5 +24,5 @@ export { isAnchoredToToken, resolveAnchorPos } from './anchor';
 export { DEFAULT_CATEGORY, type SuggestionEntry, suggestionEntries } from './entries';
 export { createSuggestionPlugin, getSuggestionState, suggestionKey } from './plugin';
 export type { SuggestionState, SuggestionType } from './types';
-export { initialSuggestionState } from './types';
+export { initialSuggestionState, isPickerType, isTokenSuggestionType } from './types';
 export { getEditableValueText } from './value-items';

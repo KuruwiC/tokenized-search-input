@@ -2,18 +2,23 @@ import type { Editor } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { NodeViewWrapper } from '@tiptap/react';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { getEditorContext, resolveField } from '../../extensions/editor-context';
+import { getEditorContext } from '../../extensions/editor-context';
 import { useTokenFocus } from '../../hooks/use-editor-store';
 import type { TokenValidation } from '../../plugins/shared/meta';
-import { dismissSuggestion, getSuggestionState, isSuggestionOpen } from '../../plugins/suggestion';
+import {
+  dismissSuggestion,
+  getSuggestionState,
+  isPickerType,
+  isSuggestionOpen,
+} from '../../plugins/suggestion';
 import {
   getFocusedToken,
   type LeaveDirection,
   type TokenFocusEntry,
 } from '../../plugins/token-focus';
 import { getValidationDescriptionId } from '../../plugins/token-meta-plugin';
-import { isPickerType } from '../../suggestions/suggestion-type';
 import { cn } from '../../utils/cn';
+import { resolveField } from '../../utils/resolve-field';
 import { isHistoryShortcut } from '../history-shortcut';
 import { enterToken } from '../token-focus';
 import { TokenDeleteButton } from './blocks/token-delete-button';

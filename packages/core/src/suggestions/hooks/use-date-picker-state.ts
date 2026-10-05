@@ -12,6 +12,7 @@ import {
   toInstant,
 } from '../../pickers/date-time-value';
 import {
+  isPickerType,
   resolveAnchorPos,
   type SuggestionState,
   suggestionKey,
@@ -43,15 +44,13 @@ export function useDatePickerState(
 
   const tokenInputValue = useEditorSelector(editor, (state) => {
     const current = suggestionKey.getState(state);
-    if (current?.type !== 'date' && current?.type !== 'datetime') return '';
+    if (!current || !isPickerType(current.type)) return '';
     const pos = resolveAnchorPos(state.doc, current.anchor);
     return pos === null ? '' : String(state.doc.nodeAt(pos)?.attrs.value ?? '');
   });
 
   const pickerType =
-    suggestionState?.type === 'date' || suggestionState?.type === 'datetime'
-      ? suggestionState.type
-      : null;
+    suggestionState && isPickerType(suggestionState.type) ? suggestionState.type : null;
   const pickerField = suggestionState?.fieldKey
     ? fields.find((field) => field.key === suggestionState.fieldKey)
     : undefined;

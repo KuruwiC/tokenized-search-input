@@ -511,7 +511,7 @@ describe('SuggestionPlugin', () => {
 
       // Close should be preserved (close is terminal, clearDismissed is suppressed)
       expect(suggestionState?.type).toBe(null);
-      expect(suggestionState?.dismissed).toBe(false); // closeSuggestion resets via createResetState
+      expect(suggestionState?.dismissed).toBe(false); // closeSuggestion resets to the initial state
     });
   });
 

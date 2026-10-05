@@ -7,7 +7,7 @@ import {
   suggestionKey,
 } from '../../plugins/suggestion';
 import { interactionBoundary } from '../suggestion-type';
-import { type DismissReason, useDismissManager } from '../use-dismiss-manager';
+import { type DismissReason, useDismissManager } from './use-dismiss-manager';
 
 /** Closes the open suggestion when the user presses or moves focus outside its boundary. */
 export function useSuggestionDismissal(

@@ -10,7 +10,7 @@ import {
   isValidationCheckRequested,
   type TokenValidation,
 } from '../shared/meta';
-import { getFocusedToken, getTokenFocusMeta } from '../token-focus';
+import { getFocusedTokenId, getTokenFocusMeta } from '../token-focus';
 import { tokenMetaKey } from '../token-meta-plugin';
 import { createImplicitRules } from './implicit-rules';
 import { applyPlan, type Edits, planValidation, recordEdits } from './run';
@@ -28,14 +28,10 @@ const validationKey = new PluginKey<FocusSession>('validation');
 
 const NO_SESSION: FocusSession = { tokenId: null, edits: new Map() };
 
-function focusedTokenId(state: EditorState): string | null {
-  return getFocusedToken(state)?.id ?? null;
-}
-
 /** The session the user is in at `state`, if the token is still the one focused there. */
 function sessionAt(state: EditorState): FocusSession {
   const session = validationKey.getState(state) ?? NO_SESSION;
-  return session.tokenId !== null && session.tokenId === focusedTokenId(state)
+  return session.tokenId !== null && session.tokenId === getFocusedTokenId(state)
     ? session
     : NO_SESSION;
 }
@@ -98,7 +94,7 @@ export const ValidationExtension = Extension.create({
             source: editorContext,
             rules: editorContext.validation?.rules ?? [],
             implicitRules: createImplicitRules(editorContext),
-            focusedTokenId: focusedTokenId(newState),
+            focusedTokenId: getFocusedTokenId(newState),
             sessionEdits: sessionAt(oldState).edits,
             contentEntered,
             isHistoryOperation: transactions.some(isHistoryTransaction),

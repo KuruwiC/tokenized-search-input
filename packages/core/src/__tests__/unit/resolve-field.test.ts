@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { resolveField } from '../../extensions/editor-context';
 import { DEFAULT_OPERATORS, type FieldDefinition } from '../../types';
+import { resolveField } from '../../utils/resolve-field';
 
 const status: FieldDefinition = {
   key: 'status',

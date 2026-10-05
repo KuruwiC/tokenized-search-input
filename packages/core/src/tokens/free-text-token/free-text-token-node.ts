@@ -121,7 +121,7 @@ export const FreeTextTokenNode = Node.create({
         }
 
         // mousedown is passed to ProseMirror for drag selection handling
-        // selection-guard-plugin catches it and calls preventDefault() to block NodeSelection
+        // the selection guard plugin catches it and calls preventDefault() to block NodeSelection
         if (event.type === 'mousedown') {
           return false;
         }

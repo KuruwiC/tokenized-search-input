@@ -1,6 +1,6 @@
-import { closeSuggestion } from '../../../plugins/suggestion';
-import { getTextBeforeCursor, tryAutoTokenize } from '../../use-auto-tokenize';
-import { canAutoTokenize, isSuggestionOpen, isTokenizeMode } from '../guards';
+import { closeSuggestion, isSuggestionOpen } from '../../../plugins/suggestion';
+import { getTextBeforeCursor, tryAutoTokenize } from '../../auto-tokenize';
+import { canAutoTokenize, isTokenizeMode } from '../guards';
 import type { KeyboardContext } from '../types';
 
 function closeSuggestionIfOpen(ctx: KeyboardContext): void {

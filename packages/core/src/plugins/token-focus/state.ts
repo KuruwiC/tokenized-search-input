@@ -68,6 +68,10 @@ export function getFocusedToken(state: EditorState): FocusedToken | null {
   return tokenFocusKey.getState(state)?.focused ?? null;
 }
 
+export function getFocusedTokenId(state: EditorState): string | null {
+  return getFocusedToken(state)?.id ?? null;
+}
+
 export function getTokenFocusMeta(tr: Transaction): TokenFocusPluginState | undefined {
   return tr.getMeta(tokenFocusKey) as TokenFocusPluginState | undefined;
 }

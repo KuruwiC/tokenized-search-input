@@ -1,6 +1,7 @@
 export {
   createTokenFocusPlugin,
   getFocusedToken,
+  getFocusedTokenId,
   getTokenFocusMeta,
   programEntry,
   type TokenFocusEntry,

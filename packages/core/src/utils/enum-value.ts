@@ -9,8 +9,6 @@ import type {
 } from '../types';
 import { type FilterItemsOptions, filterItems } from './filter-items';
 
-export type { EnumValueResolver } from '../types';
-
 /**
  * Type guard to check if an EnumValue is an object with label.
  */

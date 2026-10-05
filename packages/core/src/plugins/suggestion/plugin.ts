@@ -7,9 +7,8 @@ import { isFilterToken, isToken } from '../../utils/node-predicates';
 import { getTokenValueTypedId } from '../shared/meta';
 import { getTokenFocusMeta } from '../token-focus/state';
 import { suggestionEntries } from './entries';
-import { createResetState } from './state-helpers';
 import type { SetSuggestionMeta, SuggestionAnchor, SuggestionMeta, SuggestionState } from './types';
-import { initialSuggestionState, isCloseMeta } from './types';
+import { initialSuggestionState, isCloseMeta, isTokenSuggestionType } from './types';
 import { matchValueSuggestions } from './value-items';
 
 export const suggestionKey = new PluginKey<SuggestionState>('suggestion');
@@ -104,17 +103,15 @@ export function createSuggestionPlugin(
         if (
           tokenFocusMeta !== undefined &&
           tokenFocusMeta.focused !== null &&
-          (value.type === 'field' || value.type === 'custom' || value.type === 'fieldWithCustom')
+          value.type !== null &&
+          !isTokenSuggestionType(value.type)
         ) {
-          return createResetState(value);
+          return { ...initialSuggestionState };
         }
 
         // Value, date and datetime suggestions belong to a token, so they close when token focus clears.
-        if (
-          tokenFocusMeta?.focused === null &&
-          (value.type === 'value' || value.type === 'date' || value.type === 'datetime')
-        ) {
-          return createResetState(value);
+        if (tokenFocusMeta?.focused === null && isTokenSuggestionType(value.type)) {
+          return { ...initialSuggestionState };
         }
 
         // A suggestion lives as long as what it is anchored to. This covers a token deleted
@@ -122,7 +119,7 @@ export function createSuggestionPlugin(
         if (tr.docChanged && value.anchor !== null && value.type !== null) {
           const anchor = followAnchor(value, value.anchor, tr);
           if (anchor === null) {
-            return createResetState(value);
+            return { ...initialSuggestionState };
           }
           if (anchor !== value.anchor) {
             value = { ...value, anchor };
@@ -151,7 +148,7 @@ export function createSuggestionPlugin(
         }
 
         if (isCloseMeta(meta)) {
-          return createResetState(value);
+          return { ...initialSuggestionState };
         }
 
         const newType = meta.type ?? value.type;

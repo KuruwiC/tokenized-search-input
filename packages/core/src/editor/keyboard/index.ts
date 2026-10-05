@@ -10,4 +10,4 @@ export {
   handleSpace,
   handleTab,
 } from './strategies';
-export { buildContext } from './types';
+export type { KeyboardContext } from './types';

@@ -12,23 +12,21 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { type EditorState, Plugin, TextSelection } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
-import { TOKEN_NODE_CLASS } from '../tokens/composition/node-view-update';
-import { nearestValidCaret } from '../utils/caret';
-import { isToken } from '../utils/node-predicates';
-import { createDragTracker } from './selection-guard/drag-tracker';
+import { TOKEN_NODE_CLASS } from '../../tokens/composition/node-view-update';
+import { nearestValidCaret } from '../../utils/caret';
+import { isToken } from '../../utils/node-predicates';
+import { type FocusTransitionContext, getFocusedToken, leaveFocusedTokenIn } from '../token-focus';
+import { gapPosAtCoords } from '../token-gap-decorations';
+import { createDragTracker } from './drag-tracker';
 import {
   getSelectionGuardMeta,
   type SelectionGuardState,
   selectionGuardKey,
   setSelectionGuardMeta,
-} from './selection-guard/plugin-key';
-import { handleShiftClickSelection } from './selection-guard/shift-click-handler';
-import { runKeySpecs } from './selection-guard/specs';
-import { buildSelectionGuardContext } from './selection-guard/types';
-import { type FocusTransitionContext, getFocusedToken, leaveFocusedTokenIn } from './token-focus';
-import { gapPosAtCoords } from './token-gap-decorations';
-
-export type { SelectionGuardState } from './selection-guard/plugin-key';
+} from './plugin-key';
+import { handleShiftClickSelection } from './shift-click-handler';
+import { runKeySpecs } from './specs';
+import { buildSelectionGuardContext } from './types';
 
 const CSS_RANGE_SELECTED = '_tsi-pm-range-selected';
 const PRIMARY_MOUSE_BUTTON = 0;

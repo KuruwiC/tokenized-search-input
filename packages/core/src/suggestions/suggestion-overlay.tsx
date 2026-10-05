@@ -9,6 +9,7 @@ import { useVisualViewport } from '../hooks/use-visual-viewport';
 import type { DateTimeValue } from '../pickers/date-time-value';
 import {
   closeSuggestion,
+  isPickerType,
   isSuggestionOpen,
   resolveAnchorPos,
   suggestionKey,
@@ -20,7 +21,6 @@ import { useDatePickerState } from './hooks/use-date-picker-state';
 import { useSuggestionDismissal } from './hooks/use-suggestion-dismissal';
 import { useValueInput } from './hooks/use-value-input';
 import { renderSuggestionContent } from './suggestion-content';
-import { isPickerType } from './suggestion-type';
 
 export interface SuggestionOverlayProps {
   editor: Editor;

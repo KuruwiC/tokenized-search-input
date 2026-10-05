@@ -15,15 +15,19 @@ import {
   getSerializeOptions,
 } from '../../extensions/editor-context';
 import { KeyboardShortcutsExtension } from '../../extensions/keyboard-shortcuts';
+import { SelectAllShortcut } from '../../extensions/select-all-shortcut';
 import { SingleParagraphDocument } from '../../extensions/single-paragraph-document';
 import { TokenCommandsExtension } from '../../extensions/token-commands';
 import { TokenMetaExtension } from '../../extensions/token-meta';
-import { TokenNavigation } from '../../extensions/token-navigation';
 import { useIsomorphicLayoutEffect } from '../../hooks/use-isomorphic-layout-effect';
 import { DocumentRepairExtension } from '../../plugins/document-repair';
 import { SelectionInvariantExtension } from '../../plugins/selection-invariant-plugin';
 import { markContentEntered } from '../../plugins/shared/meta';
-import { getFocusedToken, getTokenFocusMeta, leaveFocusedTokenIn } from '../../plugins/token-focus';
+import {
+  getFocusedTokenId,
+  getTokenFocusMeta,
+  leaveFocusedTokenIn,
+} from '../../plugins/token-focus';
 import { TokenGapExtension } from '../../plugins/token-gap-decorations';
 import { ValidationExtension } from '../../plugins/validation';
 import { createQuerySnapshot, parseQueryToDoc } from '../../serializer';
@@ -75,7 +79,7 @@ export function useEditorSetup({
   const confirmedTokensRef = useRef<readonly ComparableToken[]>([]);
   const reportConfirmedTokens = (ed: Editor, snapshot: QuerySnapshot) => {
     if (!onTokensChange) return;
-    const focusedId = getFocusedToken(ed.state)?.id ?? null;
+    const focusedId = getFocusedTokenId(ed.state);
     const tokens = confirmTokens(confirmedTokensRef.current, getAllTokens(snapshot), focusedId);
     if (areTokenListsEqual(confirmedTokensRef.current, tokens)) return;
     confirmedTokensRef.current = tokens;
@@ -95,7 +99,7 @@ export function useEditorSetup({
     History,
     FilterTokenNode,
     FreeTextTokenNode,
-    TokenNavigation,
+    SelectAllShortcut,
     ClipboardSerializer,
     TokenGapExtension,
     ValidationExtension,
