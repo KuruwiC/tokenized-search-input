@@ -16,7 +16,7 @@ export {
   parseDateTimeValue,
   toInstant,
 } from './pickers/date-time-value';
-export type { ParseResult } from './pickers/navigation-parsers';
+export type { ParseResult } from './pickers/parse-result';
 
 // Operator Label Helpers
 

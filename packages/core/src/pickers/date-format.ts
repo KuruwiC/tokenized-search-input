@@ -13,7 +13,7 @@ import {
   parseDateTimeValue,
   toInstant,
 } from './date-time-value';
-import { ok, type ParseResult } from './navigation-parsers';
+import { ok, type ParseResult } from './parse-result';
 
 export const DEFAULT_DATE_VALUE_FORMAT = 'yyyy-MM-dd';
 

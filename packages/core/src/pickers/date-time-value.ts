@@ -1,4 +1,4 @@
-import { err, ok, type ParseResult } from './navigation-parsers';
+import { err, ok, type ParseResult } from './parse-result';
 
 /** A UTC offset: `Z`, or `+HH:MM` / `-HH:MM`. */
 export type DateTimeOffset = 'Z' | `${'+' | '-'}${string}`;

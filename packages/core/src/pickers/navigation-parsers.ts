@@ -1,14 +1,7 @@
 /** Parsers used when typing dates into picker navigation controls. */
 
+import { err, ok, type ParseErr, type ParseResult } from './parse-result';
 import type { TimeValue } from './time-picker';
-
-export type ParseOk<T> = { readonly ok: true; readonly value: T };
-export type ParseErr = { readonly ok: false; readonly error: string; readonly hint?: string };
-export type ParseResult<T> = ParseOk<T> | ParseErr;
-
-export const ok = <T>(value: T): ParseOk<T> => ({ ok: true, value });
-
-export const err = (error: string, hint?: string): ParseErr => ({ ok: false, error, hint });
 
 /** Chains parsers, returning the first success, or the last failure when all fail. */
 const chainParsers = <T>(
