@@ -4,6 +4,7 @@ import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  applyEditorContext,
   DEFAULT_EDITOR_CONTEXT,
   EditorContextExtension,
   type EditorContextStorage,
@@ -78,7 +79,7 @@ describe('EditorContextExtension', () => {
     });
   });
 
-  describe('setEditorContext command', () => {
+  describe('applyEditorContext', () => {
     it('updates fields', () => {
       const editor = createEditor();
       const newFields: FieldDefinition[] = [
@@ -91,7 +92,7 @@ describe('EditorContextExtension', () => {
         },
       ];
 
-      editor.commands.setEditorContext({ fields: newFields });
+      applyEditorContext(getStorage(editor), { fields: newFields });
 
       const storage = getStorage(editor);
       expect(storage.fields).toEqual(newFields);
@@ -102,7 +103,7 @@ describe('EditorContextExtension', () => {
     it('updates freeTextMode', () => {
       const editor = createEditor();
 
-      editor.commands.setEditorContext({ freeTextMode: 'none' });
+      applyEditorContext(getStorage(editor), { freeTextMode: 'none' });
 
       const storage = getStorage(editor);
       expect(storage.freeTextMode).toBe('none');
@@ -116,7 +117,7 @@ describe('EditorContextExtension', () => {
       ];
       const editor = createEditor({ fields, freeTextMode: 'tokenize' });
 
-      editor.commands.setEditorContext({ freeTextMode: 'none' });
+      applyEditorContext(getStorage(editor), { freeTextMode: 'none' });
 
       const storage = getStorage(editor);
       expect(storage.fields).toEqual(fields);
@@ -128,7 +129,7 @@ describe('EditorContextExtension', () => {
     it('restores the default of a member updated to undefined', () => {
       const editor = createEditor({ freeTextMode: 'tokenize', fieldSuggestionsDisabled: true });
 
-      editor.commands.setEditorContext({
+      applyEditorContext(getStorage(editor), {
         freeTextMode: undefined,
         fieldSuggestionsDisabled: undefined,
       });
@@ -148,7 +149,7 @@ describe('EditorContextExtension', () => {
         callbacks: { onSubmit: originalOnSearch },
       });
 
-      editor.commands.setEditorContext({
+      applyEditorContext(getStorage(editor), {
         callbacks: { onFieldSelect: newOnFieldSelect },
       });
 
@@ -166,7 +167,7 @@ describe('EditorContextExtension', () => {
       ];
       const newOnSearch = vi.fn();
 
-      editor.commands.setEditorContext({
+      applyEditorContext(getStorage(editor), {
         fields: newFields,
         freeTextMode: 'tokenize',
         callbacks: { onSubmit: newOnSearch },
@@ -181,13 +182,13 @@ describe('EditorContextExtension', () => {
     });
   });
 
-  describe('setCallbacks', () => {
-    it('setCallbacks merges with existing callbacks', () => {
+  describe('applyEditorContext with callbacks only', () => {
+    it('merges them with the existing callbacks', () => {
       const onSubmit = vi.fn();
       const onFieldSelect = vi.fn();
       const editor = createEditor({ callbacks: { onSubmit } });
 
-      editor.commands.setCallbacks({ onFieldSelect });
+      applyEditorContext(getStorage(editor), { callbacks: { onFieldSelect } });
 
       const storage = getStorage(editor);
       expect(storage.callbacks.onSubmit).toBe(onSubmit);

@@ -116,12 +116,6 @@ declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     editorContext: {
       /**
-       * Updates the members present in `context`. An `undefined` value restores
-       * that member's default.
-       */
-      setEditorContext: (context: EditorContextUpdate) => ReturnType;
-      setCallbacks: (callbacks: Partial<EditorCallbacks>) => ReturnType;
-      /**
        * Applies mode-specific processing based on freeTextMode:
        * - 'tokenize': Reads the text left in the paragraph as a query, as a paste is read
        * - 'plain': No action (text remains as-is)
@@ -162,8 +156,11 @@ function isSameValue(a: unknown, b: unknown): boolean {
 
 /**
  * Writes the members present in `update` into `target` and reports whether any of
- * them held a different value before. Members that compare equal keep the stored
- * value, so re-applying an equal configuration changes nothing.
+ * them held a different value before. An `undefined` value restores that member's
+ * default. Members that compare equal keep the stored value, so re-applying an equal
+ * configuration changes nothing. The context is written only through here: by
+ * `createEditorContext`, then by `useEditorConfigSync`, which notifies the editor of a
+ * change.
  */
 export function applyEditorContext(
   target: EditorContextStorage,
@@ -259,20 +256,6 @@ export const EditorContextExtension = Extension.create<EditorContextOptions, Edi
 
   addCommands() {
     return {
-      setEditorContext:
-        (context) =>
-        ({ editor }) => {
-          applyEditorContext(getEditorContext(editor), context);
-          return true;
-        },
-
-      setCallbacks:
-        (callbacks) =>
-        ({ editor }) => {
-          applyEditorContext(getEditorContext(editor), { callbacks });
-          return true;
-        },
-
       finalizeInput:
         () =>
         ({ editor, tr, dispatch }) => {
