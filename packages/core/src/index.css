@@ -181,6 +181,11 @@
     padding: 0;
     margin: 0;
     font: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    letter-spacing: inherit;
+    word-spacing: inherit;
+    text-transform: inherit;
     color: inherit;
     outline: none;
     line-height: inherit;
@@ -236,6 +241,11 @@
   box-shadow: revert-layer;
   color: revert-layer;
   font: revert-layer;
+  font-feature-settings: revert-layer;
+  font-variation-settings: revert-layer;
+  letter-spacing: revert-layer;
+  word-spacing: revert-layer;
+  text-transform: revert-layer;
   line-height: revert-layer;
   cursor: revert-layer;
   outline: revert-layer;
@@ -246,6 +256,23 @@
 .tsi-container :where(.ProseMirror, button, input, [tabindex]):focus {
   outline: revert-layer;
   outline-offset: revert-layer;
+}
+
+/* The inputs of a token are sized by a copy of their text in the same grid cell. A page rule
+   that reaches the input and not the copy, such as `.search-form input`, makes the input
+   bigger than its cell and clips the text. These elements take no classNames class, so every
+   property rolls back to the layered rules at the specificity of an id (`:not(#\#)`), above
+   page rules without one. */
+.tsi-container
+:is(
+  .tsi-token-value__field,
+  .tsi-token-value__mirror,
+  .tsi-token-value__input,
+  .tsi-token-label-combobox__field,
+  .tsi-token-label-combobox__mirror,
+  .tsi-token-label-combobox__input
+):not(#\#) {
+  all: revert-layer;
 }
 
 /* ============================================
@@ -904,8 +931,6 @@
   }
 
   :where(.tsi-token-label-combobox__input) {
-    field-sizing: content;
-    min-width: 20px;
     background: transparent;
     border: none;
     outline: none;
@@ -1038,10 +1063,48 @@
     white-space: nowrap;
   }
 
-  :where(.tsi-token-value__input) {
+  :where(.tsi-token-value__mirror, .tsi-token-value__input) {
     padding-left: 0.25rem;
+  }
+
+  :where(.tsi-token-value__input) {
     color: inherit;
-    field-sizing: content;
+  }
+
+  /* === Token Inputs ===
+     Each input shares a grid cell with a hidden copy of its text. Both take their text
+     styles from the token, so the copy is as wide as the text the input renders, in
+     whichever font has loaded, and the input fills the cell. */
+
+  :where(.tsi-token-value__field, .tsi-token-label-combobox__field) {
+    display: inline-grid;
+    min-width: 20px;
+    max-width: 100%;
+  }
+
+  :where(.tsi-token-value__field, .tsi-token-label-combobox__field) > * {
+    grid-area: 1 / 1;
+  }
+
+  :where(.tsi-token-value__mirror, .tsi-token-label-combobox__mirror) {
+    min-width: 0;
+    visibility: hidden;
+    overflow: hidden;
+    white-space: pre;
+  }
+
+  /* Room for the caret after the last character */
+  :where(.tsi-token-value__mirror, .tsi-token-label-combobox__mirror)::after {
+    content: "";
+    display: inline-block;
+    width: 2px;
+  }
+
+  /* A zero width keeps the input's default width out of the cell's size; the input then
+     fills the cell. */
+  :where(.tsi-token-value__input, .tsi-token-label-combobox__input) {
+    width: 0;
+    min-width: 100%;
   }
 
   /* === Icon Slot === */

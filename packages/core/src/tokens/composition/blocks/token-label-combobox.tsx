@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getEditorContext } from '../../../extensions/editor-context';
-import { useTextWidth } from '../../../hooks/use-text-width';
 import { Check } from '../../../icons/check';
 import type { FieldDefinition, LabelResolver, Matcher } from '../../../types';
 import { cn } from '../../../utils/cn';
@@ -102,7 +101,7 @@ export function TokenLabelCombobox({
   }, [field, selectableFields, inputValue, hasUserEdited, suggestionMatcher]);
 
   const showInput = dropdown.isOpen && hasTextInput;
-  const inputWidth = useTextWidth(inputRef, inputValue || label || 'a', showInput);
+  const shownInput = hasUserEdited ? inputValue : inputValue || label;
 
   useEffect(() => {
     if (showInput) {
@@ -245,11 +244,21 @@ export function TokenLabelCombobox({
     activate: () => (pendingRef.current ? settle() : openDropdown()),
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // A key holds no delimiter or space. Text an input method is composing stays as composed,
+  // since rewriting the input would commit it early; the committed text is cleaned.
+  const setTypedText = (text: string, composing: boolean) => {
     const { delimiter } = getEditorContext(editor);
-    setInputValue(e.target.value.split(delimiter).join('').replace(/\s/g, ''));
+    setInputValue(composing ? text : text.split(delimiter).join('').replace(/\s/g, ''));
     setHasUserEdited(true);
     dropdown.setActiveIndex(0);
+  };
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const composing =
+      e.nativeEvent instanceof InputEvent && e.nativeEvent.inputType === 'insertCompositionText';
+    setTypedText(e.target.value, composing);
+  };
+  const handleCompositionEnd = (e: React.CompositionEvent<HTMLInputElement>) => {
+    setTypedText(e.currentTarget.value, false);
   };
 
   const handleBlur = (e: React.FocusEvent) => {
@@ -300,20 +309,26 @@ export function TokenLabelCombobox({
     >
       {hasIcon && <span className="tsi-token-label-combobox__icon">{field?.icon}</span>}
       {showInput ? (
-        <input
-          ref={inputRef}
-          type="text"
-          value={hasUserEdited ? inputValue : inputValue || label}
-          onChange={handleInputChange}
-          onBlur={handleBlur}
-          className="tsi-token-label-combobox__input"
-          style={{ width: inputWidth }}
-          {...(hasList
-            ? { ...comboboxProps, 'aria-autocomplete': 'list' }
-            : { 'aria-label': 'Field' })}
-          autoComplete="off"
-          spellCheck={false}
-        />
+        <span className="tsi-token-label-combobox__field">
+          {/* Sizes the input: the same text in the same grid cell, with the token's text styles */}
+          <span className="tsi-token-label-combobox__mirror" aria-hidden="true">
+            {shownInput}
+          </span>
+          <input
+            ref={inputRef}
+            type="text"
+            value={shownInput}
+            onChange={handleInputChange}
+            onCompositionEnd={handleCompositionEnd}
+            onBlur={handleBlur}
+            className="tsi-token-label-combobox__input"
+            {...(hasList
+              ? { ...comboboxProps, 'aria-autocomplete': 'list' }
+              : { 'aria-label': 'Field' })}
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </span>
       ) : (
         showText && <span className="tsi-token-label-combobox__text">{label}</span>
       )}

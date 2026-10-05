@@ -1,5 +1,4 @@
 import { useCallback, useLayoutEffect, useRef } from 'react';
-import { useTextWidth } from '../../../hooks/use-text-width';
 import { cn } from '../../../utils/cn';
 import {
   type BlockFocusOptions,
@@ -50,6 +49,16 @@ export interface TokenValueProps {
 function showText(input: HTMLInputElement | null, text: string): void {
   if (input && input.value !== text) input.value = text;
 }
+
+/** The input stays mounted while the token is not edited, out of the layout and out of reach. */
+const HIDDEN_FIELD: React.CSSProperties = {
+  position: 'absolute',
+  width: 0,
+  minWidth: 0,
+  overflow: 'hidden',
+  opacity: 0,
+  pointerEvents: 'none',
+};
 
 /**
  * Token value input block (focusable).
@@ -146,8 +155,6 @@ export function TokenValue({
     handleKey,
   });
 
-  const inputWidth = useTextWidth(inputRef, value || placeholder, showsControls);
-
   useLayoutEffect(() => {
     showText(inputRef.current, value);
   }, [value]);
@@ -174,27 +181,28 @@ export function TokenValue({
           <TokenIconSlot>{endContent}</TokenIconSlot>
         </span>
       )}
-      <input
-        ref={inputRef}
-        type="text"
-        data-token-block={blockProps['data-token-block']}
-        onChange={handleChange}
-        onFocus={handleFocus}
-        className={cn('tsi-token-value__input', className)}
-        style={{
-          width: showsControls ? inputWidth : 0,
-          maxWidth: showsControls ? '100%' : undefined,
-          opacity: showsControls ? 1 : 0,
-          position: showsControls ? 'relative' : 'absolute',
-          pointerEvents: showsControls ? 'auto' : 'none',
-        }}
-        placeholder={showsControls ? placeholder : undefined}
-        aria-label={showsControls ? ariaLabel : undefined}
-        tabIndex={showsControls ? tabIndex : -1}
-        aria-hidden={!showsControls}
-        autoComplete="off"
-        spellCheck={false}
-      />
+      <span className="tsi-token-value__field" style={showsControls ? undefined : HIDDEN_FIELD}>
+        {/* Sizes the input: the same text in the same grid cell, with the token's text styles */}
+        {showsControls && (
+          <span className={cn('tsi-token-value__mirror', className)} aria-hidden="true">
+            {value || placeholder}
+          </span>
+        )}
+        <input
+          ref={inputRef}
+          type="text"
+          data-token-block={blockProps['data-token-block']}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          className={cn('tsi-token-value__input', className)}
+          placeholder={showsControls ? placeholder : undefined}
+          aria-label={showsControls ? ariaLabel : undefined}
+          tabIndex={showsControls ? tabIndex : -1}
+          aria-hidden={!showsControls}
+          autoComplete="off"
+          spellCheck={false}
+        />
+      </span>
     </span>
   );
 }
