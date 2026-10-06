@@ -47,14 +47,14 @@
   --tsi-border: hsl(0 0% 89.8%);
   --tsi-border-hover: hsl(0 0% 63.9%);
   --tsi-border-focus: hsl(0 0% 9%);
+  /* The muted pair paints the highlighted option of every list, --tsi-primary the date picker's
+     selection. The default pair equals --tsi-muted/--tsi-foreground, so the default theme is neutral. */
   --tsi-primary: hsl(0 0% 9%);
   --tsi-primary-muted: hsl(0 0% 96.1%);
-  --tsi-primary-muted-foreground: hsl(0 0% 9%);
-  --tsi-secondary: hsl(0 0% 45.1%);
+  --tsi-primary-muted-foreground: hsl(0 0% 3.9%);
   --tsi-destructive: hsl(0 84.2% 60.2%);
   --tsi-destructive-muted: hsl(0 84.2% 97%);
   --tsi-selection: hsl(0 0% 65%);
-  --tsi-selection-foreground: hsl(0 0% 9%);
   --tsi-expand-max-lines: 4;
 
   /* === Size Variants === */
@@ -70,13 +70,6 @@
   /* Typography */
   --tsi-font-size-sm: 0.875rem;
   --tsi-font-size-xs: 0.75rem;
-
-  /* Spacing scale */
-  --tsi-spacing-xs: 0.125rem;
-  --tsi-spacing-sm: 0.25rem;
-  --tsi-spacing-md: 0.375rem;
-  --tsi-spacing-lg: 0.5rem;
-  --tsi-spacing-xl: 0.75rem;
 
   /* Component-specific */
   --tsi-separator-height: 1.5rem;
@@ -102,11 +95,9 @@
   --tsi-primary: hsl(0 0% 98%);
   --tsi-primary-muted: hsl(0 0% 14.9%);
   --tsi-primary-muted-foreground: hsl(0 0% 98%);
-  --tsi-secondary: hsl(0 0% 63.9%);
   --tsi-destructive: hsl(0 62.8% 50.6%);
   --tsi-destructive-muted: hsl(0 63% 15%);
   --tsi-selection: hsl(0 0% 40%);
-  --tsi-selection-foreground: hsl(0 0% 98%);
 }
 
 /* Follow the system preference unless the page pins the light theme. */
@@ -125,11 +116,9 @@
     --tsi-primary: hsl(0 0% 98%);
     --tsi-primary-muted: hsl(0 0% 14.9%);
     --tsi-primary-muted-foreground: hsl(0 0% 98%);
-    --tsi-secondary: hsl(0 0% 63.9%);
     --tsi-destructive: hsl(0 62.8% 50.6%);
     --tsi-destructive-muted: hsl(0 63% 15%);
     --tsi-selection: hsl(0 0% 40%);
-    --tsi-selection-foreground: hsl(0 0% 98%);
   }
 }
 
@@ -865,7 +854,8 @@
   }
 
   :where(.tsi-token-operator__option)[data-active="true"] {
-    background-color: var(--tsi-muted);
+    background-color: var(--tsi-primary-muted);
+    color: var(--tsi-primary-muted-foreground);
   }
 
   :where(.tsi-token-operator__option):not([data-active="true"]):hover {
@@ -960,7 +950,8 @@
   }
 
   :where(.tsi-token-label-combobox__option)[data-active="true"] {
-    background-color: var(--tsi-muted);
+    background-color: var(--tsi-primary-muted);
+    color: var(--tsi-primary-muted-foreground);
   }
 
   :where(.tsi-token-label-combobox__option):not([data-active="true"]):hover {
@@ -1355,7 +1346,8 @@
 
   :where(.tsi-suggestion-item)[data-active="true"],
   :where(.tsi-custom-suggestion-item)[data-active="true"] {
-    background-color: var(--tsi-muted);
+    background-color: var(--tsi-primary-muted);
+    color: var(--tsi-primary-muted-foreground);
   }
 
   :where(.tsi-suggestion-item):not([data-active="true"]):hover,

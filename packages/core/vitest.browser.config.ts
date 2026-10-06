@@ -7,6 +7,7 @@ const mobileFile = 'src/__tests__/browser/mobile.test.tsx';
 // Firefox runs the suites written to hold in every engine; the caret, pointer and composition
 // suites assume Chromium and WebKit behaviour.
 const crossEngineFiles = [
+  'src/__tests__/browser/active-option-colour.test.tsx',
   'src/__tests__/browser/caret-anchors.test.tsx',
   'src/__tests__/browser/consumer-css.test.tsx',
   'src/__tests__/browser/container-shape.test.tsx',

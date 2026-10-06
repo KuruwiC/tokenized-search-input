@@ -878,12 +878,10 @@ All styles are customizable via `--tsi-*` CSS variables. Override them in your C
   --tsi-border-focus: hsl(0 0% 9%);
   --tsi-primary: hsl(0 0% 9%);
   --tsi-primary-muted: hsl(0 0% 96.1%);
-  --tsi-primary-muted-foreground: hsl(0 0% 9%);
-  --tsi-secondary: hsl(0 0% 45.1%);
+  --tsi-primary-muted-foreground: hsl(0 0% 3.9%);
   --tsi-destructive: hsl(0 84.2% 60.2%);
   --tsi-destructive-muted: hsl(0 84.2% 97%);
   --tsi-selection: hsl(0 0% 65%);
-  --tsi-selection-foreground: hsl(0 0% 9%);
 
   /* Sizing */
   --tsi-font-size: 1rem;
@@ -913,6 +911,8 @@ All styles are customizable via `--tsi-*` CSS variables. Override them in your C
 }
 ```
 
+The primary colors mark what the user is choosing: `--tsi-primary-muted` and `--tsi-primary-muted-foreground` are the background and text of the highlighted option in the suggestion list, the operator dropdown and the field dropdown of a token (a check mark on that option takes the text color), and `--tsi-primary` fills the selected day of the date picker and its close button. `--tsi-border-focus` is the border of the focused input and the keyboard focus outline on the parts of a token.
+
 `--tsi-token-gap` is the space between tokens, set as the margin of each token. `--tsi-popover-radius` is the corner radius of the suggestion list, the token dropdowns and the date pickers; left unset, they take `--tsi-radius` capped at `0.75rem`, so a pill-shaped input (`--tsi-radius: 9999px`) does not turn them into stadiums that clip their first and last rows. The box of the input takes `--tsi-radius` only up to half its height on one line (`--tsi-min-height` and its borders), so a pill value stays a pill on one line and becomes a rounded box when tokens wrap; tokens stay clear of its corners while `--tsi-padding-x` and `--tsi-token-gap` add up to at least about 4px at the default sizes. `--tsi-expand-max-lines` is the number of rows an `expandOnFocus` input shows when it opens. Its open height and the room it keeps on the page while open are computed from the sizes where they are used, so they follow sizes set on any ancestor; `--tsi-expand-max-height` and `--tsi-single-line-height` override them. Overrides of the color variables on `:root` only reach the light palette: while the system prefers dark, the dark palette is selected by `:root:not([data-theme="light"])`, which wins over `:root`. Override colors for the dark palette under that selector (inside `@media (prefers-color-scheme: dark)`) and under `.dark, [data-theme="dark"]`, or pin the page to the light palette with `data-theme="light"`.
 
 ### Dark Mode
@@ -934,11 +934,9 @@ The dark palette applies automatically when the system prefers a dark color sche
   --tsi-primary: hsl(0 0% 98%);
   --tsi-primary-muted: hsl(0 0% 14.9%);
   --tsi-primary-muted-foreground: hsl(0 0% 98%);
-  --tsi-secondary: hsl(0 0% 63.9%);
   --tsi-destructive: hsl(0 62.8% 50.6%);
   --tsi-destructive-muted: hsl(0 63% 15%);
   --tsi-selection: hsl(0 0% 40%);
-  --tsi-selection-foreground: hsl(0 0% 98%);
 }
 ```
 
