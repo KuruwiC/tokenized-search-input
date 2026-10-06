@@ -1,13 +1,19 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { Editor } from '@tiptap/core';
 import type { Transaction } from '@tiptap/pm/state';
+import { useEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
-import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
+import type {
+  TokenizedSearchInputProps,
+  TokenizedSearchInputRef,
+} from '../../editor/tokenized-search-input.types';
 import { isContextUpdated } from '../../plugins/shared/meta';
+import { getFocusedToken } from '../../plugins/token-focus';
 import type { FieldDefinition } from '../../types';
-import { extendedFields } from '../fixtures';
+import { datetimeField, extendedFields, statusField } from '../fixtures';
 import { getInternalEditor, waitForEditor } from '../helpers/get-editor';
+import { filterTokens } from '../helpers/token-queries';
 
 afterEach(() => cleanup());
 
@@ -322,5 +328,157 @@ describe('reactive configuration', () => {
       dispatch.mockRestore();
       vi.useRealTimers();
     }
+  });
+  describe('handle calls held across a configuration change', () => {
+    type Ref = { current: TokenizedSearchInputRef | null };
+    type Mode = 'plain' | 'tokenize' | 'none';
+
+    const freeTextCount = (ref: Ref) =>
+      ref.current?.getSnapshot().segments.filter((segment) => segment.type === 'freeText').length ??
+      0;
+
+    async function runQueuedChanges(): Promise<void> {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    }
+
+    /** Waits for an editor other than `replaced` to be live and for its commit's changes. */
+    async function settleOnReplacement(ref: Ref, replaced: Editor): Promise<Editor> {
+      await waitFor(() => {
+        const live = getInternalEditor(ref.current);
+        expect(live && live !== replaced && !live.isDestroyed).toBe(true);
+      });
+      await runQueuedChanges();
+      const live = getInternalEditor(ref.current);
+      if (!live) throw new Error('editor is unavailable');
+      return live;
+    }
+
+    async function heldSetValue(from: Mode, to: Mode, value: string): Promise<Ref> {
+      const ref: Ref = { current: null };
+      const element = (freeTextMode: Mode) => (
+        <TokenizedSearchInput ref={ref} fields={extendedFields} freeTextMode={freeTextMode} />
+      );
+      const view = render(element(from));
+      const destroyed = await waitForEditor(ref);
+      destroyed.destroy();
+      ref.current?.setValue(value);
+
+      view.rerender(element(to));
+
+      await settleOnReplacement(ref, destroyed);
+      return ref;
+    }
+
+    it('reads a held setValue under plain mode when the mode switches from tokenize', async () => {
+      const ref = await heldSetValue('tokenize', 'plain', 'status:is:active hello');
+
+      expect(freeTextCount(ref)).toBe(0);
+      expect(ref.current?.getValue()).toBe('status:is:active hello');
+    });
+
+    it('reads a held setValue under none mode when the mode switches from tokenize', async () => {
+      const ref = await heldSetValue('tokenize', 'none', 'status:is:active hello');
+
+      expect(freeTextCount(ref)).toBe(0);
+      expect(ref.current?.getValue()).toBe('status:is:active');
+    });
+
+    it('keeps the free text tokens of a held setValue when the mode stays tokenize', async () => {
+      const ref = await heldSetValue('tokenize', 'tokenize', 'status:is:active hello');
+
+      expect(freeTextCount(ref)).toBe(1);
+      expect(ref.current?.getValue()).toBe('status:is:active hello');
+    });
+
+    it('reads the content a held token write was made against under the new mode', async () => {
+      const ref: Ref = { current: null };
+      const element = (freeTextMode: Mode) => (
+        <TokenizedSearchInput
+          ref={ref}
+          fields={extendedFields}
+          defaultValue="status:is:active hello"
+          freeTextMode={freeTextMode}
+        />
+      );
+      const view = render(element('tokenize'));
+      const destroyed = await waitForEditor(ref);
+      const [status] = filterTokens(ref);
+      destroyed.destroy();
+      ref.current?.updateToken(status.id, { value: 'inactive' });
+
+      view.rerender(element('plain'));
+
+      await settleOnReplacement(ref, destroyed);
+      expect(freeTextCount(ref)).toBe(0);
+      expect(ref.current?.getValue()).toBe('status:is:inactive hello');
+    });
+
+    /**
+     * Renders the input inside a parent whose effect, which runs after the input's own
+     * effects of a commit, calls `onCommit` with a handle kept from a destroyed editor;
+     * then makes a replacement editor live.
+     */
+    async function renderWithStaleHandle(
+      props: TokenizedSearchInputProps,
+      onCommit: (stale: TokenizedSearchInputRef, props: TokenizedSearchInputProps) => void
+    ) {
+      const ref: Ref = { current: null };
+      let stale: TokenizedSearchInputRef | null = null;
+      function Parent(parentProps: TokenizedSearchInputProps) {
+        useEffect(() => {
+          if (stale) onCommit(stale, parentProps);
+        });
+        return <TokenizedSearchInput ref={ref} {...parentProps} />;
+      }
+      const view = render(<Parent {...props} />);
+      const destroyed = await waitForEditor(ref);
+      stale = ref.current;
+      destroyed.destroy();
+      view.rerender(<Parent {...props} />);
+      const live = await settleOnReplacement(ref, destroyed);
+      const rerender = (next: TokenizedSearchInputProps) => view.rerender(<Parent {...next} />);
+      return { ref, live, rerender };
+    }
+
+    it('reads the content under the new mode when a parent effect of that commit calls a stale handle', async () => {
+      const props = {
+        fields: extendedFields,
+        defaultValue: 'status:is:active hello',
+        freeTextMode: 'tokenize' as const,
+      };
+      const { ref, rerender } = await renderWithStaleHandle(props, (stale, current) => {
+        if (current.freeTextMode === 'plain') stale.submit();
+      });
+      expect(freeTextCount(ref)).toBe(1);
+
+      rerender({ ...props, freeTextMode: 'plain' });
+
+      await runQueuedChanges();
+      expect(freeTextCount(ref)).toBe(0);
+      expect(ref.current?.getValue()).toBe('status:is:active hello');
+    });
+
+    it('leaves the focused token when a parent effect of the disabling commit calls a stale handle', async () => {
+      const props = {
+        fields: [statusField, datetimeField],
+        defaultValue: 'updated:gt:2024-01-06T10:30:00+0900',
+      };
+      const { ref, live, rerender } = await renderWithStaleHandle(props, (stale, current) => {
+        if (current.disabled) stale.focus();
+      });
+      const [updated] = filterTokens(ref);
+      act(() => {
+        live.commands.focusFilterToken(updated.id, 'end');
+      });
+      expect(getFocusedToken(live.state)?.id).toBe(updated.id);
+
+      rerender({ ...props, disabled: true });
+
+      await runQueuedChanges();
+      expect(getFocusedToken(live.state)).toBeNull();
+      expect(ref.current?.getValue()).toBe('updated:gt:2024-01-06T10:30:00+09:00');
+    });
   });
 });

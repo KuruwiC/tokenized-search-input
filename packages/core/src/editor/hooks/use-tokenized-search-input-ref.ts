@@ -22,7 +22,7 @@ import { requestValidationCheck } from '../../plugins/shared/meta';
 import { createQuerySnapshot, serializeDocToQuery } from '../../serializer';
 import { findTokenById } from '../../utils/find-token';
 import { isFilterToken } from '../../utils/node-predicates';
-import { scheduleDocumentChange } from '../schedule-document-change';
+import { scheduleDocumentChange, setHeldWrites } from '../schedule-document-change';
 import type {
   TokenDisplay,
   TokenizedSearchInputRef,
@@ -98,9 +98,10 @@ function drain(held: HeldHandleCalls, editor: Editor): void {
   for (const call of calls) runHeldCall(editor, call);
 }
 
+// Scheduling alone drains: every scheduled change applies the held calls first.
 function scheduleDrain(held: HeldHandleCalls): void {
   const live = liveEditor(held);
-  if (live) scheduleDocumentChange(live, () => drain(held, live));
+  if (live) scheduleDocumentChange(live, () => {});
 }
 
 /**
@@ -111,8 +112,8 @@ function scheduleDrain(held: HeldHandleCalls): void {
  * editor was replaced. Such calls are held in call order and run on the live editor
  * after its commit (see `useRunHeldHandleCalls`), starting from the document they
  * were made against. Calls made while held calls wait queue behind them. `getValue` and
- * `getSnapshot` read the document the held calls produce; validation runs once they
- * are applied, so snapshots read in the meantime carry no validation.
+ * `getSnapshot` read the document the held calls produce; validation and a freeTextMode
+ * re-read run once they are applied, so reads in the meantime reflect neither.
  */
 export function useTokenizedSearchInputRef(
   ref: ForwardedRef<TokenizedSearchInputRef>,
@@ -269,12 +270,11 @@ function runHeldCall(editor: Editor, call: HeldCall): void {
  * Makes `editor` the one held handle calls run on once its commit has happened, and runs
  * the calls held so far, in call order, right after that commit.
  *
- * The calls run in a microtask this effect queues, which is after every effect of the
- * commit whatever the hook order, so they see the configuration synced from the current
- * props, the focus listeners and the suggestion scheduling in place. The hook's position
- * decides only where that microtask falls among the other scheduled document changes:
- * the disabled leave in `useEditorSetup` and the freeTextMode re-read in
- * `useEditorConfigSync`. Called after those hooks, the calls run after both.
+ * The calls run in a microtask, after every effect of the commit whatever the hook order,
+ * so they see the configuration synced from the current props, the focus listeners and
+ * the suggestion scheduling. They run before the other document changes scheduled for the
+ * editor (see `setHeldWrites`), such as the disabled leave in `useEditorSetup` and the
+ * freeTextMode re-read in `useEditorConfigSync`, which then read the content they produce.
  */
 export function useRunHeldHandleCalls(
   editor: Editor | null,
@@ -283,6 +283,7 @@ export function useRunHeldHandleCalls(
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
     held.current.live = editor;
+    setHeldWrites(editor, () => drain(held.current, editor));
     scheduleDrain(held.current);
   }, [editor, held]);
 }
