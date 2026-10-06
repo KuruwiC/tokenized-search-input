@@ -7,6 +7,7 @@ import {
   type MountedEditor,
   mountWrapped,
   paste,
+  placeCaret,
   pressUntil,
   tokenElements,
   WRAP_ROOM,
@@ -24,12 +25,6 @@ const LINE_END =
 function rowsOf(m: MountedEditor): number {
   return new Set(tokenElements(m).map((token) => Math.round(token.getBoundingClientRect().top)))
     .size;
-}
-
-async function placeCaret(m: MountedEditor, pos: number): Promise<void> {
-  m.editor.chain().focus().setTextSelection(pos).run();
-  await finishAnimations();
-  expect(document.activeElement).toBe(m.pm);
 }
 
 /** The document positions of the one stretch of text in the editor. */

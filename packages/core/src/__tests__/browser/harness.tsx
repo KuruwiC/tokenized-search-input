@@ -181,10 +181,29 @@ export async function mountWrapped(
   return m;
 }
 
-/** Focuses the editor at its start or end and waits for DOM focus, which comes a frame later. */
+/**
+ * Tiptap's focus command focuses the view in the next animation frame, so a test that moves
+ * focus elsewhere before that frame has it taken back. When the editor gains focus,
+ * ProseMirror sets a 20 ms timer that writes its selection to the DOM again, undoing a native
+ * caret move (End, an arrow key) that it has not read yet. Animation frame callbacks and
+ * timers of the same delay run in the order they are requested, so both have run once ours
+ * have.
+ */
+async function editorFocusSettled(m: MountedEditor): Promise<void> {
+  await settle();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(document.activeElement).toBe(m.pm);
+}
+
 export async function focusEditor(m: MountedEditor, position: 'start' | 'end'): Promise<void> {
   m.editor.commands.focus(position);
-  await waitForFrames(() => expect(document.activeElement).toBe(m.pm));
+  await editorFocusSettled(m);
+}
+
+export async function placeCaret(m: MountedEditor, pos: number): Promise<void> {
+  m.editor.chain().focus().setTextSelection(pos).run();
+  await editorFocusSettled(m);
+  await finishAnimations();
 }
 
 /**

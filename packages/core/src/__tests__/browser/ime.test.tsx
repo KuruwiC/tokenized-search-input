@@ -11,9 +11,9 @@ import {
   type MountedEditor,
   mountEditor,
   mountWrapped,
+  placeCaret,
   shownValue,
   tokenElements,
-  waitForFrames,
 } from './harness';
 
 const TWO_TOKENS = 'status:is:open owner:is:bob';
@@ -166,8 +166,7 @@ describe('IME composition', () => {
 
   it('commits composed text at the end of a row before a token that wrapped to the next', async () => {
     const m = await mountWrapped(TWO_TOKENS);
-    m.editor.chain().focus().setTextSelection(2).run();
-    await waitForFrames(() => expect(document.activeElement).toBe(m.pm));
+    await placeCaret(m, 2);
 
     await compose(m, ['に'], '日');
     expect(m.value()).toBe('status:is:open 日 owner:is:bob');
