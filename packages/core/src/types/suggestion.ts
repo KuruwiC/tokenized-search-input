@@ -99,7 +99,9 @@ export interface SuggestContextWithPagination extends SuggestContext {
 export interface CustomSuggestionResult {
   /** Array of suggestions for current page */
   suggestions: CustomSuggestion[];
-  /** Whether more items are available */
+  /**
+   * Whether more items are available. Ignored when the config has no `loadMore`.
+   */
   hasMore?: boolean;
 }
 

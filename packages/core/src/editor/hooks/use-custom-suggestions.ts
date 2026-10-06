@@ -146,9 +146,9 @@ function pageSize(config: CustomSuggestionConfig): number {
 }
 
 /**
- * Reads a page that `suggest` or `loadMore` returned. A page holds at most `maxSuggestions`
- * suggestions. The next page starts after the ones shown, so the ones cut off are what
- * `loadMore` is asked for next.
+ * Reads a `suggest` or `loadMore` result as one page of at most `maxSuggestions`. A page
+ * that was cut counts as having more, and more is offered only when `loadMore` exists,
+ * whatever `hasMore` says.
  */
 function readPage(
   result: Awaited<SuggestFnReturn>,
@@ -159,7 +159,7 @@ function readPage(
   const cut = suggestions.length > size;
   return {
     suggestions: suggestions.slice(0, size),
-    hasMore: hasMore || (cut && config.loadMore !== undefined),
+    hasMore: (hasMore || cut) && config.loadMore !== undefined,
   };
 }
 

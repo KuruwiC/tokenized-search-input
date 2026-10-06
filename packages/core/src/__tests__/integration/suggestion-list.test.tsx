@@ -217,6 +217,7 @@ describe('what the listbox owns', () => {
           displayMode: 'replace',
           debounceMs: 0,
           suggest: async () => ({ suggestions: page(['one']), hasMore: true }),
+          loadMore: async () => ({ suggestions: [] }),
         },
       },
     });
@@ -225,5 +226,34 @@ describe('what the listbox owns', () => {
 
     const row = screen.getByText('Scroll for more');
     expect(screen.getByRole('listbox')).not.toContainElement(row);
+  });
+
+  it.each([
+    { displayMode: 'replace', loadMore: false },
+    { displayMode: 'replace', loadMore: true },
+    { displayMode: 'prepend', loadMore: false },
+    { displayMode: 'prepend', loadMore: true },
+    { displayMode: 'append', loadMore: false },
+    { displayMode: 'append', loadMore: true },
+  ] as const)('offers more only when loadMore can load it ($displayMode, loadMore: $loadMore)', async ({
+    displayMode,
+    loadMore,
+  }) => {
+    const user = userEvent.setup();
+    const { editor } = await renderInput({
+      suggestions: {
+        custom: {
+          displayMode,
+          debounceMs: 0,
+          suggest: async () => ({ suggestions: page(['one']), hasMore: true }),
+          ...(loadMore && { loadMore: async () => ({ suggestions: [] }) }),
+        },
+      },
+    });
+    await user.click(screen.getByRole('combobox', { name: 'Search query input' }));
+    await screen.findByRole('option', { name: /one/ });
+
+    expect(getSuggestionState(editor.state)?.custom.hasMore).toBe(loadMore);
+    expect(screen.queryByText('Scroll for more') !== null).toBe(loadMore);
   });
 });

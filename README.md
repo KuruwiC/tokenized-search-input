@@ -614,7 +614,7 @@ export function PagedSearch() {
 }
 ```
 
-`maxSuggestions` is the page size. Every page, the first one from `suggest` and each one from `loadMore`, shows at most that many suggestions, and `loadMore` receives it as `limit`. `offset` is the number of suggestions shown so far, so suggestions past `limit` in a page are not lost: they are what the next `loadMore` call is asked for, and a page that was cut always has more to load. Without `loadMore`, only the first `maxSuggestions` that `suggest` returns are shown.
+`maxSuggestions` is the page size. Every page, the first one from `suggest` and each one from `loadMore`, shows at most that many suggestions, and `loadMore` receives it as `limit`. `offset` is the number of suggestions shown so far, so suggestions past `limit` in a page are not lost: they are what the next `loadMore` call is asked for, and a page that was cut always has more to load. `hasMore` only matters together with `loadMore`: without `loadMore`, only the first `maxSuggestions` that `suggest` returns are shown, and the list offers no way to ask for more whatever `hasMore` says.
 
 ## Props
 
