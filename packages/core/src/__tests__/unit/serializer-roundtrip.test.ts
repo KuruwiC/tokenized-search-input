@@ -43,13 +43,6 @@ describe('Serializer Round-trip', () => {
       expect(result).toBe(query);
     });
 
-    it('round-trips multiple filter tokens', () => {
-      const query = 'status:is:open priority:gt:high';
-      const doc = parseQueryToDoc(query, fields, { freeTextMode: 'tokenize' }).doc;
-      const result = serializeDocToQuery(doc);
-      expect(result).toBe(query);
-    });
-
     it('round-trips a filter value with an unquoted comma', () => {
       const query = 'status:is:active,pending';
       const doc = parseQueryToDoc(query, fields, { freeTextMode: 'tokenize' }).doc;

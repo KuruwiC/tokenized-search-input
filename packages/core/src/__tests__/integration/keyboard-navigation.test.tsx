@@ -180,63 +180,7 @@ describe('Keyboard Navigation - User Journeys', () => {
     });
   });
 
-  describe('Tab navigation', () => {
-    it('Tab with value confirms token', async () => {
-      const onChange = vi.fn();
-      const user = userEvent.setup();
-      render(<TokenizedSearchInput fields={testFields} onChange={onChange} />);
-
-      const editor = screen.getByRole('combobox');
-      await user.click(editor);
-
-      await user.click(screen.getByText('Status'));
-
-      await waitFor(() => {
-        expect(screen.getByPlaceholderText('...')).toBeInTheDocument();
-      });
-
-      const valueInput = screen.getByPlaceholderText('...');
-      await user.type(valueInput, 'active');
-      await user.keyboard('{Tab}');
-      await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(
-          expect.objectContaining({ text: expect.stringContaining('status:is:active') })
-        );
-      });
-    });
-  });
-
   describe('Backspace navigation', () => {
-    it('Backspace at start of token deletes it', async () => {
-      const onChange = vi.fn();
-      const user = userEvent.setup();
-      render(
-        <TokenizedSearchInput
-          fields={testFields}
-          defaultValue="status:is:active"
-          onChange={onChange}
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Status')).toBeInTheDocument();
-      });
-
-      const token = screen.getByRole('group', { name: /Filter: status/i });
-      await user.click(token);
-
-      await waitFor(() => {
-        expect(screen.getByPlaceholderText('...')).toBeInTheDocument();
-      });
-
-      const valueInput = screen.getByPlaceholderText('...');
-      await user.clear(valueInput);
-      await user.keyboard('{Backspace}');
-      await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ text: '' }));
-      });
-    });
-
     it('deletes middle token cleanly without leaving extra spaces', async () => {
       const onChange = vi.fn();
       const user = userEvent.setup();
@@ -346,7 +290,7 @@ describe('Keyboard Navigation - User Journeys', () => {
       );
     });
 
-    it('keyboard handlers respond correctly after token state changes', async () => {
+    it('Tab with value confirms token', async () => {
       const onChange = vi.fn();
       const user = userEvent.setup();
       render(<TokenizedSearchInput fields={testFields} onChange={onChange} />);

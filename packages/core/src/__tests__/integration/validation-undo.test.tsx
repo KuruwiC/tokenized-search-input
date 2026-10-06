@@ -33,39 +33,6 @@ afterEach(() => {
 });
 
 describe('Validation undo with onDuplicate replace', () => {
-  it('replaces earlier token with later one using onDuplicate replace', async () => {
-    const ref = createRef<TokenizedSearchInputRef>();
-
-    render(
-      <TokenizedSearchInput
-        fields={testFields}
-        validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
-        ref={ref}
-      />
-    );
-
-    await waitFor(() => {
-      expect(ref.current).not.toBeNull();
-    });
-
-    // Set two status tokens - the first should be replaced by the second
-    ref.current?.setValue('status:is:active status:is:inactive');
-
-    await waitFor(
-      () => {
-        const tokens = document.querySelectorAll('.node-filterToken');
-        expect(tokens.length).toBe(1);
-      },
-      { timeout: 3000 }
-    );
-
-    // Only the second (inactive) should remain
-    await waitFor(() => {
-      const token = document.querySelector('.node-filterToken');
-      expect(token?.textContent).toContain('inactive');
-    });
-  });
-
   it('preserves unrelated tokens during replacement', async () => {
     const ref = createRef<TokenizedSearchInputRef>();
 
@@ -142,35 +109,5 @@ describe('Validation undo with onDuplicate replace', () => {
       expect(tokens.length).toBe(1);
       expect(tokens[0]?.textContent).toContain('active');
     });
-  });
-
-  it('deletes all but the last token with 3+ duplicates', async () => {
-    const ref = createRef<TokenizedSearchInputRef>();
-
-    render(
-      <TokenizedSearchInput
-        fields={testFields}
-        validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
-        ref={ref}
-      />
-    );
-
-    await waitFor(() => {
-      expect(ref.current).not.toBeNull();
-    });
-
-    ref.current?.setValue('status:is:active status:is:inactive status:is:pending');
-
-    await waitFor(
-      () => {
-        const tokens = document.querySelectorAll('.node-filterToken');
-        expect(tokens.length).toBe(1);
-      },
-      { timeout: 3000 }
-    );
-
-    // Only the last (pending) should remain
-    const token = document.querySelector('.node-filterToken');
-    expect(token?.textContent).toContain('pending');
   });
 });

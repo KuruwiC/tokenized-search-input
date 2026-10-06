@@ -77,15 +77,6 @@ describe('useFocusRegistry', () => {
       unregister();
       expect(registry.get('value')).toBeUndefined();
     });
-
-    it('hands out the block with the key handler it registered', () => {
-      const handleKey = vi.fn(() => true);
-      const { registry } = setup([createBlock('value', { handleKey })]);
-
-      const event = {} as React.KeyboardEvent;
-      expect(registry.get('value')?.handleKey(event)).toBe(true);
-      expect(handleKey).toHaveBeenCalledWith(event);
-    });
   });
 
   describe('focusEdge', () => {

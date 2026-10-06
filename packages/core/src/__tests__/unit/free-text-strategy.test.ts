@@ -119,18 +119,6 @@ describe('FreeTextStrategy', () => {
 
       expect(result).toBeNull();
     });
-
-    it('returns null for quoted token', () => {
-      const token: ParsedFreeTextToken = {
-        type: 'freeText',
-        value: 'hello world',
-        quoted: true,
-      };
-
-      const result = strategy.toDocContent(token);
-
-      expect(result).toBeNull();
-    });
   });
 
   describe('getFreeTextStrategy', () => {

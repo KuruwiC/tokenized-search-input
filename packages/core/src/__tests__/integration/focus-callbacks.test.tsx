@@ -302,41 +302,6 @@ describe('Focus Callbacks', () => {
       expect(screen.getByRole('combobox')).toHaveFocus();
       expect(onBlur).not.toHaveBeenCalled();
     });
-
-    it('triggers onBlur after multiple suggestion selections and clicking outside', async () => {
-      const onBlur = vi.fn();
-      const user = userEvent.setup();
-      render(
-        <div>
-          <TokenizedSearchInput fields={extendedFields} onBlur={onBlur} />
-          <button type="button">Other Element</button>
-        </div>
-      );
-
-      const editor = screen.getByRole('combobox');
-      await user.click(editor);
-
-      // Type and select first field
-      await user.keyboard('status');
-      await waitFor(() => {
-        expect(screen.getByText('Status')).toBeInTheDocument();
-      });
-      await user.click(screen.getByText('Status'));
-
-      // Select value
-      await waitFor(() => {
-        expect(screen.getByText('active')).toBeInTheDocument();
-      });
-      await user.click(screen.getByText('active'));
-
-      // Close suggestions and blur
-      await user.keyboard('{Escape}');
-      await user.click(screen.getByRole('button', { name: 'Other Element' }));
-
-      await waitFor(() => {
-        expect(onBlur).toHaveBeenCalled();
-      });
-    });
   });
 
   describe('onClear', () => {

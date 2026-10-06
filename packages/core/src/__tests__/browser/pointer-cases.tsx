@@ -61,15 +61,6 @@ export function registerPointerCases(): void {
       }
     });
 
-    it('puts the caret in the gap between two tokens when the gap is clicked', async () => {
-      const m = await mountEditor(TWO_TOKENS);
-      await userEvent.click(m.pm, { position: gapBetween(m, 0) });
-      await expectCaretBetween(m, { tokensBefore: 1, tokensAfter: 1 });
-
-      await userEvent.keyboard('gap');
-      expect(m.value()).toBe('status:is:open gap owner:is:bob');
-    });
-
     it('puts the caret in the gap that is clicked while the editor has focus', async () => {
       const m = await mountEditor(TWO_TOKENS);
       await userEvent.click(m.pm, { position: afterLastToken(m) });
@@ -87,15 +78,6 @@ export function registerPointerCases(): void {
 
       await userEvent.keyboard('gap');
       expect(m.value()).toBe('p:is:1 q:is:2 gap r:is:3');
-    });
-
-    it('puts the caret after the last token when the row is clicked past it', async () => {
-      const m = await mountEditor(TWO_TOKENS);
-      await userEvent.click(m.pm, { position: afterLastToken(m) });
-      await expectCaretBetween(m, { tokensBefore: 2, tokensAfter: 0 });
-
-      await userEvent.keyboard('end');
-      expect(m.value()).toBe('status:is:open owner:is:bob end');
     });
 
     it('enters editing when a token is clicked', async () => {

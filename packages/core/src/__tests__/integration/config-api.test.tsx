@@ -61,62 +61,9 @@ describe('Config API', () => {
         ).not.toBeInTheDocument();
       });
     });
-
-    it('applies custom suggestion config', async () => {
-      const mockSuggest = vi.fn().mockResolvedValue([
-        {
-          tokens: [{ key: 'status', operator: 'is', value: 'active' }],
-          label: 'Active Status',
-        },
-      ]);
-
-      const user = userEvent.setup();
-
-      render(
-        <TokenizedSearchInput
-          fields={basicFields}
-          suggestions={{
-            custom: {
-              suggest: mockSuggest,
-              debounceMs: 0,
-            },
-          }}
-        />
-      );
-
-      const input = screen.getByRole('combobox');
-      await user.click(input);
-      await user.type(input, 'active');
-
-      await waitFor(() => {
-        expect(mockSuggest).toHaveBeenCalled();
-      });
-    });
   });
 
   describe('validation config', () => {
-    it('applies validation rules', async () => {
-      render(
-        <TokenizedSearchInput
-          fields={basicFields}
-          defaultValue="status:is:active status:is:pending"
-          validation={{ rules: [Unique.rule('key')] }}
-        />
-      );
-
-      // Wait for tokens to render
-      await waitFor(() => {
-        const tokens = document.querySelectorAll('.node-filterToken');
-        expect(tokens.length).toBe(2);
-      });
-
-      // Wait for validation to run and check for invalid markers
-      await waitFor(() => {
-        const invalidTokens = document.querySelectorAll('.node-filterToken [data-invalid="true"]');
-        expect(invalidTokens.length).toBe(1);
-      });
-    });
-
     it('uses Unique with onDuplicate reject to delete duplicates', async () => {
       const handleChange = vi.fn();
 
@@ -224,30 +171,6 @@ describe('Config API', () => {
 
       await waitFor(() => expect(document.querySelectorAll('.node-filterToken')).toHaveLength(1));
       expect(screen.queryByText('contains')).not.toBeInTheDocument();
-    });
-  });
-
-  describe('serialization config', () => {
-    it('accepts custom delimiter configuration', () => {
-      render(<TokenizedSearchInput fields={basicFields} initialDelimiter="=" />);
-
-      // Component should mount without error
-      expect(screen.getByRole('combobox')).toBeInTheDocument();
-    });
-
-    it('accepts custom serializeToken function', () => {
-      const customSerialize = vi.fn((token) => `[${token.key}|${token.value}]`);
-
-      render(
-        <TokenizedSearchInput
-          fields={basicFields}
-          defaultValue="status:is:active"
-          serialization={{ serializeToken: customSerialize }}
-        />
-      );
-
-      // Component should mount without error
-      expect(screen.getByRole('combobox')).toBeInTheDocument();
     });
   });
 

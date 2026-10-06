@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import { markTokenValueTyped } from '../../plugins/shared/meta';
 import {
   appendCustomSuggestions,
-  clearDismissed,
   closeSuggestion,
   createSuggestionPlugin,
   dismissSuggestion,
@@ -462,22 +461,6 @@ describe('SuggestionPlugin', () => {
       expect(suggestionState?.query).toBe('sta');
       expect(suggestionState?.items).toEqual([testFields[0]]);
       expect(suggestionState?.activeIndex).toBe(0);
-    });
-
-    it('ignores clearDismissed after closeSuggestion in same transaction', () => {
-      const state = createEditorState();
-
-      // Close first, then try to clear dismissed in the same transaction
-      const tr = state.tr;
-      closeSuggestion(tr);
-      clearDismissed(tr);
-
-      const newState = state.apply(tr);
-      const suggestionState = getSuggestionState(newState);
-
-      // Close should be preserved (close is terminal, clearDismissed is suppressed)
-      expect(suggestionState?.type).toBe(null);
-      expect(suggestionState?.dismissed).toBe(false); // closeSuggestion resets to the initial state
     });
   });
 

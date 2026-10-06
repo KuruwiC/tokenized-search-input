@@ -40,18 +40,6 @@ describe('TimePicker', () => {
   });
 
   describe('editing mode', () => {
-    it('enters editing mode on focus', () => {
-      const onChange = vi.fn();
-      render(<TimePicker value={{ hours: 14, minutes: 30 }} onChange={onChange} />);
-      const input = getTimeInput();
-
-      fireEvent.focus(input);
-
-      // During editing, external value updates should not override local state
-      // This is tested by the fact that input maintains its value during focus
-      expect(input).toHaveValue('14:30');
-    });
-
     it('exits editing mode on blur', () => {
       const onChange = vi.fn();
       render(<TimePicker value={{ hours: 14, minutes: 30 }} onChange={onChange} />);

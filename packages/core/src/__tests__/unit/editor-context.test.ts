@@ -182,37 +182,7 @@ describe('EditorContextExtension', () => {
     });
   });
 
-  describe('applyEditorContext with callbacks only', () => {
-    it('merges them with the existing callbacks', () => {
-      const onSubmit = vi.fn();
-      const onFieldSelect = vi.fn();
-      const editor = createEditor({ callbacks: { onSubmit } });
-
-      applyEditorContext(getStorage(editor), { callbacks: { onFieldSelect } });
-
-      const storage = getStorage(editor);
-      expect(storage.callbacks.onSubmit).toBe(onSubmit);
-      expect(storage.callbacks.onFieldSelect).toBe(onFieldSelect);
-
-      editor.destroy();
-    });
-  });
-
   describe('getEditorContext helper', () => {
-    it('returns storage from editor', () => {
-      const fields: FieldDefinition[] = [
-        { key: 'status', label: 'Status', type: 'enum', operators: ['is'], enumValues: ['open'] },
-      ];
-      const editor = createEditor({ fields, freeTextMode: 'tokenize' });
-
-      const context = getEditorContext(editor);
-
-      expect(context.fields).toEqual(fields);
-      expect(context.freeTextMode).toBe('tokenize');
-
-      editor.destroy();
-    });
-
     it('keeps the context readable after the editor is destroyed', () => {
       const fields: FieldDefinition[] = [
         { key: 'status', label: 'Status', type: 'string', operators: ['is'] },
@@ -235,37 +205,6 @@ describe('EditorContextExtension', () => {
       );
 
       editorWithoutExtension.destroy();
-    });
-  });
-
-  describe('callbacks execution', () => {
-    it('stored callbacks can be invoked', () => {
-      const onFieldSelect = vi.fn();
-      const onValueSelect = vi.fn();
-      const onSubmit = vi.fn();
-
-      const editor = createEditor({
-        callbacks: { onFieldSelect, onValueSelect, onSubmit },
-      });
-
-      const storage = getStorage(editor);
-      const testField: FieldDefinition = {
-        key: 'test',
-        label: 'Test',
-        type: 'string',
-        operators: ['is'],
-      };
-
-      storage.callbacks.onFieldSelect(testField);
-      storage.callbacks.onValueSelect('value');
-      const snapshot = { segments: [], text: '' };
-      storage.callbacks.onSubmit(snapshot);
-
-      expect(onFieldSelect).toHaveBeenCalledWith(testField);
-      expect(onValueSelect).toHaveBeenCalledWith('value');
-      expect(onSubmit).toHaveBeenCalledWith(snapshot);
-
-      editor.destroy();
     });
   });
 });

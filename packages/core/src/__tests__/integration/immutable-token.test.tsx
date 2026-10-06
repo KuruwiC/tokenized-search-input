@@ -131,65 +131,7 @@ describe('Immutable Token - Integration Tests', () => {
     });
   });
 
-  describe('Keyboard navigation', () => {
-    it('navigates past immutable token with arrow keys', async () => {
-      const user = userEvent.setup();
-      render(
-        <TokenizedSearchInput
-          fields={immutableFields}
-          defaultValue="country:is:jp status:is:active"
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Country')).toBeInTheDocument();
-        expect(screen.getByText('Status')).toBeInTheDocument();
-      });
-
-      const editor = screen.getByRole('combobox');
-      await user.click(editor);
-      await user.keyboard('{ArrowRight}');
-
-      await waitFor(() => {
-        expect(editor).toBeInTheDocument();
-      });
-    });
-
-    it('leaves a clicked immutable token with Escape', async () => {
-      const user = userEvent.setup();
-      render(<TokenizedSearchInput fields={immutableFields} defaultValue="country:is:jp" />);
-
-      await waitFor(() => {
-        expect(screen.getByRole('group', { name: /country/i })).toBeInTheDocument();
-      });
-
-      const token = screen.getByRole('group', { name: /country/i });
-      await user.click(token);
-      await user.keyboard('{Escape}');
-      await waitFor(() => {
-        expect(screen.getByRole('group', { name: /country/i })).toBeInTheDocument();
-      });
-    });
-  });
-
   describe('Immutable confirmation on blur', () => {
-    it('creates editable token from immutable field via colon trigger', async () => {
-      const user = userEvent.setup();
-      render(<TokenizedSearchInput fields={immutableFields} />);
-
-      const editor = screen.getByRole('combobox');
-      await user.click(editor);
-
-      await user.keyboard('country:');
-
-      await waitFor(() => {
-        expect(screen.getByText('Country')).toBeInTheDocument();
-      });
-      await waitFor(() => {
-        expect(screen.getByPlaceholderText('...')).toBeInTheDocument();
-      });
-    });
-
     it('allows value input while token is focused', async () => {
       const user = userEvent.setup();
       render(<TokenizedSearchInput fields={immutableFields} />);

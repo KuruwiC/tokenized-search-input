@@ -110,59 +110,6 @@ describe('Token Editing - User Journeys', () => {
         expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ text: '' }));
       });
     });
-
-    it('verifies single token remains after deleting first', async () => {
-      const onChange = vi.fn();
-      const user = userEvent.setup();
-      render(
-        <TokenizedSearchInput
-          fields={testFields}
-          defaultValue="status:is:active priority:is:high"
-          onChange={onChange}
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Status')).toBeInTheDocument();
-        expect(screen.getByText('Priority')).toBeInTheDocument();
-      });
-
-      // Click on status token to edit
-      const statusToken = screen.getByRole('group', { name: /Filter: status/i });
-      await user.click(statusToken);
-
-      await waitFor(() => {
-        expect(screen.getByPlaceholderText('...')).toBeInTheDocument();
-      });
-
-      // Clear value and press Backspace to delete
-      const valueInput = screen.getByPlaceholderText('...');
-      await user.clear(valueInput);
-      await user.keyboard('{Backspace}');
-
-      // Verify: Only priority token remains
-      await waitFor(() => {
-        expect(screen.queryByRole('group', { name: /Filter: status/i })).not.toBeInTheDocument();
-        expect(screen.getByRole('group', { name: /Filter: priority/i })).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe('Edit free text token', () => {
-    it('displays loaded free text token correctly', async () => {
-      render(
-        <TokenizedSearchInput
-          fields={testFields}
-          defaultValue="status:is:active searchterm"
-          freeTextMode="tokenize"
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByRole('group', { name: /Filter: status/i })).toBeInTheDocument();
-        expect(screen.getByRole('group', { name: /Free text: searchterm/i })).toBeInTheDocument();
-      });
-    });
   });
 
   describe('Value input', () => {

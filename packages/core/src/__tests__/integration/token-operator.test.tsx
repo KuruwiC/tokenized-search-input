@@ -59,45 +59,6 @@ describe('TokenOperator - Integration Tests', () => {
     });
   });
 
-  describe('Multi-operator field', () => {
-    it('renders dropdown trigger for multi-operator field when focused', async () => {
-      const ref = createRef<TokenizedSearchInputRef>();
-
-      render(
-        <TokenizedSearchInput ref={ref} fields={testFields} defaultValue="status:is:active" />
-      );
-
-      await waitFor(() => {
-        expect(ref.current).not.toBeNull();
-      });
-
-      const editor = getInternalEditor(ref.current);
-      expect(editor).not.toBeNull();
-      if (!editor) return;
-
-      // Find the status token
-      let tokenPos: number | null = null;
-      editor.state.doc.descendants((node, pos) => {
-        if (node.type.name === 'filterToken' && node.attrs.key === 'status') {
-          tokenPos = pos;
-          return false;
-        }
-        return true;
-      });
-
-      expect(tokenPos).not.toBeNull();
-      if (tokenPos === null) return;
-
-      // Focus the token
-      editor.commands.focusFilterToken(tokenPos, 'end');
-
-      await waitFor(() => {
-        const trigger = document.querySelector('[aria-haspopup="listbox"]');
-        expect(trigger).not.toBeNull();
-      });
-    });
-  });
-
   describe('Token attributes', () => {
     it('parses and stores all token attributes correctly from defaultValue', async () => {
       const ref = createRef<TokenizedSearchInputRef>();

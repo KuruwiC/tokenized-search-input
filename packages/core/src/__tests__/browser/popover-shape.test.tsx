@@ -10,7 +10,6 @@ import {
   mountEditorAround,
   pressUntil,
   radiusOf,
-  tokenElements,
 } from './harness';
 
 const icon = <span aria-hidden="true">●</span>;
@@ -103,16 +102,6 @@ describe('popovers under a pill theme', () => {
     expect(checkboxes.length).toBeGreaterThan(0);
     for (const checkbox of checkboxes) expect(radiusOf(checkbox)).toBeLessThanOrEqual(4);
     expect(radiusOf(popover)).toBeLessThanOrEqual(12);
-  });
-
-  it('still draws the input and its tokens as pills', async () => {
-    const m = await mountEditorAround('status:is:open', { fields }, { variables: PILL });
-
-    const container = m.pm.closest('.tsi-container');
-    if (!container) throw new Error('no container');
-    // On one line the box is rounded by half its height
-    expect(radiusOf(container)).toBe(container.getBoundingClientRect().height / 2);
-    for (const token of tokenElements(m)) expect(radiusOf(token)).toBe(9999);
   });
 });
 

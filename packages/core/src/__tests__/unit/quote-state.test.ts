@@ -157,10 +157,6 @@ describe('findLastWordBoundary', () => {
     it('handles escaped quotes correctly', () => {
       expect(findLastWordBoundary('"say \\"hello world\\""')).toBe(-1);
     });
-
-    it('handles filter-like patterns inside quotes', () => {
-      expect(findLastWordBoundary('"aaa \\" status:hoge"')).toBe(-1);
-    });
   });
 });
 

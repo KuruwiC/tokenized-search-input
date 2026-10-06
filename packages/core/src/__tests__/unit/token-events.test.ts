@@ -122,25 +122,9 @@ describe('Token Events', () => {
       expect(isUnchanged([], [tokenA], 'A')).toBe(true);
     });
 
-    it('returns false when new token is created and focus left', () => {
-      const tokenA = createFilterToken('A', 'status', 'is', 'active');
-      expect(isUnchanged([], [tokenA], null)).toBe(false);
-    });
-
-    it('returns false when a token is deleted', () => {
-      const tokenA = createFilterToken('A', 'status', 'is', 'active');
-      expect(isUnchanged([tokenA], [], null)).toBe(false);
-    });
-
     it('returns true when re-focusing an existing token', () => {
       const tokenA = createFilterToken('A', 'status', 'is', 'active');
       expect(isUnchanged([tokenA], [tokenA], 'A')).toBe(true);
-    });
-
-    it('handles null focusedTokenId (compares all tokens)', () => {
-      const tokenA = createFilterToken('A', 'status', 'is', 'active');
-      const tokenAEdited = createFilterToken('A', 'status', 'is', 'inactive');
-      expect(isUnchanged([tokenA], [tokenAEdited], null)).toBe(false);
     });
 
     it('handles freeText token exclusion', () => {

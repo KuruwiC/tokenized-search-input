@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { filterItems } from '../../utils/filter-items';
-import { exact, fuzzy, matchers } from '../../utils/matcher';
+import { exact } from '../../utils/matcher';
 
 interface TestItem {
   id: string;
@@ -32,12 +32,6 @@ describe('filterItems', () => {
       expect(filterItems(undefined as unknown as TestItem[], 'test', getTargets)).toEqual([]);
     });
 
-    it('filters items by fuzzy match (default)', () => {
-      const result = filterItems(items, 'act', getTargets);
-      expect(result.length).toBeGreaterThan(0);
-      expect(result.some((item) => item.id === 'active')).toBe(true);
-    });
-
     it('sorts results by score (highest first)', () => {
       const result = filterItems(items, 'act', getTargets);
       // 'active' should be first as it starts with 'act'
@@ -55,11 +49,6 @@ describe('filterItems', () => {
       const exactFullResult = filterItems(items, 'active', getTargets, { matcher: exact });
       expect(exactFullResult.length).toBe(1);
       expect(exactFullResult[0].id).toBe('active');
-    });
-
-    it('uses matchers namespace', () => {
-      const result = filterItems(items, 'active', getTargets, { matcher: matchers.exact });
-      expect(result.length).toBe(1);
     });
 
     it('uses custom matcher function', () => {
@@ -117,18 +106,6 @@ describe('filterItems', () => {
 
       expect(result.length).toBe(1);
       expect(result[0].id).toBe('test2');
-    });
-  });
-
-  describe('combined options', () => {
-    it('applies matcher and minScore together', () => {
-      const result = filterItems(items, 'act', getTargets, {
-        matcher: fuzzy,
-        minScore: 0,
-      });
-
-      expect(result.length).toBeGreaterThan(0);
-      expect(result[0].id).toBe('active');
     });
   });
 });

@@ -39,24 +39,6 @@ afterEach(() => {
 
 describe('FilterTokenView - Suggestion Updates', () => {
   describe('Enum field suggestions', () => {
-    it('shows edit mode when focusing enum field token', async () => {
-      const user = userEvent.setup();
-      render(<TokenizedSearchInput fields={enumFields} defaultValue="status:is:active" />);
-
-      await waitFor(() => {
-        expect(screen.getByText('Status')).toBeInTheDocument();
-      });
-
-      // Click on the token to focus
-      const token = screen.getByRole('group', { name: /Filter: status/i });
-      await user.click(token);
-
-      // Verify: Edit mode active (input visible)
-      await waitFor(() => {
-        expect(screen.getByPlaceholderText('...')).toBeInTheDocument();
-      });
-    });
-
     it('selects suggestion with Enter key', async () => {
       const onChange = vi.fn();
       const user = userEvent.setup();

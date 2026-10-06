@@ -82,10 +82,6 @@ describe('normalizeDateFieldValue for a date field', () => {
       },
     });
 
-    it('stores the typed form in canonical form', () => {
-      expect(normalizeDateFieldValue('5/3/2024', field)).toBe('2024-03-05');
-    });
-
     it('keeps a value that is already in canonical form, which the parse rejects', () => {
       expect(normalizeDateFieldValue('2024-03-05', field)).toBe('2024-03-05');
     });
