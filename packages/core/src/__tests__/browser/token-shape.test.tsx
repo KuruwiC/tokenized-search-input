@@ -17,19 +17,32 @@ const fields: FieldDefinition[] = [
   { key: 'lock', label: 'Lock', type: 'string', operators: ['is'], immutable: true },
 ];
 
-const THEMES = {
-  default: { variables: {}, radius: '8px' },
+type EndPart = 'label' | 'delete';
+
+interface Shape {
+  variables: Record<string, string>;
+  /** End parts checked against the token's curve, and the token's expected radius and border width. */
+  curve?: { ends: readonly EndPart[]; radius: string; borderWidth: string };
+}
+
+const SHAPES: Record<string, Shape> = {
+  default: {
+    variables: {},
+    curve: { ends: ['label', 'delete'], radius: '8px', borderWidth: '1px' },
+  },
   'large-radius': {
     variables: { '--tsi-radius': '16px', '--tsi-radius-inner': '6px' },
-    radius: '16px',
+    curve: { ends: ['label', 'delete'], radius: '16px', borderWidth: '1px' },
   },
-  pill: { variables: { '--tsi-radius': '9999px' }, radius: '9999px' },
-} as const;
-
-const SHAPES: Record<string, Record<string, string>> = {
-  ...Object.fromEntries(Object.entries(THEMES).map(([theme, { variables }]) => [theme, variables])),
-  'large-token': { '--tsi-token-size': '2rem' },
-  'thick-border': { '--tsi-radius': '16px', '--tsi-token-border-width': '2px' },
+  pill: {
+    variables: { '--tsi-radius': '9999px' },
+    curve: { ends: ['label', 'delete'], radius: '9999px', borderWidth: '1px' },
+  },
+  'large-token': { variables: { '--tsi-token-size': '2rem' } },
+  'thick-border': {
+    variables: { '--tsi-radius': '16px', '--tsi-token-border-width': '2px' },
+    curve: { ends: ['delete'], radius: '16px', borderWidth: '2px' },
+  },
 };
 
 const PARTS = {
@@ -38,7 +51,8 @@ const PARTS = {
   delete: { selector: '.tsi-token-delete', key: '{ArrowRight}' },
 } as const;
 
-const END_SIDES = { label: 'left', delete: 'right' } as const;
+const END_SIDES: Record<EndPart, 'left' | 'right'> = { label: 'left', delete: 'right' };
+const isEndPart = (name: string): name is EndPart => name in END_SIDES;
 
 type Corner = 'TopLeft' | 'TopRight' | 'BottomRight' | 'BottomLeft';
 const CORNERS: Corner[] = ['TopLeft', 'TopRight', 'BottomRight', 'BottomLeft'];
@@ -78,24 +92,30 @@ async function focusPart(
   return { part, token };
 }
 
-function expectFillsInsideBorder(part: Element, token: HTMLElement): void {
+function expectFillsInsideBorder(part: Element, token: HTMLElement, context: string): void {
   const border = Number.parseFloat(getComputedStyle(token).borderTopWidth);
   const tokenBox = token.getBoundingClientRect();
   const partBox = part.getBoundingClientRect();
-  expect(partBox.top, `top of ${part.className}`).toBeCloseTo(tokenBox.top + border, 1);
-  expect(partBox.bottom, `bottom of ${part.className}`).toBeCloseTo(tokenBox.bottom - border, 1);
+  const name = `${context}: ${part.className}`;
+  expect(partBox.top, `top of ${name}`).toBeCloseTo(tokenBox.top + border, 1);
+  expect(partBox.bottom, `bottom of ${name}`).toBeCloseTo(tokenBox.bottom - border, 1);
 }
 
 /**
  * The part fills the token's corners on `side` inside the border, rounded to the token's
  * radius less its border width.
  */
-function expectConcentric(part: HTMLElement, token: HTMLElement, side: 'left' | 'right'): void {
+function expectConcentric(
+  part: HTMLElement,
+  token: HTMLElement,
+  side: 'left' | 'right',
+  context: string
+): void {
   const border = Number.parseFloat(getComputedStyle(token).borderTopWidth);
   const tokenBox = token.getBoundingClientRect();
   const partBox = part.getBoundingClientRect();
-  expectFillsInsideBorder(part, token);
-  expect(partBox[side], `${side} edge`).toBeCloseTo(
+  expectFillsInsideBorder(part, token, context);
+  expect(partBox[side], `${context}: ${side} edge`).toBeCloseTo(
     side === 'left' ? tokenBox.left + border : tokenBox.right - border,
     1
   );
@@ -106,40 +126,47 @@ function expectConcentric(part: HTMLElement, token: HTMLElement, side: 'left' | 
     const expected = SIDE_CORNERS[side].includes(corner)
       ? Math.max(0, tokenRadius(corner) - border)
       : 0;
-    expect(partRadius(corner), corner).toBeCloseTo(expected, 1);
+    expect(partRadius(corner), `${context}: ${corner} radius`).toBeCloseTo(expected, 1);
   }
 }
 
-describe('the end part of a token with keyboard focus', () => {
-  for (const [theme, { variables, radius }] of Object.entries(THEMES)) {
-    for (const name of Object.keys(END_SIDES) as (keyof typeof END_SIDES)[]) {
-      it(`follows the curve inside the token's border: ${name} part, ${theme} theme`, async () => {
-        const m = await mountEditorAround('status:is:open', { fields }, { variables });
+function curvedEndsClause(ends: readonly EndPart[] | undefined): string {
+  if (!ends) return '';
+  return `; the ${ends.join(' and ')} ${ends.length > 1 ? 'parts follow' : 'part follows'} the curve inside it`;
+}
+
+describe('a token part with keyboard focus, each part focused in turn', () => {
+  for (const [shape, { variables, curve }] of Object.entries(SHAPES)) {
+    it(`keeps its outline inside the token's border${curvedEndsClause(curve?.ends)}: ${shape} theme`, async () => {
+      const m = await mountEditorAround('status:is:open', { fields }, { variables });
+
+      for (const name of Object.keys(PARTS) as (keyof typeof PARTS)[]) {
+        const context = `${name} part`;
         const { part, token } = await focusPart(m, name);
+        const style = getComputedStyle(part);
+        expect(style.outlineStyle, `${context}: outline style`).not.toBe('none');
+        expect(
+          Number.parseFloat(style.outlineOffset) + Number.parseFloat(style.outlineWidth),
+          `${context}: outline offset plus width`
+        ).toBeLessThanOrEqual(0);
+        expectFillsInsideBorder(part, token, context);
 
-        expect(getComputedStyle(part).outlineStyle).not.toBe('none');
-        expectConcentric(part, token, END_SIDES[name]);
-        expect(getComputedStyle(token).borderTopLeftRadius).toBe(radius);
-        expect(getComputedStyle(token).borderTopWidth).toBe('1px');
-      });
-    }
+        if (curve && isEndPart(name) && curve.ends.includes(name)) {
+          expectConcentric(part, token, END_SIDES[name], context);
+          expect(getComputedStyle(token).borderTopLeftRadius, `${context}: token radius`).toBe(
+            curve.radius
+          );
+          expect(getComputedStyle(token).borderTopWidth, `${context}: token border width`).toBe(
+            curve.borderWidth
+          );
+        }
+      }
+    });
   }
-
-  it('follows a token border width set around the input', async () => {
-    const m = await mountEditorAround(
-      'status:is:open',
-      { fields },
-      { variables: { '--tsi-radius': '16px', '--tsi-token-border-width': '2px' } }
-    );
-    const { part, token } = await focusPart(m, 'delete');
-
-    expect(getComputedStyle(token).borderTopWidth).toBe('2px');
-    expectConcentric(part, token, 'right');
-  });
 });
 
 /** Each run of text and each input of the token sits inside its border, centred in its height. */
-function expectTextCentred(token: HTMLElement): void {
+function expectTextCentred(token: HTMLElement, context: string): void {
   const border = Number.parseFloat(getComputedStyle(token).borderTopWidth);
   const tokenBox = token.getBoundingClientRect();
   const centre = (tokenBox.top + tokenBox.bottom) / 2;
@@ -154,17 +181,27 @@ function expectTextCentred(token: HTMLElement): void {
     range.selectNodeContents(node);
     boxes.push([`text "${node.textContent}"`, range.getBoundingClientRect()]);
   }
-  for (const [name, box] of boxes) {
+  for (const [boxName, box] of boxes) {
+    const name = `${context}: ${boxName}`;
     expect(box.top, `top of ${name}`).toBeGreaterThanOrEqual(tokenBox.top + border - 0.05);
     expect(box.bottom, `bottom of ${name}`).toBeLessThanOrEqual(tokenBox.bottom - border + 0.05);
-    expect((box.top + box.bottom) / 2, `centre of ${name}`).toBeCloseTo(centre, 0);
+    // Leading is split above and below the text in whole pixels, so an odd leading leaves it
+    // half a pixel off centre: Linux renders Times New Roman as Liberation Serif, whose 17px
+    // of ascent and descent leave 5px of leading in a 22px line.
+    expect(Math.abs((box.top + box.bottom) / 2 - centre), `centre of ${name}`).toBeLessThanOrEqual(
+      0.5
+    );
   }
 }
 
-function expectPartsFillTokens(m: MountedEditor): void {
-  for (const token of m.pm.querySelectorAll<HTMLElement>('.tsi-token')) {
-    for (const part of token.children) expectFillsInsideBorder(part, token);
-    expectTextCentred(token);
+/** The tokens {@link mountEveryKindOfToken} mounts, in order. */
+const EVERY_KIND = ['filter', 'immutable', 'free-text', 'quoted free-text'] as const;
+
+function expectPartsFillTokens(m: MountedEditor, state: string): void {
+  for (const [index, token] of m.pm.querySelectorAll<HTMLElement>('.tsi-token').entries()) {
+    const context = `${state}, ${EVERY_KIND[index]} token`;
+    for (const part of token.children) expectFillsInsideBorder(part, token, context);
+    expectTextCentred(token, context);
   }
 }
 
@@ -195,39 +232,23 @@ function tokenIds(m: MountedEditor, type: string): string[] {
 }
 
 describe('every part of a token', () => {
-  for (const [shape, variables] of Object.entries(SHAPES)) {
-    it(`fills the token's height inside its border: tokens at rest, ${shape} theme`, async () => {
+  for (const [shape, { variables }] of Object.entries(SHAPES)) {
+    it(`fills the token's height inside its border, at rest and while a filter and a quoted token are edited: ${shape} theme`, async () => {
       const m = await mountEveryKindOfToken(variables);
+      expectPartsFillTokens(m, 'at rest');
 
-      expectPartsFillTokens(m);
-    });
-
-    it(`fills the token's height inside its border: tokens being edited, ${shape} theme`, async () => {
-      const m = await mountEveryKindOfToken(variables);
       const [filter] = tokenIds(m, 'filterToken');
       const [, quoted] = tokenIds(m, 'freeTextToken');
       if (!filter || !quoted) throw new Error('no tokens to edit');
-
-      for (const id of [filter, quoted]) {
+      for (const [kind, id] of [
+        ['filter', filter],
+        ['quoted', quoted],
+      ] as const) {
         enterToken(m.editor, id, programEntry());
         await vi.waitFor(() => expect(document.activeElement).toBeInstanceOf(HTMLInputElement));
         await finishAnimations();
-        expectPartsFillTokens(m);
+        expectPartsFillTokens(m, `${kind} token being edited`);
       }
     });
-
-    for (const name of Object.keys(PARTS) as (keyof typeof PARTS)[]) {
-      it(`keeps its keyboard focus outline inside the border: ${name} part, ${shape} theme`, async () => {
-        const m = await mountEditorAround('status:is:open', { fields }, { variables });
-        const { part, token } = await focusPart(m, name);
-
-        const style = getComputedStyle(part);
-        expect(style.outlineStyle).not.toBe('none');
-        expect(
-          Number.parseFloat(style.outlineOffset) + Number.parseFloat(style.outlineWidth)
-        ).toBeLessThanOrEqual(0);
-        expectFillsInsideBorder(part, token);
-      });
-    }
   }
 });

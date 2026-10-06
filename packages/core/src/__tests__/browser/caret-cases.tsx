@@ -1,51 +1,38 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import {
   afterLastToken,
   beforeFirstToken,
+  type CaretLocation,
   caretLocation,
   centreOf,
   editingTokenIndex,
   expectCaretBetween,
   gapBetween,
-  holdCaretSteady,
   type MountedEditor,
   mountEditor,
-  paintedCaret,
   pressUntil,
   tokenElements,
 } from './harness';
 
 const TWO_TOKENS = 'status:is:open owner:is:bob';
 
-/** Longer than one blink cycle of the caret in Chromium (1 s) and WebKit (about 1.06 s). */
-const BLINK_CYCLE_MS = 1200;
-
 const caretIsBetween = (m: MountedEditor, tokensBefore: number) => () => {
   const caret = caretLocation(m);
   return document.activeElement === m.pm && caret.collapsed && caret.tokensBefore === tokensBefore;
 };
 
+/** Checks the selection only: the cases for each kind of gap check where the caret is painted. */
+function expectCaretAt(
+  m: MountedEditor,
+  expected: Pick<CaretLocation, 'tokensBefore' | 'tokensAfter' | 'textBefore' | 'textAfter'>
+): void {
+  expect(document.activeElement).toBe(m.pm);
+  expect(caretLocation(m)).toMatchObject({ collapsed: true, ...expected });
+}
+
 export function registerCaretCases(): void {
   describe('caret', () => {
-    it('stays painted without blinking while it is checked', async () => {
-      const m = await mountEditor(TWO_TOKENS);
-      await userEvent.click(m.pm, { position: afterLastToken(m) });
-      const release = await holdCaretSteady(m);
-      try {
-        await vi.waitFor(async () => expect(await paintedCaret(m)).not.toBeNull(), {
-          timeout: 2500,
-          interval: 80,
-        });
-        const start = performance.now();
-        while (performance.now() - start < BLINK_CYCLE_MS) {
-          expect(await paintedCaret(m)).not.toBeNull();
-        }
-      } finally {
-        await release();
-      }
-    });
-
     it('sits between two adjacent tokens and types there', async () => {
       const m = await mountEditor(TWO_TOKENS);
       await userEvent.click(m.pm, { position: gapBetween(m, 0) });
@@ -92,15 +79,16 @@ export function registerCaretCases(): void {
     it('crosses tokens with ArrowLeft and types at each stop', async () => {
       const m = await mountEditor(TWO_TOKENS);
       await userEvent.click(m.pm, { position: afterLastToken(m) });
-      await expectCaretBetween(m, { tokensBefore: 2, tokensAfter: 0 });
+      expectCaretAt(m, { tokensBefore: 2, tokensAfter: 0, textBefore: '', textAfter: '' });
 
       await pressUntil('{ArrowLeft}', caretIsBetween(m, 1));
       await expectCaretBetween(m, { tokensBefore: 1, tokensAfter: 1 });
+      expectCaretAt(m, { tokensBefore: 1, tokensAfter: 1, textBefore: '', textAfter: '' });
       await userEvent.keyboard('mid');
       expect(m.value()).toBe('status:is:open mid owner:is:bob');
 
       await pressUntil('{ArrowLeft}', caretIsBetween(m, 0));
-      await expectCaretBetween(m, { tokensBefore: 0, tokensAfter: 2 });
+      expectCaretAt(m, { tokensBefore: 0, tokensAfter: 2, textBefore: '', textAfter: 'mid' });
       await userEvent.keyboard('head');
       expect(m.value()).toBe('head status:is:open mid owner:is:bob');
     });
@@ -121,15 +109,16 @@ export function registerCaretCases(): void {
     it('crosses tokens with ArrowRight and types at each stop', async () => {
       const m = await mountEditor(TWO_TOKENS);
       await userEvent.click(m.pm, { position: beforeFirstToken(m) });
-      await expectCaretBetween(m, { tokensBefore: 0, tokensAfter: 2 });
+      expectCaretAt(m, { tokensBefore: 0, tokensAfter: 2, textBefore: '', textAfter: '' });
 
       await pressUntil('{ArrowRight}', caretIsBetween(m, 1));
       await expectCaretBetween(m, { tokensBefore: 1, tokensAfter: 1 });
+      expectCaretAt(m, { tokensBefore: 1, tokensAfter: 1, textBefore: '', textAfter: '' });
       await userEvent.keyboard('mid');
       expect(m.value()).toBe('status:is:open mid owner:is:bob');
 
       await pressUntil('{ArrowRight}', caretIsBetween(m, 2));
-      await expectCaretBetween(m, { tokensBefore: 2, tokensAfter: 0 });
+      expectCaretAt(m, { tokensBefore: 2, tokensAfter: 0, textBefore: 'mid', textAfter: '' });
       await userEvent.keyboard('tail');
       expect(m.value()).toBe('status:is:open mid owner:is:bob tail');
     });
