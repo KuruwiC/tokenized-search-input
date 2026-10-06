@@ -15,10 +15,11 @@ import {
 } from './types';
 
 export function setSuggestion(tr: Transaction, meta: SuggestionMeta): Transaction {
-  // Calls on one transaction merge instead of overwriting, and a close is final.
+  // Calls on one transaction merge instead of overwriting, and a close is final, except
+  // that a user's dismissal is still added to it.
   const existing = tr.getMeta(suggestionKey) as SuggestionMeta | undefined;
   if (existing && isCloseMeta(existing)) {
-    return tr;
+    return isCloseMeta(meta) && meta.dismissed ? tr.setMeta(suggestionKey, meta) : tr;
   }
 
   const next = isCloseMeta(meta) ? meta : { ...(existing ?? {}), ...meta };
@@ -188,6 +189,7 @@ export function updateSuggestionTimeControls(
   return setSuggestion(tr, controls);
 }
 
+/** Closes the suggestion without overriding a dismissal on the same transaction. */
 export function closeSuggestion(tr: Transaction): Transaction {
   return setSuggestion(tr, { close: true });
 }
@@ -197,11 +199,13 @@ export function dispatchCloseSuggestion(view: EditorView): void {
   view.dispatch(closeSuggestion(view.state.tr));
 }
 
+/** Closes the suggestion at the user's request; it stays closed until their next input. */
 export function dismissSuggestion(tr: Transaction): Transaction {
-  return setSuggestion(tr, {
-    type: null,
-    dismissed: true,
-  });
+  return setSuggestion(tr, { close: true, dismissed: true });
+}
+
+export function dispatchDismissSuggestion(view: EditorView): void {
+  view.dispatch(dismissSuggestion(view.state.tr));
 }
 
 export function clearDismissed(tr: Transaction): Transaction {

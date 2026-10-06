@@ -6,6 +6,7 @@ export {
   closeSuggestion,
   dismissSuggestion,
   dispatchCloseSuggestion,
+  dispatchDismissSuggestion,
   isSuggestionOpen,
   navigateSuggestion,
   openCustomSuggestion,

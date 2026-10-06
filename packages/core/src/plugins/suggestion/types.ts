@@ -61,6 +61,11 @@ export interface SuggestionState {
    * there is a value, whether it has a time says.
    */
   includeTime: boolean;
+  /**
+   * Whether the user closed the suggestion (Escape, Enter with no active entry, pressing or
+   * moving focus elsewhere). Re-evaluation does not reopen it until the next input: a change
+   * to the document, selection or token focus, or focus entering the input.
+   */
   dismissed: boolean;
   /** Where the custom suggestions go in a fieldWithCustom list. */
   customDisplayMode: CustomDisplayMode | null;
@@ -84,6 +89,8 @@ export interface SetSuggestionMeta {
 
 export interface CloseSuggestionMeta {
   close: true;
+  /** The user asked for the close; see `SuggestionState.dismissed`. */
+  dismissed?: boolean;
 }
 
 export type SuggestionMeta = SetSuggestionMeta | CloseSuggestionMeta;

@@ -97,6 +97,12 @@ export function createSuggestionPlugin(
       apply(tr, value): SuggestionState {
         const tokenFocusMeta = getTokenFocusMeta(tr);
 
+        // A user's close lasts until their next input, so a re-evaluation scheduled
+        // before the close cannot reopen the list.
+        if (value.dismissed && (tr.docChanged || tr.selectionSet || tokenFocusMeta !== undefined)) {
+          value = { ...value, dismissed: false };
+        }
+
         // Field and custom suggestions belong to plain text, so they close when a token gains focus.
         if (
           tokenFocusMeta !== undefined &&
@@ -146,7 +152,10 @@ export function createSuggestionPlugin(
         }
 
         if (isCloseMeta(meta)) {
-          return { ...initialSuggestionState };
+          return {
+            ...initialSuggestionState,
+            dismissed: meta.dismissed === true || value.dismissed,
+          };
         }
 
         const newType = meta.type ?? value.type;

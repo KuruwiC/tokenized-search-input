@@ -707,6 +707,8 @@ export const suggestions: SuggestionsConfig = {
 };
 ```
 
+Suggestions the user closes (with Escape, with Enter while no suggestion is highlighted, or by pressing or moving focus outside them) stay closed until the user types, moves the caret, enters or leaves a token, or focuses the input again.
+
 #### `validation` - Validation Configuration
 
 <!-- example -->

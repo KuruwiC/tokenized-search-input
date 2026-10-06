@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/core';
 import { type RefObject, useCallback } from 'react';
 import {
-  dispatchCloseSuggestion,
+  dispatchDismissSuggestion,
   isSuggestionOpen,
   type SuggestionState,
   suggestionKey,
@@ -38,7 +38,7 @@ export function useSuggestionDismissal(
       if (current === null) return false;
       if (reason === 'focus-outside' && interactionBoundary(current) === 'container') return false;
 
-      dispatchCloseSuggestion(editor.view);
+      dispatchDismissSuggestion(editor.view);
       return true;
     },
     [editor]

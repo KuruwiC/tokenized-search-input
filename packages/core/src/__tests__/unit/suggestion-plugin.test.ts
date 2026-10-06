@@ -1,5 +1,5 @@
 import { Schema } from '@tiptap/pm/model';
-import { EditorState } from '@tiptap/pm/state';
+import { EditorState, TextSelection } from '@tiptap/pm/state';
 import { describe, expect, it } from 'vitest';
 import { markTokenValueTyped } from '../../plugins/shared/meta';
 import {
@@ -187,7 +187,7 @@ describe('SuggestionPlugin', () => {
         state2.apply(markTokenValueTyped(setTokenValue(state2, 'p'), 'token-1'))
       );
 
-      expect(untyped?.dismissed).toBe(true);
+      expect(isSuggestionOpen(untyped)).toBe(false);
       expect(typed).toMatchObject({
         type: 'value',
         query: 'p',
@@ -469,65 +469,81 @@ describe('SuggestionPlugin', () => {
     });
   });
 
-  describe('dismissed flag behavior', () => {
-    it('closeSuggestion resets dismissed to false (system auto-close)', () => {
-      const state = createEditorState();
+  describe('a dismissal by the user', () => {
+    function createTextState() {
+      return EditorState.create({
+        schema,
+        doc: schema.node('doc', null, [schema.node('paragraph', null, [schema.text('abc')])]),
+        plugins: [createSuggestionPlugin()],
+      });
+    }
 
-      // Open suggestions and set dismissed to true via dismissSuggestion
-      const tr1 = openFieldSuggestion(state.tr, testFields, '');
-      const state1 = state.apply(tr1);
-      const tr2 = dismissSuggestion(state1.tr);
-      const state2 = state1.apply(tr2);
+    function dismissedFieldState() {
+      const state = createTextState();
+      const opened = state.apply(openFieldSuggestion(state.tr, testFields, '', 1));
+      return opened.apply(dismissSuggestion(opened.tr));
+    }
 
-      // Verify dismissed is true
-      expect(getSuggestionState(state2)?.dismissed).toBe(true);
+    it('closes the suggestion', () => {
+      const suggestionState = getSuggestionState(dismissedFieldState());
 
-      // Now close via closeSuggestion - should reset dismissed to false
-      const tr3 = closeSuggestion(state2.tr);
-      const state3 = state2.apply(tr3);
-      const suggestionState = getSuggestionState(state3);
-
-      expect(suggestionState?.dismissed).toBe(false);
-      expect(suggestionState?.type).toBe(null);
+      expect(suggestionState).toEqual({ ...initialSuggestionState, dismissed: true });
+      expect(isSuggestionOpen(suggestionState)).toBe(false);
     });
 
-    it('dismissSuggestion sets dismissed to true (user explicit dismiss)', () => {
-      const state = createEditorState();
+    it('holds through a close that the user did not ask for', () => {
+      const state = dismissedFieldState();
 
-      // Open suggestions
-      const tr1 = openFieldSuggestion(state.tr, testFields, '');
-      const state1 = state.apply(tr1);
+      const closed = state.apply(closeSuggestion(state.tr));
 
-      // Dismiss via dismissSuggestion (e.g., Escape key)
-      const tr2 = dismissSuggestion(state1.tr);
-      const state2 = state1.apply(tr2);
-      const suggestionState = getSuggestionState(state2);
-
-      expect(suggestionState?.dismissed).toBe(true);
-      // Note: dismissSuggestion sets type to null, but the existing state's type
-      // is preserved through the merge behavior. The dismissed flag is what matters.
+      expect(getSuggestionState(closed)?.dismissed).toBe(true);
     });
 
-    it('allows reopening suggestions after closeSuggestion (dismissed is reset)', () => {
-      const state = createEditorState();
+    it('holds through a close made with it in one transaction', () => {
+      const state = createTextState();
+      const opened = state.apply(openFieldSuggestion(state.tr, testFields, '', 1));
 
-      // Open -> Close -> Reopen sequence (simulates arrow navigation)
-      const tr1 = openValueSuggestion(state.tr, 'status', ['active', 'inactive'], '');
-      const state1 = state.apply(tr1);
+      const tr = closeSuggestion(opened.tr);
+      dismissSuggestion(tr);
+      closeSuggestion(tr);
 
-      const tr2 = closeSuggestion(state1.tr);
-      const state2 = state1.apply(tr2);
+      expect(getSuggestionState(opened.apply(tr))?.dismissed).toBe(true);
+    });
 
-      // After closeSuggestion, dismissed should be false
-      expect(getSuggestionState(state2)?.dismissed).toBe(false);
+    it('holds through a transaction that changes neither the document nor the selection', () => {
+      const state = dismissedFieldState();
 
-      // Should be able to reopen
-      const tr3 = openFieldSuggestion(state2.tr, testFields, '');
-      const state3 = state2.apply(tr3);
-      const suggestionState = getSuggestionState(state3);
+      const next = state.apply(updateSuggestionActiveIndex(state.tr, 0));
 
-      expect(suggestionState?.type).toBe('field');
-      expect(suggestionState?.dismissed).toBe(false);
+      expect(getSuggestionState(next)?.dismissed).toBe(true);
+    });
+
+    it.each([
+      ['the document changes', (state: EditorState) => state.tr.insertText('d', 4)],
+      [
+        'the selection changes',
+        (state: EditorState) => state.tr.setSelection(TextSelection.create(state.doc, 2)),
+      ],
+      [
+        'the token focus changes',
+        (state: EditorState) => {
+          const tr = state.tr;
+          setTokenFocus(tr, null);
+          return tr;
+        },
+      ],
+    ])('ends when %s', (_, change) => {
+      const state = dismissedFieldState();
+
+      expect(getSuggestionState(state.apply(change(state)))?.dismissed).toBe(false);
+    });
+
+    it('ends when a suggestion is opened', () => {
+      const state = dismissedFieldState();
+
+      const reopened = state.apply(openFieldSuggestion(state.tr, testFields, '', 1));
+
+      expect(getSuggestionState(reopened)).toMatchObject({ type: 'field', dismissed: false });
     });
   });
 
