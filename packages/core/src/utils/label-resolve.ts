@@ -1,4 +1,5 @@
 import type { FieldDefinition, LabelResolver } from '../types';
+import { resolveExactIdFirst } from './exact-id-first';
 
 /**
  * Built-in resolvers for resolveLabel.
@@ -39,13 +40,18 @@ export const defaultLabelResolver = labelResolvers.caseInsensitive;
 export interface ResolveLabelOptions {
   /**
    * Custom resolver function.
-   * If provided, this function is called for each field.
+   * If provided, this function is called for each field, the field whose key equals
+   * the input first.
    */
   resolver?: LabelResolver;
 }
 
 /**
  * Resolve input to field key.
+ *
+ * Input equal to a field's key is tried against that field first, so "author" resolves
+ * to the key "author" even when an earlier field is labelled "Author"; otherwise fields
+ * are tried in order. The resolver decides either way.
  *
  * Default behavior is case-insensitive exact match:
  * - "Status" → "status" (label match)
@@ -94,7 +100,6 @@ export function resolveLabelToField(
   return resolvedKey === null ? undefined : fields.find((f) => f.key === resolvedKey);
 }
 
-/** The key the resolver gives for the first field it matches, or null if it matches none. */
 function matchLabel(
   fields: readonly FieldDefinition[],
   input: string,
@@ -104,15 +109,10 @@ function matchLabel(
 
   const resolver = options?.resolver ?? defaultLabelResolver;
 
-  for (const field of fields) {
-    const resolved = resolver({
-      query: input,
-      field: { key: field.key, label: field.label },
-    });
-    if (resolved !== null) {
-      return resolved;
-    }
-  }
-
-  return null;
+  return resolveExactIdFirst(
+    fields,
+    input,
+    (field) => field.key,
+    (field) => resolver({ query: input, field: { key: field.key, label: field.label } })
+  );
 }

@@ -7,6 +7,7 @@ import type {
   FieldDefinition,
   Matcher,
 } from '../types';
+import { resolveExactIdFirst } from './exact-id-first';
 import { type FilterItemsOptions, filterItems } from './filter-items';
 
 /**
@@ -125,10 +126,10 @@ export const defaultEnumResolver = enumResolvers.caseInsensitive;
 /**
  * Resolve input to internal enum value.
  *
- * Input equal to an option's value resolves to that option, whatever the resolver
- * and whatever label an earlier option has, so a stored value always reads back as
- * itself. Otherwise the resolver is tried on each option in order and the first
- * non-null result wins; input no option matches is returned as written.
+ * Input equal to an option's value resolves to that option whatever the resolver and
+ * earlier labels, so a stored value reads back as itself. Otherwise the first non-null
+ * resolver result in option order wins: a looser match of a value ("B" for "b") loses to an
+ * earlier option whose label the resolver accepts. Unmatched input is returned as written.
  *
  * Default behavior is case-insensitive exact match (lookup, not fuzzy):
  * - "Active" → "active" (label match)
@@ -157,19 +158,11 @@ export function resolveEnumValue(
 
   const resolver = options?.resolver ?? defaultEnumResolver;
 
-  for (const ev of enumValues) {
-    const value = getEnumValue(ev);
-    const label = getEnumLabel(ev);
-    const resolved = resolver({
-      query: input,
-      option: { value, label },
-    });
-    if (resolved !== null) {
-      return resolved;
-    }
-  }
-
-  return input;
+  return (
+    resolveExactIdFirst(enumValues, input, getEnumValue, (ev) =>
+      resolver({ query: input, option: { value: getEnumValue(ev), label: getEnumLabel(ev) } })
+    ) ?? input
+  );
 }
 
 /**

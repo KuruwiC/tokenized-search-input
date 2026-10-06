@@ -129,7 +129,7 @@ export interface EnumResolverContext {
  * Resolver function for converting user input to internal enum value.
  * Returns the resolved value if matched, or null to continue searching.
  * It is not consulted for input equal to an option's value: that input always
- * resolves to that option.
+ * resolves to that option. Otherwise it is called for each option in order.
  *
  * @example
  * // Custom resolver: match by first character only
@@ -162,6 +162,8 @@ export interface LabelResolverContext {
 /**
  * Resolver function for converting user input to field key.
  * Returns the resolved key if matched, or null to continue searching.
+ * It is called for each field in order, except that a field whose key equals the
+ * input is called first.
  *
  * @example
  * // Custom resolver: match by key prefix

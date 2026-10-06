@@ -17,6 +17,13 @@ import { focusBlock, focusedTokenId, renderInput, tokenOf } from '../helpers/tok
 
 afterEach(cleanup);
 
+/** An earlier field whose label is, case aside, the key of a later field. */
+const authorFields: FieldDefinition[] = [
+  statusField,
+  { key: 'reporter', label: 'Author', type: 'string', operators: ['is'] },
+  { key: 'author', label: 'Writer', type: 'string', operators: ['is'] },
+];
+
 /**
  * Renders the input with unknown fields allowed and opens the label combobox of its token,
  * then starts counting the changes it reports.
@@ -217,6 +224,16 @@ describe('Token dropdown keys', () => {
     });
   });
 
+  describe('a field chosen from the label combobox list', () => {
+    it('is the field chosen, even when its key is the label of an earlier field', async () => {
+      const m = await openLabelCombobox(authorFields);
+
+      await m.user.click(screen.getByRole('option', { name: /Writer/ }));
+
+      expect(tokenOf(m.ref)).toMatchObject({ key: 'author' });
+    });
+  });
+
   describe('free text typed into the label combobox', () => {
     it.each([
       ['Tab', '{Tab}'],
@@ -244,6 +261,15 @@ describe('Token dropdown keys', () => {
       expect(m.onChange).toHaveBeenCalledTimes(1);
       expect(tokenOf(m.ref)).toMatchObject({ key: 'xq' });
       expectOneUndoRestores(m, 'status:is:active');
+    });
+
+    it('names the field whose key it is over an earlier field with that label', async () => {
+      const m = await openLabelCombobox(authorFields);
+
+      await m.user.keyboard('author');
+      await m.user.keyboard('{ArrowLeft}');
+
+      expect(tokenOf(m.ref)).toMatchObject({ key: 'author' });
     });
 
     it('is not committed when the text was never edited', async () => {

@@ -195,7 +195,33 @@ describe('enum-value utilities', () => {
         { value: 'b', label: 'Bee' },
       ];
       expect(resolveEnumValue(enumValues, 'Bee')).toBe('b');
+    });
+
+    it('resolves a looser match of a value by option order, after an earlier label', () => {
+      const enumValues = [
+        { value: 'a', label: 'b' },
+        { value: 'b', label: 'Bee' },
+      ];
+      // 'B' equals no value, so options are tried in order and the label 'b' of 'a' comes first
       expect(resolveEnumValue(enumValues, 'B')).toBe('a');
+      expect(resolveEnumValue(enumValues, 'b')).toBe('b');
+    });
+
+    it('calls the resolver only with the options as given', () => {
+      const enumValues = [
+        { value: 'x', label: 'Bee' },
+        { value: 'y', label: 'B' },
+      ];
+      const seen: { value: string; label: string }[] = [];
+      const labelPrefix = (ctx: { query: string; option: { value: string; label: string } }) => {
+        seen.push(ctx.option);
+        return ctx.query.startsWith(ctx.option.label) ? ctx.option.value : null;
+      };
+      expect(resolveEnumValue(enumValues, 'Zed', { resolver: labelPrefix })).toBe('Zed');
+      expect(resolveEnumValue(enumValues, 'Beetle', { resolver: labelPrefix })).toBe('x');
+      expect(resolveEnumValue(enumValues, 'Bz', { resolver: labelPrefix })).toBe('y');
+      expect(seen.length).toBeGreaterThan(0);
+      for (const option of seen) expect(enumValues).toContainEqual(option);
     });
 
     it('resolves input equal to an option value to that option with a custom resolver', () => {

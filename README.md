@@ -1199,7 +1199,7 @@ Built-in resolvers:
 
 Both built-in resolvers match user input against the value and the label, returning the internal value on match. This enables label-to-value resolution when using `{ value, label }` enum definitions.
 
-Input equal to an option's value always resolves to that option, before any resolver runs, so a stored query such as `x:is:b` reads back as `b` even when an earlier option has the label `b`. Otherwise the resolver is tried on each option in order, the first match wins, and input that matches no option is kept as written:
+Input equal to an option's value always resolves to that option, before any resolver runs, so a stored query such as `x:is:b` reads back as `b` even when an earlier option has the label `b`. Otherwise the resolver is tried on each option in order and the first match wins, so a looser match of a value (`B` for the value `b` under the default resolver) loses to an earlier option whose label the resolver accepts. Input that matches no option is kept as written:
 
 <!-- example -->
 ```tsx
@@ -1257,6 +1257,8 @@ Built-in resolvers:
 |----------|-------------|
 | `caseInsensitive` (default) | Case-insensitive exact match |
 | `exact` | Case-sensitive exact match |
+
+Input equal to a field's key is tried against that field first; otherwise the fields are tried in order. So `author` resolves to the field with the key `author` even when an earlier field has the label `Author`, while `AUTHOR`, which equals no key, resolves to that earlier field. The resolver decides every match and the first match wins: `resolveLabel` returns input that matches no field as written, and `resolveLabelToField` returns `undefined` for it.
 
 ### Toggle Selection Example
 

@@ -160,3 +160,65 @@ describe('resolveLabel when the resolver matches no field', () => {
     expect(resolveLabel(fields, 'status', { resolver: () => null })).toBe('status');
   });
 });
+
+describe('a field whose key equals the input', () => {
+  const authorFields: FieldDefinition[] = [
+    { key: 'reporter', label: 'Author', type: 'string', operators: ['is'] },
+    { key: 'author', label: 'Writer', type: 'string', operators: ['is'] },
+  ];
+
+  it('is tried first, before an earlier field whose label the resolver accepts', () => {
+    expect(resolveLabel(authorFields, 'author')).toBe('author');
+    expect(resolveLabelToField(authorFields, 'author')?.key).toBe('author');
+    expect(resolveLabel(authorFields, 'author', { resolver: labelResolvers.exact })).toBe('author');
+  });
+
+  it('is tried first with a custom resolver that also accepts an earlier label', () => {
+    const prefix = (ctx: { query: string; field: { key: string; label: string } }) => {
+      const q = ctx.query.toLowerCase();
+      return ctx.field.key.startsWith(q) || ctx.field.label.toLowerCase().startsWith(q)
+        ? ctx.field.key
+        : null;
+    };
+    const assignFields: FieldDefinition[] = [
+      { key: 'owner', label: 'Assignee', type: 'string', operators: ['is'] },
+      { key: 'assignee', label: 'Assigned to', type: 'string', operators: ['is'] },
+    ];
+    expect(resolveLabel(assignFields, 'assignee', { resolver: prefix })).toBe('assignee');
+    // A prefix of a key equals no key, so the fields are tried in order
+    expect(resolveLabel(assignFields, 'assig', { resolver: prefix })).toBe('owner');
+  });
+
+  it('still has to be accepted by the resolver', () => {
+    const labelOnly = (ctx: { query: string; field: { key: string; label: string } }) =>
+      ctx.query.toLowerCase() === ctx.field.label.toLowerCase() ? ctx.field.key : null;
+    expect(resolveLabel(authorFields, 'author', { resolver: labelOnly })).toBe('reporter');
+  });
+});
+
+describe('input that equals no key', () => {
+  const authorFields: FieldDefinition[] = [
+    { key: 'reporter', label: 'Author', type: 'string', operators: ['is'] },
+    { key: 'author', label: 'Writer', type: 'string', operators: ['is'] },
+  ];
+
+  it('is resolved by field order, so a looser key match loses to an earlier label', () => {
+    expect(resolveLabel(authorFields, 'AUTHOR')).toBe('reporter');
+    expect(resolveLabel(authorFields, 'Author')).toBe('reporter');
+    expect(resolveLabel(authorFields, 'Writer')).toBe('author');
+  });
+
+  it('is offered to the resolver with the fields as given', () => {
+    const seen: { key: string; label: string }[] = [];
+    const labelPrefix = (ctx: { query: string; field: { key: string; label: string } }) => {
+      seen.push(ctx.field);
+      return ctx.query.startsWith(ctx.field.label) ? ctx.field.key : null;
+    };
+    expect(resolveLabel(authorFields, 'Zed', { resolver: labelPrefix })).toBe('Zed');
+    expect(resolveLabelToField(authorFields, 'Zed', { resolver: labelPrefix })).toBeUndefined();
+    expect(resolveLabel(authorFields, 'Writers', { resolver: labelPrefix })).toBe('author');
+    expect(seen.length).toBeGreaterThan(0);
+    const given = authorFields.map(({ key, label }) => ({ key, label }));
+    for (const field of seen) expect(given).toContainEqual(field);
+  });
+});
