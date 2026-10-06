@@ -141,11 +141,26 @@ function canSuggest(editor: Editor): boolean {
   );
 }
 
-function normalizeResult(result: Awaited<SuggestFnReturn>): CustomSuggestionResult {
-  if (Array.isArray(result)) {
-    return { suggestions: result, hasMore: false };
-  }
-  return result;
+function pageSize(config: CustomSuggestionConfig): number {
+  return config.maxSuggestions ?? DEFAULT_MAX_SUGGESTIONS;
+}
+
+/**
+ * Reads a page that `suggest` or `loadMore` returned. A page holds at most `maxSuggestions`
+ * suggestions. The next page starts after the ones shown, so the ones cut off are what
+ * `loadMore` is asked for next.
+ */
+function readPage(
+  result: Awaited<SuggestFnReturn>,
+  config: CustomSuggestionConfig
+): Required<CustomSuggestionResult> {
+  const { suggestions, hasMore = false } = Array.isArray(result) ? { suggestions: result } : result;
+  const size = pageSize(config);
+  const cut = suggestions.length > size;
+  return {
+    suggestions: suggestions.slice(0, size),
+    hasMore: hasMore || (cut && config.loadMore !== undefined),
+  };
 }
 
 function collectExistingTokens(editor: Editor): ExistingToken[] {
@@ -333,10 +348,7 @@ export function useCustomSuggestions(
 
         if (signal.aborted || editor.isDestroyed || !canSuggest(editor)) return;
 
-        const result = normalizeResult(rawResult);
-
-        const maxSuggestions = config.maxSuggestions ?? DEFAULT_MAX_SUGGESTIONS;
-        const suggestions = result.suggestions.slice(0, maxSuggestions);
+        const { suggestions, hasMore } = readPage(rawResult, config);
 
         if (suggestions.length === 0) {
           // No custom suggestions - close if custom type is open, otherwise let field suggestions show
@@ -346,8 +358,6 @@ export function useCustomSuggestions(
           }
           return;
         }
-
-        const hasMore = result.hasMore ?? false;
 
         const displayMode = config.displayMode ?? 'replace';
         const anchorPos = editor.state.selection.from;
@@ -416,7 +426,7 @@ export function useCustomSuggestions(
           fields: getEditorContext(editor).fields,
           existingTokens: collectExistingTokens(editor),
           offset,
-          limit: config.maxSuggestions ?? DEFAULT_MAX_SUGGESTIONS,
+          limit: pageSize(config),
           signal,
         })
       );
@@ -426,8 +436,9 @@ export function useCustomSuggestions(
       const current = editor.isDestroyed ? undefined : getSuggestionState(editor.state);
       if (signal.aborted || !current?.custom.isLoadingMore) return;
 
+      const { suggestions, hasMore } = readPage(result, config);
       const tr = editor.state.tr;
-      appendCustomSuggestions(tr, current, result.suggestions, result.hasMore ?? false);
+      appendCustomSuggestions(tr, current, suggestions, hasMore);
       editor.view.dispatch(tr);
     } catch (error) {
       if (!isReportable(signal)) return;

@@ -471,7 +471,7 @@ export function SuggestingSearch() {
 | `loadMore` | `(ctx: SuggestContextWithPagination) => Promise<CustomSuggestionResult>` | - | Load more suggestions for pagination |
 | `displayMode` | `'replace' \| 'prepend' \| 'append'` | `'replace'` | Display mode relative to field suggestions |
 | `debounceMs` | `number` | `150` | Debounce delay in milliseconds |
-| `maxSuggestions` | `number` | `5` | Maximum number of suggestions to display |
+| `maxSuggestions` | `number` | `5` | Page size: the most suggestions each page shows, the first page from `suggest` and each one from `loadMore` |
 | `timeoutMs` | `number` | `5000` | Timeout for suggestion requests in milliseconds |
 | `onError` | `(error: Error, ctx: SuggestionErrorContext) => void` | - | Error handler for suggestion failures |
 | `onSelect` | `(suggestion: CustomSuggestion, ctx: CustomSuggestionSelectContext) => boolean` | - | Custom selection handler |
@@ -613,6 +613,8 @@ export function PagedSearch() {
   );
 }
 ```
+
+`maxSuggestions` is the page size. Every page, the first one from `suggest` and each one from `loadMore`, shows at most that many suggestions, and `loadMore` receives it as `limit`. `offset` is the number of suggestions shown so far, so suggestions past `limit` in a page are not lost: they are what the next `loadMore` call is asked for, and a page that was cut always has more to load. Without `loadMore`, only the first `maxSuggestions` that `suggest` returns are shown.
 
 ## Props
 

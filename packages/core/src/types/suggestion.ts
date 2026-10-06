@@ -87,9 +87,9 @@ export interface SuggestContext {
 }
 
 export interface SuggestContextWithPagination extends SuggestContext {
-  /** Number of items to skip (for pagination) */
+  /** Number of suggestions shown so far: the page starts after them */
   offset: number;
-  /** Maximum number of items to return */
+  /** `maxSuggestions`: suggestions past it are left for the next page */
   limit: number;
 }
 
@@ -147,7 +147,12 @@ export interface CustomSuggestionConfig {
 
   /** Debounce delay in milliseconds (default: 150) */
   debounceMs?: number;
-  /** Maximum number of suggestions to display (default: 5) */
+  /**
+   * Page size (default: 5). Each page, from `suggest` or `loadMore`, shows at most this many
+   * suggestions, and `loadMore` receives it as `limit`. The next page starts after the
+   * suggestions shown, so suggestions a page cut off are loaded next; without `loadMore`,
+   * only the first page is shown.
+   */
   maxSuggestions?: number;
   /** Display mode relative to field suggestions (default: 'replace') */
   displayMode?: CustomSuggestionDisplayMode;

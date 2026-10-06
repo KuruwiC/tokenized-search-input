@@ -192,6 +192,98 @@ describe('pages of custom suggestions', () => {
     expect(loadMore).toHaveBeenCalledWith(expect.objectContaining({ offset: limit, limit }));
   });
 
+  it.each([
+    'replace',
+    'prepend',
+    'append',
+  ] as const)('cuts a loaded page to maxSuggestions and asks for the rest next (%s)', async (displayMode) => {
+    const scrollToEnd = observeIntersections();
+    const user = userEvent.setup();
+    const loadMore = vi
+      .fn<(context: SuggestContextWithPagination) => Promise<CustomSuggestionResult>>()
+      .mockResolvedValueOnce({ suggestions: page(['three', 'four', 'five']), hasMore: false })
+      .mockResolvedValueOnce({ suggestions: page(['five']), hasMore: false });
+    await renderInput({
+      suggestions: {
+        custom: {
+          displayMode,
+          debounceMs: 0,
+          maxSuggestions: 2,
+          suggest: async () => ({ suggestions: page(['one', 'two']), hasMore: true }),
+          loadMore,
+        },
+      },
+    });
+    const customTexts = () => {
+      const texts = optionTexts();
+      if (displayMode === 'replace') return texts;
+      return displayMode === 'prepend'
+        ? texts.slice(0, texts.length - fields.length)
+        : texts.slice(fields.length);
+    };
+
+    await user.click(screen.getByRole('combobox'));
+    await screen.findByRole('option', { name: /two/ });
+    act(scrollToEnd);
+    await screen.findByRole('option', { name: /four/ });
+
+    expect(loadMore).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 2, limit: 2 }));
+    expect(customTexts()).toEqual(['one', 'two', 'three', 'four']);
+    expect(screen.getByText('Scroll for more')).toBeInTheDocument();
+
+    act(scrollToEnd);
+    await screen.findByRole('option', { name: /five/ });
+    expect(loadMore).toHaveBeenCalledTimes(2);
+    expect(loadMore).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 4, limit: 2 }));
+    expect(customTexts()).toEqual(['one', 'two', 'three', 'four', 'five']);
+    expect(screen.queryByText('Scroll for more')).not.toBeInTheDocument();
+  });
+
+  it('asks loadMore for the suggestions that a first page past maxSuggestions left out', async () => {
+    const scrollToEnd = observeIntersections();
+    const user = userEvent.setup();
+    const loadMore = vi.fn(async () => ({ suggestions: page(['c']), hasMore: false }));
+    await renderInput({
+      suggestions: {
+        custom: {
+          displayMode: 'replace',
+          debounceMs: 0,
+          maxSuggestions: 2,
+          suggest: async () => page(['a', 'b', 'c']),
+          loadMore,
+        },
+      },
+    });
+
+    await user.click(screen.getByRole('combobox'));
+    await screen.findByRole('option', { name: /b/ });
+    expect(optionTexts()).toEqual(['a', 'b']);
+    act(scrollToEnd);
+    await screen.findByRole('option', { name: /c/ });
+
+    expect(loadMore).toHaveBeenCalledWith(expect.objectContaining({ offset: 2, limit: 2 }));
+    expect(optionTexts()).toEqual(['a', 'b', 'c']);
+  });
+
+  it('offers no more to load past maxSuggestions when there is no loadMore', async () => {
+    const user = userEvent.setup();
+    await renderInput({
+      suggestions: {
+        custom: {
+          displayMode: 'replace',
+          debounceMs: 0,
+          maxSuggestions: 2,
+          suggest: async () => page(['a', 'b', 'c']),
+        },
+      },
+    });
+
+    await user.click(screen.getByRole('combobox'));
+    await screen.findByRole('option', { name: /b/ });
+    expect(optionTexts()).toEqual(['a', 'b']);
+    expect(screen.queryByText('Scroll for more')).not.toBeInTheDocument();
+  });
+
   it('lets a page that failed to load be loaded again', async () => {
     const scrollToEnd = observeIntersections();
     const user = userEvent.setup();
