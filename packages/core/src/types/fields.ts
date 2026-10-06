@@ -69,10 +69,11 @@ interface BaseFieldDefinition {
   /**
    * Make tokens immutable (only deletable via X button or 2-stage Backspace).
    *
-   * When true, typing "fieldKey:" does NOT create an empty token immediately.
-   * Instead, the text is converted to a token only on explicit triggers:
-   * Space, Enter, Tab, or paste. This prevents creating empty immutable tokens
-   * that cannot be edited.
+   * A token of this field has no editable value once it holds one. Typing "fieldKey:"
+   * starts an editable token, as for any field, so the user can enter the value; it
+   * becomes immutable when the user leaves it with a value, and is removed when they
+   * leave it empty. A token created with its value (from a query, a paste, `value` or
+   * `defaultValue`) is immutable from the start.
    *
    * @default false
    */
