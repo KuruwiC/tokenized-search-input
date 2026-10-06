@@ -2,7 +2,7 @@
 
 A React component for building advanced search interfaces with tokenized filters, autocomplete suggestions, and date pickers. Built on [TipTap](https://tiptap.dev/) and [ProseMirror](https://prosemirror.net/).
 
-![Demo](https://github.com/user-attachments/assets/29e203d5-2b68-45c8-8c0f-5b901e5ade9d)
+<img width="1280" height="720" alt="Building a query in the editor: picking fields and values from suggestions, changing an operator, choosing a date, and pasting text that becomes tokens, while a panel shows the typed segments the app receives" src="https://github.com/user-attachments/assets/a5ed6248-f828-442a-9a1a-966bbd45fae8" />
 
 **[Live Demo](https://kuruwic.github.io/tokenized-search-input/)**
 
