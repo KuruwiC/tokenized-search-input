@@ -103,6 +103,30 @@ describe('copy', () => {
     expect(clipboard.getData('text/plain')).toBe('[status] [priority]');
   });
 
+  it('writes a token for which serializeToken returns null as it would be written without it', async () => {
+    const { editor } = await mountInput('status:is:active priority:is:high', {
+      fields: testFields,
+      serialization: {
+        serializeToken: (token) => (token.key === 'status' ? null : `[${token.key}]`),
+      },
+    });
+
+    const { clipboard } = copyAll(editor);
+
+    expect(clipboard.getData('text/plain')).toBe('status:is:active [priority]');
+  });
+
+  it('leaves out a token for which serializeToken returns an empty string', async () => {
+    const { editor } = await mountInput('status:is:active priority:is:high keyword', {
+      fields: testFields,
+      serialization: { serializeToken: (token) => (token.key === 'status' ? '' : null) },
+    });
+
+    const { clipboard } = copyAll(editor);
+
+    expect(clipboard.getData('text/plain')).toBe('priority:is:high keyword');
+  });
+
   it('leaves a selection without tokens to the default copy', async () => {
     const { editor } = await mountInput('hello world', { fields: testFields });
 

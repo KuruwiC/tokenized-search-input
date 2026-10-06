@@ -271,6 +271,77 @@ describe('Config API', () => {
         expect.objectContaining({ value: { date: '2024-01-01' } })
       );
     });
+
+    it('uses the custom datetime picker renderer for a datetime field', async () => {
+      const updatedField = {
+        key: 'updated',
+        label: 'Updated',
+        type: 'datetime' as const,
+        operators: ['gt'] as const,
+      };
+      const CustomDatePicker = vi.fn(() => <div data-testid="custom-date-picker" />);
+      const CustomDateTimePicker = vi.fn(() => <div data-testid="custom-datetime-picker" />);
+
+      const ref = createRef<TokenizedSearchInputRef>();
+      render(
+        <TokenizedSearchInput
+          ref={ref}
+          fields={[updatedField]}
+          defaultValue="updated:gt:2024-01-01T10:00Z"
+          pickers={{ renderDate: CustomDatePicker, renderDateTime: CustomDateTimePicker }}
+        />
+      );
+      const editor = await waitForEditor(ref);
+      const [token] = filterTokens(ref);
+      if (!token) throw new Error('no filter token');
+
+      act(() => {
+        editor.commands.focusFilterToken(token.id, 'end');
+      });
+
+      expect(await screen.findByTestId('custom-datetime-picker')).toBeInTheDocument();
+      expect(CustomDateTimePicker).toHaveBeenCalledWith(
+        expect.objectContaining({ value: { date: '2024-01-01', time: '10:00', offset: 'Z' } })
+      );
+      expect(screen.queryByTestId('custom-date-picker')).not.toBeInTheDocument();
+      expect(CustomDatePicker).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('initialDelimiter', () => {
+    it('reads and writes filters with the given delimiter', async () => {
+      const { ref, value } = await mountInput('status=is=active', { initialDelimiter: '=' });
+
+      await waitFor(() =>
+        expect(filterTokens(ref)).toMatchObject([
+          { key: 'status', operator: 'is', value: 'active' },
+        ])
+      );
+      expect(value()).toBe('status=is=active');
+    });
+
+    it('reads the default delimiter as text when another one is given', async () => {
+      const { ref, value } = await mountInput('status:is:active', { initialDelimiter: '=' });
+
+      expect(filterTokens(ref)).toEqual([]);
+      expect(value()).toBe('status:is:active');
+    });
+
+    it('turns typed text with the given delimiter into a filter', async () => {
+      const user = userEvent.setup();
+      const { ref, value } = await mountInput('', { initialDelimiter: '=' });
+
+      const input = screen.getByRole('combobox');
+      await user.click(input);
+      await user.type(input, 'priority=high ');
+
+      await waitFor(() =>
+        expect(filterTokens(ref)).toMatchObject([
+          { key: 'priority', operator: 'is', value: 'high' },
+        ])
+      );
+      expect(value()).toBe('priority=is=high');
+    });
   });
 
   describe('Multiple configs', () => {

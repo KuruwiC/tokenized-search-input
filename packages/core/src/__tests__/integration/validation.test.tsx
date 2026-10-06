@@ -241,6 +241,44 @@ describe('Validation System Integration', () => {
     });
   });
 
+  describe('Competing rules on one token', () => {
+    it("shows the higher-priority rule's message whatever order the rules are given in", async () => {
+      const flagStatus = (id: string, message: string, priority: number): ValidationRule => ({
+        id,
+        priority,
+        validate: (ctx) =>
+          ctx.tokens
+            .filter((t) => t.key === 'status')
+            .map((t) => ({
+              ruleId: id,
+              reason: id,
+              message,
+              action: 'mark' as const,
+              targets: [{ tokenId: t.id }],
+            })),
+      });
+
+      render(
+        <TokenizedSearchInput
+          fields={testFields}
+          defaultValue="status:is:active"
+          validation={{
+            rules: [
+              flagStatus('low', 'Low priority message', 10),
+              flagStatus('high', 'High priority message', 100),
+            ],
+          }}
+        />
+      );
+
+      await expectTokenCounts(1, 1);
+      expect(screen.getByRole('group', { name: /status/i })).toHaveAttribute(
+        'title',
+        'High priority message'
+      );
+    });
+  });
+
   describe('Multiple rules with different actions', () => {
     it('applies different actions per rule', async () => {
       render(

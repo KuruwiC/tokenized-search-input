@@ -275,6 +275,18 @@ describe('DefaultDateTimePicker', () => {
       fireEvent.click(screen.getByLabelText('UTC'));
       expect(onUTCChange).toHaveBeenCalledWith(true);
     });
+
+    it('shows no UTC checkbox when the field has a custom parse', () => {
+      const { rerender } = render(<DefaultDateTimePicker {...propsOf()} />);
+      expect(screen.getByLabelText('UTC')).toBeInTheDocument();
+
+      rerender(
+        <DefaultDateTimePicker
+          {...propsOf({ fieldDef: field({ formatConfig: { parse: () => null } }) })}
+        />
+      );
+      expect(screen.queryByLabelText('UTC')).not.toBeInTheDocument();
+    });
   });
 
   describe('the days that can be chosen', () => {
@@ -355,6 +367,26 @@ describe('DefaultDateTimePicker', () => {
         time: '01:00:00',
         offset: '-03:00',
       });
+    });
+  });
+
+  describe('the close button', () => {
+    it('calls onClose when clicked', () => {
+      const onClose = vi.fn();
+      render(<DefaultDateTimePicker {...propsOf({ onClose })} />);
+      fireEvent.click(document.querySelector('.tsi-picker-footer button') as HTMLButtonElement);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows the closeButtonLabel of the field', () => {
+      const onClose = vi.fn();
+      render(
+        <DefaultDateTimePicker
+          {...propsOf({ onClose, fieldDef: field({ closeButtonLabel: 'Done' }) })}
+        />
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+      expect(onClose).toHaveBeenCalledTimes(1);
     });
   });
 });

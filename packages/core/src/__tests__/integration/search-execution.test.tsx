@@ -62,6 +62,36 @@ describe('Search Execution', () => {
     });
   });
 
+  it('closes the suggestions with the first Enter and submits with the next one', async () => {
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+    const ref = createRef<TokenizedSearchInputRef>();
+    render(
+      <TokenizedSearchInput
+        ref={ref}
+        fields={extendedFields}
+        defaultValue="status:is:active"
+        onSubmit={onSubmit}
+      />
+    );
+    await waitForEditor(ref);
+
+    await user.click(screen.getByRole('combobox'));
+    await screen.findByRole('listbox');
+    expect(screen.getByRole('combobox')).not.toHaveAttribute('aria-activedescendant');
+
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument());
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(ref.current?.getValue()).toBe('status:is:active');
+
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({ text: 'status:is:active' });
+  });
+
   it('passes the same snapshot for Enter and ref.submit() in tokenize mode', async () => {
     const user = userEvent.setup();
     const withoutIds = (snapshot: QuerySnapshot | undefined) => ({

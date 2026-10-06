@@ -113,6 +113,17 @@ describe('enum-value utilities', () => {
       expect(result.length).toBe(1);
       expect(getEnumValue(result[0])).toBe('active');
     });
+
+    it('matches on the label as well as on the value', () => {
+      const labelled = [
+        { value: 'p1', label: 'Urgent' },
+        { value: 'p2', label: 'Normal' },
+      ];
+
+      expect(filterEnumValues(labelled, 'urg')).toEqual([labelled[0]]);
+      expect(filterEnumValues(labelled, 'Urgent', { matcher: exact })).toEqual([labelled[0]]);
+      expect(filterEnumValues(labelled, 'p2', { matcher: exact })).toEqual([labelled[1]]);
+    });
   });
 
   describe('resolveEnumValue', () => {

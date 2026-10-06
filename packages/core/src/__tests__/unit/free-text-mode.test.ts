@@ -1,3 +1,4 @@
+import type { JSONContent } from '@tiptap/core';
 import { getSchema } from '@tiptap/core';
 import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
@@ -71,5 +72,47 @@ describe('applyFreeTextMode', () => {
         { type: 'filterToken', id: children(before)[0]?.id, text: undefined },
       ]);
     }
+  });
+
+  describe('turning free text tokens into text', () => {
+    function toPlain(content: JSONContent[]) {
+      const doc = schema.nodeFromJSON({ type: 'doc', content: [{ type: 'paragraph', content }] });
+      const { tr } = EditorState.create({ doc });
+      applyFreeTextMode(tr, createEditorContext({ fields: basicFields, freeTextMode: 'plain' }));
+      return children(tr.doc);
+    }
+    const freeText = (id: string, value: string, quoted = false): JSONContent => ({
+      type: 'freeTextToken',
+      attrs: { id, value, quoted },
+    });
+
+    it('puts a space between the text of the token and text right next to it', () => {
+      expect(
+        toPlain([
+          { type: 'text', text: 'foo' },
+          freeText('a', 'bar'),
+          { type: 'text', text: 'baz' },
+        ])
+      ).toEqual([{ type: 'text', id: undefined, text: 'foo bar baz' }]);
+    });
+
+    it('adds no space where the text next to the token already has one', () => {
+      expect(
+        toPlain([
+          { type: 'text', text: 'foo ' },
+          freeText('a', 'bar'),
+          { type: 'text', text: ' baz' },
+        ])
+      ).toEqual([{ type: 'text', id: undefined, text: 'foo bar baz' }]);
+    });
+
+    it('deletes an empty free text token and keeps an empty quoted one as its quotes', () => {
+      expect(toPlain([{ type: 'text', text: 'foo ' }, freeText('a', '')])).toEqual([
+        { type: 'text', id: undefined, text: 'foo ' },
+      ]);
+      expect(toPlain([{ type: 'text', text: 'foo ' }, freeText('a', '', true)])).toEqual([
+        { type: 'text', id: undefined, text: 'foo ""' },
+      ]);
+    });
   });
 });

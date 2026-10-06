@@ -1,7 +1,7 @@
 /**
  * Integration tests for startAdornment and endAdornment props.
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
@@ -136,6 +136,42 @@ describe('Adornments', () => {
       const button = screen.getByTestId('action-btn');
       await user.click(button);
       expect(button).toHaveFocus();
+    });
+  });
+
+  describe('focus moving into an adornment', () => {
+    it('stays inside the input: no onBlur and the typed text is not finalized', async () => {
+      const onBlur = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <div>
+          <TokenizedSearchInput
+            fields={basicFields}
+            freeTextMode="tokenize"
+            onBlur={onBlur}
+            endAdornment={
+              <button type="button" data-testid="adornment-btn">
+                Action
+              </button>
+            }
+          />
+          <button type="button">Outside</button>
+        </div>
+      );
+
+      await user.click(screen.getByRole('combobox'));
+      await user.keyboard('hello');
+      await user.click(screen.getByTestId('adornment-btn'));
+
+      expect(screen.getByTestId('adornment-btn')).toHaveFocus();
+      expect(onBlur).not.toHaveBeenCalled();
+      expect(document.querySelectorAll('.node-freeTextToken')).toHaveLength(0);
+
+      // Leaving the input from the adornment is a blur that finalizes the text.
+      await user.click(screen.getByRole('button', { name: 'Outside' }));
+
+      expect(onBlur).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(document.querySelectorAll('.node-freeTextToken')).toHaveLength(1));
     });
   });
 

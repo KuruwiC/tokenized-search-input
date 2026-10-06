@@ -2,7 +2,8 @@
  * Integration tests for validation undo behavior of Unique with onDuplicate replace.
  * Tests that token replacement via validation is undoable as a single operation.
  */
-import { act, cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
@@ -10,6 +11,7 @@ import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-inpu
 import type { FieldDefinition } from '../../types';
 import { Unique } from '../../validation/presets';
 import { waitForEditor } from '../helpers/get-editor';
+import { filterTokens } from '../helpers/token-queries';
 
 const testFields: FieldDefinition[] = [
   {
@@ -86,5 +88,42 @@ describe('Validation undo with onDuplicate replace', () => {
     });
 
     expect(ref.current?.getValue()).toBe('status:is:active');
+  });
+
+  it('restores the replaced token in one undo step after leaving the new duplicate removed it', async () => {
+    const user = userEvent.setup();
+    const ref = createRef<TokenizedSearchInputRef>();
+
+    render(
+      <div>
+        <TokenizedSearchInput
+          fields={testFields}
+          defaultValue="status:is:active"
+          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
+          ref={ref}
+        />
+        <button type="button">Outside</button>
+      </div>
+    );
+
+    const editor = await waitForEditor(ref);
+    const [original] = filterTokens(ref);
+    act(() => {
+      editor.commands.focus('end');
+    });
+    await waitFor(() => expect(editor.isFocused).toBe(true));
+    await user.keyboard(' status:');
+    await waitFor(() => expect(document.activeElement).toBeInstanceOf(HTMLInputElement));
+    await user.keyboard('inactive');
+    await user.click(screen.getByRole('button', { name: 'Outside' }));
+    await waitFor(() => expect(ref.current?.getValue()).toBe('status:is:inactive'));
+
+    act(() => {
+      editor.commands.undo();
+    });
+
+    // The typed value stays; only the deletion made on leaving is undone.
+    expect(ref.current?.getValue()).toBe('status:is:active status:is:inactive');
+    expect(filterTokens(ref)[0]?.id).toBe(original?.id);
   });
 });

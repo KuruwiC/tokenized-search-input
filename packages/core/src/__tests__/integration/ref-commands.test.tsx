@@ -36,6 +36,20 @@ describe('TokenizedSearchInputRef', () => {
     });
   });
 
+  describe('focus', () => {
+    it('focuses the editor', async () => {
+      const ref = await renderInput();
+      expect(screen.getByRole('combobox')).not.toHaveFocus();
+
+      act(() => {
+        ref.current?.focus();
+      });
+
+      await waitFor(() => expect(screen.getByRole('combobox')).toHaveFocus());
+      expect(ref.current?.getEditor()?.isFocused).toBe(true);
+    });
+  });
+
   describe('updateToken', () => {
     it('changes the value of the token with the given id and keeps the id', async () => {
       const ref = await renderInput();
@@ -213,6 +227,29 @@ describe('TokenizedSearchInputRef', () => {
       ref.current?.updateToken(pending.id, { value: 'active' });
 
       expect(ref.current?.getValue()).toBe('status:is:active');
+    });
+
+    it('holds focus and focuses the editor that replaces the destroyed one', async () => {
+      const ref = createRef<TokenizedSearchInputRef>();
+      const element = () => (
+        <TokenizedSearchInput ref={ref} fields={extendedFields} defaultValue={DEFAULT_VALUE} />
+      );
+      const { rerender } = render(element());
+      const destroyed = await waitForEditor(ref);
+      destroyed.destroy();
+
+      act(() => {
+        ref.current?.focus();
+      });
+
+      expect(document.activeElement).toBe(document.body);
+      rerender(element());
+      await waitFor(() => {
+        const live = ref.current?.getEditor();
+        expect(live && live !== destroyed && !live.isDestroyed).toBe(true);
+      });
+      await waitFor(() => expect(screen.getByRole('combobox')).toHaveFocus());
+      expect(ref.current?.getEditor()?.isFocused).toBe(true);
     });
 
     it('accepts setTokenDisplay without changing the query', async () => {

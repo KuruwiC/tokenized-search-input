@@ -5,6 +5,7 @@ import Text from '@tiptap/extension-text';
 import { describe, expect, it, vi } from 'vitest';
 import {
   applyEditorContext,
+  createEditorContext,
   DEFAULT_EDITOR_CONTEXT,
   EditorContextExtension,
   type EditorContextStorage,
@@ -197,6 +198,68 @@ describe('EditorContextExtension', () => {
       expect(storage.callbacks.onSubmit).toBe(newOnSearch);
 
       editor.destroy();
+    });
+  });
+
+  describe('applyEditorContext return value', () => {
+    const fields: FieldDefinition[] = [
+      { key: 'status', label: 'Status', type: 'string', operators: ['is'] },
+      { key: 'owner', label: 'Owner', type: 'string', operators: ['is'] },
+    ];
+
+    it('returns false when nothing is given', () => {
+      expect(applyEditorContext(createEditorContext({ fields }), {})).toBe(false);
+    });
+
+    it('returns false for an equal value and true for a different one', () => {
+      const context = createEditorContext({ freeTextMode: 'tokenize' });
+
+      expect(applyEditorContext(context, { freeTextMode: 'tokenize' })).toBe(false);
+      expect(applyEditorContext(context, { freeTextMode: 'none' })).toBe(true);
+      expect(context.freeTextMode).toBe('none');
+    });
+
+    it('returns false for a new array with the same items and keeps the stored one', () => {
+      const context = createEditorContext({ fields });
+
+      expect(applyEditorContext(context, { fields: [...fields] })).toBe(false);
+      expect(context.fields).toBe(fields);
+    });
+
+    it('returns true for an array whose items differ', () => {
+      const context = createEditorContext({ fields });
+      const next = [fields[0] as FieldDefinition];
+
+      expect(applyEditorContext(context, { fields: next })).toBe(true);
+      expect(context.fields).toBe(next);
+    });
+
+    it('returns false for a new object with the same members and true when one differs', () => {
+      const operatorLabels = { ...DEFAULT_OPERATOR_LABELS, is: 'equals' };
+      const context = createEditorContext({ operatorLabels });
+
+      expect(applyEditorContext(context, { operatorLabels: { ...operatorLabels } })).toBe(false);
+      expect(context.operatorLabels).toBe(operatorLabels);
+      expect(
+        applyEditorContext(context, { operatorLabels: { ...operatorLabels, is: 'matches' } })
+      ).toBe(true);
+    });
+
+    it('compares undefined as the default it restores', () => {
+      const context = createEditorContext();
+
+      expect(applyEditorContext(context, { freeTextMode: undefined })).toBe(false);
+      applyEditorContext(context, { freeTextMode: 'none' });
+      expect(applyEditorContext(context, { freeTextMode: undefined })).toBe(true);
+    });
+
+    it('returns false for the same callback and true for a new one', () => {
+      const onSubmit = vi.fn();
+      const context = createEditorContext({ callbacks: { onSubmit } });
+
+      expect(applyEditorContext(context, { callbacks: { onSubmit } })).toBe(false);
+      expect(applyEditorContext(context, { callbacks: { onSubmit: undefined } })).toBe(false);
+      expect(applyEditorContext(context, { callbacks: { onSubmit: vi.fn() } })).toBe(true);
     });
   });
 

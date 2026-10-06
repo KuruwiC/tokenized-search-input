@@ -3,7 +3,7 @@
  *
  * Tests for the auto-tokenization behavior with the full editor context.
  */
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup, render, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Editor } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
@@ -163,6 +163,43 @@ describe('Auto-tokenize - Integration Tests', () => {
         expect.objectContaining({ key: 'status', operator: 'is', value: 'active' }),
       ]);
       expect(ref.current?.getValue()).toBe('status:is:active');
+    });
+  });
+
+  describe('Enter', () => {
+    it('reads the word before it as plain text in tokenize mode, leaving it to the submit', async () => {
+      const { editor } = await mountInput('', { fields: testFields, freeTextMode: 'tokenize' });
+      for (const char of 'hello') {
+        editor.view.dispatch(editor.state.tr.insertText(char));
+      }
+
+      expect(tryAutoTokenize(editor, 'Enter')).toBe(false);
+      expect(editor.state.doc.textContent).toBe('hello');
+      expect(document.querySelectorAll('.node-freeTextToken')).toHaveLength(0);
+
+      // Any other key that ends the word reads it in the configured mode.
+      act(() => {
+        expect(tryAutoTokenize(editor, 'Tab')).toBe(true);
+      });
+      expect(editor.state.doc.textContent).toBe('');
+      expect(document.querySelectorAll('.node-freeTextToken')).toHaveLength(1);
+    });
+  });
+
+  describe('a paste that completes a word', () => {
+    it.each([
+      ['the word before it', 'sta', 4, 'tus:is:active'],
+      ['the word after it', 'ive', 1, 'status:is:act'],
+    ])('is tokenized together with %s', async (_where, text, pos, pasted) => {
+      const { editor, value } = await mountInput(text, { fields: testFields });
+
+      act(() => {
+        editor.commands.setTextSelection(pos);
+        editor.view.pasteText(pasted, new Event('paste') as ClipboardEvent);
+      });
+
+      expect(value()).toBe('status:is:active');
+      expect(editor.state.doc.textContent).toBe('');
     });
   });
 

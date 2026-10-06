@@ -2,7 +2,11 @@
  * Unit tests for the stored form of a typed date or datetime.
  */
 import { describe, expect, it } from 'vitest';
-import { normalizeDateFieldValue } from '../../pickers/date-format';
+import {
+  normalizeDateFieldValue,
+  validateDateTimeValue,
+  validateDateValue,
+} from '../../pickers/date-format';
 import type { DateTimeValue } from '../../pickers/date-time-value';
 import type { DateFieldDefinition, DateTimeFieldDefinition } from '../../types';
 
@@ -183,5 +187,60 @@ describe('normalizeDateFieldValue for a datetime field', () => {
         normalizeDateFieldValue(input, datetimeField())
       );
     });
+  });
+});
+
+describe('validateDateValue', () => {
+  const dayMonthYear = (input: string): DateTimeValue | null => {
+    const match = input.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!match) return null;
+    const [, day, month, year] = match;
+    return { date: `${year}-${month?.padStart(2, '0')}-${day?.padStart(2, '0')}` };
+  };
+
+  it('returns false for empty or whitespace-only input', () => {
+    expect(validateDateValue('')).toBe(false);
+    expect(validateDateValue('   ')).toBe(false);
+  });
+
+  it('returns true for a date', () => {
+    expect(validateDateValue('2024-03-05')).toBe(true);
+    expect(validateDateValue(' 2024-03-05 ')).toBe(true);
+  });
+
+  it('returns the parse error for text that is not a date', () => {
+    expect(validateDateValue('nope')).toBe('Invalid date format');
+    expect(validateDateValue('2024-02-30')).toBe('Invalid date format');
+  });
+
+  it('accepts what the custom parse of the config reads, and only that', () => {
+    expect(validateDateValue('5/3/2024')).toBe('Invalid date format');
+    expect(validateDateValue('5/3/2024', { parse: dayMonthYear })).toBe(true);
+    expect(validateDateValue('nope', { parse: dayMonthYear })).toBe('Invalid date format');
+  });
+});
+
+describe('validateDateTimeValue', () => {
+  it('returns false for empty or whitespace-only input', () => {
+    expect(validateDateTimeValue('')).toBe(false);
+    expect(validateDateTimeValue('   ')).toBe(false);
+  });
+
+  it('returns true for a datetime, with or without a time', () => {
+    expect(validateDateTimeValue('2024-03-05T14:30:00+09:00')).toBe(true);
+    expect(validateDateTimeValue('2024-03-05')).toBe(true);
+  });
+
+  it('returns the parse error for text that is not a datetime', () => {
+    expect(validateDateTimeValue('nope')).toBe('Invalid datetime format');
+    expect(validateDateTimeValue('2024-03-05T25:00')).toBe('Invalid datetime format');
+  });
+
+  it('accepts what the custom parse of the config reads, and only that', () => {
+    const parse = (input: string): DateTimeValue | null =>
+      input === 'noon' ? { date: '2024-03-05', time: '12:00:00', offset: 'Z' } : null;
+    expect(validateDateTimeValue('noon')).toBe('Invalid datetime format');
+    expect(validateDateTimeValue('noon', { parse })).toBe(true);
+    expect(validateDateTimeValue('midnight', { parse })).toBe('Invalid datetime format');
   });
 });

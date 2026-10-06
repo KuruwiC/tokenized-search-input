@@ -67,4 +67,29 @@ describe('DefaultDatePicker', () => {
     expect(screen.getByRole('button', { name: /March 5th, 2024/ })).toBeEnabled();
     expect(screen.getByRole('button', { name: /March 4th, 2024/ })).toBeDisabled();
   });
+
+  describe('the close button', () => {
+    it('calls onClose when clicked', () => {
+      const onClose = vi.fn();
+      render(
+        <DefaultDatePicker value={null} onChange={vi.fn()} onClose={onClose} fieldDef={field} />
+      );
+      fireEvent.click(document.querySelector('.tsi-picker-footer button') as HTMLButtonElement);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows the closeButtonLabel of the field', () => {
+      const onClose = vi.fn();
+      render(
+        <DefaultDatePicker
+          value={null}
+          onChange={vi.fn()}
+          onClose={onClose}
+          fieldDef={{ ...field, closeButtonLabel: 'Done' }}
+        />
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+  });
 });

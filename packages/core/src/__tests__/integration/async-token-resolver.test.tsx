@@ -1,4 +1,5 @@
-import { act, render, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createRef, useRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
@@ -63,9 +64,15 @@ function getCountryTokenAttrs(inputRef: InputRef) {
 }
 
 interface ResolverHarnessProps
-  extends Pick<AsyncTokenResolverOptions<Country>, 'resolve' | 'loadingContent' | 'onError'> {
+  extends Pick<
+    AsyncTokenResolverOptions<Country>,
+    'resolve' | 'loadingContent' | 'onError' | 'onNotFound'
+  > {
   inputRef: InputRef;
   defaultValue: string;
+  onChange?: () => void;
+  /** Also runs the resolver from onTokensChange, which fires when the user leaves a token. */
+  resolveOnTokensChange?: boolean;
 }
 
 function ResolverHarness({
@@ -73,7 +80,10 @@ function ResolverHarness({
   resolve,
   loadingContent,
   onError,
+  onNotFound,
   defaultValue,
+  onChange,
+  resolveOnTokensChange,
 }: ResolverHarnessProps) {
   const { resolveTokens } = useAsyncTokenResolver({
     inputRef,
@@ -83,6 +93,7 @@ function ResolverHarness({
     getDisplayData: (country) => ({ displayValue: country.label }),
     loadingContent,
     onError,
+    onNotFound,
   });
 
   return (
@@ -91,8 +102,16 @@ function ResolverHarness({
       fields={fields}
       defaultValue={defaultValue}
       onChange={() => {
+        onChange?.();
         void resolveTokens();
       }}
+      onTokensChange={
+        resolveOnTokensChange
+          ? () => {
+              void resolveTokens();
+            }
+          : undefined
+      }
     />
   );
 }
@@ -150,6 +169,58 @@ describe('useAsyncTokenResolver', () => {
         'United States',
       ]);
     });
+  });
+
+  it("keeps a token nothing resolves with onNotFound 'keep' and shows its value", async () => {
+    const inputRef = createRef<TokenizedSearchInputRef>();
+    const resolve = vi.fn().mockResolvedValue([]);
+
+    render(
+      <ResolverHarness
+        inputRef={inputRef}
+        resolve={resolve}
+        defaultValue="country:is:zz"
+        onNotFound="keep"
+      />
+    );
+
+    await waitFor(() => expect(getCountryTokenAttrs(inputRef)[0]?.displayValue).toBe('zz'));
+    expect(resolve).toHaveBeenCalledWith(['zz']);
+    expect(inputRef.current?.getValue()).toBe('country:is:zz');
+  });
+
+  it('leaves a token the user is typing in alone and resolves it once the user leaves it', async () => {
+    const user = userEvent.setup();
+    const inputRef = createRef<TokenizedSearchInputRef>();
+    const onChange = vi.fn();
+    const resolve = vi.fn().mockResolvedValue([{ value: 'jp', label: 'Japan' }]);
+
+    render(
+      <ResolverHarness
+        inputRef={inputRef}
+        resolve={resolve}
+        defaultValue=""
+        onChange={onChange}
+        resolveOnTokensChange
+      />
+    );
+
+    await user.click(screen.getByRole('combobox'));
+    await user.keyboard('country:');
+    await waitFor(() => expect(document.activeElement).toBeInstanceOf(HTMLInputElement));
+    onChange.mockClear();
+    await user.keyboard('jp');
+
+    // Each keystroke ran the resolver, which skipped the token being typed in.
+    expect(onChange).toHaveBeenCalled();
+    expect(getCountryTokenAttrs(inputRef)[0]).toMatchObject({ value: 'jp', displayValue: null });
+    expect(resolve).not.toHaveBeenCalled();
+
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => expect(getCountryTokenAttrs(inputRef)[0]?.displayValue).toBe('Japan'));
+    expect(resolve).toHaveBeenCalledTimes(1);
+    expect(resolve).toHaveBeenCalledWith(['jp']);
   });
 
   it('handles rejection and restores loading decoration', async () => {

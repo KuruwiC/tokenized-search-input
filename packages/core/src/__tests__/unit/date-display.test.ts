@@ -66,4 +66,20 @@ describe('getDateTimeDisplayValue', () => {
     const format = (v: DateTimeValue) => `${v.date}/${v.time}/${v.offset}`;
     expect(getDateTimeDisplayValue(value, { format })).toBe('2024-03-05/14:30:00/Z');
   });
+
+  it('falls back to the canonical string when the format throws', () => {
+    const format = () => {
+      throw new Error('boom');
+    };
+    expect(
+      getDateTimeDisplayValue(
+        { date: '2024-03-05', time: '14:30:00', offset: '+09:00' },
+        { format }
+      )
+    ).toBe('2024-03-05T14:30:00+09:00');
+    expect(getDateTimeDisplayValue({ date: '2024-03-05', time: '14:30:00' }, { format })).toBe(
+      '2024-03-05T14:30:00'
+    );
+    expect(getDateTimeDisplayValue({ date: '2024-03-05' }, { format })).toBe('2024-03-05');
+  });
 });

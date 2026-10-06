@@ -105,6 +105,15 @@ describe('findLastWordBoundary', () => {
     it('returns -1 for no boundaries', () => {
       expect(findLastWordBoundary('hello')).toBe(-1);
     });
+
+    it('counts a non-breaking space as a word boundary, as a contenteditable types it', () => {
+      expect(findLastWordBoundary('hello\u00a0world')).toBe(5);
+      expect(findLastWordBoundary('a b\u00a0c')).toBe(3);
+    });
+
+    it('ignores a non-breaking space inside quotes', () => {
+      expect(findLastWordBoundary('"hello\u00a0world"')).toBe(-1);
+    });
   });
 
   describe('quote-aware boundary detection', () => {

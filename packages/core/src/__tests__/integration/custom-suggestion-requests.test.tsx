@@ -126,6 +126,112 @@ describe('pagination of custom suggestions', () => {
   });
 });
 
+describe('pages of custom suggestions', () => {
+  const optionTexts = () => screen.getAllByRole('option').map((option) => option.textContent ?? '');
+
+  it.each([
+    'prepend',
+    'append',
+  ] as const)('adds a loaded page after the custom suggestions it follows (%s)', async (displayMode) => {
+    const scrollToEnd = observeIntersections();
+    const user = userEvent.setup();
+    const loadMore = vi.fn(async () => ({ suggestions: page(['three']), hasMore: false }));
+    await renderInput({
+      suggestions: {
+        custom: {
+          displayMode,
+          debounceMs: 0,
+          suggest: async () => ({ suggestions: page(['one', 'two']), hasMore: true }),
+          loadMore,
+        },
+      },
+    });
+
+    await user.click(screen.getByRole('combobox'));
+    await screen.findByRole('option', { name: /two/ });
+    act(scrollToEnd);
+    await screen.findByRole('option', { name: /three/ });
+
+    expect(loadMore).toHaveBeenCalledTimes(1);
+    expect(loadMore).toHaveBeenCalledWith(expect.objectContaining({ offset: 2 }));
+    const texts = optionTexts();
+    expect(texts).toHaveLength(fields.length + 3);
+    const custom = displayMode === 'prepend' ? texts.slice(0, 3) : texts.slice(fields.length);
+    expect(custom).toEqual(['one', 'two', 'three']);
+    expect(screen.queryByText('Scroll for more')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [3, 3],
+    [undefined, 5],
+  ])('lists at most maxSuggestions (%s) and asks loadMore for that many', async (maxSuggestions, limit) => {
+    const scrollToEnd = observeIntersections();
+    const user = userEvent.setup();
+    const loadMore = vi.fn(() => new Promise<never>(() => {}));
+    await renderInput({
+      suggestions: {
+        custom: {
+          displayMode: 'replace',
+          debounceMs: 0,
+          maxSuggestions,
+          suggest: async () => ({
+            suggestions: page(['a', 'b', 'c', 'd', 'e', 'f', 'g']),
+            hasMore: true,
+          }),
+          loadMore,
+        },
+      },
+    });
+
+    await user.click(screen.getByRole('combobox'));
+    await screen.findByRole('option', { name: /a/ });
+    expect(optionTexts()).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g'].slice(0, limit));
+
+    act(scrollToEnd);
+    await waitFor(() => expect(loadMore).toHaveBeenCalledTimes(1));
+    expect(loadMore).toHaveBeenCalledWith(expect.objectContaining({ offset: limit, limit }));
+  });
+
+  it('lets a page that failed to load be loaded again', async () => {
+    const scrollToEnd = observeIntersections();
+    const user = userEvent.setup();
+    const onError = vi.fn<(error: Error, context: SuggestionErrorContext) => void>();
+    const loadMore = vi
+      .fn<(context: SuggestContextWithPagination) => Promise<CustomSuggestionResult>>()
+      .mockRejectedValueOnce(new Error('loadMore failed'))
+      .mockResolvedValueOnce({ suggestions: page(['three']), hasMore: false });
+    await renderInput({
+      suggestions: {
+        custom: {
+          displayMode: 'replace',
+          debounceMs: 0,
+          suggest: async () => ({ suggestions: page(['one', 'two']), hasMore: true }),
+          loadMore,
+          onError,
+        },
+      },
+    });
+
+    await user.click(screen.getByRole('combobox'));
+    await screen.findByRole('option', { name: /two/ });
+    act(scrollToEnd);
+    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'loadMore failed' }),
+      expect.objectContaining({ type: 'loadMore' })
+    );
+
+    expect(await screen.findByText('Scroll for more')).toBeInTheDocument();
+    expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+
+    act(scrollToEnd);
+    await screen.findByRole('option', { name: /three/ });
+    expect(loadMore).toHaveBeenCalledTimes(2);
+    expect(loadMore).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 2 }));
+    expect(optionTexts()).toEqual(['one', 'two', 'three']);
+  });
+});
+
 describe('request timers of custom suggestions', () => {
   async function renderWithFakeTimers(suggestions?: SuggestionsConfig) {
     const ref = createRef<TokenizedSearchInputRef>();

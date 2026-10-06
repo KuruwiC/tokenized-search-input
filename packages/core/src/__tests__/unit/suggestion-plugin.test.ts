@@ -8,7 +8,9 @@ import {
   createSuggestionPlugin,
   dismissSuggestion,
   getSuggestionState,
+  initialSuggestionState,
   isPickerType,
+  isSuggestionOpen,
   navigateSuggestion,
   openCustomSuggestion,
   openDateSuggestion,
@@ -16,6 +18,7 @@ import {
   openFieldSuggestion,
   openFieldWithCustomSuggestion,
   openValueSuggestion,
+  type SuggestionState,
   type SuggestionType,
   setCustomLoadingMore,
   setSuggestion,
@@ -24,6 +27,8 @@ import {
   updateSuggestionTimeControls,
 } from '../../plugins/suggestion';
 import { suggestionEntries } from '../../plugins/suggestion/entries';
+import { programEntry } from '../../plugins/token-focus';
+import { setTokenFocus } from '../../plugins/token-focus/state';
 import type { CustomSuggestion, FieldDefinition } from '../../types';
 import { basicFields, basicBlockSchema as schema } from '../fixtures';
 
@@ -651,5 +656,253 @@ describe('isPickerType', () => {
     [null, false],
   ])('%s -> %s', (type, expected) => {
     expect(isPickerType(type)).toBe(expected);
+  });
+});
+
+describe('how long a suggestion lives', () => {
+  const tokenSchema = new Schema({
+    nodes: {
+      doc: { content: 'paragraph' },
+      paragraph: { content: 'inline*' },
+      text: { group: 'inline' },
+      filterToken: {
+        group: 'inline',
+        inline: true,
+        atom: true,
+        attrs: { id: {}, key: {}, operator: { default: 'is' }, value: { default: '' } },
+      },
+    },
+  });
+  const suggestion: CustomSuggestion = {
+    label: 'a',
+    tokens: [{ key: 'status', operator: 'is', value: 'a' }],
+  };
+
+  /** A document of `ab`, then the status token `token-1` at position 3. */
+  function createTokenState() {
+    const token = tokenSchema.nodes.filterToken.create({ id: 'token-1', key: 'status' });
+    return EditorState.create({
+      doc: tokenSchema.node('doc', null, [
+        tokenSchema.node('paragraph', null, [tokenSchema.text('ab'), token]),
+      ]),
+      plugins: [createSuggestionPlugin()],
+    });
+  }
+  const TOKEN_POS = 3;
+
+  function open(state: EditorState, write: (tr: EditorState['tr']) => void) {
+    const tr = state.tr;
+    write(tr);
+    return state.apply(tr);
+  }
+
+  function focusToken(state: EditorState, id: string | null) {
+    const tr = state.tr;
+    setTokenFocus(tr, id === null ? null : { id, entry: programEntry() });
+    return state.apply(tr);
+  }
+
+  const plainTextSuggestions: Array<[string, (tr: EditorState['tr']) => void]> = [
+    ['field', (tr) => openFieldSuggestion(tr, testFields, '', TOKEN_POS)],
+    ['custom', (tr) => openCustomSuggestion(tr, [suggestion], '', TOKEN_POS)],
+    [
+      'fieldWithCustom',
+      (tr) => openFieldWithCustomSuggestion(tr, testFields, [suggestion], 'append', '', TOKEN_POS),
+    ],
+  ];
+  const tokenSuggestions: Array<[string, (tr: EditorState['tr']) => void]> = [
+    ['value', (tr) => openValueSuggestion(tr, 'status', ['a'], '', 'token-1')],
+    ['date', (tr) => openDateSuggestion(tr, 'status', null, 'token-1')],
+    ['datetime', (tr) => openDateTimeSuggestion(tr, 'status', null, 'token-1')],
+  ];
+
+  describe('when a token gains or loses focus', () => {
+    it.each(plainTextSuggestions)('closes %s suggestions when a token gains focus', (_, write) => {
+      const state = focusToken(open(createTokenState(), write), 'token-1');
+
+      expect(getSuggestionState(state)).toEqual(initialSuggestionState);
+    });
+
+    it.each(
+      plainTextSuggestions
+    )('keeps %s suggestions open when token focus clears', (type, write) => {
+      const state = focusToken(open(createTokenState(), write), null);
+
+      expect(getSuggestionState(state)?.type).toBe(type);
+    });
+
+    it.each(tokenSuggestions)('closes %s suggestions when token focus clears', (_, write) => {
+      const state = focusToken(open(createTokenState(), write), null);
+
+      expect(getSuggestionState(state)).toEqual(initialSuggestionState);
+    });
+
+    it.each(
+      tokenSuggestions
+    )('keeps %s suggestions open when a token gains focus', (type, write) => {
+      const state = focusToken(open(createTokenState(), write), 'token-1');
+
+      expect(getSuggestionState(state)?.type).toBe(type);
+    });
+  });
+
+  describe('when the document changes', () => {
+    const openField = (state: EditorState) =>
+      open(state, (tr) => openFieldSuggestion(tr, testFields, '', TOKEN_POS));
+
+    it('moves a position anchor along with the token it points at', () => {
+      const state = openField(createTokenState());
+
+      const moved = state.apply(state.tr.insertText('xy', 1));
+
+      expect(getSuggestionState(moved)).toMatchObject({
+        type: 'field',
+        anchor: { pos: TOKEN_POS + 2 },
+      });
+    });
+
+    it('keeps a position anchor as it is when the change comes after its token', () => {
+      const state = openField(createTokenState());
+      const before = getSuggestionState(state)?.anchor;
+
+      const kept = state.apply(state.tr.insertText('xy', TOKEN_POS + 1));
+
+      expect(getSuggestionState(kept)?.anchor).toBe(before);
+    });
+
+    it('closes a suggestion whose position anchor token is deleted', () => {
+      const state = openField(createTokenState());
+
+      const deleted = state.apply(state.tr.delete(TOKEN_POS, TOKEN_POS + 1));
+
+      expect(getSuggestionState(deleted)).toEqual(initialSuggestionState);
+    });
+
+    it('closes a suggestion whose token anchor token is deleted', () => {
+      const state = open(createTokenState(), (tr) =>
+        openValueSuggestion(tr, 'status', ['a'], '', 'token-1')
+      );
+
+      const deleted = state.apply(state.tr.delete(TOKEN_POS, TOKEN_POS + 1));
+
+      expect(getSuggestionState(deleted)).toEqual(initialSuggestionState);
+    });
+
+    it('closes a token-anchored suggestion when the key of its token changes', () => {
+      const state = open(createTokenState(), (tr) =>
+        openDateSuggestion(tr, 'status', null, 'token-1')
+      );
+      const attrs = state.doc.nodeAt(TOKEN_POS)?.attrs;
+
+      const sameKey = state.apply(
+        state.tr.setNodeMarkup(TOKEN_POS, undefined, { ...attrs, value: 'x' })
+      );
+      const otherKey = state.apply(
+        state.tr.setNodeMarkup(TOKEN_POS, undefined, { ...attrs, key: 'priority' })
+      );
+
+      expect(getSuggestionState(sameKey)).toMatchObject({
+        type: 'date',
+        anchor: { tokenId: 'token-1' },
+      });
+      expect(getSuggestionState(otherKey)).toEqual(initialSuggestionState);
+    });
+  });
+
+  describe('the active index', () => {
+    const field = (key: string): FieldDefinition => ({
+      key,
+      label: key,
+      type: 'string',
+      operators: ['is'],
+    });
+    const threeFields = [field('a'), field('b'), field('c')];
+
+    function activeIndexAfter(fields: FieldDefinition[], index: number) {
+      const state = open(createEditorState(), (tr) => {
+        openFieldSuggestion(tr, fields, '');
+        updateSuggestionActiveIndex(tr, index);
+      });
+      return getSuggestionState(state)?.activeIndex;
+    }
+
+    it('keeps an index inside the entries', () => {
+      expect(activeIndexAfter(threeFields, 2)).toBe(2);
+    });
+
+    it('moves an index past the entries to the last entry', () => {
+      expect(activeIndexAfter(threeFields, 3)).toBe(2);
+      expect(activeIndexAfter(threeFields, 99)).toBe(2);
+    });
+
+    it('moves an index below -1 to -1', () => {
+      expect(activeIndexAfter(threeFields, -5)).toBe(-1);
+    });
+
+    it('is -1 when there are no entries', () => {
+      expect(activeIndexAfter([], 1)).toBe(-1);
+    });
+
+    it('counts the custom suggestions of a mixed list as entries', () => {
+      const state = open(createEditorState(), (tr) => {
+        openFieldWithCustomSuggestion(tr, threeFields, [suggestion], 'append', '');
+        updateSuggestionActiveIndex(tr, 10);
+      });
+
+      expect(getSuggestionState(state)?.activeIndex).toBe(3);
+    });
+  });
+});
+
+describe('isSuggestionOpen', () => {
+  const field: FieldDefinition = { key: 'a', label: 'A', type: 'string', operators: ['is'] };
+  const custom: CustomSuggestion = {
+    label: 'c',
+    tokens: [{ key: 'a', operator: 'is', value: 'c' }],
+  };
+  const stateOf = (overrides: Partial<SuggestionState>): SuggestionState => ({
+    ...initialSuggestionState,
+    ...overrides,
+  });
+
+  it.each<[string, SuggestionState | null | undefined, boolean]>([
+    ['is closed for no state', undefined, false],
+    ['is closed for a null state', null, false],
+    ['is closed without a type', stateOf({ items: [field] }), false],
+    [
+      'is closed for a dismissed list with fields',
+      stateOf({ type: 'field', items: [field], dismissed: true }),
+      false,
+    ],
+    ['is closed for a dismissed date picker', stateOf({ type: 'date', dismissed: true }), false],
+    ['is open for a date picker without entries', stateOf({ type: 'date' }), true],
+    ['is open for a datetime picker without entries', stateOf({ type: 'datetime' }), true],
+    ['is open for field suggestions with fields', stateOf({ type: 'field', items: [field] }), true],
+    ['is closed for field suggestions without fields', stateOf({ type: 'field' }), false],
+    ['is open for value suggestions with values', stateOf({ type: 'value', items: ['x'] }), true],
+    ['is closed for value suggestions without values', stateOf({ type: 'value' }), false],
+    [
+      'is open for custom suggestions with suggestions',
+      stateOf({ type: 'custom', customItems: [custom] }),
+      true,
+    ],
+    [
+      'is closed for custom suggestions with only items',
+      stateOf({ type: 'custom', items: [field] }),
+      false,
+    ],
+    [
+      'is open for a mixed list with only fields',
+      stateOf({ type: 'fieldWithCustom', items: [field] }),
+      true,
+    ],
+    [
+      'is open for a mixed list with only custom suggestions',
+      stateOf({ type: 'fieldWithCustom', customItems: [custom] }),
+      true,
+    ],
+    ['is closed for an empty mixed list', stateOf({ type: 'fieldWithCustom' }), false],
+  ])('%s', (_, state, expected) => {
+    expect(isSuggestionOpen(state)).toBe(expected);
   });
 });
