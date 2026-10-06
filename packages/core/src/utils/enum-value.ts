@@ -79,7 +79,8 @@ export function filterEnumValues(
 export interface ResolveEnumValueOptions {
   /**
    * Custom resolver function.
-   * If provided, this function is called for each enum value.
+   * If provided, this function is called for each enum value, except when the input
+   * equals an option's value (that option wins without it).
    * Return the resolved value string to use it, or null to skip.
    */
   resolver?: EnumValueResolver;
@@ -124,6 +125,11 @@ export const defaultEnumResolver = enumResolvers.caseInsensitive;
 /**
  * Resolve input to internal enum value.
  *
+ * Input equal to an option's value resolves to that option, whatever the resolver
+ * and whatever label an earlier option has, so a stored value always reads back as
+ * itself. Otherwise the resolver is tried on each option in order and the first
+ * non-null result wins; input no option matches is returned as written.
+ *
  * Default behavior is case-insensitive exact match (lookup, not fuzzy):
  * - "Active" → "active" (label match)
  * - "ACTIVE" → "active" (case-insensitive)
@@ -147,6 +153,8 @@ export function resolveEnumValue(
   if (!input) return input;
   if (!enumValues || enumValues.length === 0) return input;
 
+  if (enumValues.some((ev) => getEnumValue(ev) === input)) return input;
+
   const resolver = options?.resolver ?? defaultEnumResolver;
 
   for (const ev of enumValues) {
@@ -166,9 +174,9 @@ export function resolveEnumValue(
 
 /**
  * The value a token of `field` stores for `value`. An enum token holds the value of
- * the option the text names, by value, by label or in another case. A value that
- * names no option, and any value of a field without static options, is stored as
- * written.
+ * the option the text names, by value, by label or in another case; a value equal to an
+ * option's value always names that option. A value that names no option, and any value of
+ * a field without static options, is stored as written.
  */
 export function resolveStoredValue(
   field: FieldDefinition | null | undefined,

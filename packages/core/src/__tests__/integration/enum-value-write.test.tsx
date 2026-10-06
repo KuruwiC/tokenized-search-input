@@ -125,3 +125,38 @@ describe('values of tokens created for an enum field with options', () => {
     ]);
   });
 });
+
+describe('an option value that an earlier option has as its label', () => {
+  const field: FieldDefinition = {
+    key: 'x',
+    label: 'X',
+    type: 'enum',
+    operators: ['is'],
+    enumValues: [
+      { value: 'a', label: 'b' },
+      { value: 'b', label: 'Bee' },
+    ],
+  };
+
+  it('reads a stored query back as the option it stores', async () => {
+    const ref = await renderStatus(field, 'x:is:b');
+    expect(filterTokens(ref)[0].value).toBe('b');
+    expect(ref.current?.getValue()).toBe('x:is:b');
+  });
+
+  it('stores that option for the value written to a token', async () => {
+    const ref = await renderStatus(field, 'x:is:a');
+    await updateValue(ref, 'b');
+    expect(filterTokens(ref)[0].value).toBe('b');
+  });
+
+  it('stores that option for a token inserted with that value', async () => {
+    const ref = createRef<TokenizedSearchInputRef>();
+    render(<TokenizedSearchInput ref={ref} fields={[field]} />);
+    const editor = await waitForEditor(ref);
+    act(() => {
+      editor?.chain().focus().insertFilterToken({ key: 'x', operator: 'is', value: 'b' }).run();
+    });
+    expect(filterTokens(ref as RefObject<TokenizedSearchInputRef>)[0].value).toBe('b');
+  });
+});

@@ -175,7 +175,7 @@ describe('enum-value utilities', () => {
       expect(resolveEnumValue(valuesWithSameLabel, 'Test')).toBe('first');
     });
 
-    it('resolves to the first option, in order, whose value or label matches', () => {
+    it('resolves input equal to an option value to that option, wherever another option names it as a label', () => {
       const valueFirst = [
         { value: 'test', label: 'Label1' },
         { value: 'other', label: 'test' },
@@ -186,7 +186,25 @@ describe('enum-value utilities', () => {
         { value: 'other', label: 'test' },
         { value: 'test', label: 'Label1' },
       ];
-      expect(resolveEnumValue(labelFirst, 'test')).toBe('other');
+      expect(resolveEnumValue(labelFirst, 'test')).toBe('test');
+    });
+
+    it('resolves a label to its option when no option has the input as its value', () => {
+      const enumValues = [
+        { value: 'a', label: 'b' },
+        { value: 'b', label: 'Bee' },
+      ];
+      expect(resolveEnumValue(enumValues, 'Bee')).toBe('b');
+      expect(resolveEnumValue(enumValues, 'B')).toBe('a');
+    });
+
+    it('resolves input equal to an option value to that option with a custom resolver', () => {
+      const enumValues = [
+        { value: 'a', label: 'b' },
+        { value: 'b', label: 'Bee' },
+      ];
+      expect(resolveEnumValue(enumValues, 'b', { resolver: enumResolvers.exact })).toBe('b');
+      expect(resolveEnumValue(enumValues, 'b', { resolver: () => null })).toBe('b');
     });
 
     describe('custom resolver', () => {
@@ -196,8 +214,10 @@ describe('enum-value utilities', () => {
           { value: 'ACTIVE', label: 'ACTIVE Label' },
         ];
 
-        // Default (case-insensitive): 'ACTIVE' matches first item
-        expect(resolveEnumValue(enumValues, 'ACTIVE')).toBe('active');
+        // Default (case-insensitive): 'Active' matches the first item's label;
+        // 'ACTIVE' is the second item's value, which wins over any case-insensitive match
+        expect(resolveEnumValue(enumValues, 'Active')).toBe('active');
+        expect(resolveEnumValue(enumValues, 'ACTIVE')).toBe('ACTIVE');
 
         // Case-sensitive: 'ACTIVE' matches second item exactly
         expect(resolveEnumValue(enumValues, 'ACTIVE', { resolver: enumResolvers.exact })).toBe(
