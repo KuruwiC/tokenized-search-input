@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getDateDisplayValue, getDateTimeDisplayValue } from '../../pickers/date-format';
-import { type DateTimeValue, localOffsetAt } from '../../pickers/date-time-value';
+import type { DateTimeValue } from '../../pickers/date-time-value';
 
 describe('getDateDisplayValue', () => {
   it('shows the date', () => {
@@ -47,11 +47,18 @@ describe('getDateTimeDisplayValue', () => {
   });
 
   it('leaves out the offset when it is the local one', () => {
-    const local = localOffsetAt(new Date(2024, 2, 5, 14, 30));
-    if (local === 'Z') return;
-    expect(getDateTimeDisplayValue({ date: '2024-03-05', time: '14:30:00', offset: local })).toBe(
-      '2024-03-05 14:30'
-    );
+    expect(
+      getDateTimeDisplayValue({ date: '2024-03-05', time: '14:30:00', offset: '-05:00' })
+    ).toBe('2024-03-05 14:30');
+    expect(
+      getDateTimeDisplayValue({ date: '2024-07-05', time: '14:30:00', offset: '-04:00' })
+    ).toBe('2024-07-05 14:30');
+  });
+
+  it('names the offset the local time zone has at another time of the year', () => {
+    expect(
+      getDateTimeDisplayValue({ date: '2024-07-05', time: '14:30:00', offset: '-05:00' })
+    ).toBe('2024-07-05 14:30 (-05:00)');
   });
 
   it('uses the format of the config with the typed value', () => {

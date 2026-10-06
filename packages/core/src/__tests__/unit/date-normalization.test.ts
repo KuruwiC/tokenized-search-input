@@ -108,7 +108,7 @@ describe('normalizeDateFieldValue for a date field', () => {
         throw new Error('boom');
       },
     });
-    expect(normalizeDateFieldValue('2024-03-05', field)).toBe('2024-03-05');
+    expect(normalizeDateFieldValue('5/3/2024', field)).toBe('5/3/2024');
   });
 });
 
@@ -171,8 +171,10 @@ describe('normalizeDateFieldValue for a datetime field', () => {
     });
 
     it('adds local midnight to a date when time is required', () => {
-      const result = normalizeDateFieldValue('2024-03-05', datetimeField({ timeRequired: true }));
-      expect(result).toMatch(/^2024-03-05T00:00:00(Z|[+-]\d{2}:\d{2})$/);
+      // The suite runs in America/New_York (vitest.config.ts).
+      expect(normalizeDateFieldValue('2024-03-05', datetimeField({ timeRequired: true }))).toBe(
+        '2024-03-05T00:00:00-05:00'
+      );
     });
 
     it('does not change a value that has a time', () => {

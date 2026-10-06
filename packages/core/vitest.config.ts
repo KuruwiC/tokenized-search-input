@@ -6,6 +6,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    // A zone with daylight saving time and an offset from UTC, so tests of local times
+    // cannot pass by the local clock happening to read UTC or to never change.
+    env: { TZ: 'America/New_York' },
     setupFiles: ['./src/__tests__/setup.ts'],
     include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     exclude: ['src/__tests__/browser/**'],

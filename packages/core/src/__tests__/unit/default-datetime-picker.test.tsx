@@ -4,8 +4,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { type DateTimeValue, localOffsetAt, toInstant } from '../../pickers/date-time-value';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DefaultDateTimePicker } from '../../pickers/default-datetime-picker';
 import type { DateTimeFieldDefinition } from '../../types';
 
@@ -137,7 +136,7 @@ describe('DefaultDateTimePicker', () => {
       expect(onChange).toHaveBeenCalledWith({
         date: '2024-03-10',
         time: '00:00:00',
-        offset: localOffsetAt(new Date(2024, 2, 10)),
+        offset: '-05:00',
       });
     });
 
@@ -201,7 +200,7 @@ describe('DefaultDateTimePicker', () => {
       expect(onChange).toHaveBeenCalledWith({
         date: '2024-03-01',
         time: '09:15:00',
-        offset: localOffsetAt(new Date(2024, 2, 1, 9, 15)),
+        offset: '-05:00',
       });
     });
 
@@ -325,28 +324,37 @@ describe('DefaultDateTimePicker', () => {
     });
   });
 
+  // The suite runs in America/New_York (vitest.config.ts), where the clock moves from 02:00
+  // to 03:00 on 2024-03-10.
   describe('across a clock change', () => {
-    const lastValue = (onChange: ReturnType<typeof vi.fn>): DateTimeValue =>
-      onChange.mock.calls[onChange.mock.calls.length - 1]?.[0];
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
 
     it('writes a time the clock skips as the moment the clock moves to', () => {
       const onChange = vi.fn();
       render(<DefaultDateTimePicker {...propsOf({ onChange, value: { date: '2024-03-10' } })} />);
       fireEvent.change(timeInput(), { target: { value: '02:30' } });
-      const written = lastValue(onChange);
-      expect(toInstant(written).getTime()).toBe(new Date(2024, 2, 10, 2, 30).getTime());
-      expect(written.offset).toBe(localOffsetAt(toInstant(written)));
+      expect(onChange).toHaveBeenLastCalledWith({
+        date: '2024-03-10',
+        time: '03:30:00',
+        offset: '-04:00',
+      });
     });
 
-    it('writes local midnight of a day whose midnight the clock skips as the moment it is', () => {
+    it('writes local midnight of a day whose midnight the clock skips as the moment the clock moves to', () => {
+      // In America/Santiago the clock moves from 00:00 (-04:00) to 01:00 (-03:00) on 2024-09-08.
+      vi.stubEnv('TZ', 'America/Santiago');
       const onChange = vi.fn();
       render(
         <DefaultDateTimePicker {...propsOf({ onChange, defaultMonth: new Date(2024, 8, 1) })} />
       );
       fireEvent.click(day(/September 8th, 2024/));
-      const written = lastValue(onChange);
-      expect(toInstant(written).getTime()).toBe(new Date(2024, 8, 8).getTime());
-      expect(written.offset).toBe(localOffsetAt(toInstant(written)));
+      expect(onChange).toHaveBeenLastCalledWith({
+        date: '2024-09-08',
+        time: '01:00:00',
+        offset: '-03:00',
+      });
     });
   });
 });

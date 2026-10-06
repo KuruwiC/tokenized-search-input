@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   atLocalTime,
   checkDateTimeValue,
@@ -16,6 +16,10 @@ const parsed = (input: string, kind: 'date' | 'datetime' = 'datetime') => {
   if (!result.ok) throw new Error(`expected ${input} to parse: ${result.error}`);
   return result.value;
 };
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('parseDateTimeValue', () => {
   it('parses a date', () => {
@@ -196,39 +200,48 @@ describe('fromInstant outside the years a date can be written in', () => {
   });
 });
 
+// The suite runs in America/New_York (vitest.config.ts): in 2024 the clock moves from
+// 02:00 EST (-05:00) to 03:00 EDT (-04:00) on March 10, and from 02:00 EDT back to 01:00 EST
+// on November 3.
 describe('local times across a clock change', () => {
-  const instantOf = (y: number, m: number, d: number, h = 0, min = 0) =>
-    new Date(y, m - 1, d, h, min).getTime();
-
   it.each([
-    ['2024-03-10', 3, 10],
-    ['2024-09-08', 9, 8],
-    ['2024-11-03', 11, 3],
-    ['2024-03-31', 3, 31],
-    ['2024-04-07', 4, 7],
-  ])('writes local midnight of %s as the moment it is', (date, m, d) => {
-    const value = localMidnight(date);
-    expect(toInstant(value).getTime()).toBe(instantOf(2024, m, d));
-    expect(value.offset).toBe(localOffsetAt(toInstant(value)));
-    expect(parseDateTimeValue(formatDateTimeValue(value), 'datetime').ok).toBe(true);
+    ['2024-03-09', '-05:00'],
+    ['2024-03-10', '-05:00'],
+    ['2024-03-11', '-04:00'],
+    ['2024-11-03', '-04:00'],
+    ['2024-11-04', '-05:00'],
+  ])('writes local midnight of %s with the offset %s', (date, offset) => {
+    expect(localMidnight(date)).toEqual({ date, time: '00:00:00', offset });
   });
 
-  it.each([
-    ['2024-03-10', '02:30:00', 3, 10, 2, 30],
-    ['2024-03-31', '02:30:00', 3, 31, 2, 30],
-    ['2024-09-08', '00:30:00', 9, 8, 0, 30],
-    ['2024-11-03', '01:30:00', 11, 3, 1, 30],
-  ])('writes local %s %s as the moment the clock reads', (date, time, m, d, h, min) => {
-    const value = atLocalTime(date, time);
-    expect(toInstant(value).getTime()).toBe(instantOf(2024, m, d, h, min));
-    expect(value.offset).toBe(localOffsetAt(toInstant(value)));
+  it('writes a time the clock skips as the moment the clock moves to', () => {
+    const value = atLocalTime('2024-03-10', '02:30:00');
+    expect(value).toEqual({ date: '2024-03-10', time: '03:30:00', offset: '-04:00' });
+    expect(toInstant(value).toISOString()).toBe('2024-03-10T07:30:00.000Z');
+  });
+
+  it('writes a time the clock reads twice as the first of the two moments', () => {
+    const value = atLocalTime('2024-11-03', '01:30:00');
+    expect(value).toEqual({ date: '2024-11-03', time: '01:30:00', offset: '-04:00' });
+    expect(toInstant(value).toISOString()).toBe('2024-11-03T05:30:00.000Z');
+  });
+
+  it('writes local midnight of a day whose midnight the clock skips as the moment the clock moves to', () => {
+    // In America/Santiago the clock moves from 00:00 (-04:00) to 01:00 (-03:00) on 2024-09-08.
+    vi.stubEnv('TZ', 'America/Santiago');
+    expect(new Date(2024, 8, 8).getHours()).toBe(1);
+    expect(localMidnight('2024-09-08')).toEqual({
+      date: '2024-09-08',
+      time: '01:00:00',
+      offset: '-03:00',
+    });
   });
 
   it('keeps the wall time where there is no gap', () => {
     expect(atLocalTime('2024-07-01', '09:15:00')).toEqual({
       date: '2024-07-01',
       time: '09:15:00',
-      offset: localOffsetAt(new Date(2024, 6, 1, 9, 15)),
+      offset: '-04:00',
     });
   });
 });
@@ -269,10 +282,13 @@ describe('toInstant and fromInstant', () => {
   });
 
   it('reads a value without an offset in the local time zone', () => {
-    expect(toInstant(parsed('2024-03-05T14:30')).getTime()).toBe(
-      new Date(2024, 2, 5, 14, 30).getTime()
-    );
-    expect(toInstant(parsed('2024-03-05', 'date')).getTime()).toBe(new Date(2024, 2, 5).getTime());
+    expect(toInstant(parsed('2024-03-05T14:30')).toISOString()).toBe('2024-03-05T19:30:00.000Z');
+    expect(toInstant(parsed('2024-07-05T14:30')).toISOString()).toBe('2024-07-05T18:30:00.000Z');
+    expect(toInstant(parsed('2024-03-05', 'date')).toISOString()).toBe('2024-03-05T05:00:00.000Z');
+  });
+
+  it('reads a local time the clock skips with the offset before the change', () => {
+    expect(toInstant(parsed('2024-03-10T02:30')).toISOString()).toBe('2024-03-10T07:30:00.000Z');
   });
 
   it('writes an instant in the given offset, whatever the local time zone is', () => {
@@ -306,17 +322,22 @@ describe('toInstant and fromInstant', () => {
 
 describe('localOffsetAt', () => {
   it('is the offset of the local time zone at that moment', () => {
-    const at = new Date(2024, 6, 1, 12, 0);
-    const minutes = -at.getTimezoneOffset();
-    const result = localOffsetAt(at);
-    if (minutes === 0) {
-      expect(result).toBe('Z');
-    } else {
-      const sign = minutes < 0 ? '-' : '+';
-      const abs = Math.abs(minutes);
-      const hh = String(Math.floor(abs / 60)).padStart(2, '0');
-      const mm = String(abs % 60).padStart(2, '0');
-      expect(result).toBe(`${sign}${hh}:${mm}`);
-    }
+    expect(localOffsetAt(new Date(2024, 0, 1, 12, 0))).toBe('-05:00');
+    expect(localOffsetAt(new Date(2024, 6, 1, 12, 0))).toBe('-04:00');
+  });
+
+  it('changes at the moment the clock changes', () => {
+    expect(localOffsetAt(new Date('2024-03-10T06:59:59.999Z'))).toBe('-05:00');
+    expect(localOffsetAt(new Date('2024-03-10T07:00:00.000Z'))).toBe('-04:00');
+  });
+
+  it('is Z in a time zone that reads UTC', () => {
+    vi.stubEnv('TZ', 'UTC');
+    expect(localOffsetAt(new Date(2024, 6, 1, 12, 0))).toBe('Z');
+  });
+
+  it('keeps the minutes of an offset that is not a whole hour', () => {
+    vi.stubEnv('TZ', 'Asia/Kathmandu');
+    expect(localOffsetAt(new Date(2024, 6, 1, 12, 0))).toBe('+05:45');
   });
 });
