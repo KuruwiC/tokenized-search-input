@@ -204,6 +204,28 @@ describe('DefaultDateTimePicker', () => {
       });
     });
 
+    it('uses the year of the displayed month when it is below 100', () => {
+      const onChange = vi.fn();
+      const month = new Date(0);
+      month.setFullYear(24, 2, 1);
+      render(
+        <DefaultDateTimePicker
+          {...propsOf({
+            onChange,
+            defaultMonth: month,
+            timeControls: {
+              isUTC: true,
+              onUTCChange: vi.fn(),
+              includeTime: true,
+              onIncludeTimeChange: vi.fn(),
+            },
+          })}
+        />
+      );
+      fireEvent.change(timeInput(), { target: { value: '09:15' } });
+      expect(onChange).toHaveBeenCalledWith({ date: '0024-03-01', time: '09:15:00', offset: 'Z' });
+    });
+
     it('is disabled while the time is not included', () => {
       render(
         <DefaultDateTimePicker

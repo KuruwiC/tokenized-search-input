@@ -96,6 +96,24 @@ describe('useDebouncedPickerSync', () => {
     expect(result.current.value).toEqual({ date: '2024-07-01' });
   });
 
+  it('does not point the picker at a date the token would reject', () => {
+    const selected: DateTimeValue = { date: '2024-03-05' };
+    for (const [type, inputValue] of [
+      ['date', '2024-02-31'],
+      ['date', '32/05/2024'],
+      ['datetime', '2024-02-31T10:30'],
+      ['datetime', '2024-00-10 10'],
+    ] as const) {
+      const { result } = renderHook(() =>
+        useDebouncedPickerSync({ inputValue, selectedValue: selected, type, parse: parse(type) })
+      );
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(result.current.value, inputValue).toBe(selected);
+    }
+  });
+
   it('falls back to the selected value when the input says nothing', () => {
     const selected: DateTimeValue = { date: '2024-03-05', time: '10:00', offset: '+09:00' };
     const { result } = renderHook(() =>

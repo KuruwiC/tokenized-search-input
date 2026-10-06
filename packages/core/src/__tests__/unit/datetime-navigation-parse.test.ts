@@ -120,10 +120,61 @@ describe('parseDateForNavigation', () => {
     });
   });
 
+  it('rejects a date that does not exist in every format', () => {
+    for (const input of [
+      '2024-02-31',
+      '2023-02-29',
+      '2024-00-10',
+      '2024-13-01',
+      '2024-04-31',
+      '2024-05-00',
+      '32/05/2024',
+      '31/04/2024',
+      '02/30/2024',
+      '00/10/2024',
+    ]) {
+      expect(parseDateForNavigation(input), input).toBeNull();
+    }
+    expect(dayOf(parseDateForNavigation('2024-02-29'))).toEqual([2024, 2, 29]);
+    expect(dayOf(parseDateForNavigation('29/02/2024'))).toEqual([2024, 2, 29]);
+    expect(dayOf(parseDateForNavigation('02/29/2024'))).toEqual([2024, 2, 29]);
+  });
+
+  it('reads a year below 100 as that year, as the token does', () => {
+    expect(dayOf(parseDateForNavigation('0024'))).toEqual([24, 1, 1]);
+    expect(dayOf(parseDateForNavigation('0024-03'))).toEqual([24, 3, 1]);
+    expect(dayOf(parseDateForNavigation('0024-03-05'))).toEqual([24, 3, 5]);
+    expect(dayOf(parseDateForNavigation('13/05/0024'))).toEqual([24, 5, 13]);
+    expect(dayOf(parseDateForNavigation('05/13/0024'))).toEqual([24, 5, 13]);
+  });
+
+  it('points at local midnight', () => {
+    const date = parseDateForNavigation('2024-03-10');
+    expect([date?.getHours(), date?.getMinutes(), date?.getSeconds()]).toEqual([0, 0, 0]);
+  });
+
   it('rejects a year-month whose month is out of range', () => {
     expect(parseDateForNavigation('2024-13')).toBeNull();
     expect(parseDateForNavigation('2024-00')).toBeNull();
     expect(dayOf(parseDateForNavigation('2024-12'))).toEqual([2024, 12, 1]);
+  });
+});
+
+describe('parseDateTimeForNavigation with a date that does not exist', () => {
+  it('reads no date, and keeps the time typed so far', () => {
+    expect(parseDateTimeForNavigation('2024-02-31T10:30')).toEqual({
+      date: null,
+      time: { hours: 10, minutes: 30 },
+    });
+    expect(parseDateTimeForNavigation('32/05/2024 10')).toEqual({
+      date: null,
+      time: { hours: 10, minutes: 0 },
+    });
+    expect(parseDateTimeForNavigation('2024-00-10T').date).toBeNull();
+  });
+
+  it('reads a year below 100 as that year', () => {
+    expect(dayOf(parseDateTimeForNavigation('0024-03-05T10:30').date)).toEqual([24, 3, 5]);
   });
 });
 

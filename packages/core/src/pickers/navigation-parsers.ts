@@ -1,5 +1,7 @@
 /** Parsers used when typing dates into picker navigation controls. */
 
+import { calendarDayToDate } from './calendar-days';
+import { parseDateTimeValue } from './date-time-value';
 import { err, ok, type ParseErr, type ParseResult } from './parse-result';
 import type { TimeValue } from './time-picker';
 
@@ -20,36 +22,41 @@ const chainParsers = <T>(
 
 type DateParseFn = (input: string) => ParseResult<Date>;
 
+/**
+ * Local midnight of a date, read by a token's own value rule so the picker never points at
+ * a date the token rejects: a nonexistent date is an error rather than rolling over, and a
+ * year below 100 is that year.
+ */
+const parseCalendarDate = (year: string, month: string, day: string): ParseResult<Date> => {
+  const parsed = parseDateTimeValue(
+    `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
+    'date'
+  );
+  return parsed.ok ? ok(calendarDayToDate(parsed.value.date)) : parsed;
+};
+
 const parseYear: DateParseFn = (s) => {
   const m = s.match(/^(\d{4})$/);
   if (!m) return err('Not a year format', 'Expected: YYYY');
-  return ok(new Date(Number(m[1]), 0, 1));
+  return parseCalendarDate(m[1], '1', '1');
 };
 
 const parseYearMonth: DateParseFn = (s) => {
   const m = s.match(/^(\d{4})[-/](\d{1,2})$/);
   if (!m) return err('Not a year-month format', 'Expected: YYYY-MM');
-  const month = Number(m[2]) - 1;
-  if (month < 0 || month > 11) return err('Invalid month', 'Month must be 1-12');
-  return ok(new Date(Number(m[1]), month, 1));
+  return parseCalendarDate(m[1], m[2], '1');
 };
 
 const parseISODate: DateParseFn = (s) => {
   const m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
   if (!m) return err('Not an ISO date format', 'Expected: YYYY-MM-DD');
-  const date = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  if (Number.isNaN(date.getTime())) return err('Invalid date');
-  return ok(date);
+  return parseCalendarDate(m[1], m[2], m[3]);
 };
 
 const parseUSDate: DateParseFn = (s) => {
   const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (!m) return err('Not a US date format', 'Expected: MM/DD/YYYY');
-  const month = Number(m[1]) - 1;
-  if (month < 0 || month > 11) return err('Invalid month');
-  const date = new Date(Number(m[3]), month, Number(m[2]));
-  if (Number.isNaN(date.getTime())) return err('Invalid date');
-  return ok(date);
+  return parseCalendarDate(m[3], m[1], m[2]);
 };
 
 /**
@@ -59,13 +66,8 @@ const parseUSDate: DateParseFn = (s) => {
 const parseEUDate: DateParseFn = (s) => {
   const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (!m) return err('Not an EU date format', 'Expected: DD/MM/YYYY');
-  const first = Number(m[1]);
-  const month = Number(m[2]) - 1;
-  if (first <= 12) return err('Ambiguous format');
-  if (month < 0 || month > 11) return err('Invalid month');
-  const date = new Date(Number(m[3]), month, first);
-  if (Number.isNaN(date.getTime())) return err('Invalid date');
-  return ok(date);
+  if (Number(m[1]) <= 12) return err('Ambiguous format');
+  return parseCalendarDate(m[3], m[2], m[1]);
 };
 
 /**

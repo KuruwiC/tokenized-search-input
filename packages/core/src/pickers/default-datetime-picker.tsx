@@ -88,7 +88,7 @@ export const DefaultDateTimePicker: FC<DateTimePickerRenderProps> = ({
   const handleTimeChange = (next: TimeValue) => {
     // Use the current value's day, or fall back to the displayed calendar month (first day)
     // This prevents unexpected "today" when user adjusts time before selecting a date
-    const date = day ?? toCalendarDay(new Date(month.getFullYear(), month.getMonth(), 1));
+    const date = day ?? `${toCalendarDay(month).slice(0, -2)}01`;
     onChange(valueAt(date, toTimeString(next)));
   };
 
