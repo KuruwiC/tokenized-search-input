@@ -21,6 +21,18 @@ afterEach(() => {
   cleanup();
 });
 
+/**
+ * Runs the animation frames requested so far, and the frames they request in turn, with
+ * React's updates from them applied.
+ */
+async function flushFrames(): Promise<void> {
+  await act(async () => {
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
+  });
+}
+
 const dayFirst = (input: string): DateTimeValue | null => {
   const match = input.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (!match) return null;
@@ -133,10 +145,18 @@ describe('a picker that hands over a value that cannot be written', () => {
 
   it('leaves the token as it was', async () => {
     const editor = await open();
+    // A picker's value reaches the token on the next animation frame
     fireEvent.click(screen.getByRole('button', { name: 'loose' }));
-    fireEvent.click(screen.getByRole('button', { name: 'missing' }));
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await flushFrames();
     expect(firstFilter(editor).value).toBe('2024-03-05');
+    fireEvent.click(screen.getByRole('button', { name: 'missing' }));
+    await flushFrames();
+    expect(firstFilter(editor).value).toBe('2024-03-05');
+
+    // The picker still writes, so the values above were refused, not left unread
+    fireEvent.click(screen.getByRole('button', { name: 'good' }));
+    await flushFrames();
+    expect(firstFilter(editor).value).toBe('2024-03-06');
   });
 
   it('writes a value that can be written', async () => {

@@ -97,7 +97,12 @@ function typeStatusAndLeave(editor: Editor, typed: string[]) {
   act(() => focusToken(editor, null));
 }
 
-const settle = () => new Promise((resolve) => setTimeout(resolve, 30));
+/**
+ * Lets React finish the last update and runs the document changes its effects queued as
+ * microtasks. Validation runs in the dispatch of the transaction it validates, so what it
+ * deletes or marks is in the document once this returns.
+ */
+const settle = () => act(async () => {});
 
 /** A rule that records which tokens each validation pass treated as edited. */
 function recordingRule(passes: string[][]): ValidationRule {

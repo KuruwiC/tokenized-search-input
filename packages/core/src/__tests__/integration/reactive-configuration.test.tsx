@@ -11,6 +11,16 @@ import { getInternalEditor, waitForEditor } from '../helpers/get-editor';
 
 afterEach(() => cleanup());
 
+/**
+ * Runs the timers pending under fake timers, then the microtasks queued so far, with
+ * React's updates from them applied.
+ */
+async function runPendingTimers(): Promise<void> {
+  await act(async () => {
+    vi.runOnlyPendingTimers();
+  });
+}
+
 describe('reactive configuration', () => {
   it('keeps the editor and content when configuration changes', async () => {
     const ref = { current: null as TokenizedSearchInputRef | null };
@@ -184,21 +194,25 @@ describe('reactive configuration', () => {
 
   it('does not reapply editor options when unrelated props change', async () => {
     const props = { fields: extendedFields, defaultValue: 'status:is:active' };
-    const view = render(<TokenizedSearchInput {...props} />);
-    await screen.findByRole('combobox');
-    // useEditor re-applies its options once shortly after mount.
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    // useEditor re-applies its options from a timer it starts while mounting
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const setOptions = vi.spyOn(Editor.prototype, 'setOptions');
     try {
+      const view = render(<TokenizedSearchInput {...props} />);
+      screen.getByRole('combobox');
+      await runPendingTimers();
+      setOptions.mockClear();
+
       view.rerender(<TokenizedSearchInput {...props} placeholder="One" />);
       view.rerender(
         <TokenizedSearchInput {...props} placeholder="Two" classNames={{ root: 'x' }} />
       );
       view.rerender(<TokenizedSearchInput {...props} placeholder="Three" singleLine />);
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await runPendingTimers();
       expect(setOptions).not.toHaveBeenCalled();
     } finally {
       setOptions.mockRestore();
+      vi.useRealTimers();
     }
   });
 
@@ -329,6 +343,7 @@ describe('reactive configuration', () => {
     await screen.findByText('active');
     const editor = Editor.prototype;
     const dispatch = vi.spyOn(editor, 'emit');
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     try {
       view.rerender(
         <TokenizedSearchInput
@@ -339,7 +354,7 @@ describe('reactive configuration', () => {
           classNames={{ token: 'token-a' }}
         />
       );
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await runPendingTimers();
       const contextUpdates = dispatch.mock.calls.filter(
         ([event, payload]) =>
           event === 'transaction' &&
@@ -348,6 +363,7 @@ describe('reactive configuration', () => {
       expect(contextUpdates).toHaveLength(0);
     } finally {
       dispatch.mockRestore();
+      vi.useRealTimers();
     }
   });
 });

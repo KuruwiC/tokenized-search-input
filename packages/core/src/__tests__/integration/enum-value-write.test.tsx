@@ -119,10 +119,7 @@ describe('values of tokens created for an enum field with options', () => {
         .run();
     });
 
-    await waitFor(() =>
-      expect(filterTokens(ref as RefObject<TokenizedSearchInputRef>).length).toBe(1)
-    );
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    // RequireEnum runs in the same dispatch, so a token it rejected would be gone already
     expect(filterTokens(ref as RefObject<TokenizedSearchInputRef>).map((t) => t.value)).toEqual([
       'active',
     ]);

@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
 import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import { getSuggestionState, type SuggestionType } from '../../plugins/suggestion';
+import { getFocusedTokenId } from '../../plugins/token-focus';
 import type { FieldDefinition, ValidationRule } from '../../types';
 import { MaxCount, RequirePattern, Unique } from '../../validation/presets';
 import { fieldsWithValidationOverride } from '../fixtures';
@@ -36,6 +37,26 @@ async function expectTokenCounts(total: number, invalid: number): Promise<void> 
 afterEach(() => {
   cleanup();
 });
+
+/**
+ * Runs the animation frames requested so far, and the frames they request in turn, with
+ * React's updates from them applied.
+ */
+async function flushFrames(): Promise<void> {
+  await act(async () => {
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
+  });
+}
+
+/** Renders the input with `rules` and no content, and waits for its editor. */
+async function renderWithRules(rules: ValidationRule[]) {
+  const ref = createRef<TokenizedSearchInputRef>();
+  render(<TokenizedSearchInput ref={ref} fields={testFields} validation={{ rules }} />);
+  const editor = await waitForEditor(ref);
+  return { ref, editor };
+}
 
 describe('Validation System Integration', () => {
   describe('No validation (default)', () => {
@@ -659,23 +680,10 @@ describe('Validation System Integration', () => {
 
   describe('onDuplicate replace: position-independent behavior', () => {
     it("onDuplicate 'replace' with 3 duplicates keeps only the last token on setValue", async () => {
-      const TestComponent = () => {
-        const ref = useRef<TokenizedSearchInputRef>(null);
-        useEffect(() => {
-          setTimeout(() => {
-            ref.current?.setValue('status:is:first status:is:second status:is:third');
-          }, 100);
-        }, []);
-        return (
-          <TokenizedSearchInput
-            ref={ref}
-            fields={testFields}
-            validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
-          />
-        );
-      };
-
-      render(<TestComponent />);
+      const { ref } = await renderWithRules([Unique.rule('key', { onDuplicate: 'replace' })]);
+      act(() => {
+        ref.current?.setValue('status:is:first status:is:second status:is:third');
+      });
 
       // After setValue with onDuplicate 'replace', only the last token should remain
       await waitFor(
@@ -703,24 +711,11 @@ describe('Validation System Integration', () => {
       // Both tokens are set at once, so both count as edited.
       // onDuplicate 'reject' deletes the later one (the second token) and the first
       // token remains.
-      const TestComponent = () => {
-        const ref = useRef<TokenizedSearchInputRef>(null);
-        useEffect(() => {
-          setTimeout(() => {
-            // The second token is the later duplicate
-            ref.current?.setValue('status:is:first status:is:second');
-          }, 100);
-        }, []);
-        return (
-          <TokenizedSearchInput
-            ref={ref}
-            fields={testFields}
-            validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
-          />
-        );
-      };
-
-      render(<TestComponent />);
+      const { ref } = await renderWithRules([Unique.rule('key', { onDuplicate: 'reject' })]);
+      // The second token is the later duplicate
+      act(() => {
+        ref.current?.setValue('status:is:first status:is:second');
+      });
 
       // 'reject' preserves the first occurrence
       await waitFor(
@@ -740,23 +735,10 @@ describe('Validation System Integration', () => {
       // Both tokens are set at once, so both count as edited.
       // onDuplicate 'replace' deletes the earlier one (the first token) and the last
       // token remains.
-      const TestComponent = () => {
-        const ref = useRef<TokenizedSearchInputRef>(null);
-        useEffect(() => {
-          setTimeout(() => {
-            ref.current?.setValue('status:is:first status:is:second');
-          }, 100);
-        }, []);
-        return (
-          <TokenizedSearchInput
-            ref={ref}
-            fields={testFields}
-            validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
-          />
-        );
-      };
-
-      render(<TestComponent />);
+      const { ref } = await renderWithRules([Unique.rule('key', { onDuplicate: 'replace' })]);
+      act(() => {
+        ref.current?.setValue('status:is:first status:is:second');
+      });
 
       // 'replace' preserves the last occurrence
       await waitFor(
@@ -773,23 +755,10 @@ describe('Validation System Integration', () => {
     });
 
     it("onDuplicate 'reject' with 3 duplicates keeps only the first token on setValue", async () => {
-      const TestComponent = () => {
-        const ref = useRef<TokenizedSearchInputRef>(null);
-        useEffect(() => {
-          setTimeout(() => {
-            ref.current?.setValue('status:is:first status:is:second status:is:third');
-          }, 100);
-        }, []);
-        return (
-          <TokenizedSearchInput
-            ref={ref}
-            fields={testFields}
-            validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
-          />
-        );
-      };
-
-      render(<TestComponent />);
+      const { ref } = await renderWithRules([Unique.rule('key', { onDuplicate: 'reject' })]);
+      act(() => {
+        ref.current?.setValue('status:is:first status:is:second status:is:third');
+      });
 
       await waitFor(
         () => {
@@ -907,23 +876,10 @@ describe('Validation System Integration', () => {
       // This marking persists through blur.
       const user = userEvent.setup();
 
-      const TestComponent = () => {
-        const ref = useRef<TokenizedSearchInputRef>(null);
-        useEffect(() => {
-          setTimeout(() => {
-            ref.current?.setValue('priority:is:medium priority:is:high');
-          }, 100);
-        }, []);
-        return (
-          <TokenizedSearchInput
-            ref={ref}
-            fields={testFields}
-            validation={{ rules: [Unique.rule('key', { onDuplicate: 'mark' })] }}
-          />
-        );
-      };
-
-      render(<TestComponent />);
+      const { ref, editor } = await renderWithRules([Unique.rule('key', { onDuplicate: 'mark' })]);
+      act(() => {
+        ref.current?.setValue('priority:is:medium priority:is:high');
+      });
 
       // Wait for setValue - should have 2 tokens, 1 marked (the second one)
       await waitFor(
@@ -942,28 +898,21 @@ describe('Validation System Integration', () => {
 
       const tokens = document.querySelectorAll('.node-filterToken');
       const firstToken = tokens[0];
-      await user.click(firstToken);
-
-      // Wait for focus to settle
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
+      // A click is followed by the suggestions being evaluated again on the next frame
       const combobox = document.querySelector('[role="combobox"]') as HTMLElement;
-      await user.click(combobox);
-      await user.keyboard('{Escape}');
+      await user.click(firstToken);
+      await waitFor(() => expect(combobox).toHaveAttribute('aria-expanded', 'true'));
+      await flushFrames();
 
-      // Wait a bit for blur to settle
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await user.click(combobox);
+      await flushFrames();
+      await user.keyboard('{Escape}');
+      expect(combobox).toHaveAttribute('aria-expanded', 'false');
+      await flushFrames();
+      expect(getFocusedTokenId(editor.state)).toBeNull();
 
       // After blur, marking should remain consistent (1 token marked)
-      await waitFor(
-        () => {
-          const invalidTokens = document.querySelectorAll(
-            '.node-filterToken [data-invalid="true"]'
-          );
-          expect(invalidTokens.length).toBe(1);
-        },
-        { timeout: 1000 }
-      );
+      expect(invalidTokenCount()).toBe(1);
     });
   });
 

@@ -155,9 +155,7 @@ describe('the value input of a token being edited', () => {
     const before = input.getBoundingClientRect().width;
 
     await loadVariableFont();
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-
-    expect(input.getBoundingClientRect().width).toBeGreaterThan(before);
+    await expect.poll(() => input.getBoundingClientRect().width).toBeGreaterThan(before);
     expectFits(input);
   });
 

@@ -18,6 +18,18 @@ afterEach(() => {
   cleanup();
 });
 
+/**
+ * Runs the animation frames requested so far, and the frames they request in turn, with
+ * React's updates from them applied.
+ */
+async function flushFrames(): Promise<void> {
+  await act(async () => {
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
+  });
+}
+
 describe('Undo/Redo', () => {
   it('redoes undone setValue with redo command', async () => {
     const onChange = vi.fn();
@@ -161,7 +173,7 @@ describe('Undo/Redo', () => {
 
       // Undo again on the empty input; the token must not be deleted in its place.
       await user.keyboard('{Control>}z{/Control}');
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await flushFrames();
       expect(filterTokenValues(editor)).toEqual(['']);
 
       await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');

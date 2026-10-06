@@ -3,7 +3,7 @@
  */
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
 import { getSuggestionState, openFieldSuggestion } from '../../plugins/suggestion';
 import { fields, renderInput } from '../helpers/suggestion-layer';
 
@@ -18,6 +18,7 @@ describe('dismissal of a suggestion', () => {
     expect(getSuggestionState(editor.state)?.type).toBe('value');
     const outside = document.createElement('button');
     document.body.append(outside);
+    onTestFinished(() => outside.remove());
 
     // The handlers of the value suggestion are still attached when the type changes
     editor.view.dispatch(openFieldSuggestion(editor.state.tr, fields, '', 1));
@@ -25,7 +26,6 @@ describe('dismissal of a suggestion', () => {
 
     expect(getSuggestionState(editor.state)?.type).toBe('field');
     await act(async () => {});
-    outside.remove();
   });
 
   it('closes a value suggestion when focus moves outside it', async () => {
@@ -35,12 +35,12 @@ describe('dismissal of a suggestion', () => {
     await screen.findByRole('listbox');
     const outside = document.createElement('button');
     document.body.append(outside);
+    onTestFinished(() => outside.remove());
 
     act(() => {
       fireEvent.focusIn(outside);
     });
 
     await waitFor(() => expect(getSuggestionState(editor.state)?.type).toBeNull());
-    outside.remove();
   });
 });

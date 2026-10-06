@@ -8,7 +8,7 @@
 import { act, renderHook } from '@testing-library/react';
 import type { FC, PropsWithChildren } from 'react';
 import { useMemo, useState } from 'react';
-import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, type Mock, onTestFinished, vi } from 'vitest';
 import type { TokenFocusEntry } from '../../plugins/token-focus';
 import {
   type CursorPosition,
@@ -288,6 +288,7 @@ describe('focusEntryBlock', () => {
   function registryWith(blocks: MockBlock[]): FocusRegistry {
     const container = document.createElement('div');
     document.body.appendChild(container);
+    onTestFinished(() => container.remove());
     const { result } = renderHook(() => useFocusRegistry(exits()));
     for (const block of blocks) {
       container.appendChild(block.element.current);
@@ -422,8 +423,10 @@ describe('useFocusableBlock', () => {
 
   it('focuses its element, with the caret where asked, and becomes the tab stop', () => {
     const { result, ref, getRegistry } = renderBlock(() => false);
-    document.body.appendChild(ref.current);
-    ref.current.value = 'abc';
+    const element = ref.current;
+    document.body.appendChild(element);
+    onTestFinished(() => element.remove());
+    element.value = 'abc';
 
     act(() => getRegistry().get('value')?.focus('start'));
 
@@ -431,6 +434,5 @@ describe('useFocusableBlock', () => {
     expect(ref.current.selectionStart).toBe(0);
     expect(ref.current.selectionEnd).toBe(0);
     expect(result.current.tabIndex).toBe(0);
-    ref.current.remove();
   });
 });

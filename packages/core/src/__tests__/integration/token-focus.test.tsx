@@ -36,6 +36,18 @@ function getEditor(ref: RefObject<TokenizedSearchInputRef | null>): Editor {
   return editor;
 }
 
+/**
+ * Runs the animation frames requested so far, and the frames they request in turn, with
+ * React's updates from them applied.
+ */
+async function flushFrames(): Promise<void> {
+  await act(async () => {
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
+  });
+}
+
 function tokenGroup(name: RegExp): HTMLElement {
   return screen.getByRole('group', { name });
 }
@@ -95,6 +107,8 @@ describe('Token focus', () => {
 
       const input = valueInputOf(tokenGroup(/status/i));
       await waitFor(() => expect(document.activeElement).toBe(input));
+      await flushFrames();
+      expect(document.activeElement).toBe(input);
       expect(input.selectionStart).toBe(0);
       expect(input.selectionEnd).toBe(0);
     });
@@ -333,6 +347,8 @@ describe('Token focus', () => {
 
       const input = valueInputOf(tokenGroup(/status/i));
       await waitFor(() => expect(document.activeElement).toBe(input));
+      await flushFrames();
+      expect(document.activeElement).toBe(input);
       expect(input.selectionStart).toBe(0);
     });
 

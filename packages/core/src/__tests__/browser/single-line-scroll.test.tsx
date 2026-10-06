@@ -66,7 +66,7 @@ describe('a singleLine input wider than its box', () => {
     expectInside(m, caretRect(m), 'the caret');
 
     await blurToOutside();
-    expect(m.pm.scrollLeft).toBe(0);
+    await expect.poll(() => m.pm.scrollLeft).toBe(0);
   });
 
   it('keeps a token added at the end in view', async () => {
@@ -106,7 +106,7 @@ describe('a singleLine input wider than its box', () => {
     expectInside(m, caretRect(m), 'the caret');
 
     await blurToOutside();
-    expect(m.pm.scrollLeft).toBe(0);
+    await expect.poll(() => m.pm.scrollLeft).toBe(0);
   });
 });
 
@@ -133,8 +133,8 @@ describe('a collapsed expandOnFocus input', () => {
     await userEvent.keyboard('abc');
     await blurToOutside();
 
-    expect(collapsed.pm.scrollLeft).toBe(0);
-    expect(collapsed.input.scrollLeft).toBe(0);
+    await expect.poll(() => collapsed.pm.scrollLeft).toBe(0);
+    await expect.poll(() => collapsed.input.scrollLeft).toBe(0);
     expect(tokenOffsets(collapsed)).toEqual(tokenOffsets(single));
   });
 });

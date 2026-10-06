@@ -536,8 +536,10 @@ describe('the signal passed to suggest and loadMore', () => {
       await waitFor(() => expect(rejectLate).toBeDefined());
       await act(async () => {
         rejectLate?.(new Error('late failure'));
-        await new Promise((resolve) => setTimeout(resolve, 10));
       });
+      // Node reports a rejection that nothing handled once the microtasks have run, before
+      // the next macrotask
+      await new Promise((resolve) => setImmediate(resolve));
 
       expect(unhandled).not.toHaveBeenCalled();
     } finally {

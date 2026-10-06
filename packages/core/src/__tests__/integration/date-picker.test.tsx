@@ -5,7 +5,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef, type RefObject } from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
 import type {
   TokenizedSearchInputProps,
@@ -126,16 +126,26 @@ describe('datetime picker', () => {
   });
 
   it('keeps the UTC and time controls while partial input is typed', async () => {
-    const user = userEvent.setup();
     await openPicker('updated:gt:2024-03-05T14:30:00Z');
     expect(screen.getByLabelText('UTC')).toBeChecked();
 
     const input = document.activeElement as HTMLInputElement;
-    await user.clear(input);
-    await user.type(input, '2024-07-04T1');
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 400));
-    });
+    // The picker follows partial input once it has settled for the debounce of 200ms. The
+    // clock also moves with real time, for the timers that user-event waits on.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+    try {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      await user.clear(input);
+      await user.type(input, '2024-07-04T1');
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(screen.getByRole('gridcell', { selected: true })).toContainElement(
+      screen.getByRole('button', { name: /July 4th, 2024/ })
+    );
 
     expect(screen.getByLabelText('UTC')).toBeChecked();
     expect(screen.getByLabelText(/include time/i)).toBeChecked();
