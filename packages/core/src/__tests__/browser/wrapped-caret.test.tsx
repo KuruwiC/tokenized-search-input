@@ -97,7 +97,7 @@ describe('the caret at the end of text before a token that wrapped to the next r
     await placeCaret(m, text.from + 1);
 
     await userEvent.keyboard(LINE_END);
-    expect(atTextEnd(m, 'ab')()).toBe(true);
+    await expect.poll(atTextEnd(m, 'ab')).toBe(true);
     await expectCaretWithText(m, -1);
   });
 

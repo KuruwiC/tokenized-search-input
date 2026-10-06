@@ -46,7 +46,14 @@ export default defineConfig({
       instances: [
         { browser: 'chromium', exclude: [mobileFile], viewport: desktop },
         { browser: 'webkit', exclude: [mobileFile], viewport: desktop },
-        { browser: 'firefox', include: crossEngineFiles, viewport: desktop },
+        // Firefox focuses one window at a time and each test file runs in a window of its own, so
+        // files run side by side take focus from each other and blur the editor under test.
+        {
+          browser: 'firefox',
+          include: crossEngineFiles,
+          viewport: desktop,
+          fileParallelism: false,
+        },
         {
           browser: 'chromium',
           name: 'chromium-mobile',
