@@ -246,7 +246,10 @@ export interface DateFieldDefinition extends BaseFieldDefinition {
   maxDate?: Date | string;
   disabledDates?: (date: Date) => boolean;
   renderPicker?: (props: DatePickerRenderProps) => ReactNode;
-  /** Label for the close button. Defaults to a check icon. */
+  /**
+   * What the picker's close button shows (default: a check icon). Text in the label names
+   * the button for assistive technology; a label without text is named "Close".
+   */
   closeButtonLabel?: ReactNode;
 }
 
@@ -259,7 +262,10 @@ export interface DateTimeFieldDefinition extends BaseFieldDefinition {
   maxDate?: Date | string;
   disabledDates?: (date: Date) => boolean;
   renderPicker?: (props: DateTimePickerRenderProps) => ReactNode;
-  /** Label for the close button. Defaults to a check icon. */
+  /**
+   * What the picker's close button shows (default: a check icon). Text in the label names
+   * the button for assistive technology; a label without text is named "Close".
+   */
   closeButtonLabel?: ReactNode;
   /**
    * Whether time component is required for this datetime field.

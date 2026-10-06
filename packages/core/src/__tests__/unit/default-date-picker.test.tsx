@@ -78,6 +78,22 @@ describe('DefaultDatePicker', () => {
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
+    it.each([
+      ['no closeButtonLabel', undefined, 'Close'],
+      ['an element with text', <span key="label">Fertig</span>, 'Fertig'],
+      ['an icon with no text', <svg key="label" aria-hidden="true" />, 'Close'],
+    ] as const)('has an accessible name with %s', (_, closeButtonLabel, name) => {
+      render(
+        <DefaultDatePicker
+          value={null}
+          onChange={vi.fn()}
+          onClose={vi.fn()}
+          fieldDef={{ ...field, closeButtonLabel }}
+        />
+      );
+      expect(screen.getByRole('button', { name })).toHaveClass('tsi-picker-close-btn');
+    });
+
     it('shows the closeButtonLabel of the field', () => {
       const onClose = vi.fn();
       render(

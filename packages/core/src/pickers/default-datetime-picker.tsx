@@ -1,13 +1,13 @@
 import { type FC, useEffect, useMemo, useRef, useState } from 'react';
 import { DayPicker } from 'react-day-picker';
-import { Check } from '../icons/check';
 import { ChevronLeft } from '../icons/chevron-left';
 import { ChevronRight } from '../icons/chevron-right';
 import type { DateTimePickerRenderProps } from '../types';
 import { calendarDayToDate, createDayMatcher, toCalendarDay } from './calendar-days';
-import { calendarClassNames, closeButtonClassName } from './calendar-styles';
+import { calendarClassNames } from './calendar-styles';
 import { isSameMonth, supportsUTCMode } from './date-format';
 import { atLocalTime, type DateTimeValue } from './date-time-value';
+import { PickerCloseButton } from './picker-close-button';
 import { TimePicker, type TimeValue } from './time-picker';
 
 const START_OF_DAY = '00:00:00';
@@ -167,11 +167,7 @@ export const DefaultDateTimePicker: FC<DateTimePickerRenderProps> = ({
           )}
         </div>
 
-        <div className="tsi-picker-footer">
-          <button type="button" onClick={onClose} className={closeButtonClassName}>
-            {fieldDef.closeButtonLabel ?? <Check className="tsi-picker-close-btn__icon" />}
-          </button>
-        </div>
+        <PickerCloseButton label={fieldDef.closeButtonLabel} onClose={onClose} />
       </div>
     </div>
   );

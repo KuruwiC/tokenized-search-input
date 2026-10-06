@@ -236,7 +236,7 @@ export const dueDate: FieldDefinition = {
   maxDate: new Date("2024-12-31"),
   disabledDates: (date) => date.getDay() === 0, // Disable Sundays
   // Picker customization
-  closeButtonLabel: "Done", // Custom close button label (defaults to check icon)
+  closeButtonLabel: "Done", // Custom close button label (defaults to a check icon named "Close")
 };
 ```
 
