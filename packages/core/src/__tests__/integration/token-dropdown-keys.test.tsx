@@ -4,28 +4,54 @@
  * The markup of the dropdowns is covered in token-dropdown-aria.test.tsx.
  */
 
-import { cleanup, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { act, createRef, type RefObject } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { applyTokenAction } from '../../tokens/filter-token/token-actions';
-import { statusField } from '../fixtures';
+import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
+import type { FieldDefinition } from '../../types';
+import { extendedFields, statusField } from '../fixtures';
+import { waitForEditor } from '../helpers/get-editor';
 import { focusBlock, focusedTokenId, renderInput, tokenOf } from '../helpers/token-blocks';
 
-const actions = vi.hoisted(() => ({ setKeyCalls: 0 }));
+afterEach(cleanup);
 
-vi.mock('../../tokens/filter-token/token-actions', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../tokens/filter-token/token-actions')>();
-  const counted: typeof applyTokenAction = (tr, id, action, source) => {
-    if (action.type === 'setKey') actions.setKeyCalls += 1;
-    return actual.applyTokenAction(tr, id, action, source);
-  };
-  return { ...actual, applyTokenAction: counted };
-});
+/**
+ * Renders the input with unknown fields allowed and opens the label combobox of its token,
+ * then starts counting the changes it reports.
+ */
+async function openLabelCombobox(fields: FieldDefinition[] = extendedFields) {
+  const user = userEvent.setup();
+  const ref = createRef<TokenizedSearchInputRef>();
+  const onChange = vi.fn();
+  render(
+    <TokenizedSearchInput
+      ref={ref}
+      fields={fields}
+      unknownFields={{}}
+      defaultValue="status:is:active"
+      onChange={onChange}
+    />
+  );
+  const editor = await waitForEditor(ref);
+  const group = screen.getByRole('group', { name: /status/i });
+  const label = await focusBlock(user, group, 'Select field');
+  await user.keyboard('{Enter}');
+  onChange.mockClear();
+  return { user, ref: ref as RefObject<TokenizedSearchInputRef>, editor, label, onChange };
+}
 
-afterEach(() => {
-  cleanup();
-  actions.setKeyCalls = 0;
-});
+/** One undo takes the token back to the field it had before the combobox was opened. */
+function expectOneUndoRestores(
+  m: Awaited<ReturnType<typeof openLabelCombobox>>,
+  value: string
+): void {
+  act(() => {
+    m.editor.commands.undo();
+  });
+  expect(m.ref.current?.getValue()).toBe(value);
+}
 
 describe('Token dropdown keys', () => {
   describe('operator dropdown keys', () => {
@@ -131,20 +157,16 @@ describe('Token dropdown keys', () => {
 
   describe('label combobox keys', () => {
     it('changes the field once when Tab picks an option in the text input', async () => {
-      const user = userEvent.setup();
-      const { ref } = await renderInput('status:is:active', { unknownFields: {} });
-      const group = screen.getByRole('group', { name: /status/i });
-      await focusBlock(user, group, 'Select field');
+      const m = await openLabelCombobox();
 
-      await user.keyboard('{Enter}');
-      await user.keyboard('{ArrowDown}');
-      actions.setKeyCalls = 0;
-      await user.keyboard('{Tab}');
+      await m.user.keyboard('{ArrowDown}');
+      await m.user.keyboard('{Tab}');
 
-      expect(actions.setKeyCalls).toBe(1);
-      const token = ref.current?.getSnapshot().segments[0];
+      expect(m.onChange).toHaveBeenCalledTimes(1);
+      const token = tokenOf(m.ref);
       expect(token).toMatchObject({ type: 'filter' });
       expect(token && 'key' in token ? token.key : undefined).not.toBe('status');
+      expectOneUndoRestores(m, 'status:is:active');
     });
 
     it('closes only the dropdown on Escape and keeps the token focused', async () => {
@@ -163,51 +185,35 @@ describe('Token dropdown keys', () => {
     });
 
     it('changes the field once when Tab picks the text of a combobox without a list', async () => {
-      const user = userEvent.setup();
-      const { ref } = await renderInput('status:is:active', {
-        fields: [statusField],
-        unknownFields: {},
-      });
-      const group = screen.getByRole('group', { name: /status/i });
-      await focusBlock(user, group, 'Select field');
+      const m = await openLabelCombobox([statusField]);
 
-      await user.keyboard('{Enter}');
-      await user.keyboard('custom');
-      actions.setKeyCalls = 0;
-      await user.keyboard('{Tab}');
+      await m.user.keyboard('custom');
+      await m.user.keyboard('{Tab}');
 
-      expect(actions.setKeyCalls).toBe(1);
-      expect(tokenOf(ref)).toMatchObject({ key: 'custom' });
+      expect(m.onChange).toHaveBeenCalledTimes(1);
+      expect(tokenOf(m.ref)).toMatchObject({ key: 'custom' });
+      expectOneUndoRestores(m, 'status:is:active');
     });
 
     it('commits the typed text once when focus leaves the combobox', async () => {
-      const user = userEvent.setup();
-      const { ref } = await renderInput('status:is:active', { unknownFields: {} });
-      const group = screen.getByRole('group', { name: /status/i });
-      await focusBlock(user, group, 'Select field');
+      const m = await openLabelCombobox();
 
-      await user.keyboard('{Enter}');
-      await user.keyboard('custom');
-      actions.setKeyCalls = 0;
-      await user.click(document.body);
+      await m.user.keyboard('custom');
+      await m.user.click(document.body);
 
-      expect(actions.setKeyCalls).toBe(1);
-      expect(tokenOf(ref)).toMatchObject({ key: 'custom' });
+      expect(m.onChange).toHaveBeenCalledTimes(1);
+      expect(tokenOf(m.ref)).toMatchObject({ key: 'custom' });
+      expectOneUndoRestores(m, 'status:is:active');
     });
 
     it('drops the typed text on Escape', async () => {
-      const user = userEvent.setup();
-      const { ref } = await renderInput('status:is:active', { unknownFields: {} });
-      const group = screen.getByRole('group', { name: /status/i });
-      await focusBlock(user, group, 'Select field');
+      const m = await openLabelCombobox();
 
-      await user.keyboard('{Enter}');
-      await user.keyboard('custom');
-      actions.setKeyCalls = 0;
-      await user.keyboard('{Escape}{Escape}');
+      await m.user.keyboard('custom');
+      await m.user.keyboard('{Escape}{Escape}');
 
-      expect(actions.setKeyCalls).toBe(0);
-      expect(tokenOf(ref)).toMatchObject({ key: 'status' });
+      expect(m.onChange).not.toHaveBeenCalled();
+      expect(m.ref.current?.getValue()).toBe('status:is:active');
     });
   });
 
@@ -219,47 +225,34 @@ describe('Token dropdown keys', () => {
       ['ArrowLeft', '{ArrowLeft}'],
       ['Shift+Tab', '{Shift>}{Tab}{/Shift}'],
     ])('is committed once when the combobox is left with %s', async (_name, keys) => {
-      const user = userEvent.setup();
-      const { ref } = await renderInput('status:is:active', { unknownFields: {} });
-      const group = screen.getByRole('group', { name: /status/i });
-      await focusBlock(user, group, 'Select field');
+      const m = await openLabelCombobox();
 
-      await user.keyboard('{Enter}');
-      await user.keyboard('xq');
-      actions.setKeyCalls = 0;
-      await user.keyboard(keys);
+      await m.user.keyboard('xq');
+      await m.user.keyboard(keys);
 
-      expect(actions.setKeyCalls).toBe(1);
-      expect(tokenOf(ref)).toMatchObject({ key: 'xq' });
+      expect(m.onChange).toHaveBeenCalledTimes(1);
+      expect(tokenOf(m.ref)).toMatchObject({ key: 'xq' });
+      expectOneUndoRestores(m, 'status:is:active');
     });
 
     it('is committed once when the trigger is pressed', async () => {
-      const user = userEvent.setup();
-      const { ref } = await renderInput('status:is:active', { unknownFields: {} });
-      const group = screen.getByRole('group', { name: /status/i });
-      const label = await focusBlock(user, group, 'Select field');
+      const m = await openLabelCombobox();
 
-      await user.keyboard('{Enter}');
-      await user.keyboard('xq');
-      actions.setKeyCalls = 0;
-      await user.click(label);
+      await m.user.keyboard('xq');
+      await m.user.click(m.label);
 
-      expect(actions.setKeyCalls).toBe(1);
-      expect(tokenOf(ref)).toMatchObject({ key: 'xq' });
+      expect(m.onChange).toHaveBeenCalledTimes(1);
+      expect(tokenOf(m.ref)).toMatchObject({ key: 'xq' });
+      expectOneUndoRestores(m, 'status:is:active');
     });
 
     it('is not committed when the text was never edited', async () => {
-      const user = userEvent.setup();
-      const { ref } = await renderInput('status:is:active', { unknownFields: {} });
-      const group = screen.getByRole('group', { name: /status/i });
-      await focusBlock(user, group, 'Select field');
+      const m = await openLabelCombobox();
 
-      await user.keyboard('{Enter}');
-      actions.setKeyCalls = 0;
-      await user.keyboard('{ArrowLeft}');
+      await m.user.keyboard('{ArrowLeft}');
 
-      expect(actions.setKeyCalls).toBe(0);
-      expect(tokenOf(ref)).toMatchObject({ key: 'status' });
+      expect(m.onChange).not.toHaveBeenCalled();
+      expect(m.ref.current?.getValue()).toBe('status:is:active');
     });
   });
 

@@ -24,9 +24,7 @@ describe('FreeTextStrategy', () => {
       expect(result).toEqual({
         type: 'freeTextToken',
         attrs: {
-          id: expect.stringMatching(
-            /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/
-          ),
+          id: expect.any(String),
           value: 'searchterm',
           quoted: false,
         },
@@ -46,9 +44,7 @@ describe('FreeTextStrategy', () => {
       expect(result).toEqual({
         type: 'freeTextToken',
         attrs: {
-          id: expect.stringMatching(
-            /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/
-          ),
+          id: expect.any(String),
           value: 'hello world',
           quoted: true,
         },

@@ -2,12 +2,11 @@
  * Integration tests for the accessible name of a token.
  */
 
-import { cleanup, render } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
 import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
-import { Token } from '../../tokens/composition/token';
 import { extendedFields } from '../fixtures';
 import { waitForEditor } from '../helpers/get-editor';
 
@@ -15,45 +14,34 @@ afterEach(() => {
   cleanup();
 });
 
+async function tokenGroupLabels(defaultValue: string): Promise<(string | null)[]> {
+  const ref = createRef<TokenizedSearchInputRef>();
+  render(
+    <TokenizedSearchInput
+      ref={ref}
+      fields={extendedFields}
+      freeTextMode="tokenize"
+      defaultValue={defaultValue}
+    />
+  );
+  await waitForEditor(ref);
+  return (await screen.findAllByRole('group')).map((group) => group.getAttribute('aria-label'));
+}
+
 describe('Token aria-label', () => {
-  it('is built from the field label and value when none is given', async () => {
-    const ref = createRef<TokenizedSearchInputRef>();
-    render(
-      <TokenizedSearchInput ref={ref} fields={extendedFields} defaultValue="status:is:active" />
-    );
-    const editor = await waitForEditor(ref);
-    const node = editor?.state.doc.firstChild?.firstChild;
-    if (!editor || !node) throw new Error('token not found');
+  it('names a filter token by its key, operator and value and says it can be edited', async () => {
+    const [label] = await tokenGroupLabels('status:is:active');
 
-    const { container } = render(
-      <Token editor={editor} getPos={() => 1} node={node} deleteNode={() => {}}>
-        <span>content</span>
-      </Token>
-    );
-
-    const label = container.querySelector('[role="group"]')?.getAttribute('aria-label');
     expect(label).not.toContain('undefined');
-    expect(label).toBe('Status: active. Click to edit.');
+    expect(label).toBe('Filter: status is active. Click to edit.');
   });
 
-  it('keeps the name a view gives and adds the state', async () => {
-    const ref = createRef<TokenizedSearchInputRef>();
-    render(
-      <TokenizedSearchInput ref={ref} fields={extendedFields} defaultValue="status:is:active" />
-    );
-    const editor = await waitForEditor(ref);
-    const node = editor?.state.doc.firstChild?.firstChild;
-    if (!editor || !node) throw new Error('token not found');
+  it('keeps the name the free text view gives and adds the state', async () => {
+    const labels = await tokenGroupLabels('status:is:active keyword');
 
-    const { container } = render(
-      <Token editor={editor} getPos={() => 1} node={node} deleteNode={() => {}} ariaLabel="Named">
-        <span>content</span>
-      </Token>
-    );
-
-    expect(container.querySelector('[role="group"]')).toHaveAttribute(
-      'aria-label',
-      'Named. Click to edit.'
-    );
+    expect(labels).toEqual([
+      'Filter: status is active. Click to edit.',
+      'Free text: keyword. Click to edit.',
+    ]);
   });
 });

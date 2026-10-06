@@ -520,6 +520,17 @@ describe('MaxCount', () => {
     expect(custom.message).toBe('Too many');
   });
 
+  it('marks every token when the limit is 0', () => {
+    const result = MaxCount.rule('tag', 0).validate(contextOf(tags));
+    expect(targetIds(result, 'mark')).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('treats a negative limit as 0', () => {
+    const [violation] = MaxCount.rule('tag', -1).validate(contextOf(tags));
+    expect(violation.targets.map((t) => t.tokenId)).toEqual(['a', 'b', 'c', 'd']);
+    expect(violation.message).toBe('Maximum 0 "tag" filters allowed');
+  });
+
   it("deletes only edited tokens with onExceed 'reject'", () => {
     const rule = MaxCount.rule('tag', 3, { onExceed: 'reject' });
     const result = rule.validate(contextOf(tags, { editing: ['b'] }));
@@ -573,5 +584,25 @@ describe('RequirePattern', () => {
   it("only marks a token that was not edited with onInvalid 'reject'", () => {
     const rule = RequirePattern.rule('email', /@/, { onInvalid: 'reject' });
     expect(rule.validate(contextOf([email]))[0].action).toBe('mark');
+  });
+
+  it('judges every token alike with a global regex', () => {
+    const codes = [
+      filterToken('a', 'code', 'is', 'ABC123'),
+      filterToken('b', 'code', 'is', 'DEF456'),
+      filterToken('c', 'code', 'is', 'nope'),
+    ];
+    const rule = RequirePattern.rule('code', /^[A-Z]{3}\d{3}$/g);
+    expect(targetIds(rule.validate(contextOf(codes)))).toEqual(['c']);
+    expect(targetIds(rule.validate(contextOf(codes)))).toEqual(['c']);
+  });
+
+  it('judges every token alike with a sticky regex', () => {
+    const codes = [
+      filterToken('a', 'code', 'is', 'ABC123'),
+      filterToken('b', 'code', 'is', 'DEF456'),
+    ];
+    const rule = RequirePattern.rule('code', /[A-Z]{3}\d{3}/y);
+    expect(rule.validate(contextOf(codes))).toEqual([]);
   });
 });

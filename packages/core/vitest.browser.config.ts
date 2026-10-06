@@ -15,6 +15,7 @@ const crossEngineFiles = [
   'src/__tests__/browser/focus-indicator.test.tsx',
   'src/__tests__/browser/popover-shape.test.tsx',
   'src/__tests__/browser/single-line-scroll.test.tsx',
+  'src/__tests__/browser/suggestion-option-layout.test.tsx',
 ];
 
 // There is no mobile device in CI. A mobile run is a desktop engine with a phone viewport,

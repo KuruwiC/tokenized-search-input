@@ -5,7 +5,7 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Editor } from '@tiptap/core';
-import { createRef, useEffect, useRef } from 'react';
+import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
 import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
@@ -299,67 +299,21 @@ describe('Validation System Integration', () => {
 
   describe('setValue with validation', () => {
     it('validates tokens when setValue is called', async () => {
-      const editorRefHolder: { current: TokenizedSearchInputRef | null } = { current: null };
+      const { ref } = await renderWithRules([Unique.rule('key')]);
 
-      function TestComponent() {
-        const ref = useRef<TokenizedSearchInputRef>(null);
-
-        useEffect(() => {
-          if (ref.current) {
-            editorRefHolder.current = ref.current;
-          }
-        }, []);
-
-        return (
-          <TokenizedSearchInput
-            ref={ref}
-            fields={testFields}
-            defaultValue=""
-            validation={{ rules: [Unique.rule('key')] }}
-          />
-        );
-      }
-
-      render(<TestComponent />);
-
-      await waitFor(() => {
-        expect(editorRefHolder.current).not.toBeNull();
+      act(() => {
+        ref.current?.setValue('status:is:active status:is:inactive');
       });
-
-      editorRefHolder.current?.setValue('status:is:active status:is:inactive');
 
       await expectTokenCounts(2, 1);
     });
 
     it('deletes duplicates on setValue', async () => {
-      const editorRefHolder: { current: TokenizedSearchInputRef | null } = { current: null };
+      const { ref } = await renderWithRules([Unique.rule('key', { onDuplicate: 'reject' })]);
 
-      function TestComponent() {
-        const ref = useRef<TokenizedSearchInputRef>(null);
-
-        useEffect(() => {
-          if (ref.current) {
-            editorRefHolder.current = ref.current;
-          }
-        }, []);
-
-        return (
-          <TokenizedSearchInput
-            ref={ref}
-            fields={testFields}
-            defaultValue=""
-            validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
-          />
-        );
-      }
-
-      render(<TestComponent />);
-
-      await waitFor(() => {
-        expect(editorRefHolder.current).not.toBeNull();
+      act(() => {
+        ref.current?.setValue('status:is:active status:is:inactive priority:is:high');
       });
-
-      editorRefHolder.current?.setValue('status:is:active status:is:inactive priority:is:high');
 
       // status + priority (duplicate status deleted)
       await expectTokenCounts(2, 0);
@@ -512,19 +466,6 @@ describe('Validation System Integration', () => {
   });
 
   describe('Edge cases', () => {
-    it('handles maxCount with max=0', async () => {
-      render(
-        <TokenizedSearchInput
-          fields={testFields}
-          defaultValue="status:is:active"
-          validation={{ rules: [MaxCount.rule('status', 0)] }}
-        />
-      );
-
-      // Token should be invalid (max is 0)
-      await expectTokenCounts(1, 1);
-    });
-
     it('handles maxCount with max=1 (similar to unique)', async () => {
       render(
         <TokenizedSearchInput
@@ -568,29 +509,6 @@ describe('Validation System Integration', () => {
       }
     });
 
-    it('handles global regex correctly with multiple validations', async () => {
-      const fieldsWithPattern: FieldDefinition[] = [
-        {
-          key: 'code',
-          label: 'Code',
-          type: 'string',
-          operators: ['is'],
-        },
-      ];
-
-      // Global regex can have stateful lastIndex issues
-      render(
-        <TokenizedSearchInput
-          fields={fieldsWithPattern}
-          defaultValue="code:is:ABC123 code:is:DEF456"
-          validation={{ rules: [RequirePattern.rule('code', /^[A-Z]{3}\d{3}$/g)] }}
-        />
-      );
-
-      // Both should be valid (pattern matches both)
-      await expectTokenCounts(2, 0);
-    });
-
     it('handles empty rules array', async () => {
       render(
         <TokenizedSearchInput
@@ -618,19 +536,6 @@ describe('Validation System Integration', () => {
 
       // Only first status should remain after all deletions
       await expectTokenCounts(1, 0);
-    });
-
-    it('handles negative maxCount by treating as 0', async () => {
-      render(
-        <TokenizedSearchInput
-          fields={testFields}
-          defaultValue="status:is:active"
-          validation={{ rules: [MaxCount.rule('status', -1)] }}
-        />
-      );
-
-      // Negative max should be treated as 0, so token is invalid
-      await expectTokenCounts(1, 1);
     });
   });
 

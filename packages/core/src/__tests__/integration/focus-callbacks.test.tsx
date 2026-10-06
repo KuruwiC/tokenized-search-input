@@ -16,33 +16,7 @@ afterEach(() => {
 
 describe('Focus Callbacks', () => {
   describe('onFocus', () => {
-    it('triggers onFocus when input receives focus', async () => {
-      const onFocus = vi.fn();
-      const user = userEvent.setup();
-      render(
-        <TokenizedSearchInput
-          fields={extendedFields}
-          defaultValue="status:is:active"
-          onFocus={onFocus}
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Status')).toBeInTheDocument();
-      });
-
-      const editor = screen.getByRole('combobox');
-      await user.click(editor);
-
-      await waitFor(() => {
-        expect(onFocus).toHaveBeenCalled();
-        const [snapshot] = onFocus.mock.calls[0];
-        expect(snapshot.text).toBe('status:is:active');
-        expect(snapshot.segments).toHaveLength(1);
-      });
-    });
-
-    it('provides snapshot with current content on focus', async () => {
+    it('triggers onFocus with the current content when input receives focus', async () => {
       const onFocus = vi.fn();
       const user = userEvent.setup();
       render(
@@ -63,9 +37,11 @@ describe('Focus Callbacks', () => {
       await waitFor(() => {
         expect(onFocus).toHaveBeenCalled();
         const [snapshot] = onFocus.mock.calls[0];
+        expect(snapshot.text).toBe('status:is:active priority:is:high');
         expect(snapshot.segments).toHaveLength(2);
       });
     });
+
     it('does not trigger onFocus again when focus moves into a token', async () => {
       const onFocus = vi.fn();
       const user = userEvent.setup();
@@ -93,7 +69,7 @@ describe('Focus Callbacks', () => {
   });
 
   describe('onBlur', () => {
-    it('triggers onBlur when focus leaves the input', async () => {
+    it('triggers onBlur with the current content when focus leaves the input', async () => {
       const onBlur = vi.fn();
       const user = userEvent.setup();
       render(
@@ -124,35 +100,6 @@ describe('Focus Callbacks', () => {
         expect(onBlur).toHaveBeenCalled();
         const [snapshot] = onBlur.mock.calls[0];
         expect(snapshot.text).toBe('status:is:active');
-      });
-    });
-
-    it('provides snapshot with current content on blur', async () => {
-      const onBlur = vi.fn();
-      const user = userEvent.setup();
-      render(
-        <div>
-          <TokenizedSearchInput
-            fields={extendedFields}
-            defaultValue="status:is:active"
-            onBlur={onBlur}
-          />
-          <button type="button">Other Element</button>
-        </div>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Status')).toBeInTheDocument();
-      });
-
-      const editor = screen.getByRole('combobox');
-      await user.click(editor);
-      await user.keyboard('{Escape}');
-      await user.click(screen.getByRole('button', { name: 'Other Element' }));
-
-      await waitFor(() => {
-        expect(onBlur).toHaveBeenCalled();
-        const [snapshot] = onBlur.mock.calls[0];
         expect(snapshot.segments).toHaveLength(1);
         expect(snapshot.segments[0]).toMatchObject({
           type: 'filter',
@@ -305,29 +252,7 @@ describe('Focus Callbacks', () => {
   });
 
   describe('onClear', () => {
-    it('triggers onClear when clear button is clicked', async () => {
-      const onClear = vi.fn();
-      const user = userEvent.setup();
-      render(
-        <TokenizedSearchInput
-          fields={extendedFields}
-          defaultValue="status:is:active"
-          clearable
-          onClear={onClear}
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Status')).toBeInTheDocument();
-      });
-
-      const clearButton = screen.getByRole('button', { name: /clear/i });
-      await user.click(clearButton);
-
-      expect(onClear).toHaveBeenCalledTimes(1);
-    });
-
-    it('clears content and calls onClear', async () => {
+    it('clears content and calls onClear once when the clear button is clicked', async () => {
       const onClear = vi.fn();
       const onChange = vi.fn();
       const user = userEvent.setup();
@@ -348,7 +273,7 @@ describe('Focus Callbacks', () => {
       const clearButton = screen.getByRole('button', { name: /clear/i });
       await user.click(clearButton);
 
-      expect(onClear).toHaveBeenCalled();
+      expect(onClear).toHaveBeenCalledTimes(1);
 
       // Content should be cleared (onChange should fire with empty content)
       await waitFor(() => {

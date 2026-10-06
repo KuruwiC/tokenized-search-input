@@ -181,7 +181,7 @@ describe('Keyboard Navigation - User Journeys', () => {
   });
 
   describe('Backspace navigation', () => {
-    it('deletes middle token cleanly without leaving extra spaces', async () => {
+    it('deleting the first token with Backspace leaves the rest without extra spaces', async () => {
       const onChange = vi.fn();
       const user = userEvent.setup();
       render(
@@ -217,7 +217,7 @@ describe('Keyboard Navigation - User Journeys', () => {
   });
 
   describe('Keyboard handler timing', () => {
-    it('uses latest handler values after focus change', async () => {
+    it('reports the typed value on every keystroke and moves focus to the token delete button on ArrowRight at the end', async () => {
       const onChange = vi.fn();
       const user = userEvent.setup();
       render(
@@ -244,13 +244,14 @@ describe('Keyboard Navigation - User Journeys', () => {
       await user.keyboard('{End}');
       await user.keyboard('{ArrowRight}');
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(
-          expect.objectContaining({ text: expect.stringContaining('test') })
+        expect(onChange).toHaveBeenLastCalledWith(
+          expect.objectContaining({ text: 'status:is:activetest' })
         );
       });
+      expect(document.activeElement).toBe(document.querySelector('.tsi-token-delete'));
     });
 
-    it('handles rapid focus changes followed by keyboard input', async () => {
+    it('ArrowRight leaves a token for the editor without changing the query', async () => {
       const onChange = vi.fn();
       const user = userEvent.setup();
       render(
@@ -279,14 +280,10 @@ describe('Keyboard Navigation - User Journeys', () => {
       await user.keyboard('{ArrowLeft}');
 
       await waitFor(() => {
-        expect(screen.getByRole('group', { name: /Filter: status/i })).toBeInTheDocument();
-        expect(screen.getByRole('group', { name: /Filter: priority/i })).toBeInTheDocument();
+        expect(document.activeElement).toBe(document.querySelector('.ProseMirror'));
       });
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({ text: expect.stringContaining('status:is:active') })
-      );
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({ text: expect.stringContaining('priority:is:high') })
+      expect(onChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ text: 'status:is:active priority:is:high' })
       );
     });
 

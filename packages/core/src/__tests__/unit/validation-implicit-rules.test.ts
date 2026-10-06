@@ -1,4 +1,10 @@
+import { Editor } from '@tiptap/core';
+import Document from '@tiptap/extension-document';
+import Paragraph from '@tiptap/extension-paragraph';
+import Text from '@tiptap/extension-text';
 import { describe, expect, it } from 'vitest';
+import { requestValidationCheck } from '../../plugins/shared/meta';
+import { ValidationExtension } from '../../plugins/validation';
 import { DATE_VALUE_RULE_ID } from '../../plugins/validation/date-value-rule';
 import { FIELD_VALIDATE_RULE_ID } from '../../plugins/validation/field-validate-rule';
 import { createImplicitRules } from '../../plugins/validation/implicit-rules';
@@ -224,5 +230,20 @@ describe('implicit validation of operators', () => {
       withTemplate.flatMap((rule) => rule.validate(contextOf('other', 'contains')))
     ).toHaveLength(1);
     expect(withTemplate.flatMap((rule) => rule.validate(contextOf('other', 'is')))).toEqual([]);
+  });
+});
+
+describe('ValidationExtension', () => {
+  it('fails loudly when the editor context extension is missing', () => {
+    const editor = new Editor({
+      extensions: [Document, Paragraph, Text, ValidationExtension],
+      content: '',
+    });
+
+    expect(() => editor.view.dispatch(requestValidationCheck(editor.state.tr))).toThrow(
+      'EditorContextExtension is not registered'
+    );
+
+    editor.destroy();
   });
 });

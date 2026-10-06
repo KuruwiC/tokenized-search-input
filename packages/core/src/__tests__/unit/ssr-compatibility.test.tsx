@@ -9,16 +9,15 @@ describe('SSR compatibility', () => {
     const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     try {
-      expect(() =>
-        renderToStaticMarkup(
-          <TokenizedSearchInput
-            fields={[{ key: 'status', label: 'Status', type: 'string', operators: ['is'] }]}
-          />
-        )
-      ).not.toThrow();
-      expect(warning).toHaveBeenCalledWith(
-        'SSR detected. `immediatelyRender` has been set to false to avoid hydration mismatches'
+      const markup = renderToStaticMarkup(
+        <TokenizedSearchInput
+          fields={[{ key: 'status', label: 'Status', type: 'string', operators: ['is'] }]}
+        />
       );
+      expect(markup).toBe(
+        '<div class="tsi-root"><div class="tsi-container"><div class="tsi-input tsi-input--full-width"></div><div class="tsi-placeholder" aria-hidden="true">Search...</div></div></div>'
+      );
+      expect(warning).toHaveBeenCalledWith(expect.stringContaining('immediatelyRender'));
     } finally {
       warning.mockRestore();
     }

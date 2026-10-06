@@ -32,7 +32,7 @@ describe('date field guards', () => {
     if (isDateTimeField(field)) expectTypeOf(field).toExtend<DateTimeFieldDefinition>();
   });
 
-  it('accept any value with a type, as before', () => {
+  it('accept an object that has only a type', () => {
     expect(isDateOrDateTimeField({ type: 'date' })).toBe(true);
     expect(isDateOrDateTimeField({ type: 'number' })).toBe(false);
   });

@@ -229,7 +229,7 @@ describe('NodeVisitor', () => {
       expect(filterTokenHandler).not.toHaveBeenCalled();
     });
 
-    it('handles nested paragraphs', () => {
+    it('visits the tokens of sibling paragraphs in document order', () => {
       const doc: JSONContent = {
         type: 'doc',
         content: [

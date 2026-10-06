@@ -3,12 +3,10 @@ import { Editor } from '@tiptap/core';
 import Document from '@tiptap/extension-document';
 import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { useEditorConfig } from '../../editor/hooks/use-editor-config';
 import { useEditorConfigSync } from '../../editor/hooks/use-editor-config-sync';
 import { EditorContextExtension, getEditorContext } from '../../extensions/editor-context';
-import { requestValidationCheck } from '../../plugins/shared/meta';
-import { ValidationExtension } from '../../plugins/validation';
 import type { FieldDefinition } from '../../types';
 
 const fields: FieldDefinition[] = [
@@ -45,19 +43,5 @@ describe('useEditorConfig', () => {
     expect(result.current.freeTextMode).toBeUndefined();
     expect(result.current.fieldSuggestionsDisabled).toBeUndefined();
     expect(result.current.valueSuggestionsDisabled).toBeUndefined();
-  });
-});
-
-describe('ValidationExtension', () => {
-  it('fails loudly when the editor context extension is missing', () => {
-    const editor = new Editor({
-      extensions: [Document, Paragraph, Text, ValidationExtension],
-      content: '',
-    });
-    const dispatch = vi.fn(() => editor.view.dispatch(requestValidationCheck(editor.state.tr)));
-
-    expect(dispatch).toThrow('EditorContextExtension is not registered');
-
-    editor.destroy();
   });
 });
