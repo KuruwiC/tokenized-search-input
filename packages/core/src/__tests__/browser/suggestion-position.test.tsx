@@ -1,11 +1,11 @@
 import { render } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
 import { createRef } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { TokenizedSearchInput, type TokenizedSearchInputRef } from '../../index';
 import { resolveAnchorPos, suggestionKey } from '../../plugins/suggestion';
-import { fields } from './harness';
+import { fields, waitForFrames } from './harness';
 
 const WORDS = Array.from({ length: 30 }, () => 'lorem').join(' ');
 
@@ -57,13 +57,13 @@ async function openSuggestionInScrollingInput(): Promise<OpenSuggestion> {
     if (!element) throw new Error('no suggestion is open');
     return element;
   };
-  await vi.waitFor(() => overlay());
+  await waitForFrames(() => overlay());
   const expectedLeft = () => {
     const maxLeft = container.getBoundingClientRect().width - overlay().offsetWidth;
     return Math.max(0, Math.min(anchorLeft(editor, container), maxLeft));
   };
   pm.scrollLeft = 0;
-  await vi.waitFor(() => expect(overlayLeft(overlay())).toBeCloseTo(expectedLeft(), 0));
+  await waitForFrames(() => expect(overlayLeft(overlay())).toBeCloseTo(expectedLeft(), 0));
   return { frame, container, pm, overlay, expectedLeft };
 }
 
@@ -78,7 +78,7 @@ describe('suggestion position', () => {
 
     pm.scrollLeft = 60;
 
-    await vi.waitFor(() => expect(overlayLeft(overlay())).toBeLessThan(before - 30));
+    await waitForFrames(() => expect(overlayLeft(overlay())).toBeLessThan(before - 30));
     expect(overlayLeft(overlay())).toBeCloseTo(expectedLeft(), 0);
   });
 
@@ -88,7 +88,7 @@ describe('suggestion position', () => {
 
     frame.style.width = '320px';
 
-    await vi.waitFor(() => expect(overlayLeft(overlay())).toBeLessThan(before));
+    await waitForFrames(() => expect(overlayLeft(overlay())).toBeLessThan(before));
     expect(overlayLeft(overlay())).toBeLessThanOrEqual(
       container.getBoundingClientRect().width - overlay().offsetWidth
     );

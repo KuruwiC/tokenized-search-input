@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { FieldDefinition } from '../../index';
 import {
@@ -10,6 +10,7 @@ import {
   mountEditorAround,
   pressUntil,
   radiusOf,
+  waitForFrames,
 } from './harness';
 
 const icon = <span aria-hidden="true">●</span>;
@@ -26,7 +27,7 @@ const fields: FieldDefinition[] = [
 const PILL = { '--tsi-radius': '9999px', '--tsi-radius-inner': '9999px' };
 
 async function openPopover(selector: string): Promise<HTMLElement> {
-  return vi.waitFor(() => {
+  return waitForFrames(() => {
     const popover = document.querySelector<HTMLElement>(selector);
     if (!popover) throw new Error(`${selector} is not open`);
     return popover;
@@ -36,7 +37,7 @@ async function openPopover(selector: string): Promise<HTMLElement> {
 async function openSuggestions(m: MountedEditor): Promise<HTMLElement> {
   await focusEditor(m, 'end');
   const popover = await openPopover('.tsi-dropdown');
-  await vi.waitFor(() =>
+  await waitForFrames(() =>
     expect(popover.querySelectorAll('.tsi-suggestion-item').length).toBeGreaterThan(1)
   );
   await finishAnimations();

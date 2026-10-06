@@ -1,7 +1,13 @@
-import { describe, expect, it, onTestFinished, vi } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { FieldDefinition } from '../../index';
-import { editLastToken, type MountedEditor, mountEditor, pressUntil } from './harness';
+import {
+  editLastToken,
+  type MountedEditor,
+  mountEditor,
+  pressUntil,
+  waitForFrames,
+} from './harness';
 
 // Two operators and two fields make the operator and the label interactive parts.
 const fields: FieldDefinition[] = [
@@ -127,7 +133,7 @@ describe('a pointer press on a token part', () => {
     const m = await mountEditor('status:is:open', { fields });
     await userEvent.click(m.pm.querySelector('.tsi-token-value') ?? m.pm);
     await userEvent.click(part(m, 'label'));
-    const owner = await vi.waitFor(() => {
+    const owner = await waitForFrames(() => {
       const option = [...document.querySelectorAll('[role="option"]')].find((o) =>
         o.textContent?.includes('Owner')
       );
@@ -136,7 +142,7 @@ describe('a pointer press on a token part', () => {
     });
     await userEvent.click(owner);
 
-    await vi.waitFor(() => expect(document.activeElement).toBe(part(m, 'operator')));
+    await waitForFrames(() => expect(document.activeElement).toBe(part(m, 'operator')));
     expect(getComputedStyle(part(m, 'operator')).outlineStyle).toBe('none');
   });
 

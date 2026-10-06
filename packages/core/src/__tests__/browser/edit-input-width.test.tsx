@@ -8,6 +8,7 @@ import {
   mountEditor,
   pressUntil,
   tokenElements,
+  waitForFrames,
 } from './harness';
 
 const fields: FieldDefinition[] = [
@@ -155,7 +156,7 @@ describe('the value input of a token being edited', () => {
     const before = input.getBoundingClientRect().width;
 
     await loadVariableFont();
-    await expect.poll(() => input.getBoundingClientRect().width).toBeGreaterThan(before);
+    await waitForFrames(() => expect(input.getBoundingClientRect().width).toBeGreaterThan(before));
     expectFits(input);
   });
 

@@ -2,8 +2,8 @@ import '../../index.css';
 import { cleanup, render } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
 import { createRef, type RefObject } from 'react';
-import { afterEach, expect, onTestFinished, vi } from 'vitest';
-import { commands, page, userEvent } from 'vitest/browser';
+import { afterEach, expect, onTestFinished } from 'vitest';
+import { commands, page, server, userEvent } from 'vitest/browser';
 import {
   type FieldDefinition,
   TokenizedSearchInput,
@@ -45,6 +45,54 @@ export async function finishAnimations(): Promise<void> {
   await settle();
 }
 
+/**
+ * How long a wait for a state goes on: it gives up only once it has taken `frames` samples
+ * and the last of them began `ms` after the first. A loaded machine can take seconds over
+ * one frame, so a time budget alone can run out before the page has had a chance to change.
+ */
+export interface WaitBounds {
+  frames: number;
+  ms: number;
+}
+
+export function waitIsOver(bounds: WaitBounds, frames: number, elapsedMs: number): boolean {
+  return frames >= bounds.frames && elapsedMs >= bounds.ms;
+}
+
+/** `check` throws until the state is reached; the wait gives up with its last error. */
+async function waitAcrossFrames<T>(
+  check: () => T | Promise<T>,
+  next: () => Promise<void>,
+  bounds: WaitBounds
+): Promise<T> {
+  const start = performance.now();
+  for (let frames = 1; ; frames += 1) {
+    const elapsedMs = performance.now() - start;
+    try {
+      return await check();
+    } catch (error) {
+      if (!waitIsOver(bounds, frames, elapsedMs)) {
+        await next();
+        continue;
+      }
+      if (error instanceof Error) {
+        error.message += ` (${frames} frames over ${Math.round(performance.now() - start)} ms)`;
+      }
+      throw error;
+    }
+  }
+}
+
+/**
+ * A second, in rendered frames (60 at 60 Hz) as well as in time: the first focus of an
+ * editable can keep WebKit on Linux from rendering a frame for 1.5 s.
+ */
+const RENDERED_STATE: WaitBounds = { frames: 60, ms: 1000 };
+
+export function waitForFrames<T>(check: () => T | Promise<T>): Promise<T> {
+  return waitAcrossFrames(check, settle, RENDERED_STATE);
+}
+
 /** Adds a stylesheet after the library's for the rest of the test. */
 export function addStyleSheet(css: string): void {
   const style = document.createElement('style');
@@ -64,7 +112,7 @@ export async function mountEditor(
   const pm = container.querySelector<HTMLElement>('.ProseMirror');
   if (!pm) throw new Error('editor did not render');
   const expectedTokens = defaultValue.split(' ').filter((part) => part.includes(':')).length;
-  await vi.waitFor(() => {
+  await waitForFrames(() => {
     expect(container.querySelectorAll('.tsi-token')).toHaveLength(expectedTokens);
   });
   await finishAnimations();
@@ -136,7 +184,7 @@ export async function mountWrapped(
 /** Focuses the editor at its start or end and waits for DOM focus, which comes a frame later. */
 export async function focusEditor(m: MountedEditor, position: 'start' | 'end'): Promise<void> {
   m.editor.commands.focus(position);
-  await vi.waitFor(() => expect(document.activeElement).toBe(m.pm));
+  await waitForFrames(() => expect(document.activeElement).toBe(m.pm));
 }
 
 /**
@@ -151,7 +199,7 @@ export async function editLastToken(m: MountedEditor): Promise<void> {
   });
   if (!id) throw new Error('no filter token to edit');
   enterToken(m.editor, id, programEntry());
-  await vi.waitFor(() => expect(document.activeElement).toBeInstanceOf(HTMLInputElement));
+  await waitForFrames(() => expect(document.activeElement).toBeInstanceOf(HTMLInputElement));
 }
 
 export function focusedValueInput(): HTMLInputElement {
@@ -346,6 +394,45 @@ export async function paintedCaret(m: MountedEditor): Promise<PaintedRect | null
   return caretRectIn(m.pm, await frame(m.pm));
 }
 
+/**
+ * Longer than one blink cycle of the caret in Chromium (1 s) and WebKit on macOS (about
+ * 1.06 s), and as long as one in WebKit on Linux (600 ms on, 600 ms off).
+ */
+export const BLINK_CYCLE_MS = 1200;
+
+const FRAME_INTERVAL_MS = 80;
+
+/**
+ * Ten frames {@link FRAME_INTERVAL_MS} apart span 720 ms, more than the 600 ms a caret blinks
+ * off for in WebKit on Linux. Where frames come further apart than the caret stays on, each
+ * finds a blinking caret with about even odds, so all ten miss it once in a thousand searches.
+ * A blink cycle of quick frames finds a blinking caret, or a held one shown again at its next
+ * blink.
+ */
+export const CARET_SEARCH: WaitBounds = { frames: 10, ms: BLINK_CYCLE_MS };
+
+export function waitForPaintedCaret(m: MountedEditor): Promise<PaintedRect> {
+  return waitAcrossFrames(
+    async () => {
+      const painted = await paintedCaret(m);
+      if (!painted) throw new Error('no caret is painted');
+      return painted;
+    },
+    () => new Promise((resolve) => setTimeout(resolve, FRAME_INTERVAL_MS)),
+    CARET_SEARCH
+  );
+}
+
+/**
+ * Whether {@link holdCaretSteady} stops the blinking. WebKit on Linux (WPE and GTK) blinks its
+ * caret with SimpleCaretAnimator, which recomputes its suspension from the system blink
+ * setting on every blink and so drops the suspension a mouse press sets; WebKit on macOS
+ * blinks it with OpacityCaretAnimator, which keeps it. The user agent of WebKit on Linux
+ * claims a Mac, so the platform comes from the test server.
+ */
+export const caretHoldIsSteady =
+  CSS.supports('caret-animation', 'manual') || server.platform === 'darwin';
+
 /** Events of the press that holds the caret steady in WebKit, kept from the page. */
 const HOLD_EVENTS = ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'] as const;
 
@@ -362,7 +449,7 @@ function swallowHoldEvent(event: Event): void {
  * busy the machine is.
  *
  * Chromium stops the blinking with `caret-animation: manual`. WebKit does not support that
- * property, but stops blinking off while a mouse button is held down, so the primary
+ * property, but on macOS stops blinking off while a mouse button is held down, so the primary
  * button is held in the bottom-right corner of the viewport, away from the editor, with
  * its events kept from the page. Held there, the caret is shown again at its next blink
  * and then stays.
@@ -402,14 +489,7 @@ export async function expectCaretPainted(m: MountedEditor): Promise<PaintedRect>
   expect(document.activeElement).toBe(m.pm);
   const release = await holdCaretSteady(m);
   try {
-    return await vi.waitFor(
-      async () => {
-        const painted = await paintedCaret(m);
-        if (painted === null) throw new Error('no caret is painted');
-        return painted;
-      },
-      { timeout: 2500, interval: 80 }
-    );
+    return await waitForPaintedCaret(m);
   } finally {
     await release();
   }

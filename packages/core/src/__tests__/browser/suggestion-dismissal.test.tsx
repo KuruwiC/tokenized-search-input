@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { getSuggestionState, isSuggestionOpen } from '../../plugins/suggestion';
-import { afterLastToken, type MountedEditor, mountEditor } from './harness';
+import { afterLastToken, type MountedEditor, mountEditor, waitForFrames } from './harness';
 
 const suggestion = () => document.querySelector<HTMLElement>('[data-suggestion-root]');
 
@@ -14,7 +14,7 @@ async function frames(count: number): Promise<void> {
 async function openFieldSuggestions(): Promise<MountedEditor> {
   const m = await mountEditor('owner:is:x ');
   await userEvent.click(m.pm, { position: afterLastToken(m) });
-  await vi.waitFor(() => expect(suggestion()).not.toBeNull());
+  await waitForFrames(() => expect(suggestion()).not.toBeNull());
   await frames(2);
   return m;
 }
@@ -50,6 +50,6 @@ describe('a suggestion list the user closes before a pending re-evaluation runs'
 
     await userEvent.keyboard('s');
 
-    await vi.waitFor(() => expect(suggestion()?.textContent).toContain('Status'));
+    await waitForFrames(() => expect(suggestion()?.textContent).toContain('Status'));
   });
 });

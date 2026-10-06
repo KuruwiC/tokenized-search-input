@@ -1,4 +1,4 @@
-import { describe, expect, it, onTestFinished, vi } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { TokenizedSearchInputProps } from '../../index';
 import {
@@ -7,6 +7,7 @@ import {
   type MountedAround,
   mountEditorAround,
   tokenElements,
+  waitForFrames,
 } from './harness';
 
 /** Six tokens: several times wider than a 300px box. */
@@ -66,14 +67,14 @@ describe('a singleLine input wider than its box', () => {
     expectInside(m, caretRect(m), 'the caret');
 
     await blurToOutside();
-    await expect.poll(() => m.pm.scrollLeft).toBe(0);
+    await waitForFrames(() => expect(m.pm.scrollLeft).toBe(0));
   });
 
   it('keeps a token added at the end in view', async () => {
     const m = await mountIn({ singleLine: true });
     await focusEditor(m, 'end');
     await userEvent.keyboard(' status:is:added{Enter}');
-    await vi.waitFor(() => expect(tokenElements(m)).toHaveLength(7));
+    await waitForFrames(() => expect(tokenElements(m)).toHaveLength(7));
     await finishAnimations();
 
     const added = lastToken(m);
@@ -88,7 +89,7 @@ describe('a singleLine input wider than its box', () => {
     expect(scrolled).toBeGreaterThan(0);
 
     await userEvent.keyboard('{Backspace}');
-    await vi.waitFor(() => expect(document.activeElement).toBeInstanceOf(HTMLInputElement));
+    await waitForFrames(() => expect(document.activeElement).toBeInstanceOf(HTMLInputElement));
     await finishAnimations();
 
     expect(m.pm.scrollLeft).toBeGreaterThan(0);
@@ -106,7 +107,7 @@ describe('a singleLine input wider than its box', () => {
     expectInside(m, caretRect(m), 'the caret');
 
     await blurToOutside();
-    await expect.poll(() => m.pm.scrollLeft).toBe(0);
+    await waitForFrames(() => expect(m.pm.scrollLeft).toBe(0));
   });
 });
 
@@ -133,8 +134,8 @@ describe('a collapsed expandOnFocus input', () => {
     await userEvent.keyboard('abc');
     await blurToOutside();
 
-    await expect.poll(() => collapsed.pm.scrollLeft).toBe(0);
-    await expect.poll(() => collapsed.input.scrollLeft).toBe(0);
+    await waitForFrames(() => expect(collapsed.pm.scrollLeft).toBe(0));
+    await waitForFrames(() => expect(collapsed.input.scrollLeft).toBe(0));
     expect(tokenOffsets(collapsed)).toEqual(tokenOffsets(single));
   });
 });

@@ -10,6 +10,7 @@ import {
   pressUntil,
   tokenElements,
   WRAP_ROOM,
+  waitForFrames,
 } from './harness';
 
 const TWO_TOKENS = 'status:is:active owner:is:bob';
@@ -97,7 +98,7 @@ describe('the caret at the end of text before a token that wrapped to the next r
     await placeCaret(m, text.from + 1);
 
     await userEvent.keyboard(LINE_END);
-    await expect.poll(atTextEnd(m, 'ab')).toBe(true);
+    await waitForFrames(() => expect(atTextEnd(m, 'ab')()).toBe(true));
     await expectCaretWithText(m, -1);
   });
 

@@ -1,30 +1,48 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { registerCaretCases } from './caret-cases';
-import { afterLastToken, holdCaretSteady, mountEditor, paintedCaret } from './harness';
+import {
+  afterLastToken,
+  BLINK_CYCLE_MS,
+  CARET_SEARCH,
+  caretHoldIsSteady,
+  holdCaretSteady,
+  mountEditor,
+  paintedCaret,
+  waitForPaintedCaret,
+  waitIsOver,
+} from './harness';
 
 const TWO_TOKENS = 'status:is:open owner:is:bob';
-
-/** Longer than one blink cycle of the caret in Chromium (1 s) and WebKit (about 1.06 s). */
-const BLINK_CYCLE_MS = 1200;
 
 registerCaretCases();
 
 // The caret checks of every engine rely on holdCaretSteady; whether a phone viewport is
 // emulated does not change how it stops the blinking, so this runs on the desktop projects.
 describe('the caret hold of the harness', () => {
-  it('stays painted without blinking while it is checked', async () => {
+  it('shows the caret before a caret check gives up, and in every frame where it stops the blinking', async () => {
     const m = await mountEditor(TWO_TOKENS);
     await userEvent.click(m.pm, { position: afterLastToken(m) });
     const release = await holdCaretSteady(m);
     try {
-      await vi.waitFor(async () => expect(await paintedCaret(m)).not.toBeNull(), {
-        timeout: 2500,
-        interval: 80,
-      });
+      await waitForPaintedCaret(m);
       const start = performance.now();
-      while (performance.now() - start < BLINK_CYCLE_MS) {
-        expect(await paintedCaret(m)).not.toBeNull();
+      let lastPainted = start;
+      let framesSincePainted = 0;
+      while (performance.now() - start < 2 * BLINK_CYCLE_MS) {
+        const taken = performance.now();
+        const painted = await paintedCaret(m);
+        if (caretHoldIsSteady) expect(painted).not.toBeNull();
+        if (painted) {
+          lastPainted = performance.now();
+          framesSincePainted = 0;
+        } else {
+          framesSincePainted += 1;
+          expect(
+            waitIsOver(CARET_SEARCH, framesSincePainted, taken - lastPainted),
+            `no caret is painted in ${framesSincePainted} frames over ${Math.round(taken - lastPainted)} ms`
+          ).toBe(false);
+        }
       }
     } finally {
       await release();

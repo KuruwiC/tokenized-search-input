@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { FieldDefinition } from '../../index';
 import { programEntry } from '../../plugins/token-focus';
 import { enterToken } from '../../tokens/enter-token';
@@ -8,6 +8,7 @@ import {
   type MountedEditor,
   mountEditorAround,
   pressUntil,
+  waitForFrames,
 } from './harness';
 
 // Two fields and two operators make the label and the operator interactive parts.
@@ -218,7 +219,7 @@ async function mountEveryKindOfToken(variables: Record<string, string>): Promise
     { type: 'text', text: ' ' },
     { type: 'freeTextToken', attrs: { value: 'c d', quoted: true } },
   ]);
-  await vi.waitFor(() => expect(m.pm.querySelectorAll('.tsi-token')).toHaveLength(4));
+  await waitForFrames(() => expect(m.pm.querySelectorAll('.tsi-token')).toHaveLength(4));
   await finishAnimations();
   return m;
 }
@@ -245,7 +246,7 @@ describe('every part of a token', () => {
         ['quoted', quoted],
       ] as const) {
         enterToken(m.editor, id, programEntry());
-        await vi.waitFor(() => expect(document.activeElement).toBeInstanceOf(HTMLInputElement));
+        await waitForFrames(() => expect(document.activeElement).toBeInstanceOf(HTMLInputElement));
         await finishAnimations();
         expectPartsFillTokens(m, `${kind} token being edited`);
       }

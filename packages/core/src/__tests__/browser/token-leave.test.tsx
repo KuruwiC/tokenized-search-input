@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import {
   afterLastToken,
@@ -8,6 +8,7 @@ import {
   mountEditor,
   type Point,
   tokenElements,
+  waitForFrames,
 } from './harness';
 
 /** Starts a token of the immutable `lock` field after `status:is:a` and types a value. */
@@ -15,7 +16,7 @@ async function editLockToken(): Promise<MountedEditor> {
   const m = await mountEditor('status:is:a');
   await userEvent.click(m.pm, { position: afterLastToken(m) });
   await userEvent.keyboard(' lock:');
-  await vi.waitFor(() => expect(editingTokenIndex(m)).toBe(1));
+  await waitForFrames(() => expect(editingTokenIndex(m)).toBe(1));
   await finishAnimations();
   await userEvent.keyboard('jp');
   return m;
@@ -30,7 +31,7 @@ describe('leaving a token by a press in the editor', () => {
 
     await userEvent.click(m.pm, { position: afterLastToken(m) });
 
-    await vi.waitFor(() => expect(editingTokenIndex(m)).toBe(-1));
+    await waitForFrames(() => expect(editingTokenIndex(m)).toBe(-1));
     expect(m.value()).toBe('status:is:a lock:is:jp');
     expect(tokenElements(m)[1]?.dataset.immutable).toBe('true');
   });
@@ -40,7 +41,7 @@ describe('leaving a token by a press in the editor', () => {
 
     await userEvent.click(m.pm, { position: PADDING });
 
-    await vi.waitFor(() => expect(editingTokenIndex(m)).toBe(-1));
+    await waitForFrames(() => expect(editingTokenIndex(m)).toBe(-1));
     expect(m.value()).toBe('status:is:a lock:is:jp');
     expect(tokenElements(m)[1]?.dataset.immutable).toBe('true');
   });

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { CustomSuggestion, FieldDefinition, TokenizedSearchInputProps } from '../../index';
 import {
@@ -9,6 +9,7 @@ import {
   type MountedAround,
   mountEditorAround,
   pressUntil,
+  waitForFrames,
 } from './harness';
 
 const fields: FieldDefinition[] = [
@@ -44,7 +45,7 @@ const active = (selector: string) =>
   document.querySelector<HTMLElement>(`${selector}[data-active="true"]`);
 
 async function activeOption(selector: string): Promise<HTMLElement> {
-  const option = await vi.waitFor(() => {
+  const option = await waitForFrames(() => {
     const found = active(selector);
     if (!found) throw new Error(`no active ${selector}`);
     return found;
@@ -54,7 +55,7 @@ async function activeOption(selector: string): Promise<HTMLElement> {
 }
 
 async function openList(selector: string): Promise<HTMLElement> {
-  await vi.waitFor(() => expect(document.querySelector(selector)).not.toBeNull());
+  await waitForFrames(() => expect(document.querySelector(selector)).not.toBeNull());
   if (!active(selector)) await userEvent.keyboard('{ArrowDown}');
   return activeOption(selector);
 }
@@ -67,7 +68,7 @@ async function fieldOption(m: MountedAround): Promise<HTMLElement> {
 async function customOption(m: MountedAround): Promise<HTMLElement> {
   await focusEditor(m, 'end');
   await userEvent.keyboard('s');
-  await vi.waitFor(() =>
+  await waitForFrames(() =>
     expect(document.querySelector('.tsi-custom-suggestion-item')).not.toBeNull()
   );
   await pressUntil('{ArrowDown}', () => active('.tsi-custom-suggestion-item') !== null);

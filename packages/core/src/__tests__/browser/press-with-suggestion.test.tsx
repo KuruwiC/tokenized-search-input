@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { CustomSuggestion, FieldDefinition } from '../../index';
 import {
@@ -11,6 +11,7 @@ import {
   type MountedEditor,
   mountEditor,
   type Point,
+  waitForFrames,
 } from './harness';
 
 const colorField: FieldDefinition = {
@@ -24,11 +25,11 @@ const colorField: FieldDefinition = {
 const suggestion = () => document.querySelector<HTMLElement>('[data-suggestion-root]');
 
 async function expectSuggestionOpen(): Promise<void> {
-  await vi.waitFor(() => expect(suggestion()).not.toBeNull());
+  await waitForFrames(() => expect(suggestion()).not.toBeNull());
 }
 
 async function expectSuggestionClosed(): Promise<void> {
-  await vi.waitFor(() => expect(suggestion()).toBeNull());
+  await waitForFrames(() => expect(suggestion()).toBeNull());
 }
 
 /** A point just past the start of character `offset` of the first text in the editor. */
@@ -67,7 +68,7 @@ describe('a press in the editor while a suggestion is open', () => {
 
       await expectCaretBetween(m, { tokensBefore: 1, tokensAfter: 1 });
       // Nothing is typed at the gap, so every field is suggested.
-      await vi.waitFor(() => expect(suggestion()?.textContent).toContain('Owner'));
+      await waitForFrames(() => expect(suggestion()?.textContent).toContain('Owner'));
     });
 
     it('puts the caret in the text that is pressed and closes the suggestion', async () => {
@@ -87,7 +88,7 @@ describe('a press in the editor while a suggestion is open', () => {
       const m = await mountEditor('hello status:is:open', { fields: [...fields, colorField] });
       await userEvent.click(m.pm, { position: afterLastToken(m) });
       await userEvent.keyboard(' color:');
-      await vi.waitFor(() => expect(editingTokenIndex(m)).toBe(1));
+      await waitForFrames(() => expect(editingTokenIndex(m)).toBe(1));
       await userEvent.keyboard('re');
       await expectSuggestionOpen();
       return m;
@@ -99,7 +100,7 @@ describe('a press in the editor while a suggestion is open', () => {
       await userEvent.click(m.pm, { position: gapBetween(m, 0) });
 
       // The value suggestion closes with the token; the gap may suggest fields.
-      await vi.waitFor(() => expect(suggestion()?.textContent ?? '').not.toContain('green'));
+      await waitForFrames(() => expect(suggestion()?.textContent ?? '').not.toContain('green'));
       expect(editingTokenIndex(m)).toBe(-1);
       expect(m.value()).toBe('hello status:is:open color:is:re');
       await expectCaretBetween(m, { tokensBefore: 1, tokensAfter: 1 });
@@ -136,7 +137,9 @@ describe('a press in the editor while a suggestion is open', () => {
       await userEvent.click(m.pm, { position: gapBetween(m, 0) });
 
       await expectCaretBetween(m, { tokensBefore: 1, tokensAfter: 1 });
-      await vi.waitFor(() => expect(suggestion()?.textContent ?? '').not.toContain('Open issues'));
+      await waitForFrames(() =>
+        expect(suggestion()?.textContent ?? '').not.toContain('Open issues')
+      );
     });
   });
 });

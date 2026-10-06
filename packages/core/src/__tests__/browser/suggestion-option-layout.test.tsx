@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { CustomSuggestion } from '../../index';
-import { finishAnimations, focusEditor, mountEditor } from './harness';
+import { finishAnimations, focusEditor, mountEditor, waitForFrames } from './harness';
 
 const custom: CustomSuggestion = {
   label: 'Open issues',
@@ -21,7 +21,7 @@ async function openFieldAndCustomOptions(): Promise<{ field: HTMLElement; custom
   });
   await focusEditor(m, 'end');
   await userEvent.keyboard('s');
-  const options = await vi.waitFor(() => {
+  const options = await waitForFrames(() => {
     const field = document.querySelector<HTMLElement>(
       '.tsi-suggestion-item:not(.tsi-custom-suggestion-item)'
     );
