@@ -2,7 +2,7 @@ import type { FieldDefinition } from '@kuruwic/tokenized-search-input';
 import { TokenizedSearchInput } from '@kuruwic/tokenized-search-input';
 import { Flag, Tag } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { CodeBlock } from '../../components';
+import { CodeBlock } from '../../components/code-block';
 import { ExampleDetails, VariantSwitch } from './example';
 
 type DisplayId = 'auto' | 'icon-only' | 'hidden';

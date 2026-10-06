@@ -23,6 +23,9 @@ importers:
 
   apps/demo:
     dependencies:
+      '@fontsource-variable/recursive':
+        specifier: 5.3.0
+        version: 5.3.0
       '@kuruwic/tokenized-search-input':
         specifier: workspace:*
         version: link:../../packages/core
@@ -553,6 +556,9 @@ packages:
 
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
+
+  '@fontsource-variable/recursive@5.3.0':
+    resolution: {integrity: sha512-4B4/lWCVeZgdbpJdIIU1sOVO/ECjjM673ohuxvyQ6uCK41TPlGzKRNokKY84noUgGYnpwc//MW4k2KrOMY19jQ==}
 
   '@inquirer/ansi@2.0.8':
     resolution: {integrity: sha512-WpQM+Ti6Z40EFwwt+uL2p4UabT+W179zHp6HhLVOzfbwnVn05IPO/eXIZXGNqcT1jbQ15SujNLzQ39k4QPPxBQ==}
@@ -2533,6 +2539,8 @@ snapshots:
 
   '@floating-ui/utils@0.2.10':
     optional: true
+
+  '@fontsource-variable/recursive@5.3.0': {}
 
   '@inquirer/ansi@2.0.8':
     optional: true

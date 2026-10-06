@@ -19,13 +19,19 @@ export const countrySuggestion = (country: Country, selected: boolean) => ({
   endContent: selected ? <span className="selected-mark">✓</span> : undefined,
 });
 
-/** Resolves country tokens that arrive by value, such as pasted codes, into display data. */
-export function useCountryResolver(inputRef: RefObject<TokenizedSearchInputRef>) {
+/**
+ * Resolves country tokens that arrive by value, such as pasted codes, into display data.
+ * `request` lets a caller observe the requests (the async section logs them).
+ */
+export function useCountryResolver(
+  inputRef: RefObject<TokenizedSearchInputRef>,
+  request: typeof fetchCountries = fetchCountries
+) {
   return useAsyncTokenResolver({
     inputRef,
     fieldKey: 'country',
     resolve: async (values) =>
-      (await fetchCountries({ values, offset: 0, limit: values.length })).countries,
+      (await request({ values, offset: 0, limit: values.length })).countries,
     getValue: (country) => country.value,
     getDisplayData: (country) => ({
       displayValue: country.label,

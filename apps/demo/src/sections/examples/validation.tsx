@@ -9,7 +9,7 @@ import {
 } from '@kuruwic/tokenized-search-input/utils';
 import { Tag, User } from 'lucide-react';
 import { useState } from 'react';
-import { CodeBlock } from '../../components';
+import { CodeBlock } from '../../components/code-block';
 import { TAG_FIELDS } from '../../fields';
 import { ExampleDetails, VariantSwitch } from './example';
 

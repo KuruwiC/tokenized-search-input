@@ -3,13 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>tokenized-search-input — React query editor</title>
+    <title>tokenized-search-input — typed search filters for React</title>
     <meta
       name="description"
-      content="A working demo of editable, typed search filters for React: parsing, suggestions, validation, async data, and clipboard control."
+      content="A React search input that turns field:operator:value queries into editable, typed tokens, with suggestions, validation, async values, and clipboard handling."
     />
+    <meta name="theme-color" content="#f4f4f2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#16171a" media="(prefers-color-scheme: dark)" />
+    <script>
+      (() => {
+        let stored = null;
+        try {
+          stored = localStorage.getItem('demo-theme');
+        } catch {}
+        const dark = stored ? stored === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      })();
+    </script>
   </head>
-  <body class="antialiased">
+  <body>
     <div id="root"></div>
     <script type="module" src="./src/main.tsx"></script>
   </body>

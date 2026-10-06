@@ -2,7 +2,7 @@ import type { FieldDefinition } from '@kuruwic/tokenized-search-input';
 import { TokenizedSearchInput } from '@kuruwic/tokenized-search-input';
 import { Calendar, Flag, Tag, User } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { CodeBlock } from '../../components';
+import { CodeBlock } from '../../components/code-block';
 import { createSearchFields } from '../../fields';
 import { ExampleDetails, VariantSwitch } from './example';
 
@@ -58,11 +58,12 @@ const PRESETS: Array<{
     placeholder: 'Indigo tokens via classNames…',
     defaultValue: 'status:is:active priority:is:high',
     classNames: {
-      token: 'border border-indigo-200 bg-indigo-50',
-      tokenLabel: 'font-semibold text-indigo-700',
-      tokenOperator: 'text-indigo-500',
-      tokenValue: 'bg-indigo-100/50',
-      tokenDeleteButton: 'text-indigo-400 hover:text-indigo-600 hover:bg-indigo-200',
+      token: 'border border-indigo-200 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950',
+      tokenLabel: 'font-semibold text-indigo-700 dark:text-indigo-200',
+      tokenOperator: 'text-indigo-500 dark:text-indigo-300',
+      tokenValue: 'bg-indigo-100/50 text-indigo-950 dark:bg-indigo-900/60 dark:text-indigo-100',
+      tokenDeleteButton:
+        'text-indigo-400 hover:text-indigo-600 hover:bg-indigo-200 dark:hover:text-indigo-100 dark:hover:bg-indigo-800',
     },
   },
   {
@@ -72,8 +73,9 @@ const PRESETS: Array<{
     defaultValue: 'status:is:active priority:is:high',
     classNames: {
       token: 'hover:shadow-lg hover:border-green-400 transition-shadow',
-      tokenLabel: 'hover:text-green-600',
-      tokenDeleteButton: 'hover:bg-green-100 hover:text-green-700',
+      tokenLabel: 'hover:text-green-600 dark:hover:text-green-400',
+      tokenDeleteButton:
+        'hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-200',
     },
   },
   {
@@ -83,9 +85,10 @@ const PRESETS: Array<{
     defaultValue: 'status:is:active',
     classNames: {
       root: 'mx-auto max-w-md',
-      container: 'rounded-xl border-purple-300 bg-purple-50 shadow-lg',
-      input: 'text-purple-700',
-      placeholder: 'text-purple-300',
+      container:
+        'rounded-xl border-purple-300 bg-purple-50 shadow-lg dark:border-purple-800 dark:bg-purple-950/40',
+      input: 'text-purple-700 dark:text-purple-200',
+      placeholder: 'text-purple-400 dark:text-purple-400',
     },
   },
   {
@@ -94,9 +97,9 @@ const PRESETS: Array<{
     placeholder: 'Type to open the styled dropdown…',
     defaultValue: '',
     classNames: {
-      dropdown: 'border-2 border-purple-200 rounded-xl',
-      suggestionItem: 'hover:bg-purple-100',
-      fieldCategory: 'text-purple-600 font-bold',
+      dropdown: 'border-2 border-purple-200 rounded-xl dark:border-purple-800',
+      suggestionItem: 'hover:bg-purple-100 dark:hover:bg-purple-900/70',
+      fieldCategory: 'text-purple-600 font-bold dark:text-purple-300',
     },
   },
 ];

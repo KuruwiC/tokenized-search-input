@@ -1,21 +1,36 @@
 import { TokenizedSearchInput } from '@kuruwic/tokenized-search-input';
-import { type CSSProperties, useMemo, useState } from 'react';
-import { CodeBlock } from '../../components';
+import { type CSSProperties, useMemo, useState, useSyncExternalStore } from 'react';
+import { CodeBlock } from '../../components/code-block';
 import { createSearchFields } from '../../fields';
 import { ExampleDetails, VariantSwitch } from './example';
 
-type ThemeId = 'default' | 'purple' | 'compact' | 'large' | 'pill' | 'ring' | 'ocean';
+type ThemeId = 'default' | 'brand' | 'compact' | 'large' | 'pill' | 'ring' | 'ocean';
 
-const THEMES: Array<{ id: ThemeId; label: string; vars: Record<string, string> }> = [
+type Vars = Record<string, string>;
+
+/** `darkVars` override `vars` while the page is in its dark theme. */
+const THEMES: Array<{ id: ThemeId; label: string; vars: Vars; darkVars?: Vars }> = [
   { id: 'default', label: 'Default', vars: {} },
   {
-    id: 'purple',
-    label: 'Purple',
+    id: 'brand',
+    label: 'Brand color',
     vars: {
+      '--tsi-muted': 'hsl(262, 80%, 96%)',
+      '--tsi-muted-foreground': 'hsl(262, 40%, 42%)',
+      '--tsi-muted-darker': 'hsl(262, 70%, 89%)',
       '--tsi-primary': 'hsl(262, 83%, 58%)',
-      '--tsi-primary-muted': 'hsl(262, 83%, 95%)',
-      '--tsi-primary-muted-foreground': 'hsl(262, 83%, 40%)',
+      '--tsi-primary-muted': 'hsl(262, 83%, 92%)',
+      '--tsi-primary-muted-foreground': 'hsl(262, 83%, 36%)',
       '--tsi-border-focus': 'hsl(262, 83%, 58%)',
+    },
+    darkVars: {
+      '--tsi-muted': 'hsl(262, 35%, 20%)',
+      '--tsi-muted-foreground': 'hsl(262, 70%, 80%)',
+      '--tsi-muted-darker': 'hsl(262, 35%, 30%)',
+      '--tsi-primary': 'hsl(262, 83%, 70%)',
+      '--tsi-primary-muted': 'hsl(262, 40%, 26%)',
+      '--tsi-primary-muted-foreground': 'hsl(262, 90%, 88%)',
+      '--tsi-border-focus': 'hsl(262, 83%, 70%)',
     },
   },
   {
@@ -80,24 +95,38 @@ const THEMES: Array<{ id: ThemeId; label: string; vars: Record<string, string> }
   },
 ];
 
-const toCss = (vars: Record<string, string>) => {
-  const declarations = Object.entries(vars).map(([name, value]) => `  ${name}: ${value};`);
-  return declarations.length
-    ? `.my-search {\n${declarations.join('\n')}\n}`
-    : '/* No overrides: the stylesheet defaults apply. */';
+const rule = (selector: string, vars: Vars) =>
+  `${selector} {\n${Object.entries(vars)
+    .map(([name, value]) => `  ${name}: ${value};`)
+    .join('\n')}\n}`;
+
+const toCss = (vars: Vars, darkVars?: Vars) => {
+  if (Object.keys(vars).length === 0) return '/* No overrides: the stylesheet defaults apply. */';
+  const light = rule('.my-search', vars);
+  return darkVars ? `${light}\n\n${rule('[data-theme="dark"] .my-search', darkVars)}` : light;
 };
 
+/** The page theme, read from `data-theme` on <html>, which the header's theme button sets. */
+const subscribeToPageTheme = (onChange: () => void) => {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  return () => observer.disconnect();
+};
+const isPageDark = () => document.documentElement.dataset.theme === 'dark';
+
 export function ThemingExample() {
-  const [themeId, setThemeId] = useState<ThemeId>('purple');
+  const [themeId, setThemeId] = useState<ThemeId>('brand');
   const fields = useMemo(createSearchFields, []);
   const theme = THEMES.find((item) => item.id === themeId) ?? THEMES[0];
+  const dark = useSyncExternalStore(subscribeToPageTheme, isPageDark, () => false);
+  const vars = dark && theme.darkVars ? { ...theme.vars, ...theme.darkVars } : theme.vars;
   return (
     <ExampleDetails
       title="Theming"
       summary="Override --tsi-* CSS variables on any ancestor to change color, size, shape, and focus ring."
     >
       <VariantSwitch legend="Theme preset" options={THEMES} value={themeId} onChange={setThemeId} />
-      <div className="demo-surface" style={theme.vars as CSSProperties}>
+      <div className="demo-surface" style={vars as CSSProperties}>
         <TokenizedSearchInput
           key={theme.id}
           fields={fields}
@@ -106,7 +135,11 @@ export function ThemingExample() {
           clearable
         />
       </div>
-      <CodeBlock code={toCss(theme.vars)} label={`${theme.id}.css`} language="css" />
+      <CodeBlock
+        code={toCss(theme.vars, theme.darkVars)}
+        label={`${theme.id}.css`}
+        language="css"
+      />
       <p className="example-note">
         Dark mode applies when an ancestor has the <code>dark</code> class or{' '}
         <code>data-theme="dark"</code>. The theme button in the header toggles it for this page.

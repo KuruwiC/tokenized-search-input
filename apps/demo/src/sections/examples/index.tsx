@@ -7,10 +7,9 @@ import { ThemingExample } from './theming';
 import { TokenDisplayExample } from './token-display';
 import { ValidationExample } from './validation';
 
-export function ReferenceExamples() {
+export function FeatureExamples() {
   return (
-    <div className="reference-examples">
-      <h3 id="examples-title">Feature examples</h3>
+    <div className="features__list">
       <ThemingExample />
       <ClassNamesExample />
       <ValidationExample />

@@ -1,71 +1,51 @@
 import { REPOSITORY_URL } from '../constants';
-import { ReferenceExamples } from './examples';
+
+const ROWS = [
+  ['Fields', 'string, enum, date, datetime', 'FieldDefinition'],
+  ['Parsing', 'operators, quoted values, free text', 'unknownFields'],
+  ['Suggestions', 'autocomplete for fields, operators, and values', 'suggestions.custom'],
+  ['Validation', 'unique and max-count rules', 'validation.rules'],
+  ['Clipboard', 'copy and paste token text', 'serialization'],
+  ['Control', 'value, focus, clear, submit', 'TokenizedSearchInputRef'],
+  ['Theming', 'light and dark via CSS variables', '--tsi-* and classNames'],
+] as const;
 
 export function ReferenceSection() {
   return (
-    <section className="section reference-section" id="reference" aria-labelledby="reference-title">
-      <div className="section-intro">
-        <h2 id="reference-title">Configuration reference.</h2>
+    <section className="section reference" id="reference" aria-labelledby="reference-title">
+      <header className="section__head">
+        <h2 className="section__title" id="reference-title">
+          Where to plug in
+        </h2>
+        <p className="section__lede">
+          What the editor handles for you, and the prop or type to reach for when you need something
+          else. Full signatures are in the <a href={`${REPOSITORY_URL}#readme`}>README on GitHub</a>
+          .
+        </p>
+      </header>
+      <div className="reference__scroll">
+        <table className="reference__table">
+          <caption className="sr-only">Built-in behavior and extension points</caption>
+          <thead>
+            <tr>
+              <th scope="col">Concern</th>
+              <th scope="col">Built in</th>
+              <th scope="col">Extend with</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ROWS.map(([concern, builtIn, api]) => (
+              <tr key={concern}>
+                <th scope="row">{concern}</th>
+                <td>{builtIn}</td>
+                <td>
+                  <code>{api}</code>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-      <table className="capability-table">
-        <caption className="sr-only">Library capabilities</caption>
-        <thead>
-          <tr className="capability-head">
-            <th scope="col">Concern</th>
-            <th scope="col">Built-in model</th>
-            <th scope="col">Extension point</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <th scope="row">Fields</th>
-            <td>string, enum, date, datetime</td>
-            <td>
-              <code>FieldDefinition</code>
-            </td>
-          </tr>
-          <tr>
-            <th scope="row">Parsing</th>
-            <td>operators, quotes, free text</td>
-            <td>
-              <code>unknownFields</code>
-            </td>
-          </tr>
-          <tr>
-            <th scope="row">Suggestions</th>
-            <td>field, operator, value</td>
-            <td>
-              <code>suggest / loadMore</code>
-            </td>
-          </tr>
-          <tr>
-            <th scope="row">Validation</th>
-            <td>unique and max count rules</td>
-            <td>
-              <code>validation.rules</code>
-            </td>
-          </tr>
-          <tr>
-            <th scope="row">Clipboard</th>
-            <td>copy and paste token text</td>
-            <td>
-              <code>serialization</code>
-            </td>
-          </tr>
-          <tr>
-            <th scope="row">Control</th>
-            <td>value, focus, clear, submit</td>
-            <td>
-              <code>TokenizedSearchInputRef</code>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <ReferenceExamples />
-      <p className="reference-note">
-        The README remains the source of truth for prop signatures and migration notes.{' '}
-        <a href={`${REPOSITORY_URL}#readme`}>Open the full reference →</a>
-      </p>
     </section>
   );
 }

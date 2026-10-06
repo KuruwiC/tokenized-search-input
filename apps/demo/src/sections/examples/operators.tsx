@@ -2,7 +2,7 @@ import type { FieldDefinition } from '@kuruwic/tokenized-search-input';
 import { TokenizedSearchInput } from '@kuruwic/tokenized-search-input';
 import { Calendar, Flag, Search, Tag } from 'lucide-react';
 import { useState } from 'react';
-import { CodeBlock } from '../../components';
+import { CodeBlock } from '../../components/code-block';
 import { ExampleDetails, VariantSwitch } from './example';
 
 type OperatorSetId = 'string' | 'comparison' | 'custom' | 'labels' | 'single';

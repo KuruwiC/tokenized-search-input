@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+/** One collapsible feature: a name and a one-line summary that open onto a live example. */
 export function ExampleDetails({
   title,
   summary,
@@ -10,12 +11,12 @@ export function ExampleDetails({
   children: ReactNode;
 }) {
   return (
-    <details className="example-details">
-      <summary>
-        <span className="example-title">{title}</span>
-        <span className="example-summary">{summary}</span>
+    <details className="feature">
+      <summary className="feature__summary">
+        <span className="feature__title">{title}</span>
+        <span className="feature__text">{summary}</span>
       </summary>
-      <div className="example-body">{children}</div>
+      <div className="feature__body">{children}</div>
     </details>
   );
 }
@@ -34,7 +35,7 @@ export function VariantSwitch<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <fieldset className="segmented-control variant-switch">
+    <fieldset className="switch switch--wrap">
       <legend className="sr-only">{legend}</legend>
       {options.map((option) => (
         <button

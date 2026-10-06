@@ -4,7 +4,7 @@ import type {
 } from '@kuruwic/tokenized-search-input';
 import { TokenizedSearchInput } from '@kuruwic/tokenized-search-input';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { CodeBlock } from '../../components';
+import { CodeBlock } from '../../components/code-block';
 import {
   ALL_COUNTRIES,
   deserializeCountryText,

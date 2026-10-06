@@ -29,6 +29,13 @@ export function IssueSearch() {
   );
 }`;
 
+/** 1-based inclusive line ranges inside BASIC_CODE, one per quick-start step. */
+export const BASIC_CODE_STEPS = {
+  imports: [1, 2],
+  fields: [4, 19],
+  render: [21, 30],
+} as const satisfies Record<string, readonly [number, number]>;
+
 export const UNKNOWN_FIELDS_CODE = `<TokenizedSearchInput
   fields={fields}
   unknownFields={{
