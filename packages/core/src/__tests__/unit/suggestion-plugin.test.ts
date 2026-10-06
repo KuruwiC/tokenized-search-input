@@ -714,7 +714,7 @@ describe('how long a suggestion lives', () => {
 
   function focusToken(state: EditorState, id: string | null) {
     const tr = state.tr;
-    setTokenFocus(tr, id === null ? null : { id, entry: programEntry() });
+    setTokenFocus(tr, id === null ? null : { id, entry: programEntry(), valueReading: 'none' });
     return state.apply(tr);
   }
 

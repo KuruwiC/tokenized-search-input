@@ -154,6 +154,21 @@ export async function editLastToken(m: MountedEditor): Promise<void> {
   await vi.waitFor(() => expect(document.activeElement).toBeInstanceOf(HTMLInputElement));
 }
 
+export function focusedValueInput(): HTMLInputElement {
+  const input = document.activeElement;
+  if (!(input instanceof HTMLInputElement)) throw new Error('no token input holds focus');
+  return input;
+}
+
+/** The value text and the caret in it, as `val|ue`, or `v[al]ue` for a selection. */
+export function shownValue(): string {
+  const { value, selectionStart, selectionEnd } = focusedValueInput();
+  const start = selectionStart ?? 0;
+  const end = selectionEnd ?? 0;
+  if (start === end) return `${value.slice(0, start)}|${value.slice(start)}`;
+  return `${value.slice(0, start)}[${value.slice(start, end)}]${value.slice(end)}`;
+}
+
 export function radiusOf(element: Element): number {
   return Number.parseFloat(getComputedStyle(element).borderTopLeftRadius);
 }

@@ -2,6 +2,7 @@ import { type EditorState, TextSelection, type Transaction } from '@tiptap/pm/st
 import { applyTokenAction, commitFilterToken } from '../../tokens/filter-token/token-actions';
 import { nearestValidCaret } from '../../utils/caret';
 import { findTokenById } from '../../utils/find-token';
+import { isFilterToken } from '../../utils/node-predicates';
 import type { FieldResolutionSource } from '../../utils/resolve-field';
 import { closeSuggestion } from '../suggestion/actions';
 import {
@@ -11,6 +12,7 @@ import {
   getTokenFocusMeta,
   setTokenFocus,
   type TokenFocusEntry,
+  type ValueReading,
 } from './state';
 
 /**
@@ -107,6 +109,22 @@ export function enterTokenIn(
   if (!ctx.editable || !canFocusToken(tr.doc, id)) return false;
   const current = focusedIn(tr, ctx);
   if (current !== null && current.id !== id) leaveFocusedTokenIn(tr, ctx);
-  setTokenFocus(tr, { id, entry });
+  setTokenFocus(tr, { id, entry, valueReading: entryReading(tr, id) });
   return true;
+}
+
+function entryReading(tr: Transaction, id: string): ValueReading {
+  const found = findTokenById(tr.doc, id);
+  const empty = found !== null && isFilterToken(found.node) && !found.node.attrs.value;
+  return empty ? 'pending' : 'none';
+}
+
+export function getValueReading(state: EditorState, id: string): ValueReading | null {
+  const focused = getFocusedToken(state);
+  return focused?.id === id ? focused.valueReading : null;
+}
+
+export function markOperatorRead(tr: Transaction, ctx: FocusTransitionContext): void {
+  const current = focusedIn(tr, ctx);
+  if (current !== null) setTokenFocus(tr, { ...current, valueReading: 'read' });
 }

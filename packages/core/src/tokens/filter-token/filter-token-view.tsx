@@ -1,5 +1,5 @@
 import type { NodeViewProps } from '@tiptap/react';
-import { getEditorContext } from '../../extensions/editor-context';
+import { getEditorContext, getFocusContext } from '../../extensions/editor-context';
 import { useEditorContextUpdate } from '../../hooks/use-editor-context-update';
 import { useTokenMeta } from '../../hooks/use-editor-selector';
 import {
@@ -21,6 +21,7 @@ import { resolveField } from '../../utils/resolve-field';
 import { Token, TokenIconSlot, useTokenConfig, useTokenFocusContext } from '../composition';
 import { resolveDisplayValue } from './resolve-display-value';
 import { applyTokenAction, type FilterTokenAction } from './token-actions';
+import { writeTypedValue } from './typed-value';
 import { useValueSuggestions } from './use-value-suggestions';
 
 export const FilterTokenView: React.FC<NodeViewProps> = ({
@@ -214,9 +215,8 @@ function FilterTokenValue({
   // The transaction that writes a typed value also shows the value suggestions for it
   const handleInputChange = (inputText: string): boolean => {
     const tr = editor.state.tr;
-    if (!applyTokenAction(tr, tokenId, { type: 'setValue', value: inputText }, fieldSource)) {
-      return false;
-    }
+    const ctx = getFocusContext(editor);
+    if (!writeTypedValue(tr, ctx, fieldSource.delimiter, tokenId, inputText)) return false;
     markValueTyped(tr);
     editor.view.dispatch(tr);
     return true;

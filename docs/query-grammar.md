@@ -91,6 +91,15 @@ operator of the `unknownFields` template; the operators of other fields do not c
 
 A word with an empty key, such as `::x` or `:foo`, is never a filter.
 
+A filter typed in the editor reads the same way. Typing the key and the delimiter starts a
+token whose value takes the keys typed next; when the delimiter ends a word that would be
+read as the operator, that word becomes the operator of the token and the keys after it go
+to the value, so typing `status:is_not:active` gives the token that pasting it gives. Only
+the word right after the key is read this way, and only while the token has the first
+operator of its field: a word typed after an operator, after another operator was chosen
+from the token's operator list, or at the start of a value the token already had stays in
+the value.
+
 ## Unknown fields
 
 A key that matches no field stays free text. With an `unknownFields` template it becomes a

@@ -23,7 +23,7 @@ function createState(): EditorState {
 
 function focus(state: EditorState, id: string, entry: TokenFocusEntry = programEntry()) {
   const tr = state.tr;
-  const set = setTokenFocus(tr, { id, entry });
+  const set = setTokenFocus(tr, { id, entry, valueReading: 'none' });
   return { set, state: state.apply(tr) };
 }
 
@@ -38,7 +38,7 @@ describe('TokenFocusPlugin', () => {
       const { set, state } = focus(createState(), 'b', entry);
 
       expect(set).toBe(true);
-      expect(getFocusedToken(state)).toEqual({ id: 'b', entry });
+      expect(getFocusedToken(state)).toEqual({ id: 'b', entry, valueReading: 'none' });
     });
 
     it('refuses a token that is not in the document', () => {

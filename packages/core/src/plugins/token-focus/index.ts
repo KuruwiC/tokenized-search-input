@@ -9,7 +9,9 @@ export {
 export {
   enterTokenIn,
   type FocusTransitionContext,
+  getValueReading,
   type LeaveDirection,
   leaveFocusedTokenIn,
   leaveTokenIn,
+  markOperatorRead,
 } from './transitions';

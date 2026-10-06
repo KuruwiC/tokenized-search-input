@@ -155,9 +155,11 @@ export function TokenValue({
     handleKey,
   });
 
+  // Runs after every render: an edit the document takes can leave the document's text as it
+  // was while the input shows other text, as when an operator is read out of the input.
   useLayoutEffect(() => {
     showText(inputRef.current, value);
-  }, [value]);
+  });
 
   // An edit the document does not take leaves the document's text in the input
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

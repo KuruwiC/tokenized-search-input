@@ -1,4 +1,4 @@
-import { DEFAULT_OPERATORS } from '../types';
+import { DEFAULT_OPERATORS, type FieldDefinition } from '../types';
 import { type FieldResolutionSource, resolveField } from '../utils/resolve-field';
 import { resolveTokenValue } from './resolve-token-value';
 import { splitAtDelimiter } from './tokenize';
@@ -25,10 +25,28 @@ function isKnownOperator(name: string, source: FieldResolutionSource): boolean {
 const IDENTIFIER_KEY = /^[A-Za-z_][\w.-]*$/;
 
 /**
- * Reads a word that holds a delimiter. The word after the key is the operator when the field
- * allows it, or when a default operator or the `unknownFields` template names it (then it is
- * marked unknown). Anything else is part of the value, with the first operator of the field.
- * A word with an empty key is never a filter.
+ * The operator `rest` (the text after a key and its delimiter) starts with, and the text
+ * after it. The word before the next delimiter is the operator when the field allows it, or
+ * when a default operator or the `unknownFields` template names it (then it is marked
+ * unknown). Otherwise null: the text is the value.
+ */
+export function readOperator(
+  field: FieldDefinition,
+  rest: string,
+  source: FieldResolutionSource,
+  delimiter: string
+): { operator: string; rest: string; unknownOperator: boolean } | null {
+  const separator = rest.indexOf(delimiter);
+  if (separator < 0) return null;
+  const candidate = rest.slice(0, separator);
+  const allowed = (field.operators as readonly string[]).includes(candidate);
+  if (!allowed && !isKnownOperator(candidate, source)) return null;
+  return { operator: candidate, rest: rest.slice(separator + 1), unknownOperator: !allowed };
+}
+
+/**
+ * Reads a word that holds a delimiter: the operator per {@link readOperator}, else the first
+ * operator of the field. A word with an empty key is never a filter.
  */
 export function readWord(
   word: { key: string; rest: string },
@@ -41,26 +59,13 @@ export function readWord(
     return IDENTIFIER_KEY.test(word.key) ? { type: 'unknownField', key: word.key } : null;
   }
 
-  const separator = word.rest.indexOf(delimiter);
-  const candidate = separator < 0 ? undefined : word.rest.slice(0, separator);
-  if (candidate !== undefined) {
-    const allowed = (field.operators as readonly string[]).includes(candidate);
-    if (allowed || isKnownOperator(candidate, source)) {
-      return {
-        type: 'filter',
-        key: word.key,
-        operator: candidate,
-        value: resolveTokenValue(field, word.rest.slice(separator + 1)),
-        unknownOperator: !allowed,
-      };
-    }
-  }
+  const read = readOperator(field, word.rest, source, delimiter);
   return {
     type: 'filter',
     key: word.key,
-    operator: field.operators[0],
-    value: resolveTokenValue(field, word.rest),
-    unknownOperator: false,
+    operator: read?.operator ?? field.operators[0],
+    value: resolveTokenValue(field, read?.rest ?? word.rest),
+    unknownOperator: read?.unknownOperator ?? false,
   };
 }
 

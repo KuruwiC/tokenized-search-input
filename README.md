@@ -95,7 +95,7 @@ The input and its callbacks use one string form for a query. A query is a list o
 | Free text | `hello` | free text (see `freeTextMode`) |
 | Quoted | `title:contains:"hello world"`, `"hello world"` | a value or free text that holds spaces |
 
-Inside quotes `\"` stands for `"` and `\\` for `\`. A filter whose operator the field does not allow keeps that operator and is marked invalid. The full grammar, including how free text that looks like a filter is quoted and which diagnostics `parseQueryToDoc` reports, is in [docs/query-grammar.md](https://github.com/KuruwiC/tokenized-search-input/blob/main/docs/query-grammar.md).
+Inside quotes `\"` stands for `"` and `\\` for `\`. A filter whose operator the field does not allow keeps that operator and is marked invalid. A filter typed key by key reads as the same text pasted. The full grammar, including how free text that looks like a filter is quoted and which diagnostics `parseQueryToDoc` reports, is in [docs/query-grammar.md](https://github.com/KuruwiC/tokenized-search-input/blob/main/docs/query-grammar.md).
 
 ## Field Configuration
 

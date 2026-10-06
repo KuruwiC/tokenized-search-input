@@ -2,6 +2,7 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { findTokenById } from '../../utils/find-token';
+import { isHistoryTransaction } from '../shared/meta';
 
 /**
  * How focus entered a token, which decides the block of the token that receives DOM
@@ -24,9 +25,19 @@ export function programEntry(position: TokenFocusEntry['position'] = 'end'): Tok
   return { source: 'program', position, target: 'all' };
 }
 
+/**
+ * How text typed into a filter token's value is read, as in a query `key<d>text`:
+ * - `pending`: the value was empty on entry, so a leading word ended by the delimiter
+ *   becomes the operator when the query would read it as one
+ * - `read`: an operator was taken from the text; the text after it is the value
+ * - `none`: the token had a value on entry; the text is the value
+ */
+export type ValueReading = 'pending' | 'read' | 'none';
+
 export interface FocusedToken {
   id: string;
   entry: TokenFocusEntry;
+  valueReading: ValueReading;
 }
 
 /**
@@ -82,10 +93,15 @@ export function createTokenFocusPlugin(): Plugin<TokenFocusPluginState> {
       init: () => NO_FOCUS,
       apply(tr, value): TokenFocusPluginState {
         const next = getTokenFocusMeta(tr) ?? value;
+        const { focused } = next;
+        if (focused === null) return next;
         // The focus names a token, so it holds through any edit until that token leaves
         // the document.
-        if (next.focused !== null && tr.docChanged && !canFocusToken(tr.doc, next.focused.id)) {
-          return NO_FOCUS;
+        if (tr.docChanged && !canFocusToken(tr.doc, focused.id)) return NO_FOCUS;
+        // Undo and redo can bring back the text from before an operator was read from it,
+        // so the operator is read again.
+        if (focused.valueReading === 'read' && isHistoryTransaction(tr)) {
+          return { focused: { ...focused, valueReading: 'pending' } };
         }
         return next;
       },
