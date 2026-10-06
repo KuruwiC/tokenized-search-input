@@ -141,4 +141,22 @@ describe('resolveLabelToField', () => {
     expect(result).toBeDefined();
     expect(result?.key).toBe('priority');
   });
+
+  it('returns undefined when the resolver matches no field, even for input equal to a key', () => {
+    const labelOnly = (ctx: { query: string; field: { key: string; label: string } }) =>
+      ctx.query === ctx.field.label ? ctx.field.key : null;
+    expect(resolveLabelToField(fields, 'status', { resolver: labelOnly })).toBeUndefined();
+    expect(resolveLabelToField(fields, 'status', { resolver: () => null })).toBeUndefined();
+    expect(resolveLabelToField(fields, 'Status', { resolver: labelOnly })?.key).toBe('status');
+  });
+
+  it('returns undefined when the resolver names a key no field has', () => {
+    expect(resolveLabelToField(fields, 'status', { resolver: () => 'missing' })).toBeUndefined();
+  });
+});
+
+describe('resolveLabel when the resolver matches no field', () => {
+  it('returns the input as written', () => {
+    expect(resolveLabel(fields, 'status', { resolver: () => null })).toBe('status');
+  });
 });

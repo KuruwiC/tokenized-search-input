@@ -173,8 +173,8 @@ export interface LabelResolverContext {
  * };
  *
  * // Using built-in resolvers
- * import { labelResolvers } from '@kuruwic/tokenized-search-input/utils';
- * const config = { labelResolver: labelResolvers.exact };
+ * import { labelResolvers, resolveLabel } from '@kuruwic/tokenized-search-input/utils';
+ * resolveLabel(fields, 'Status', { resolver: labelResolvers.exact });
  */
 export type LabelResolver = (ctx: LabelResolverContext) => string | null;
 

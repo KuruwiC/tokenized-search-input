@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getEditorContext } from '../../../extensions/editor-context';
 import { Check } from '../../../icons/check';
-import type { FieldDefinition, LabelResolver, Matcher } from '../../../types';
+import type { FieldDefinition, Matcher } from '../../../types';
 import { cn } from '../../../utils/cn';
 import { resolveLabel } from '../../../utils/label-resolve';
 import { useTokenConfig } from '../contexts/token-config-context';
@@ -33,12 +33,6 @@ export interface TokenLabelComboboxProps {
    * @default matchers.fuzzy
    */
   suggestionMatcher?: Matcher;
-  /**
-   * Resolver function for converting user input to field key.
-   * Use built-in resolvers from `labelResolvers` or provide a custom function.
-   * @default labelResolvers.caseInsensitive
-   */
-  labelResolver?: LabelResolver;
 }
 
 type Leaving = {
@@ -62,7 +56,6 @@ export function TokenLabelCombobox({
   onOpen,
   allowUnknownFields = false,
   suggestionMatcher,
-  labelResolver,
 }: TokenLabelComboboxProps): React.ReactElement {
   const triggerRef = useRef<HTMLSpanElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -134,7 +127,7 @@ export function TokenLabelCombobox({
     const trimmedInput = inputKey.trim();
     if (!trimmedInput) return;
 
-    const resolvedKey = resolveLabel(selectableFields, trimmedInput, { resolver: labelResolver });
+    const resolvedKey = resolveLabel(selectableFields, trimmedInput);
     if (resolvedKey === currentKey) return;
 
     onFieldChange(resolvedKey);

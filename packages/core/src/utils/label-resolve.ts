@@ -67,26 +67,14 @@ export function resolveLabel(
   input: string,
   options?: ResolveLabelOptions
 ): string {
-  if (!input) return input;
-  if (!fields || fields.length === 0) return input;
-
-  const resolver = options?.resolver ?? defaultLabelResolver;
-
-  for (const field of fields) {
-    const resolved = resolver({
-      query: input,
-      field: { key: field.key, label: field.label },
-    });
-    if (resolved !== null) {
-      return resolved;
-    }
-  }
-
-  return input;
+  return matchLabel(fields, input, options) ?? input;
 }
 
 /**
  * Resolve input and return the matching FieldDefinition if found.
+ *
+ * Unlike resolveLabel, input is never treated as a bare key: undefined when the
+ * resolver matches no field.
  *
  * @returns Matching FieldDefinition or undefined if no match
  *
@@ -102,6 +90,29 @@ export function resolveLabelToField(
   input: string,
   options?: ResolveLabelOptions
 ): FieldDefinition | undefined {
-  const resolvedKey = resolveLabel(fields, input, options);
-  return fields.find((f) => f.key === resolvedKey);
+  const resolvedKey = matchLabel(fields, input, options);
+  return resolvedKey === null ? undefined : fields.find((f) => f.key === resolvedKey);
+}
+
+/** The key the resolver gives for the first field it matches, or null if it matches none. */
+function matchLabel(
+  fields: readonly FieldDefinition[],
+  input: string,
+  options?: ResolveLabelOptions
+): string | null {
+  if (!input || !fields) return null;
+
+  const resolver = options?.resolver ?? defaultLabelResolver;
+
+  for (const field of fields) {
+    const resolved = resolver({
+      query: input,
+      field: { key: field.key, label: field.label },
+    });
+    if (resolved !== null) {
+      return resolved;
+    }
+  }
+
+  return null;
 }
