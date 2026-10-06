@@ -380,7 +380,7 @@ Each preset rule takes an option that controls how violations are handled:
 | `RequireEnum` | `onInvalid: 'mark'` (default) | Highlight invalid enum values |
 | | `onInvalid: 'reject'` | Auto-delete new invalid enum values |
 
-`MaxCount`, `RequirePattern` and `RequireEnum` also take `message`, and every preset takes `priority`. Rules reject only tokens that were just added or changed, never one that is only focused, and a change to the `validation` prop only re-marks tokens.
+`MaxCount`, `RequirePattern` and `RequireEnum` also take `message`, and every preset takes `priority`. Rules reject only tokens that were just added or changed, never one that is only focused, and a change to the `validation` prop only re-marks tokens. While the user is still in a new token that `reject` will delete, the new token is the one marked, wherever it sits; `mark` goes by position alone and marks the duplicates after the first and the last tokens past the limit.
 
 The id of a preset rule is what a field's `validation` override names:
 

@@ -439,6 +439,31 @@ describe('Unique', () => {
       expect(targetIds(result, 'mark')).toEqual(['b']);
     });
 
+    it.each([
+      ['before', [filterToken('n', 'status', 'is', ''), first]],
+      ['after', [first, filterToken('n', 'status', 'is', '')]],
+    ])("'reject' marks the token being entered %s the existing one, not the existing one", (_where, tokens) => {
+      const rule = Unique.rule('key', { onDuplicate: 'reject' });
+      const result = rule.validate(contextOf(tokens, { editing: ['n'], focused: 'n' }));
+      expect(targetIds(result, 'delete')).toEqual([]);
+      expect(targetIds(result, 'mark')).toEqual(['n']);
+    });
+
+    it("'reject' marks the later new token while the user is still in the earlier one", () => {
+      const rule = Unique.rule('key', { onDuplicate: 'reject' });
+      const tokens = [filterToken('n', 'status', 'is', ''), filterToken('m', 'status', 'is', 'm')];
+      const result = rule.validate(contextOf(tokens, { editing: ['n', 'm'], focused: 'n' }));
+      expect(targetIds(result, 'delete')).toEqual(['m']);
+      expect(targetIds(result, 'mark')).toEqual([]);
+    });
+
+    it("'reject' leaves the first existing token unmarked when a pending duplicate sits between two existing ones", () => {
+      const rule = Unique.rule('key', { onDuplicate: 'reject' });
+      const tokens = [first, filterToken('n', 'status', 'is', ''), second];
+      const result = rule.validate(contextOf(tokens, { editing: ['n'], focused: 'n' }));
+      expect(targetIds(result, 'mark')).toEqual(['n', 'b']);
+    });
+
     it("'reject' keeps an edited duplicate when what the constraint compares did not change", () => {
       const rule = Unique.rule('key', { onDuplicate: 'reject' });
       const result = rule.validate(
@@ -556,6 +581,23 @@ describe('MaxCount', () => {
     const result = rule.validate(contextOf(tags, { editing: ['d'], focused: 'd' }));
     expect(targetIds(result, 'delete')).toEqual([]);
     expect(targetIds(result, 'mark')).toEqual(['d']);
+  });
+
+  it.each([
+    ['before', [filterToken('n', 'tag', 'is', ''), ...tags.slice(0, 2)]],
+    ['after', [...tags.slice(0, 2), filterToken('n', 'tag', 'is', '')]],
+  ])("marks the token being entered %s the existing ones with onExceed 'reject'", (_where, tokens) => {
+    const rule = MaxCount.rule('tag', 2, { onExceed: 'reject' });
+    const result = rule.validate(contextOf(tokens, { editing: ['n'], focused: 'n' }));
+    expect(targetIds(result, 'delete')).toEqual([]);
+    expect(targetIds(result, 'mark')).toEqual(['n']);
+  });
+
+  it("marks the existing tokens past the limit before the new one with onExceed 'reject'", () => {
+    const rule = MaxCount.rule('tag', 1, { onExceed: 'reject' });
+    const tokens = [filterToken('n', 'tag', 'is', ''), ...tags.slice(0, 2)];
+    const result = rule.validate(contextOf(tokens, { editing: ['n'], focused: 'n' }));
+    expect(targetIds(result, 'mark')).toEqual(['n', 'b']);
   });
 });
 

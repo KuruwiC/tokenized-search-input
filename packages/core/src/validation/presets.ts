@@ -39,6 +39,22 @@ function isRejectable(token: ValidationToken, ctx: ValidationContext): boolean {
   return ctx.isEditing(token) && isEntered(token, ctx);
 }
 
+/**
+ * `tokens` in arrival order: existing ones first, then the new ones, each in document order.
+ * Strategies favouring the existing or newest token go by this, since a new token can be
+ * entered anywhere in the document.
+ */
+function byArrival(
+  tokens: ValidationToken[],
+  isNew: (token: ValidationToken) => boolean
+): ValidationToken[] {
+  return [...tokens.filter((t) => !isNew(t)), ...tokens.filter(isNew)];
+}
+
+function inDocumentOrder(tokens: ValidationToken[], subset: ValidationToken[]): ValidationToken[] {
+  return tokens.filter((t) => subset.includes(t));
+}
+
 // Uniqueness Presets
 
 export type UniqueConstraint = 'key' | 'key-operator' | 'exact';
@@ -47,7 +63,8 @@ export type UniqueConstraint = 'key' | 'key-operator' | 'exact';
  * What to do with tokens that duplicate each other:
  * - `'mark'`: mark every duplicate after the first
  * - `'replace'`: the last edited token replaces the others
- * - `'reject'`: delete the edited duplicates and keep the existing token
+ * - `'reject'`: delete the edited duplicates and keep the existing token; a duplicate the
+ *   user is still editing is marked instead
  */
 export type DuplicateStrategy = 'mark' | 'replace' | 'reject';
 
@@ -121,25 +138,27 @@ function resolveDuplicates(
   constraint: UniqueConstraint,
   strategy: DuplicateStrategy
 ): Outcome {
-  const added = group.filter((t) => isNewDuplicate(t, ctx, constraint));
+  // 'mark' goes by position alone: arrival is known only while the new token is being edited,
+  // so a mark by arrival would move afterwards.
+  if (strategy === 'mark') return { delete: [], mark: group.slice(1) };
 
-  // Nothing new joined the group (undo, redo, focus moves): there is no newer token to favour.
-  if (strategy === 'mark' || added.length === 0) {
-    return { delete: [], mark: strategy === 'replace' ? group.slice(0, -1) : group.slice(1) };
-  }
+  const isNew = (t: ValidationToken) => isNewDuplicate(t, ctx, constraint);
+  const arrived = byArrival(group, isNew);
+  // With nothing new in the group (undo, redo, focus moves) this is the document order.
+  const newest = arrived[arrived.length - 1];
 
   if (strategy === 'replace') {
-    const kept = added[added.length - 1];
-    const others = group.filter((t) => t !== kept);
-    // The token that replaces the others is still being filled in: wait until it is entered.
-    return isEntered(kept, ctx) ? { delete: others, mark: [] } : { delete: [], mark: others };
+    const others = group.filter((t) => t !== newest);
+    // Nothing new joined, or the token that replaces the others is still being filled in.
+    return isNew(newest) && isEntered(newest, ctx)
+      ? { delete: others, mark: [] }
+      : { delete: [], mark: others };
   }
 
-  // reject: the existing token wins; when every token is new the first one does.
-  const existing = group.filter((t) => !added.includes(t));
-  const rejected = (existing.length > 0 ? added : added.slice(1)).filter((t) => isEntered(t, ctx));
-  const survivors = group.filter((t) => !rejected.includes(t));
-  return { delete: rejected, mark: survivors.slice(1) };
+  // reject: the first token to arrive wins, which is the existing one when there is one.
+  const rejected = arrived.slice(1).filter((t) => isNew(t) && isEntered(t, ctx));
+  const survivors = arrived.filter((t) => !rejected.includes(t));
+  return { delete: rejected, mark: inDocumentOrder(group, survivors.slice(1)) };
 }
 
 /**
@@ -182,7 +201,8 @@ export const Unique = {
 
 export interface MaxCountOptions {
   /**
-   * What to do with the tokens past the limit: mark the last ones, or delete edited ones.
+   * What to do with the tokens past the limit: mark the last ones, or delete edited ones,
+   * marking an edited token instead while the user is still in it.
    * @default 'mark'
    */
   onExceed?: 'mark' | 'reject';
@@ -199,10 +219,15 @@ function resolveExcess(
 ): Outcome {
   if (strategy === 'mark') return { delete: [], mark: tokens.slice(-excess) };
 
-  const rejected = tokens.filter((t) => isRejectable(t, ctx)).slice(-excess);
-  const survivors = tokens.filter((t) => !rejected.includes(t));
+  // The tokens that arrived last are past the limit, wherever they sit in the document.
+  const arrived = byArrival(tokens, (t) => ctx.isEditing(t));
+  const rejected = arrived.filter((t) => isRejectable(t, ctx)).slice(-excess);
+  const survivors = arrived.filter((t) => !rejected.includes(t));
   const remaining = excess - rejected.length;
-  return { delete: rejected, mark: remaining > 0 ? survivors.slice(-remaining) : [] };
+  return {
+    delete: rejected,
+    mark: remaining > 0 ? inDocumentOrder(tokens, survivors.slice(-remaining)) : [],
+  };
 }
 
 /**

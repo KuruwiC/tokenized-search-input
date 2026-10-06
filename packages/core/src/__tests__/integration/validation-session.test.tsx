@@ -5,7 +5,8 @@
  * when the user edited it since entering the token they are in; where focus is does not
  * make a token edited.
  */
-import { act, cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { Editor } from '@tiptap/core';
 import type { Transaction } from '@tiptap/pm/state';
 import { createRef, type RefObject, useState } from 'react';
@@ -103,6 +104,15 @@ function typeStatusAndLeave(editor: Editor, typed: string[]) {
  * deletes or marks is in the document once this returns.
  */
 const settle = () => act(async () => {});
+
+function markedValues(editor: Editor): string[] {
+  const marked: string[] = [];
+  editor.state.doc.descendants((node) => {
+    if (node.type.name !== 'filterToken') return;
+    if (getTokenMeta(editor.state, node.attrs.id)?.validation) marked.push(node.attrs.value);
+  });
+  return marked;
+}
 
 /** A rule that records which tokens each validation pass treated as edited. */
 function recordingRule(passes: string[][]): ValidationRule {
@@ -403,6 +413,34 @@ describe('MaxCount with onExceed reject', () => {
       MaxCount.rule('*', 2, { onExceed: 'reject' }),
     ]);
     await waitFor(() => expect(values(ref)).toEqual(['active', 'high']));
+  });
+});
+
+describe.each([
+  ['Unique with onDuplicate reject', rejectKey],
+  ['MaxCount with onExceed reject', () => MaxCount.rule('status', 1, { onExceed: 'reject' })],
+])('%s and a token picked from the list', (_name, rule) => {
+  it.each([
+    ['before', () => 1],
+    ['after', (editor: Editor) => editor.state.doc.content.size - 1],
+  ])('marks the token being entered %s the existing one and then deletes it', async (_where, caret) => {
+    const user = userEvent.setup();
+    const { ref, editor } = await renderEditor('status:is:active', [rule()]);
+
+    await user.click(screen.getByRole('combobox'));
+    act(() => {
+      editor.commands.setTextSelection(caret(editor));
+    });
+    await user.click(await screen.findByRole('option', { name: /Status/ }));
+    await waitFor(() => expect(editor.state.doc.firstChild?.childCount).toBe(2));
+
+    expect(markedValues(editor)).toEqual(['']);
+
+    await user.click(await screen.findByRole('option', { name: /inactive/ }));
+    await settle();
+
+    expect(values(ref)).toEqual(['active']);
+    expect(markedValues(editor)).toEqual([]);
   });
 });
 
