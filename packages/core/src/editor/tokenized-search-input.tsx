@@ -107,7 +107,9 @@ export const TokenizedSearchInput = forwardRef<TokenizedSearchInputRef, Tokenize
       updateCustomSuggestions,
     });
     useSingleLineScroll({ editor, containerRef, enabled: oneLine });
-    // Last on purpose: see useRunHeldHandleCalls.
+    // After the hooks that schedule document changes (disabled leave, freeTextMode
+    // re-read): the held calls drain in a microtask this effect queues, so they run after
+    // those changes. See useRunHeldHandleCalls.
     useRunHeldHandleCalls(editor, heldCalls);
 
     const containerElement = (

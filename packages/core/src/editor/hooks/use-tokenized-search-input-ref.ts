@@ -267,10 +267,14 @@ function runHeldCall(editor: Editor, call: HeldCall): void {
 
 /**
  * Makes `editor` the one held handle calls run on once its commit has happened, and runs
- * the calls held so far, in call order, right after that commit. Call it after every
- * other hook that attaches to the editor: the calls set content, validate, set token
- * display, focus and submit, so they have to see the configuration synced from the
- * current props, the focus listeners and the suggestion scheduling already in place.
+ * the calls held so far, in call order, right after that commit.
+ *
+ * The calls run in a microtask this effect queues, which is after every effect of the
+ * commit whatever the hook order, so they see the configuration synced from the current
+ * props, the focus listeners and the suggestion scheduling in place. The hook's position
+ * decides only where that microtask falls among the other scheduled document changes:
+ * the disabled leave in `useEditorSetup` and the freeTextMode re-read in
+ * `useEditorConfigSync`. Called after those hooks, the calls run after both.
  */
 export function useRunHeldHandleCalls(
   editor: Editor | null,

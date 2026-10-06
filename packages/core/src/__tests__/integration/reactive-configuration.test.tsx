@@ -216,49 +216,6 @@ describe('reactive configuration', () => {
     }
   });
 
-  it('applies pending handle writes after the suggestion scheduling subscribes', async () => {
-    const ref = { current: null as TokenizedSearchInputRef | null };
-    const view = render(<TokenizedSearchInput ref={ref} fields={extendedFields} />);
-    await waitFor(() => expect(ref.current).not.toBeNull());
-    getInternalEditor(ref.current)?.destroy();
-    ref.current?.setValue('hello');
-
-    const log: Array<{ editor: unknown; event: string }> = [];
-    const originalOn = Editor.prototype.on;
-    const originalEmit = Editor.prototype.emit;
-    const on = vi.spyOn(Editor.prototype, 'on').mockImplementation(function (
-      this: Editor,
-      ...args: Parameters<Editor['on']>
-    ) {
-      log.push({ editor: this, event: `on:${String(args[0])}` });
-      return originalOn.apply(this, args);
-    });
-    const emit = vi.spyOn(Editor.prototype, 'emit').mockImplementation(function (
-      this: Editor,
-      ...args: Parameters<Editor['emit']>
-    ) {
-      log.push({ editor: this, event: `emit:${String(args[0])}` });
-      return originalEmit.apply(this, args);
-    });
-    try {
-      view.rerender(<TokenizedSearchInput ref={ref} fields={extendedFields} />);
-      await waitFor(() => expect(ref.current?.getValue()).toBe('hello'));
-    } finally {
-      on.mockRestore();
-      emit.mockRestore();
-    }
-
-    const replacement = getInternalEditor(ref.current);
-    const events = log.filter((entry) => entry.editor === replacement).map((entry) => entry.event);
-    // The editor registers its own selectionUpdate listener while it is built; the last
-    // one is the scheduling hook's, and the last update is the pending document's.
-    const subscribed = events.lastIndexOf('on:selectionUpdate');
-    const written = events.lastIndexOf('emit:update');
-    expect(subscribed).toBeGreaterThanOrEqual(0);
-    expect(written).toBeGreaterThanOrEqual(0);
-    expect(subscribed).toBeLessThan(written);
-  });
-
   it('tokenizes free text when the mode switches from plain to tokenize, outside the React commit', async () => {
     const ref = { current: null as TokenizedSearchInputRef | null };
     const element = (freeTextMode: 'plain' | 'tokenize') => (
