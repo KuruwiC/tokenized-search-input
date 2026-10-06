@@ -10,7 +10,7 @@ export interface Country {
 }
 
 /**
- * Full list of ISO 3166-1 countries with Japanese aliases.
+ * 196 countries keyed by their ISO 3166-1 alpha-2 code, with Japanese aliases.
  */
 export const ALL_COUNTRIES: Country[] = [
   { value: 'af', label: 'Afghanistan', emoji: '🇦🇫', aliases: ['アフガニスタン'] },
