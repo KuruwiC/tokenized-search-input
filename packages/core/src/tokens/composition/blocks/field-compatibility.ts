@@ -1,14 +1,9 @@
-import type { FieldDefinition, Matcher } from '../../../types';
+import type { FieldDefinition } from '../../../types';
 import { defaultMatcher } from '../../../utils/matcher';
 
 export interface SortOptions {
   /** Input query for filtering */
   inputQuery?: string;
-  /**
-   * Matcher function for filtering suggestions.
-   * @default matchers.fuzzy
-   */
-  matcher?: Matcher;
 }
 
 /**
@@ -37,13 +32,13 @@ function getFieldScore(field: FieldDefinition, currentField: FieldDefinition | u
 }
 
 /**
- * Check if field matches query using the provided matcher.
+ * Check if field matches query using the default matcher.
  * Returns the best score from matching against label or key.
  */
-function getMatchScore(field: FieldDefinition, query: string, matcher: Matcher): number {
+function getMatchScore(field: FieldDefinition, query: string): number {
   if (!query) return 100; // No query means match all
-  const labelScore = matcher(query, field.label);
-  const keyScore = matcher(query, field.key);
+  const labelScore = defaultMatcher(query, field.label);
+  const keyScore = defaultMatcher(query, field.key);
   return Math.max(labelScore, keyScore);
 }
 
@@ -52,9 +47,9 @@ export function getSortedFields(
   allFields: readonly FieldDefinition[],
   options: SortOptions = {}
 ): FieldDefinition[] {
-  const { inputQuery = '', matcher = defaultMatcher } = options;
+  const { inputQuery = '' } = options;
 
-  const filtered = allFields.filter((f) => getMatchScore(f, inputQuery, matcher) > 0);
+  const filtered = allFields.filter((f) => getMatchScore(f, inputQuery) > 0);
 
   return filtered.sort((a, b) => {
     const compatScoreA = getFieldScore(a, currentField);
@@ -63,8 +58,8 @@ export function getSortedFields(
     if (compatScoreB !== compatScoreA) return compatScoreB - compatScoreA;
 
     if (inputQuery) {
-      const matchScoreA = getMatchScore(a, inputQuery, matcher);
-      const matchScoreB = getMatchScore(b, inputQuery, matcher);
+      const matchScoreA = getMatchScore(a, inputQuery);
+      const matchScoreB = getMatchScore(b, inputQuery);
       if (matchScoreB !== matchScoreA) return matchScoreB - matchScoreA;
     }
 

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getEditorContext } from '../../../extensions/editor-context';
 import { Check } from '../../../icons/check';
-import type { FieldDefinition, Matcher } from '../../../types';
+import type { FieldDefinition } from '../../../types';
 import { cn } from '../../../utils/cn';
 import { resolveLabel } from '../../../utils/label-resolve';
 import { useTokenConfig } from '../contexts/token-config-context';
@@ -27,12 +27,6 @@ export interface TokenLabelComboboxProps {
   onOpen?: () => void;
   /** Whether unknown fields are allowed (enables free text input) */
   allowUnknownFields?: boolean;
-  /**
-   * Matcher function for filtering label suggestions.
-   * Use built-in matchers from `matchers` or provide a custom function.
-   * @default matchers.fuzzy
-   */
-  suggestionMatcher?: Matcher;
 }
 
 type Leaving = {
@@ -55,7 +49,6 @@ export function TokenLabelCombobox({
   onFieldChange,
   onOpen,
   allowUnknownFields = false,
-  suggestionMatcher,
 }: TokenLabelComboboxProps): React.ReactElement {
   const triggerRef = useRef<HTMLSpanElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -89,9 +82,8 @@ export function TokenLabelCombobox({
   const filteredFields = useMemo(() => {
     return getSortedFields(field, selectableFields, {
       inputQuery: hasUserEdited ? inputValue : '',
-      matcher: suggestionMatcher,
     });
-  }, [field, selectableFields, inputValue, hasUserEdited, suggestionMatcher]);
+  }, [field, selectableFields, inputValue, hasUserEdited]);
 
   const showInput = dropdown.isOpen && hasTextInput;
   const shownInput = hasUserEdited ? inputValue : inputValue || label;
