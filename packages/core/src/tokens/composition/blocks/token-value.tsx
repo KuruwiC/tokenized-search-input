@@ -18,8 +18,11 @@ export function TokenIconSlot({
 
 export interface TokenValueProps {
   value: string;
-  /** Writes the text the user edited to the document; false when the document did not change. */
-  onChange: (value: string) => boolean;
+  /**
+   * Writes the edited text to the document and returns the document's text to show after it.
+   * `composing` is set while an input method is still composing the text.
+   */
+  onChange: (value: string, composing: boolean) => string;
   allowSpaces?: boolean;
   placeholder?: string;
   className?: string;
@@ -43,11 +46,43 @@ export interface TokenValueProps {
 }
 
 /**
+ * Maps offsets in `from` to the same place in `to`, the change read as one replaced span.
+ * An offset at or inside the span lands after its replacement, as a caret does after typing.
+ */
+function offsetMapping(from: string, to: string): (offset: number) => number {
+  const shorter = Math.min(from.length, to.length);
+  let prefix = 0;
+  while (prefix < shorter && from[prefix] === to[prefix]) prefix++;
+  let suffix = 0;
+  while (
+    suffix < shorter - prefix &&
+    from[from.length - 1 - suffix] === to[to.length - 1 - suffix]
+  ) {
+    suffix++;
+  }
+  const replacedEnd = from.length - suffix;
+  const replacementEnd = to.length - suffix;
+  return (offset) => {
+    if (offset < prefix) return offset;
+    if (offset >= replacedEnd) return offset - replacedEnd + replacementEnd;
+    return replacementEnd;
+  };
+}
+
+/**
  * Writes `text` into the input only where the input shows something else, so text the
- * input already shows keeps its caret and selection.
+ * input already shows keeps its caret and selection. Setting the value moves the caret to
+ * the end, so the selection is mapped to the same place in `text`.
  */
 function showText(input: HTMLInputElement | null, text: string): void {
-  if (input && input.value !== text) input.value = text;
+  if (!input || input.value === text) return;
+  const shown = input.value;
+  const { selectionStart, selectionEnd, selectionDirection } = input;
+  input.value = text;
+  if (input.ownerDocument.activeElement !== input) return;
+  if (selectionStart === null || selectionEnd === null) return;
+  const map = offsetMapping(shown, text);
+  input.setSelectionRange(map(selectionStart), map(selectionEnd), selectionDirection ?? undefined);
 }
 
 /** The input stays mounted while the token is not edited, out of the layout and out of reach. */
@@ -155,15 +190,23 @@ export function TokenValue({
     handleKey,
   });
 
-  // Runs after every render: an edit the document takes can leave the document's text as it
-  // was while the input shows other text, as when an operator is read out of the input.
+  // A node view also renders with the props of its previous node before the transaction
+  // reaches it; showText leaves the input alone for such a render.
   useLayoutEffect(() => {
     showText(inputRef.current, value);
-  });
+  }, [value]);
 
-  // An edit the document does not take leaves the document's text in the input
+  // Shown here rather than by the effect: reading an operator out of an empty value leaves
+  // the `value` prop unchanged. Writing into the input while an input method composes would
+  // commit its text early; the committed text arrives in a later input event or compositionend.
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!onChange(e.target.value)) showText(e.target, value);
+    const composing =
+      e.nativeEvent instanceof InputEvent && e.nativeEvent.inputType === 'insertCompositionText';
+    const shown = onChange(e.target.value, composing);
+    if (!composing) showText(e.target, shown);
+  };
+  const handleCompositionEnd = (e: React.CompositionEvent<HTMLInputElement>) => {
+    showText(e.currentTarget, onChange(e.currentTarget.value, false));
   };
 
   const handleFocus = () => {
@@ -195,6 +238,7 @@ export function TokenValue({
           type="text"
           data-token-block={blockProps['data-token-block']}
           onChange={handleChange}
+          onCompositionEnd={handleCompositionEnd}
           onFocus={handleFocus}
           className={cn('tsi-token-value__input', className)}
           placeholder={showsControls ? placeholder : undefined}

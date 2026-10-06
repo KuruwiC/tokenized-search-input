@@ -2,6 +2,7 @@ import type { NodeViewProps } from '@tiptap/react';
 import { getEditorContext } from '../../extensions/editor-context';
 import { useEditorContextUpdate } from '../../hooks/use-editor-context-update';
 import { getDecorationValidation } from '../../plugins/token-meta-plugin';
+import { findTokenById } from '../../utils/find-token';
 import { Token } from '../composition';
 import { applyTokenAction } from '../filter-token/token-actions';
 
@@ -21,7 +22,7 @@ export const FreeTextTokenView: React.FC<NodeViewProps> = ({
   const rangeSelected = decorations.some((decoration) => decoration.spec?.rangeSelected === true);
   const validation = getDecorationValidation(decorations);
 
-  const handleValueChange = (newValue: string): boolean => {
+  const handleValueChange = (newValue: string): string => {
     const tr = editor.state.tr;
     // A space typed into an unquoted token turns it into a quoted one.
     const changed = applyTokenAction(
@@ -31,7 +32,7 @@ export const FreeTextTokenView: React.FC<NodeViewProps> = ({
       editorContext
     );
     if (changed) editor.view.dispatch(tr);
-    return changed;
+    return String(findTokenById(editor.state.doc, id)?.node.attrs.value ?? '');
   };
 
   // Allow space insertion at non-end position for non-quoted tokens

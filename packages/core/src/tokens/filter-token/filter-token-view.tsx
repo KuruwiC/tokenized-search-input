@@ -17,6 +17,7 @@ import { getApplicableDisplay, getDecorationValidation } from '../../plugins/tok
 import { isInsideQuotes } from '../../serializer/quote-state';
 import { type EnumValue, type FieldDefinition, getOperatorSelectLabel } from '../../types';
 import { getEnumValue } from '../../utils/enum-value';
+import { findTokenById } from '../../utils/find-token';
 import { resolveField } from '../../utils/resolve-field';
 import { Token, TokenIconSlot, useTokenConfig, useTokenFocusContext } from '../composition';
 import { resolveDisplayValue } from './resolve-display-value';
@@ -213,13 +214,15 @@ function FilterTokenValue({
   });
 
   // The transaction that writes a typed value also shows the value suggestions for it
-  const handleInputChange = (inputText: string): boolean => {
+  const handleInputChange = (inputText: string, composing: boolean): string => {
     const tr = editor.state.tr;
     const ctx = getFocusContext(editor);
-    if (!writeTypedValue(tr, ctx, fieldSource.delimiter, tokenId, inputText)) return false;
-    markValueTyped(tr);
-    editor.view.dispatch(tr);
-    return true;
+    if (writeTypedValue(tr, ctx, fieldSource.delimiter, tokenId, inputText, composing)) {
+      markValueTyped(tr);
+      editor.view.dispatch(tr);
+    }
+    const token = findTokenById(editor.state.doc, tokenId);
+    return getEditableValueText(fieldDef, String(token?.node.attrs.value ?? ''));
   };
 
   const isValueSuggestionOpen = () => {

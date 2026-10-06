@@ -34,7 +34,8 @@ function operatorInText(
 /**
  * Writes `text`, typed into the value of the focused filter token `id`, in `tr`. A leading
  * word the query reads as the operator, ended by the delimiter, becomes the operator and the
- * rest the value, in the same transaction and undo step as the keystroke that ended it.
+ * rest the value, in the same transaction and undo step as the keystroke that ended it. Text
+ * still `composing` is written as the value, its operator read once it is committed.
  *
  * @returns whether the token changed
  */
@@ -43,9 +44,10 @@ export function writeTypedValue(
   ctx: FocusTransitionContext,
   delimiter: string,
   id: string,
-  text: string
+  text: string,
+  composing: boolean
 ): boolean {
-  const read = operatorInText(tr, ctx, delimiter, id, text);
+  const read = composing ? null : operatorInText(tr, ctx, delimiter, id, text);
   if (!read) return applyTokenAction(tr, id, { type: 'setValue', value: text }, ctx.source);
 
   applyTokenAction(tr, id, { type: 'setOperator', operator: read.operator }, ctx.source);

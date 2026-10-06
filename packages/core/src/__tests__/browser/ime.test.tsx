@@ -3,12 +3,15 @@ import { cdp, commands, server, userEvent } from 'vitest/browser';
 import {
   afterLastToken,
   beforeFirstToken,
+  editLastToken,
   expectCaretBetween,
   expectCaretWithText,
+  focusedValueInput,
   gapBetween,
   type MountedEditor,
   mountEditor,
   mountWrapped,
+  shownValue,
   tokenElements,
 } from './harness';
 
@@ -26,11 +29,18 @@ const TWO_TOKENS = 'status:is:open owner:is:bob';
  */
 const hasImeProtocol = () => server.browser === 'chromium';
 
-function compositionEvent(m: MountedEditor, type: string, data: string): void {
-  m.pm.dispatchEvent(new CompositionEvent(type, { bubbles: true, data }));
+/** The element an input method composes into: the editor, or the token input that holds focus. */
+type CompositionTarget = MountedEditor | HTMLInputElement;
+
+function compositionEvent(target: CompositionTarget, type: string, data: string): void {
+  const element = target instanceof HTMLInputElement ? target : target.pm;
+  element.dispatchEvent(new CompositionEvent(type, { bubbles: true, data }));
 }
 
-async function startComposition(m: MountedEditor, preedit: readonly string[]): Promise<void> {
+async function startComposition(
+  target: CompositionTarget,
+  preedit: readonly string[]
+): Promise<void> {
   if (hasImeProtocol()) {
     for (const text of preedit) {
       await cdp().send('Input.imeSetComposition', {
@@ -41,30 +51,30 @@ async function startComposition(m: MountedEditor, preedit: readonly string[]): P
     }
     return;
   }
-  compositionEvent(m, 'compositionstart', '');
-  for (const text of preedit) compositionEvent(m, 'compositionupdate', text);
+  compositionEvent(target, 'compositionstart', '');
+  for (const text of preedit) compositionEvent(target, 'compositionupdate', text);
 }
 
-async function commitComposition(m: MountedEditor, committed: string): Promise<void> {
+async function commitComposition(target: CompositionTarget, committed: string): Promise<void> {
   if (hasImeProtocol()) {
     await cdp().send('Input.insertText', { text: committed });
     return;
   }
   await commands.insertText(committed);
-  compositionEvent(m, 'compositionend', committed);
+  compositionEvent(target, 'compositionend', committed);
 }
 
-async function cancelComposition(m: MountedEditor): Promise<void> {
+async function cancelComposition(target: CompositionTarget): Promise<void> {
   if (hasImeProtocol()) {
     await cdp().send('Input.imeSetComposition', { text: '', selectionStart: 0, selectionEnd: 0 });
     return;
   }
-  compositionEvent(m, 'compositionend', '');
+  compositionEvent(target, 'compositionend', '');
 }
 
-async function compose(m: MountedEditor, preedit: readonly string[], committed: string) {
-  await startComposition(m, preedit);
-  await commitComposition(m, committed);
+async function compose(target: CompositionTarget, preedit: readonly string[], committed: string) {
+  await startComposition(target, preedit);
+  await commitComposition(target, committed);
 }
 
 function recordCompositionEvents(m: MountedEditor): string[] {
@@ -165,5 +175,71 @@ describe('IME composition', () => {
     await compose(m, ['ほ'], '本');
     expect(m.value()).toBe('status:is:open 日本 owner:is:bob');
     await expectCaretWithText(m, -1);
+  });
+});
+
+describe('IME composition in a token value', () => {
+  it('commits composed text at the end of the value', async () => {
+    const m = await mountEditor(TWO_TOKENS);
+    await editLastToken(m);
+    expect(shownValue()).toBe('bob|');
+
+    await startComposition(focusedValueInput(), ['に', 'にほ']);
+    if (hasImeProtocol()) expect(shownValue()).toBe('bobにほ|');
+    await commitComposition(focusedValueInput(), '日本');
+    expect(shownValue()).toBe('bob日本|');
+
+    await userEvent.keyboard(' ');
+    expect(m.value()).toBe('status:is:open owner:is:bob日本');
+  });
+
+  it('commits composed text inside the value with the caret after it', async () => {
+    const m = await mountEditor(TWO_TOKENS);
+    await editLastToken(m);
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}');
+    expect(shownValue()).toBe('b|ob');
+
+    await startComposition(focusedValueInput(), ['に', 'にほ']);
+    if (hasImeProtocol()) expect(shownValue()).toBe('bにほ|ob');
+    await commitComposition(focusedValueInput(), '日本');
+    expect(shownValue()).toBe('b日本|ob');
+
+    await userEvent.keyboard('{End} ');
+    expect(m.value()).toBe('status:is:open owner:is:b日本ob');
+  });
+
+  it('composes into a value whose operator was read from typed text', async () => {
+    const m = await mountEditor('', {
+      fields: [{ key: 'status', label: 'Status', type: 'string', operators: ['is', 'is_not'] }],
+    });
+    await userEvent.click(m.pm);
+    await userEvent.keyboard('status:is_not:');
+    expect(shownValue()).toBe('|');
+
+    await compose(focusedValueInput(), ['か', 'かい'], '開');
+    expect(shownValue()).toBe('開|');
+    await userEvent.keyboard(' ');
+    expect(m.value()).toBe('status:is_not:開');
+  });
+
+  it('shows the label of the enum value that composed text names', async () => {
+    const m = await mountEditor('', {
+      fields: [
+        {
+          key: 'country',
+          label: 'Country',
+          type: 'enum',
+          operators: ['is'],
+          enumValues: [{ value: 'jp', label: '日本' }],
+        },
+      ],
+    });
+    await userEvent.click(m.pm);
+    await userEvent.keyboard('country:');
+
+    await compose(focusedValueInput(), ['に', 'にほ'], '日本');
+    expect(shownValue()).toBe('日本|');
+    await userEvent.keyboard(' ');
+    expect(m.value()).toBe('country:is:jp');
   });
 });

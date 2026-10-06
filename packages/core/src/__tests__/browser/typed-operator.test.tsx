@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { FieldDefinition } from '../../index';
-import { type MountedEditor, mountEditor } from './harness';
+import {
+  editLastToken,
+  focusedValueInput,
+  type MountedEditor,
+  mountEditor,
+  shownValue,
+} from './harness';
 
 const fields: FieldDefinition[] = [
   { key: 'status', label: 'Status', type: 'string', operators: ['is', 'is_not'] },
@@ -44,5 +50,59 @@ describe('typing a filter key by key', () => {
     expect(shownValue()).toBe('bob|');
     await userEvent.keyboard(' ');
     expect(filters(m)).toEqual([{ key: 'assignee', operator: 'contains', value: 'bob' }]);
+  });
+
+  it('keeps the caret before the value when the operator is typed in front of it', async () => {
+    const m = await typeIntoEmpty('status:act');
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}{ArrowLeft}');
+    expect(shownValue()).toBe('|act');
+
+    await userEvent.keyboard('is_not:');
+    expect(shownValue()).toBe('|act');
+    await userEvent.keyboard('in');
+    expect(shownValue()).toBe('in|act');
+
+    await userEvent.keyboard('{End} ');
+    expect(filters(m)).toEqual([{ key: 'status', operator: 'is_not', value: 'inact' }]);
+  });
+});
+
+describe('typing inside a value that holds the delimiter', () => {
+  it('keeps the caret where the keys go in a typed value', async () => {
+    const m = await typeIntoEmpty('assignee:10:30');
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}');
+    expect(shownValue()).toBe('10:|30');
+
+    await userEvent.keyboard('45');
+    expect(shownValue()).toBe('10:45|30');
+    await userEvent.keyboard('{Delete}{Delete}');
+    expect(shownValue()).toBe('10:45|');
+
+    await userEvent.keyboard(' ');
+    expect(filters(m)).toEqual([{ key: 'assignee', operator: 'is', value: '10:45' }]);
+  });
+
+  it('keeps the caret after a delimiter typed inside a typed value', async () => {
+    const m = await typeIntoEmpty('assignee:1030');
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}:');
+    expect(shownValue()).toBe('10:|30');
+
+    await userEvent.keyboard('{End} ');
+    expect(filters(m)).toEqual([{ key: 'assignee', operator: 'is', value: '10:30' }]);
+  });
+
+  it('keeps the caret where the keys go in a value the query gave', async () => {
+    const m = await mountEditor('assignee:is:10:30', { fields });
+    await editLastToken(m);
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}{Backspace}');
+    expect(shownValue()).toBe('10|30');
+
+    await userEvent.keyboard(':');
+    expect(shownValue()).toBe('10:|30');
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}{ArrowLeft}contains:');
+    expect(shownValue()).toBe('contains:|10:30');
+
+    await userEvent.keyboard('{End} ');
+    expect(filters(m)).toEqual([{ key: 'assignee', operator: 'is', value: 'contains:10:30' }]);
   });
 });
