@@ -8,7 +8,7 @@ import userEvent from '@testing-library/user-event';
 import type { Editor } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
 import { createRef } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { tryAutoTokenize } from '../../editor/auto-tokenize';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
 import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
@@ -135,7 +135,6 @@ describe('Auto-tokenize - Integration Tests', () => {
 
     it('parses complete filter format correctly on Enter trigger', async () => {
       const ref = createRef<TokenizedSearchInputRef>();
-      const user = userEvent.setup();
 
       render(<TokenizedSearchInput ref={ref} fields={testFields} freeTextMode="plain" />);
 
@@ -147,37 +146,31 @@ describe('Auto-tokenize - Integration Tests', () => {
       expect(editor).not.toBeNull();
       if (!editor) return;
 
-      await user.click(editor.view.dom);
-      await user.keyboard('{Escape}');
+      // Typed one character per transaction, the text stays plain until a trigger reads it
+      for (const char of 'status:is:active') {
+        editor.view.dispatch(editor.state.tr.insertText(char));
+      }
+      expect(editor.state.doc.textContent).toBe('status:is:active');
 
-      // Typing "status:" would create an empty token through the colon trigger, so the full
-      // text is inserted with insertContent to reach the Enter trigger path.
-      editor.commands.insertContent('status:is:active');
-      editor.commands.focus('end');
+      expect(tryAutoTokenize(editor, 'Enter')).toBe(true);
 
-      // insertContent may already have tokenized the text, in which case this returns false
-      tryAutoTokenize(editor, 'Enter');
-
-      await waitFor(() => {
-        let hasFilterToken = false;
-        editor.state.doc.descendants((node) => {
-          if (node.type.name === 'filterToken' && node.attrs.key === 'status') {
-            hasFilterToken = true;
-          }
-          return true;
-        });
-        // Token should exist (either from insertContent auto-tokenize or tryAutoTokenize)
-        expect(hasFilterToken).toBe(true);
+      const tokens: unknown[] = [];
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === 'filterToken') tokens.push(node.attrs);
+        return true;
       });
+      expect(tokens).toEqual([
+        expect.objectContaining({ key: 'status', operator: 'is', value: 'active' }),
+      ]);
+      expect(ref.current?.getValue()).toBe('status:is:active');
     });
   });
 
   describe('Tokenize behavior', () => {
-    it('tokenizes pasted text immediately', async () => {
+    it('tokenizes every filter of text inserted in one step', async () => {
       const ref = createRef<TokenizedSearchInputRef>();
-      const onChange = vi.fn();
 
-      render(<TokenizedSearchInput ref={ref} fields={testFields} onChange={onChange} />);
+      render(<TokenizedSearchInput ref={ref} fields={testFields} />);
 
       await waitFor(() => {
         expect(ref.current).not.toBeNull();
@@ -187,7 +180,6 @@ describe('Auto-tokenize - Integration Tests', () => {
       expect(editor).not.toBeNull();
       if (!editor) return;
 
-      // Simulate paste by inserting content directly
       editor.commands.insertContent('status:is:active priority:is:high');
 
       // Wait for tokenization
@@ -254,8 +246,14 @@ describe('Auto-tokenize - Integration Tests', () => {
 
       // Single-character typing stays plain text until a trigger
       await waitFor(() => {
-        expect(editor.state.doc.textContent).toContain('h');
+        expect(editor.state.doc.textContent).toBe('h');
       });
+      const types: string[] = [];
+      editor.state.doc.descendants((node) => {
+        types.push(node.isText ? `text:${node.text}` : node.type.name);
+        return true;
+      });
+      expect(types).toEqual(['paragraph', 'text:h']);
     });
   });
 

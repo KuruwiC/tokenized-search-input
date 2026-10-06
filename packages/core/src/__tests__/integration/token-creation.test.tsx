@@ -105,10 +105,12 @@ describe('Token Creation - User Journeys', () => {
       // Type field:value and space to confirm
       await user.type(editor, 'status:active ');
 
-      // Verify: Token created
+      // Verify: Token created with the typed value
       await waitFor(() => {
-        const filterToken = screen.getByRole('group', { name: /Filter: status/i });
-        expect(filterToken).toBeInTheDocument();
+        expect(screen.getByRole('group', { name: /Filter: status/i })).toBeInTheDocument();
+        expect(onChange).toHaveBeenLastCalledWith(
+          expect.objectContaining({ text: 'status:is:active' })
+        );
       });
     });
 
@@ -132,8 +134,9 @@ describe('Token Creation - User Journeys', () => {
     });
 
     it('does not create token for unknown field', async () => {
+      const onChange = vi.fn();
       const user = userEvent.setup();
-      render(<TokenizedSearchInput fields={testFields} />);
+      render(<TokenizedSearchInput fields={testFields} onChange={onChange} />);
 
       const editor = screen.getByRole('combobox');
       await user.click(editor);
@@ -143,6 +146,11 @@ describe('Token Creation - User Journeys', () => {
       await user.type(editor, 'unknown:value ');
 
       // Verify: No filter token created (text remains as plain text)
+      await waitFor(() => {
+        expect(onChange).toHaveBeenLastCalledWith(
+          expect.objectContaining({ segments: [{ type: 'plaintext', value: 'unknown:value ' }] })
+        );
+      });
       expect(screen.queryByRole('group', { name: /Filter: unknown/i })).not.toBeInTheDocument();
     });
   });
@@ -203,10 +211,14 @@ describe('Token Creation - User Journeys', () => {
         expect(screen.getByText('Status')).toBeInTheDocument();
       });
 
-      // Execute search
+      // Type free text, then execute search
       const editor = screen.getByRole('combobox');
       await user.click(editor);
       await user.keyboard('{Escape}');
+      await user.keyboard('hello');
+      await waitFor(() => {
+        expect(editor).toHaveTextContent('hello');
+      });
       await user.keyboard('{Enter}');
 
       // Verify: Search called with only filter token

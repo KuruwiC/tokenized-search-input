@@ -8,58 +8,74 @@
  *   validation={{ rules: [Unique.rule('key')] }}
  * />
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ComponentProps, createRef } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
 import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
+import { getFocusedToken } from '../../plugins/token-focus';
+import type { SuggestionsConfig } from '../../types';
 import { Unique } from '../../validation/presets';
 import { basicFields } from '../fixtures/fields';
+import { waitForEditor } from '../helpers/get-editor';
+import { mountInput } from '../helpers/mount-input';
+import { observeIntersections } from '../helpers/suggestion-layer';
 import { filterTokens } from '../helpers/token-queries';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+/** Waits for the animation frame in which the suggestions are evaluated after an edit. */
+const nextFrame = () =>
+  act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
 
 describe('Config API', () => {
   describe('suggestions config', () => {
-    it('disables field suggestions when field.disabled is true', async () => {
+    /** Types `sta` into an empty input and waits for the text to be written. */
+    async function typeFieldQuery(suggestions?: SuggestionsConfig) {
       const user = userEvent.setup();
+      const { value } = await mountInput('', { suggestions });
+      await user.click(screen.getByRole('combobox'));
+      await user.type(screen.getByRole('combobox'), 'sta');
+      await waitFor(() => expect(value()).toBe('sta'));
+    }
 
-      render(
-        <TokenizedSearchInput fields={basicFields} suggestions={{ field: { disabled: true } }} />
-      );
+    /** Clicks the status token, so its value is edited, and waits for that focus. */
+    async function editStatusValue(suggestions?: SuggestionsConfig) {
+      const user = userEvent.setup();
+      const { editor } = await mountInput('status:is:active', { suggestions });
+      await user.click(screen.getByRole('group', { name: /Filter: status/i }));
+      await waitFor(() => expect(getFocusedToken(editor.state)).not.toBeNull());
+    }
 
-      const input = screen.getByRole('combobox');
-      await user.click(input);
-      await user.type(input, 'sta');
+    it('shows field suggestions for typed text by default', async () => {
+      await typeFieldQuery();
 
-      // Verify field suggestions do not appear
-      await waitFor(() => {
-        expect(
-          screen.queryByRole('listbox', { name: 'Field suggestions' })
-        ).not.toBeInTheDocument();
-      });
+      expect(await screen.findByRole('option', { name: /Status/ })).toBeInTheDocument();
+    });
+
+    it('disables field suggestions when field.disabled is true', async () => {
+      await typeFieldQuery({ field: { disabled: true } });
+      await nextFrame();
+
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+      expect(screen.queryByRole('option')).not.toBeInTheDocument();
+    });
+
+    it('shows value suggestions for the edited token by default', async () => {
+      await editStatusValue();
+
+      expect(await screen.findByRole('option', { name: /inactive/ })).toBeInTheDocument();
     });
 
     it('disables value suggestions when value.disabled is true', async () => {
-      const user = userEvent.setup();
+      await editStatusValue({ value: { disabled: true } });
+      await nextFrame();
 
-      render(
-        <TokenizedSearchInput
-          fields={basicFields}
-          defaultValue="status:is:"
-          suggestions={{ value: { disabled: true } }}
-        />
-      );
-
-      // Click into the token's value area
-      const input = screen.getByRole('combobox');
-      await user.click(input);
-
-      // Verify value suggestions do not appear
-      await waitFor(() => {
-        expect(
-          screen.queryByRole('listbox', { name: 'Value suggestions' })
-        ).not.toBeInTheDocument();
-      });
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+      expect(screen.queryByRole('option')).not.toBeInTheDocument();
     });
   });
 
@@ -191,25 +207,32 @@ describe('Config API', () => {
     });
 
     it('applies pagination labels', async () => {
-      const mockSuggest = vi.fn().mockResolvedValue({
-        suggestions: [{ tokens: [{ key: 'status', operator: 'is', value: 'a' }], label: 'A' }],
-        hasMore: true,
+      const scrollToEnd = observeIntersections();
+      const user = userEvent.setup();
+      await mountInput('', {
+        suggestions: {
+          custom: {
+            debounceMs: 0,
+            suggest: async () => ({
+              suggestions: [
+                { tokens: [{ key: 'status', operator: 'is', value: 'a' }], label: 'A' },
+              ],
+              hasMore: true,
+            }),
+            loadMore: () => new Promise<never>(() => {}),
+          },
+        },
+        labels: {
+          pagination: { loading: 'Loading more...', scrollForMore: 'Scroll to load' },
+        },
       });
 
-      render(
-        <TokenizedSearchInput
-          fields={basicFields}
-          suggestions={{
-            custom: { suggest: mockSuggest, debounceMs: 0 },
-          }}
-          labels={{
-            pagination: { loading: 'Loading more...', scrollForMore: 'Scroll to load' },
-          }}
-        />
-      );
+      await user.click(screen.getByRole('combobox'));
+      expect(await screen.findByText('Scroll to load')).toBeInTheDocument();
 
-      // Labels are stored for use by suggestion list
-      expect(screen.getByRole('combobox')).toBeInTheDocument();
+      act(scrollToEnd);
+      expect(await screen.findByText('Loading more...')).toBeInTheDocument();
+      expect(screen.queryByText('Scroll to load')).not.toBeInTheDocument();
     });
   });
 
@@ -226,36 +249,37 @@ describe('Config API', () => {
         <div data-testid="custom-date-picker">Custom Picker</div>
       ));
 
+      const ref = createRef<TokenizedSearchInputRef>();
       render(
         <TokenizedSearchInput
+          ref={ref}
           fields={[dateField]}
           defaultValue="created:is:2024-01-01"
           pickers={{ renderDate: CustomDatePicker }}
         />
       );
+      const editor = await waitForEditor(ref);
+      const [token] = filterTokens(ref);
+      if (!token) throw new Error('no filter token');
 
-      // Verify token is rendered (picker opening requires more complex interaction)
-      await waitFor(() => {
-        const tokens = document.querySelectorAll('.node-filterToken');
-        expect(tokens.length).toBe(1);
+      act(() => {
+        editor.commands.focusFilterToken(token.id, 'end');
       });
 
-      // Verify the custom picker prop is passed (will be used when picker opens)
-      expect(screen.getByRole('combobox')).toBeInTheDocument();
+      expect(await screen.findByTestId('custom-date-picker')).toBeInTheDocument();
+      expect(CustomDatePicker).toHaveBeenCalledWith(
+        expect.objectContaining({ value: { date: '2024-01-01' } })
+      );
     });
   });
 
   describe('Multiple configs', () => {
     it('combines configuration from multiple config props', async () => {
-      render(
-        <TokenizedSearchInput
-          fields={basicFields}
-          defaultValue="status:is:active status:is:pending"
-          suggestions={{ field: { disabled: true } }}
-          validation={{ rules: [Unique.rule('key')] }}
-          labels={{ operators: { is: 'equals' } }}
-        />
-      );
+      const { editor, value } = await mountInput('status:is:active status:is:pending', {
+        suggestions: { field: { disabled: true } },
+        validation: { rules: [Unique.rule('key')] },
+        labels: { operators: { is: 'equals' } },
+      });
 
       // Wait for tokens to render
       await waitFor(() => {
@@ -270,22 +294,29 @@ describe('Config API', () => {
       });
 
       // Label should be customized
-      expect(screen.getAllByText('equals').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('equals')).toHaveLength(2);
+
+      // Typed text after the tokens opens no field suggestion
+      act(() => {
+        editor.chain().focus('end').insertContent(' pri').run();
+      });
+      await waitFor(() => expect(value()).toBe('status:is:active status:is:pending pri'));
+      await nextFrame();
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     });
 
     it('works without any config props (defaults)', async () => {
       const user = userEvent.setup();
+      const ref = createRef<TokenizedSearchInputRef>();
 
-      render(<TokenizedSearchInput fields={basicFields} />);
+      render(<TokenizedSearchInput ref={ref} fields={basicFields} />);
 
       const input = screen.getByRole('combobox');
       await user.click(input);
-      await user.type(input, 'status:is:active ');
+      await user.type(input, 'status:active ');
 
-      // Should work with default settings
-      await waitFor(() => {
-        expect(screen.getByText('status')).toBeInTheDocument();
-      });
+      await waitFor(() => expect(filterTokens(ref)).toHaveLength(1));
+      expect(ref.current?.getValue()).toBe('status:is:active');
     });
   });
 });

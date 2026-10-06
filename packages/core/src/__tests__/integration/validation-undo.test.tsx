@@ -2,14 +2,14 @@
  * Integration tests for validation undo behavior of Unique with onDuplicate replace.
  * Tests that token replacement via validation is undoable as a single operation.
  */
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
 import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import type { FieldDefinition } from '../../types';
 import { Unique } from '../../validation/presets';
-import { getInternalEditor } from '../helpers/get-editor';
+import { waitForEditor } from '../helpers/get-editor';
 
 const testFields: FieldDefinition[] = [
   {
@@ -59,14 +59,10 @@ describe('Validation undo with onDuplicate replace', () => {
       { timeout: 3000 }
     );
 
-    // Priority and the later status should remain
-    const value = ref.current?.getValue();
-    expect(value).toContain('priority:is:high');
-    expect(value).toContain('status:is:inactive');
-    expect(value).not.toMatch(/status:is:active(?!\s*status:is:inactive)/);
+    expect(ref.current?.getValue()).toBe('priority:is:high status:is:inactive');
   });
 
-  it('handles undo of setValue operation with onDuplicate replace', async () => {
+  it('restores the replaced token in one undo step after a pasted duplicate replaced it', async () => {
     const ref = createRef<TokenizedSearchInputRef>();
 
     render(
@@ -78,36 +74,17 @@ describe('Validation undo with onDuplicate replace', () => {
       />
     );
 
-    // Wait for initial token
-    await waitFor(() => {
-      const tokens = document.querySelectorAll('.node-filterToken');
-      expect(tokens.length).toBe(1);
-      expect(tokens[0]?.textContent).toContain('active');
+    const editor = await waitForEditor(ref);
+    act(() => {
+      editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+      editor.view.pasteText('status:is:inactive', new Event('paste') as ClipboardEvent);
+    });
+    await waitFor(() => expect(ref.current?.getValue()).toBe('status:is:inactive'));
+
+    act(() => {
+      editor.commands.undo();
     });
 
-    const editorRef = ref.current;
-    if (!editorRef) return;
-
-    const editor = getInternalEditor(editorRef);
-    expect(editor).not.toBeNull();
-    if (!editor) return;
-
-    // Now replace it with a different status token (simulating user adding new token)
-    editorRef.setValue('status:is:inactive');
-
-    await waitFor(() => {
-      const tokens = document.querySelectorAll('.node-filterToken');
-      expect(tokens.length).toBe(1);
-      expect(tokens[0]?.textContent).toContain('inactive');
-    });
-
-    // Undo should restore the previous value
-    editor.commands.undo();
-
-    await waitFor(() => {
-      const tokens = document.querySelectorAll('.node-filterToken');
-      expect(tokens.length).toBe(1);
-      expect(tokens[0]?.textContent).toContain('active');
-    });
+    expect(ref.current?.getValue()).toBe('status:is:active');
   });
 });

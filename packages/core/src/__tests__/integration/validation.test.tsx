@@ -4,6 +4,7 @@
  */
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { Editor } from '@tiptap/core';
 import { createRef, useEffect, useRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
@@ -12,7 +13,8 @@ import { getSuggestionState, type SuggestionType } from '../../plugins/suggestio
 import type { FieldDefinition, ValidationRule } from '../../types';
 import { MaxCount, RequirePattern, Unique } from '../../validation/presets';
 import { fieldsWithValidationOverride } from '../fixtures';
-import { getInternalEditor } from '../helpers/get-editor';
+import { getInternalEditor, waitForEditor } from '../helpers/get-editor';
+import { filterTokens, invalidTokenCount } from '../helpers/token-queries';
 
 const testFields = fieldsWithValidationOverride;
 
@@ -340,46 +342,6 @@ describe('Validation System Integration', () => {
 
       // status + priority (duplicate status deleted)
       await expectTokenCounts(2, 0);
-    });
-  });
-
-  describe('Unique with onDuplicate replace', () => {
-    it("does not delete a token that is still being entered with onDuplicate 'replace'", async () => {
-      // A token with an empty value is still being entered and is not deleted
-      render(
-        <TokenizedSearchInput
-          fields={testFields}
-          defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
-        />
-      );
-
-      await expectTokenCounts(1, 0);
-    });
-  });
-
-  describe('Editing token protection', () => {
-    it('marks editing tokens as invalid but does not delete them', async () => {
-      // Tokens with empty value should be marked but not deleted
-      const fieldsWithOverride: FieldDefinition[] = [
-        {
-          key: 'status',
-          label: 'Status',
-          type: 'enum',
-          operators: ['is'],
-          enumValues: ['active', 'inactive'],
-        },
-      ];
-
-      render(
-        <TokenizedSearchInput
-          fields={fieldsWithOverride}
-          defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
-        />
-      );
-
-      await expectTokenCounts(1, 0);
     });
   });
 
@@ -844,54 +806,44 @@ describe('Validation System Integration', () => {
 
     it("onDuplicate 'reject' marks a duplicate added through the suggestion list while it is focused", async () => {
       const user = userEvent.setup();
+      const ref = createRef<TokenizedSearchInputRef>();
 
-      // Start with existing token
       render(
         <TokenizedSearchInput
+          ref={ref}
           fields={testFields}
           defaultValue="status:is:active"
           validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
         />
       );
 
-      await waitFor(() => {
-        const tokens = document.querySelectorAll('.node-filterToken');
-        expect(tokens.length).toBe(1);
-      });
-
-      // Click to focus the editor (after the token)
-      const combobox = document.querySelector('[role="combobox"]') as HTMLElement;
-      await user.click(combobox);
-
-      // Wait for suggestions
-      await waitFor(() => {
-        const listbox = document.querySelector('[role="listbox"]');
-        expect(listbox).toBeTruthy();
-      });
-
-      // Find and click the Status option to create a duplicate
-      const statusOption = Array.from(document.querySelectorAll('[role="option"]')).find((el) =>
-        el.textContent?.includes('Status')
-      ) as HTMLElement;
-
-      if (statusOption) {
-        await user.click(statusOption);
-
-        // Should now have 2 tokens (existing + new editing)
-        await waitFor(
-          () => {
-            const tokens = document.querySelectorAll('.node-filterToken');
-            expect(tokens.length).toBe(2);
-          },
-          { timeout: 1000 }
-        );
-
-        // The new token is marked while the user is in it ('reject' deletes it only after they leave)
-        await waitFor(() => {
-          const invalidTokens = document.querySelectorAll('[data-invalid="true"]');
-          expect(invalidTokens.length).toBeGreaterThanOrEqual(1);
+      const editor = await waitForEditor(ref);
+      // The snapshot leaves out a token without a value, so the ids are read from the document.
+      const tokenIds = () => {
+        const ids: string[] = [];
+        editor.state.doc.descendants((node) => {
+          if (node.type.name === 'filterToken') ids.push(node.attrs.id);
         });
-      }
+        return ids;
+      };
+      const [existing] = tokenIds();
+
+      // The click leaves the caret before the token; the duplicate is added after it.
+      await user.click(document.querySelector('[role="combobox"]') as HTMLElement);
+      act(() => {
+        editor.commands.focus('end');
+      });
+      await user.click(await screen.findByRole('option', { name: /Status/ }));
+
+      // The new token is marked while the user is in it ('reject' deletes it only after they leave)
+      await waitFor(() => {
+        const ids = tokenIds();
+        expect(ids).toHaveLength(2);
+        const added = ids.findIndex((id) => id !== existing);
+        const tokens = document.querySelectorAll('.node-filterToken');
+        expect(invalidTokenCount()).toBe(1);
+        expect(tokens[added]?.querySelector('[data-invalid="true"]')).not.toBeNull();
+      });
     });
   });
 
@@ -1152,77 +1104,40 @@ describe('Validation System Integration', () => {
   });
 
   describe('duplicates among pasted tokens', () => {
-    it("onDuplicate 'reject' keeps the first occurrence of each duplicate on paste", async () => {
-      const ref = createRef<TokenizedSearchInputRef>();
+    const pasted =
+      'tag:is:aaa tag:is:bbb tag:is:ccc tag:is:ddd tag:is:aaa tag:is:ddd tag:is:bbb tag:is:aaa';
 
+    async function pasteInto(onDuplicate: 'reject' | 'replace') {
+      const ref = createRef<TokenizedSearchInputRef>();
       render(
         <TokenizedSearchInput
           ref={ref}
           fields={testFields}
-          validation={{ rules: [Unique.rule('exact', { onDuplicate: 'reject' })] }}
+          validation={{ rules: [Unique.rule('exact', { onDuplicate })] }}
         />
       );
-
-      // Paste: tag:is:aaa tag:is:bbb tag:is:ccc tag:is:ddd tag:is:aaa tag:is:ddd tag:is:bbb tag:is:aaa
-      // Expected: aaa, bbb, ccc, ddd (first occurrence of each)
-      await act(async () => {
-        ref.current?.setValue(
-          'tag:is:aaa tag:is:bbb tag:is:ccc tag:is:ddd tag:is:aaa tag:is:ddd tag:is:bbb tag:is:aaa'
-        );
+      const editor = await waitForEditor(ref);
+      act(() => {
+        editor.view.pasteText(pasted, new Event('paste') as ClipboardEvent);
       });
+      return ref;
+    }
 
-      const tokens = document.querySelectorAll('.node-filterToken');
-      expect(tokens.length).toBe(4);
+    it("onDuplicate 'reject' keeps the first occurrence of each duplicate on paste", async () => {
+      const ref = await pasteInto('reject');
 
-      const tokenTexts = Array.from(tokens).map((el) => el.textContent);
-      expect(tokenTexts[0]).toContain('aaa');
-      expect(tokenTexts[1]).toContain('bbb');
-      expect(tokenTexts[2]).toContain('ccc');
-      expect(tokenTexts[3]).toContain('ddd');
-
-      const value = ref.current?.getValue();
-      expect(value).toContain('tag:is:aaa');
-      expect(value).toContain('tag:is:bbb');
-      expect(value).toContain('tag:is:ccc');
-      expect(value).toContain('tag:is:ddd');
+      await waitFor(() =>
+        expect(ref.current?.getValue()).toBe('tag:is:aaa tag:is:bbb tag:is:ccc tag:is:ddd')
+      );
     });
 
     it("onDuplicate 'replace' keeps the last occurrence of each duplicate on paste", async () => {
-      const ref = createRef<TokenizedSearchInputRef>();
+      const ref = await pasteInto('replace');
 
-      render(
-        <TokenizedSearchInput
-          ref={ref}
-          fields={testFields}
-          validation={{ rules: [Unique.rule('exact', { onDuplicate: 'replace' })] }}
-        />
+      // ccc has no duplicate, so it keeps its place ahead of the last occurrences of the others
+      await waitFor(() =>
+        expect(ref.current?.getValue()).toBe('tag:is:ccc tag:is:ddd tag:is:bbb tag:is:aaa')
       );
-
-      // Paste: tag:is:aaa tag:is:bbb tag:is:ccc tag:is:ddd tag:is:aaa tag:is:ddd tag:is:bbb tag:is:aaa
-      // Expected: ccc, ddd, bbb, aaa (last occurrence of each)
-      await act(async () => {
-        ref.current?.setValue(
-          'tag:is:aaa tag:is:bbb tag:is:ccc tag:is:ddd tag:is:aaa tag:is:ddd tag:is:bbb tag:is:aaa'
-        );
-      });
-
-      const tokens = document.querySelectorAll('.node-filterToken');
-      expect(tokens.length).toBe(4);
-
-      const value = ref.current?.getValue();
-      expect(value).toContain('tag:is:aaa');
-      expect(value).toContain('tag:is:bbb');
-      expect(value).toContain('tag:is:ccc');
-      expect(value).toContain('tag:is:ddd');
-
-      // Verify order: last occurrences (ccc has no duplicate, so it stays at original position)
-      // Original: aaa bbb ccc ddd aaa ddd bbb aaa
-      // After: ccc ddd bbb aaa (last occurrences)
-      const tokenTexts = Array.from(tokens).map((el) => el.textContent);
-      expect(tokenTexts[0]).toContain('ccc');
-      expect(tokenTexts[1]).toContain('ddd');
-      expect(tokenTexts[2]).toContain('bbb');
-      expect(tokenTexts[3]).toContain('aaa');
     });
 
     it("onDuplicate 'mark' marks only the later duplicate when setValue repeats an existing token", async () => {
@@ -1284,9 +1199,11 @@ describe('Validation System Integration', () => {
   describe('Tokens edited in the focus session', () => {
     it("onDuplicate 'reject' deletes the token edited in the focus session", async () => {
       const user = userEvent.setup();
+      const ref = createRef<TokenizedSearchInputRef>();
 
       render(
         <TokenizedSearchInput
+          ref={ref}
           fields={testFields}
           defaultValue="status:is:active"
           validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
@@ -1315,8 +1232,7 @@ describe('Validation System Integration', () => {
       );
 
       // The original token should remain ('reject' keeps the token that was not edited)
-      const token = document.querySelector('.node-filterToken');
-      expect(token?.textContent).toContain('active');
+      expect(ref.current?.getValue()).toBe('status:is:active');
     });
 
     it("onDuplicate 'replace' keeps the token edited in the focus session", async () => {
@@ -1366,124 +1282,63 @@ describe('Validation System Integration', () => {
   // not to an intermediate state with duplicates.
 
   describe('Undo behavior with validation', () => {
-    it("onDuplicate 'replace': undo restores original token after replace deletion", async () => {
-      // Scenario:
-      // 1. Start with [status:active]
-      // 2. setValue to [status:active, status:inactive] -> 'replace' deletes active
-      // 3. Undo -> restores to [status:active] (the state before setValue)
-      const user = userEvent.setup();
-      const ref = createRef<TokenizedSearchInputRef>();
+    const undoBy = {
+      keyboard: async () => {
+        const user = userEvent.setup();
+        await user.click(document.querySelector('[role="combobox"]') as HTMLElement);
+        await user.keyboard('{Control>}z{/Control}');
+      },
+      command: async (editor: Editor) => {
+        act(() => {
+          editor.commands.undo();
+        });
+      },
+    };
 
+    async function renderWithDuplicateRule(onDuplicate: 'reject' | 'replace') {
+      const ref = createRef<TokenizedSearchInputRef>();
       render(
         <TokenizedSearchInput
           ref={ref}
           fields={testFields}
           defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
+          validation={{ rules: [Unique.rule('key', { onDuplicate })] }}
         />
       );
+      const editor = await waitForEditor(ref);
+      return { ref, editor };
+    }
 
-      // Initial state: 1 token (active)
-      await waitFor(() => {
-        const tokens = document.querySelectorAll('.node-filterToken');
-        expect(tokens.length).toBe(1);
-        expect(tokens[0]?.textContent).toContain('active');
+    it.each([
+      'keyboard',
+      'command',
+    ] as const)("onDuplicate 'replace': undo by %s restores the token that setValue replaced", async (via) => {
+      const { ref, editor } = await renderWithDuplicateRule('replace');
+
+      act(() => {
+        ref.current?.setValue('status:is:active status:is:inactive');
       });
+      await waitFor(() => expect(ref.current?.getValue()).toBe('status:is:inactive'));
 
-      // Add duplicate via setValue ('replace' deletes active, inactive remains)
-      ref.current?.setValue('status:is:active status:is:inactive');
+      await undoBy[via](editor);
 
-      // After 'replace': only inactive remains
-      await waitFor(
-        () => {
-          const tokens = document.querySelectorAll('.node-filterToken');
-          expect(tokens.length).toBe(1);
-        },
-        { timeout: 1000 }
-      );
-
-      await waitFor(() => {
-        const token = document.querySelector('.node-filterToken');
-        expect(token?.textContent).toContain('inactive');
-      });
-
-      // Trigger undo
-      const combobox = document.querySelector('[role="combobox"]') as HTMLElement;
-      await user.click(combobox);
-      await user.keyboard('{Control>}z{/Control}');
-
-      // After undo: restores to original state (before setValue)
-      await waitFor(
-        () => {
-          const tokens = document.querySelectorAll('.node-filterToken');
-          expect(tokens.length).toBe(1);
-        },
-        { timeout: 2000 }
-      );
-
-      // Original token (active) should be restored
-      const token = document.querySelector('.node-filterToken');
-      expect(token?.textContent).toContain('active');
+      await waitFor(() => expect(ref.current?.getValue()).toBe('status:is:active'));
     });
 
-    it("onDuplicate 'reject': undo restores original token after reject deletion", async () => {
-      // Scenario:
-      // 1. Start with [status:active]
-      // 2. setValue to [status:active, status:inactive] -> 'reject' deletes inactive
-      // 3. Undo -> restores to [status:active] (the state before setValue)
-      const user = userEvent.setup();
-      const ref = createRef<TokenizedSearchInputRef>();
+    it("onDuplicate 'reject': undo restores the original token after reject deletion", async () => {
+      const { ref, editor } = await renderWithDuplicateRule('reject');
+      const [original] = filterTokens(ref);
 
-      render(
-        <TokenizedSearchInput
-          ref={ref}
-          fields={testFields}
-          defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', { onDuplicate: 'reject' })] }}
-        />
-      );
-
-      // Initial state: 1 token (active)
-      await waitFor(() => {
-        const tokens = document.querySelectorAll('.node-filterToken');
-        expect(tokens.length).toBe(1);
-        expect(tokens[0]?.textContent).toContain('active');
+      // setValue replaces the content, so the token 'reject' keeps is a new one
+      act(() => {
+        ref.current?.setValue('status:is:active status:is:inactive');
       });
+      await waitFor(() => expect(ref.current?.getValue()).toBe('status:is:active'));
+      expect(filterTokens(ref).map((t) => t.id)).not.toEqual([original?.id]);
 
-      // Add duplicate via setValue ('reject' deletes inactive, active remains)
-      ref.current?.setValue('status:is:active status:is:inactive');
+      await undoBy.command(editor);
 
-      // After 'reject': only active remains ('reject' keeps the first)
-      await waitFor(
-        () => {
-          const tokens = document.querySelectorAll('.node-filterToken');
-          expect(tokens.length).toBe(1);
-        },
-        { timeout: 1000 }
-      );
-
-      await waitFor(() => {
-        const token = document.querySelector('.node-filterToken');
-        expect(token?.textContent).toContain('active');
-      });
-
-      // Trigger undo
-      const combobox = document.querySelector('[role="combobox"]') as HTMLElement;
-      await user.click(combobox);
-      await user.keyboard('{Control>}z{/Control}');
-
-      // After undo: restores to original state (before setValue)
-      await waitFor(
-        () => {
-          const tokens = document.querySelectorAll('.node-filterToken');
-          expect(tokens.length).toBe(1);
-        },
-        { timeout: 2000 }
-      );
-
-      // Original token (active) should remain
-      const token = document.querySelector('.node-filterToken');
-      expect(token?.textContent).toContain('active');
+      await waitFor(() => expect(filterTokens(ref).map((t) => t.id)).toEqual([original?.id]));
     });
 
     it("onDuplicate 'mark': undo restores single token after marked duplicates", async () => {
@@ -1544,62 +1399,8 @@ describe('Validation System Integration', () => {
       const invalidTokens = document.querySelectorAll('.node-filterToken [data-invalid="true"]');
       expect(invalidTokens.length).toBe(0);
     });
-
-    it("Undo via editor.commands.undo() after onDuplicate 'replace'", async () => {
-      // Test using editor.commands.undo() directly instead of keyboard shortcut
-      const ref = createRef<TokenizedSearchInputRef>();
-
-      render(
-        <TokenizedSearchInput
-          ref={ref}
-          fields={testFields}
-          defaultValue="status:is:active"
-          validation={{ rules: [Unique.rule('key', { onDuplicate: 'replace' })] }}
-        />
-      );
-
-      // Initial state: 1 token (active)
-      await waitFor(() => {
-        const tokens = document.querySelectorAll('.node-filterToken');
-        expect(tokens.length).toBe(1);
-        expect(tokens[0]?.textContent).toContain('active');
-      });
-
-      // Simulate paste that creates a duplicate
-      ref.current?.setValue('status:is:active status:is:inactive');
-
-      // After 'replace': only inactive remains
-      await waitFor(
-        () => {
-          const tokens = document.querySelectorAll('.node-filterToken');
-          expect(tokens.length).toBe(1);
-        },
-        { timeout: 1000 }
-      );
-
-      await waitFor(() => {
-        const token = document.querySelector('.node-filterToken');
-        expect(token?.textContent).toContain('inactive');
-      });
-
-      // Use editor.commands.undo() directly
-      const editorRef = ref.current;
-      expect(editorRef).not.toBeNull();
-      const editor = editorRef ? getInternalEditor(editorRef) : null;
-      expect(editor).not.toBeNull();
-      editor?.commands.undo();
-
-      // After undo: should restore to original state [status:active]
-      await waitFor(
-        () => {
-          const tokens = document.querySelectorAll('.node-filterToken');
-          expect(tokens.length).toBe(1);
-          expect(tokens[0]?.textContent).toContain('active');
-        },
-        { timeout: 2000 }
-      );
-    });
   });
+
   describe('Validation marks while a value is edited', () => {
     it('fires onChange once per edit and keeps the value suggestions open', async () => {
       const user = userEvent.setup();

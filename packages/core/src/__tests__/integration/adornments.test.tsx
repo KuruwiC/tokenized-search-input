@@ -61,7 +61,7 @@ describe('Adornments', () => {
       expect(endIcon.closest('.tsi-adornment--end')).toBeInTheDocument();
     });
 
-    it('renders endAdornment before clear button when clearable', () => {
+    it('renders the clear button before endAdornment when clearable', () => {
       render(
         <TokenizedSearchInput
           fields={basicFields}
@@ -71,19 +71,13 @@ describe('Adornments', () => {
         />
       );
 
-      const endIcon = screen.getByTestId('end-icon');
-      const clearButton = document.querySelector('.tsi-clear-button');
+      const clearButton = screen.getByRole('button', { name: 'Clear search' });
+      const endAdornment = screen.getByTestId('end-icon').closest('.tsi-adornment--end');
 
-      expect(endIcon).toBeInTheDocument();
-      expect(clearButton).toBeInTheDocument();
-
-      // clear button should come before endAdornment in DOM order
-      const endAdornment = endIcon.closest('.tsi-adornment--end');
-      if (clearButton && endAdornment) {
-        expect(clearButton.compareDocumentPosition(endAdornment)).toBe(
-          Node.DOCUMENT_POSITION_FOLLOWING
-        );
-      }
+      expect(endAdornment).toBeInstanceOf(HTMLElement);
+      expect(clearButton.compareDocumentPosition(endAdornment as Node)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING
+      );
     });
 
     it('applies custom className via classNames.endAdornment', () => {

@@ -10,7 +10,7 @@ import {
   type EditorContextStorage,
   getEditorContext,
 } from '../../extensions/editor-context';
-import type { FieldDefinition } from '../../types';
+import { DEFAULT_OPERATOR_LABELS, type FieldDefinition } from '../../types';
 
 // Type-safe helper using the exported function
 function getStorage(editor: Editor): EditorContextStorage {
@@ -30,11 +30,29 @@ describe('EditorContextExtension', () => {
       const editor = createEditor();
       const storage = getStorage(editor);
 
-      expect(storage.fields).toEqual([]);
-      expect(storage.freeTextMode).toBe('plain');
-      expect(storage.callbacks.onFieldSelect).toBeDefined();
-      expect(storage.callbacks.onValueSelect).toBeDefined();
-      expect(storage.callbacks.onSubmit).toBeDefined();
+      expect(storage).toStrictEqual({
+        fields: [],
+        freeTextMode: 'plain',
+        unknownFields: undefined,
+        operatorLabels: DEFAULT_OPERATOR_LABELS,
+        callbacks: {
+          onFieldSelect: expect.any(Function),
+          onValueSelect: expect.any(Function),
+          onCustomSelect: expect.any(Function),
+          onSubmit: expect.any(Function),
+          onClear: expect.any(Function),
+        },
+        fieldSuggestionsDisabled: false,
+        valueSuggestionsDisabled: false,
+        validation: undefined,
+        deserializeText: undefined,
+        serializeToken: undefined,
+        delimiter: ':',
+        classNames: undefined,
+        renderDatePicker: undefined,
+        renderDateTimePicker: undefined,
+        paginationLabels: undefined,
+      });
 
       editor.destroy();
     });

@@ -4,7 +4,7 @@
  * Tests focus/blur behavior, editing mode, and keyboard interactions.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { TimePicker } from '../../pickers/time-picker';
 
@@ -42,14 +42,18 @@ describe('TimePicker', () => {
   describe('editing mode', () => {
     it('exits editing mode on blur', () => {
       const onChange = vi.fn();
-      render(<TimePicker value={{ hours: 14, minutes: 30 }} onChange={onChange} />);
+      const { rerender } = render(
+        <TimePicker value={{ hours: 14, minutes: 30 }} onChange={onChange} />
+      );
       const input = getTimeInput();
 
       fireEvent.focus(input);
+      rerender(<TimePicker value={{ hours: 10, minutes: 0 }} onChange={onChange} />);
+      expect(input).toHaveValue('14:30');
+
       fireEvent.blur(input);
 
-      // After blur, should sync with external value
-      expect(input).toHaveValue('14:30');
+      expect(input).toHaveValue('10:00');
     });
 
     it('syncs with external value when not editing', () => {
@@ -129,10 +133,12 @@ describe('TimePicker', () => {
       render(<TimePicker value={{ hours: 14, minutes: 30 }} onChange={onChange} />);
       const input = getTimeInput();
 
-      fireEvent.focus(input);
+      act(() => input.focus());
+      expect(input).toHaveFocus();
+
       fireEvent.keyDown(input, { key: 'Enter' });
 
-      expect(document.activeElement).not.toBe(input);
+      expect(input).not.toHaveFocus();
     });
   });
 

@@ -47,9 +47,9 @@ describe('matcher', () => {
   });
 
   describe('prefix', () => {
-    it('returns 0.8 or more for prefix match', () => {
-      expect(prefix('act', 'active')).toBeGreaterThanOrEqual(0.8);
-      expect(prefix('act', 'active')).toBeLessThan(1);
+    it('returns 0.8 for a prefix match, or 0.85 when the case matches too', () => {
+      expect(prefix('ACT', 'active')).toBe(0.8);
+      expect(prefix('act', 'active')).toBe(0.85);
     });
 
     it('adds case bonus for exact case match', () => {
@@ -95,9 +95,11 @@ describe('matcher', () => {
     });
 
     it('returns higher score for word boundary matches', () => {
-      const boundaryScore = fuzzy('us', 'united-states');
-      const nonBoundaryScore = fuzzy('te', 'united-states');
-      expect(boundaryScore).toBeGreaterThanOrEqual(nonBoundaryScore);
+      // Neither input starts the target; both are two consecutive characters in the same
+      // case, so only 's' following '-' tells them apart.
+      const boundaryScore = fuzzy('st', 'my-stats');
+      const nonBoundaryScore = fuzzy('at', 'my-stats');
+      expect(boundaryScore).toBeGreaterThan(nonBoundaryScore);
     });
 
     it('returns 0 for non-subsequence', () => {
@@ -171,8 +173,10 @@ describe('matcher', () => {
     });
 
     it('works with fuzzy matcher', () => {
-      const score = matchBest(fuzzy, 'act', 'label', 'active');
-      expect(score).toBeGreaterThan(0);
+      const score = matchBest(fuzzy, 'act', 'Active Status', 'active', 'inactive');
+      expect(score).toBe(fuzzy('act', 'active'));
+      expect(score).toBeGreaterThan(fuzzy('act', 'Active Status'));
+      expect(score).toBeGreaterThan(fuzzy('act', 'inactive'));
     });
   });
 

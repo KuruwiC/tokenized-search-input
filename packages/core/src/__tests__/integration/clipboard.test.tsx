@@ -291,14 +291,24 @@ describe('paste', () => {
     });
   });
 
-  it('reads filter tokens as token nodes in plain mode', async () => {
-    await pasteIntoEmpty('status:is:active freetext priority:is:high', 'plain');
+  it('reads filter tokens as token nodes in plain mode and keeps the free text plain', async () => {
+    const { editor, value } = await pasteIntoEmpty(
+      'status:is:active freetext priority:is:high',
+      'plain'
+    );
 
     await waitFor(() => {
       // Filter tokens should be rendered as token nodes
       expect(screen.getByRole('group', { name: /Filter: status/i })).toBeInTheDocument();
       expect(screen.getByRole('group', { name: /Filter: priority/i })).toBeInTheDocument();
     });
+    const nodes: string[] = [];
+    editor.state.doc.firstChild?.forEach((node) => {
+      nodes.push(node.isText ? `text:${node.text}` : node.type.name);
+    });
+    expect(nodes).toEqual(['filterToken', 'text:freetext', 'filterToken']);
+    expect(screen.queryByRole('group', { name: /Free text/i })).not.toBeInTheDocument();
+    expect(value()).toBe('status:is:active freetext priority:is:high');
   });
 
   it('reads filter tokens as token nodes in none mode and drops the free text', async () => {

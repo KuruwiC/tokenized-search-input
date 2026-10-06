@@ -2,10 +2,12 @@
  * Integration tests for keyboard navigation.
  * These tests verify navigation between tokens and within suggestions.
  */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import { extendedFields } from '../fixtures';
 
 const testFields = extendedFields;
@@ -91,7 +93,8 @@ describe('Keyboard Navigation - User Journeys', () => {
       await user.keyboard('{ArrowDown}');
       await user.keyboard('{Enter}');
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('...')).toBeInTheDocument();
+        const token = screen.getByRole('group', { name: /^Filter: priority / });
+        expect(within(token).getByPlaceholderText('...')).toBeInTheDocument();
       });
     });
 
@@ -140,13 +143,13 @@ describe('Keyboard Navigation - User Journeys', () => {
     });
 
     it('exits first token with ArrowLeft at start without inserting extra space', async () => {
-      const onChange = vi.fn();
+      const ref = createRef<TokenizedSearchInputRef>();
       const user = userEvent.setup();
       render(
         <TokenizedSearchInput
+          ref={ref}
           fields={testFields}
           defaultValue="status:is:active"
-          onChange={onChange}
           freeTextMode="tokenize"
         />
       );
@@ -171,12 +174,9 @@ describe('Keyboard Navigation - User Journeys', () => {
       await waitFor(() => {
         expect(screen.queryByPlaceholderText('...')).not.toBeInTheDocument();
       });
-      await waitFor(() => {
-        const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
-        if (lastCall) {
-          expect(lastCall[0].text).toBe('status:is:active');
-        }
-      });
+      expect(ref.current?.getValue()).toBe('status:is:active');
+      // getValue trims the edges of the query, so a space before the token shows only in the document
+      expect(ref.current?.getEditor()?.state.doc.textContent).toBe('');
     });
   });
 

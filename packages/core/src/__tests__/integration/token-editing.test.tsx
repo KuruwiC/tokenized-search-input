@@ -181,27 +181,38 @@ describe('Token Editing - User Journeys', () => {
 
   describe('Token validation', () => {
     it('validates token with custom validator on load', async () => {
+      const validate = vi.fn((value: string) => value.includes('@') || 'Must be a valid email');
       const fieldsWithValidation: FieldDefinition[] = [
         {
           key: 'email',
           label: 'Email',
           type: 'string',
           operators: ['is', 'contains'],
-          validate: (value: string) => value.includes('@') || 'Must be a valid email',
+          validate,
         },
       ];
+      const ref = createRef<TokenizedSearchInputRef>();
 
       render(
         <TokenizedSearchInput
+          ref={ref}
           fields={fieldsWithValidation}
           defaultValue="email:is:valid@example.com"
         />
       );
 
-      // Verify: Token loaded correctly with valid email
+      // Verify: the validator accepted the loaded value, so the token is not invalid
       await waitFor(() => {
-        expect(screen.getByRole('group', { name: /Filter: email/i })).toBeInTheDocument();
+        expect(validate).toHaveBeenCalledWith('valid@example.com');
         expect(screen.getByText('valid@example.com')).toBeInTheDocument();
+      });
+      const group = screen.getByRole('group', { name: /Filter: email/i });
+      expect(group.querySelector('[data-invalid]')).toHaveAttribute('data-invalid', 'false');
+      const [token] = ref.current?.getSnapshot().segments ?? [];
+      expect(token).toMatchObject({
+        type: 'filter',
+        value: 'valid@example.com',
+        invalid: undefined,
       });
     });
   });

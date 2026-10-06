@@ -7,10 +7,12 @@
  * - Can only be deleted via X button or 2-stage Backspace
  * - Focus their delete button, the one block they have, when clicked or entered
  */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
+import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import type { FieldDefinition } from '../../types';
 
 const immutableFields: FieldDefinition[] = [
@@ -35,6 +37,19 @@ const immutableFields: FieldDefinition[] = [
 afterEach(() => {
   cleanup();
 });
+
+/** Waits for a click on `token` to focus its delete button, the one block of an immutable token. */
+async function expectImmutableOnClick(
+  user: ReturnType<typeof userEvent.setup>,
+  token: HTMLElement
+): Promise<void> {
+  await user.click(token);
+  await waitFor(() => {
+    expect(within(token).getByRole('button', { name: /remove/i })).toHaveFocus();
+  });
+  expect(token.querySelector('[data-immutable]')).toHaveAttribute('data-immutable', 'true');
+  expect(within(token).queryByPlaceholderText('...')).toBeNull();
+}
 
 describe('Immutable Token - Integration Tests', () => {
   describe('Focus behavior', () => {
@@ -153,9 +168,9 @@ describe('Immutable Token - Integration Tests', () => {
     });
 
     it('becomes immutable after blur with value', async () => {
-      const onChange = vi.fn();
+      const ref = createRef<TokenizedSearchInputRef>();
       const user = userEvent.setup();
-      render(<TokenizedSearchInput fields={immutableFields} onChange={onChange} />);
+      render(<TokenizedSearchInput ref={ref} fields={immutableFields} />);
 
       const editor = screen.getByRole('combobox');
       await user.click(editor);
@@ -179,22 +194,19 @@ describe('Immutable Token - Integration Tests', () => {
       await user.keyboard('{Tab}');
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalled();
+        expect(screen.queryByPlaceholderText('...')).toBeNull();
       });
+      expect(ref.current?.getValue()).toBe('country:is:jp');
 
-      const token = screen.getByRole('group', { name: /country/i });
-      await user.click(token);
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      const tokenInputs = screen
-        .queryAllByPlaceholderText('...')
-        .filter((input) => token.contains(input));
-      expect(tokenInputs).toHaveLength(0);
+      await expectImmutableOnClick(user, screen.getByRole('group', { name: /country/i }));
     });
 
     it('allows editing when mutable token label is changed to immutable field', async () => {
+      const ref = createRef<TokenizedSearchInputRef>();
       const user = userEvent.setup();
-      render(<TokenizedSearchInput fields={immutableFields} defaultValue="status:is:active" />);
+      render(
+        <TokenizedSearchInput ref={ref} fields={immutableFields} defaultValue="status:is:active" />
+      );
 
       await waitFor(() => {
         expect(screen.getByRole('group', { name: /status/i })).toBeInTheDocument();
@@ -223,29 +235,25 @@ describe('Immutable Token - Integration Tests', () => {
 
       // Choosing a field moves focus to the operator; Tab goes on to the value, then leaves
       await user.keyboard('{Tab}{Tab}');
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('...')).toBeNull();
+      });
+      expect(ref.current?.getValue()).toBe('country:is:active');
 
       // After blur, token becomes immutable
-      const updatedToken = screen.getByRole('group', { name: /country/i });
-      await user.click(updatedToken);
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      const tokenInputs = screen
-        .queryAllByPlaceholderText('...')
-        .filter((input) => updatedToken.contains(input));
-      expect(tokenInputs).toHaveLength(0);
+      await expectImmutableOnClick(user, screen.getByRole('group', { name: /country/i }));
     });
   });
 
   describe('Mixed token types', () => {
     it('handles mix of immutable and mutable tokens', async () => {
-      const onChange = vi.fn();
+      const ref = createRef<TokenizedSearchInputRef>();
       const user = userEvent.setup();
       render(
         <TokenizedSearchInput
+          ref={ref}
           fields={immutableFields}
           defaultValue="country:is:jp status:is:active"
-          onChange={onChange}
         />
       );
 
@@ -263,13 +271,8 @@ describe('Immutable Token - Integration Tests', () => {
 
       await user.keyboard('{Tab}');
 
-      const countryToken = screen.getByRole('group', { name: /country/i });
-      await user.click(countryToken);
-
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      const inputs = screen.queryAllByPlaceholderText('...');
-      const tokenInputs = inputs.filter((input) => countryToken.contains(input));
-      expect(tokenInputs).toHaveLength(0);
+      await expectImmutableOnClick(user, screen.getByRole('group', { name: /country/i }));
+      expect(ref.current?.getValue()).toBe('country:is:jp status:is:active');
     });
   });
 });

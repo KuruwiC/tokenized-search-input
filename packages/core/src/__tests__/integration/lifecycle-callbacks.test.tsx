@@ -35,9 +35,7 @@ describe('lifecycle callbacks', () => {
         expect(onChange).toHaveBeenCalled();
         const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
         const snapshot = lastCall[0];
-        const plainText = getPlainText(snapshot);
-        expect(plainText).toContain('hello');
-        expect(plainText).toContain('world');
+        expect(getPlainText(snapshot)).toBe('hello world');
       });
     });
 

@@ -164,13 +164,18 @@ describe('enum-value utilities', () => {
       expect(resolveEnumValue(valuesWithSameLabel, 'Test')).toBe('first');
     });
 
-    it('matches value before label (value takes precedence)', () => {
-      const valuesWithConflict = [
+    it('resolves to the first option, in order, whose value or label matches', () => {
+      const valueFirst = [
         { value: 'test', label: 'Label1' },
         { value: 'other', label: 'test' },
       ];
-      // 'test' matches value of first item
-      expect(resolveEnumValue(valuesWithConflict, 'test')).toBe('test');
+      expect(resolveEnumValue(valueFirst, 'test')).toBe('test');
+
+      const labelFirst = [
+        { value: 'other', label: 'test' },
+        { value: 'test', label: 'Label1' },
+      ];
+      expect(resolveEnumValue(labelFirst, 'test')).toBe('other');
     });
 
     describe('custom resolver', () => {

@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
 import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import { getSuggestionState } from '../../plugins/suggestion';
+import { getFocusedToken } from '../../plugins/token-focus';
 import type { FieldDefinition } from '../../types';
 import { waitForEditor } from '../helpers/get-editor';
 import { filterTokens } from '../helpers/token-queries';
@@ -40,9 +41,9 @@ afterEach(() => {
 describe('FilterTokenView - Suggestion Updates', () => {
   describe('Enum field suggestions', () => {
     it('selects suggestion with Enter key', async () => {
-      const onChange = vi.fn();
       const user = userEvent.setup();
-      render(<TokenizedSearchInput fields={enumFields} onChange={onChange} />);
+      const ref = createRef<TokenizedSearchInputRef>();
+      render(<TokenizedSearchInput ref={ref} fields={enumFields} />);
 
       const editor = screen.getByRole('combobox');
 
@@ -62,10 +63,7 @@ describe('FilterTokenView - Suggestion Updates', () => {
       await user.keyboard('{ArrowDown}');
       await user.keyboard('{Enter}');
 
-      // Verify: Value selected
-      await waitFor(() => {
-        expect(onChange).toHaveBeenCalled();
-      });
+      await waitFor(() => expect(ref.current?.getValue()).toBe('status:is:active'));
     });
   });
 
@@ -105,33 +103,33 @@ describe('FilterTokenView - Suggestion Updates', () => {
   describe('Multiple tokens', () => {
     it('handles switching between multiple enum tokens', async () => {
       const user = userEvent.setup();
+      const ref = createRef<TokenizedSearchInputRef>();
       render(
         <TokenizedSearchInput
+          ref={ref}
           fields={enumFields}
           defaultValue="status:is:active priority:is:high"
         />
       );
+      const editor = await waitForEditor(ref);
+      const [status, priority] = filterTokens(ref);
+      if (!status || !priority) throw new Error('filter tokens not found');
 
-      await waitFor(() => {
-        expect(screen.getByText('Status')).toBeInTheDocument();
-        expect(screen.getByText('Priority')).toBeInTheDocument();
-      });
+      await user.click(screen.getByRole('group', { name: /Filter: status/i }));
+      await waitFor(() => expect(getFocusedToken(editor.state)?.id).toBe(status.id));
+      expect(getSuggestionState(editor.state)?.anchor).toEqual({ tokenId: status.id });
+      expect(await screen.findByRole('option', { name: 'inactive' })).toBeInTheDocument();
 
-      // Click on status token
-      const statusToken = screen.getByRole('group', { name: /Filter: status/i });
-      await user.click(statusToken);
+      await user.click(screen.getByRole('group', { name: /Filter: priority/i }));
+      await waitFor(() => expect(getFocusedToken(editor.state)?.id).toBe(priority.id));
+      expect(getSuggestionState(editor.state)?.anchor).toEqual({ tokenId: priority.id });
+      expect(await screen.findByRole('option', { name: 'critical' })).toBeInTheDocument();
+      expect(screen.queryByRole('option', { name: 'inactive' })).not.toBeInTheDocument();
 
-      await waitFor(() => {
-        expect(screen.getByPlaceholderText('...')).toBeInTheDocument();
-      });
-
-      // Click on priority token
-      const priorityToken = screen.getByRole('group', { name: /Filter: priority/i });
-      await user.click(priorityToken);
-
-      await waitFor(() => {
-        expect(screen.getAllByPlaceholderText('...').length).toBeGreaterThan(0);
-      });
+      expect(filterTokens(ref)).toMatchObject([
+        { key: 'status', operator: 'is', value: 'active' },
+        { key: 'priority', operator: 'is', value: 'high' },
+      ]);
     });
   });
   describe('Value suggestions follow the token value', () => {

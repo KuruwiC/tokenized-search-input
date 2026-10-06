@@ -292,13 +292,16 @@ describe('Token dropdown keys', () => {
       expect(tokenOf(ref)).toMatchObject({ operator: 'is' });
     });
 
-    it('leaves the token from the label, closed or open, without choosing a field', async () => {
+    it.each([
+      ['closed', shiftTab],
+      ['open', `{Enter}{ArrowDown}${shiftTab}`],
+    ])('leaves the token from the %s label without choosing a field', async (_state, keys) => {
       const user = userEvent.setup();
       const { ref, editor } = await renderInput('status:is:active');
       const group = screen.getByRole('group', { name: /status/i });
       await focusBlock(user, group, 'Select field');
 
-      await user.keyboard(`{Enter}{ArrowDown}${shiftTab}`);
+      await user.keyboard(keys);
 
       expect(focusedTokenId(editor)).toBeUndefined();
       expect(tokenOf(ref)).toMatchObject({ key: 'status' });

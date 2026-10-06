@@ -1,4 +1,4 @@
-import { act, render } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { createRef, type RefObject } from 'react';
 import { describe, expect, it } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
@@ -216,11 +216,27 @@ describe('TokenizedSearchInputRef', () => {
     });
 
     it('accepts setTokenDisplay without changing the query', async () => {
-      const ref = await renderDestroyed();
+      const ref = createRef<TokenizedSearchInputRef>();
+      const element = () => (
+        <TokenizedSearchInput ref={ref} fields={extendedFields} defaultValue={DEFAULT_VALUE} />
+      );
+      const { rerender } = render(element());
+      const destroyed = await waitForEditor(ref);
       const [status] = filterTokens(ref);
+      destroyed.destroy();
 
       ref.current?.setTokenDisplay(status.id, { displayValue: 'Active!' });
 
+      expect(ref.current?.getValue()).toBe(DEFAULT_VALUE);
+      rerender(element());
+      await waitFor(() => {
+        const live = ref.current?.getEditor();
+        expect(live && live !== destroyed && !live.isDestroyed).toBe(true);
+      });
+      expect(tokenDisplay(ref as RefObject<TokenizedSearchInputRef>, status.id)).toMatchObject({
+        displayValue: 'Active!',
+      });
+      expect(await screen.findByText('Active!')).toBeInTheDocument();
       expect(ref.current?.getValue()).toBe(DEFAULT_VALUE);
     });
   });

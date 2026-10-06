@@ -300,34 +300,48 @@ describe('DocumentRepairExtension - Integration Tests', () => {
   describe('Edge cases', () => {
     it('skips processing during IME composition', async () => {
       const ref = createRef<TokenizedSearchInputRef>();
-
-      render(
-        <TokenizedSearchInput ref={ref} fields={testFields} defaultValue="status:is:active" />
-      );
-
-      await waitFor(() => {
-        expect(ref.current).not.toBeNull();
+      render(<TokenizedSearchInput ref={ref} fields={testFields} />);
+      const editor = await waitForEditor(ref);
+      act(() => {
+        editor.commands.setContent({
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                { type: 'text', text: 'foo ' },
+                {
+                  type: 'filterToken',
+                  attrs: { id: 'empty', key: 'status', operator: 'is', value: '' },
+                },
+              ],
+            },
+          ],
+        });
       });
+      const emptyTokenCount = () => {
+        let count = 0;
+        editor.state.doc.descendants((node) => {
+          if (node.type.name === 'filterToken' && node.attrs.id === 'empty') count++;
+          return true;
+        });
+        return count;
+      };
+      expect(emptyTokenCount()).toBe(1);
 
-      const editor = getInternalEditor(ref.current);
-      expect(editor).not.toBeNull();
-      if (!editor) return;
-
-      // Simulate IME composition by setting meta
-      const tr = editor.state.tr;
-      tr.setMeta('composition', true);
-      editor.view.dispatch(tr);
-
-      // Token should still exist (not affected by cleanup during composition)
-      let hasToken = false;
-      editor.state.doc.descendants((node) => {
-        if (node.type.name === 'filterToken') {
-          hasToken = true;
-        }
-        return true;
+      // An edit of the composition leaves the empty token nobody is in
+      act(() => {
+        editor.view.dispatch(editor.state.tr.insertText('x', 1).setMeta('composition', true));
       });
+      expect(editor.state.doc.textContent).toBe('xfoo ');
+      expect(emptyTokenCount()).toBe(1);
 
-      expect(hasToken).toBe(true);
+      // The next edit outside a composition removes it
+      act(() => {
+        editor.view.dispatch(editor.state.tr.insertText('y', 1));
+      });
+      expect(editor.state.doc.textContent).toBe('yxfoo ');
+      expect(emptyTokenCount()).toBe(0);
     });
   });
 });

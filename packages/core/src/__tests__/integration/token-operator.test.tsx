@@ -4,13 +4,15 @@
  * Tests for the TokenOperator component rendering and basic behavior.
  * Note: Portal-based dropdown tests are limited due to test environment constraints.
  */
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
 import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
+import { getFocusedToken } from '../../plugins/token-focus';
 import { fieldsWithSingleOperator } from '../fixtures';
-import { getInternalEditor } from '../helpers/get-editor';
+import { getInternalEditor, waitForEditor } from '../helpers/get-editor';
+import { filterTokens } from '../helpers/token-queries';
 
 const testFields = fieldsWithSingleOperator;
 
@@ -22,40 +24,19 @@ describe('TokenOperator - Integration Tests', () => {
   describe('Single operator field', () => {
     it('does not render operator dropdown for single operator field', async () => {
       const ref = createRef<TokenizedSearchInputRef>();
-
       render(<TokenizedSearchInput ref={ref} fields={testFields} defaultValue="name:is:test" />);
+      const editor = await waitForEditor(ref);
+      const [token] = filterTokens(ref);
+      if (!token) throw new Error('filter token not found');
 
-      await waitFor(() => {
-        expect(ref.current).not.toBeNull();
+      act(() => {
+        editor.commands.focusFilterToken(token.id, 'end');
       });
 
-      const editor = getInternalEditor(ref.current);
-      expect(editor).not.toBeNull();
-      if (!editor) return;
-
-      // Find the name token
-      let tokenPos: number | null = null;
-      editor.state.doc.descendants((node, pos) => {
-        if (node.type.name === 'filterToken' && node.attrs.key === 'name') {
-          tokenPos = pos;
-          return false;
-        }
-        return true;
-      });
-
-      expect(tokenPos).not.toBeNull();
-      if (tokenPos === null) return;
-
-      // Focus the token (operator block returns null for single operator)
-      editor.commands.focusFilterToken(tokenPos, 'end');
-
-      // Wait for React to update
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // For single operator fields, no operator listbox with "Operators" label should exist
-      // Note: Other listboxes (like suggestions) may be present
-      const operatorListbox = document.querySelector('[aria-label="Select operator"]');
-      expect(operatorListbox).toBeNull();
+      await waitFor(() => expect(getFocusedToken(editor.state)?.id).toBe(token.id));
+      const group = screen.getByRole('group', { name: /Filter: name/i });
+      expect(within(group).queryByRole('combobox', { name: 'Select operator' })).toBeNull();
+      expect(group.querySelector('.tsi-token-operator')).toHaveTextContent('is');
     });
   });
 

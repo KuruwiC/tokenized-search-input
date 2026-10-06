@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { filterItems } from '../../utils/filter-items';
-import { exact } from '../../utils/matcher';
+import { exact, fuzzy, matchBest } from '../../utils/matcher';
 
 interface TestItem {
   id: string;
@@ -62,24 +62,29 @@ describe('filterItems', () => {
 
   describe('minScore option', () => {
     it('respects minScore option', () => {
-      const lowThreshold = filterItems(items, 'a', getTargets, { minScore: 0 });
-      const highThreshold = filterItems(items, 'a', getTargets, { minScore: 0.5 });
-
-      expect(lowThreshold.length).toBeGreaterThan(highThreshold.length);
+      // fuzzy scores 'a': active 0.31, archived 0.29, inactive 0.11, pending 0
+      expect(filterItems(items, 'a', getTargets, { minScore: 0 })).toEqual([
+        items[0],
+        items[3],
+        items[1],
+      ]);
+      expect(filterItems(items, 'a', getTargets, { minScore: 0.2 })).toEqual([items[0], items[3]]);
     });
 
     it('excludes items below minScore', () => {
-      // With exact matcher and partial input, nothing should match
-      const result = filterItems(items, 'act', getTargets, { matcher: exact, minScore: 1 });
-      expect(result).toEqual([]);
+      const inactiveScore = matchBest(fuzzy, 'act', ...getTargets(items[1]));
+      expect(inactiveScore).toBeGreaterThan(0);
+      expect(inactiveScore).toBeLessThan(0.4);
+      expect(filterItems(items, 'act', getTargets, { matcher: fuzzy, minScore: 0.4 })).toEqual([
+        items[0],
+      ]);
     });
   });
 
   describe('getTargets callback', () => {
     it('matches against multiple targets', () => {
       // 'Review' only appears in name, not id
-      const result = filterItems(items, 'Review', getTargets);
-      expect(result.some((item) => item.id === 'pending')).toBe(true);
+      expect(filterItems(items, 'Review', getTargets)).toEqual([items[2]]);
     });
 
     it('works with single target', () => {
