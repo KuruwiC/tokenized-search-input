@@ -2,7 +2,6 @@ import type { Editor } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { NodeViewWrapper } from '@tiptap/react';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { getEditorContext } from '../../extensions/editor-context';
 import { useTokenFocus } from '../../hooks/use-editor-selector';
 import {
   dismissSuggestion,
@@ -18,7 +17,6 @@ import {
 import type { TokenValidation } from '../../plugins/token-meta-plugin';
 import { getValidationDescriptionId } from '../../plugins/token-meta-plugin';
 import { cn } from '../../utils/cn';
-import { resolveField } from '../../utils/resolve-field';
 import { enterToken } from '../enter-token';
 import { isHistoryShortcut } from '../history-shortcut';
 import { TokenDeleteButton } from './blocks/token-delete-button';
@@ -62,16 +60,6 @@ export function resolveClickTarget(
   return block === 'label' || block === 'operator' ? block : 'value';
 }
 
-/** What a token is called when its view gives no name: its field's label and its value. */
-function describeToken(editor: Editor, node: ProseMirrorNode): string {
-  const { key, value } = node.attrs;
-  const field = typeof key === 'string' ? resolveField(getEditorContext(editor), key) : null;
-  const name = field?.label ?? (typeof key === 'string' ? key : '');
-  const text = typeof value === 'string' ? value : '';
-  if (name && text) return `${name}: ${text}`;
-  return name || text || 'Token';
-}
-
 interface TokenAriaLabelState {
   name: string;
   editing: boolean;
@@ -93,7 +81,7 @@ export interface TokenProps {
   deleteNode: () => void;
   children: React.ReactNode;
   className?: string;
-  ariaLabel?: string;
+  ariaLabel: string;
   validation?: TokenValidation;
   dataAttrs?: Record<string, string>;
   /** Make token immutable (only deletable via X button or 2-stage Backspace). Default: false */
@@ -312,7 +300,7 @@ export function Token({
   const tokenClasses = cn('tsi-token', className);
 
   const computedAriaLabel = tokenAriaLabel({
-    name: ariaLabel ?? describeToken(editor, node),
+    name: ariaLabel,
     editing,
     editable: editor.isEditable,
     immutable,
