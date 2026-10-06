@@ -71,8 +71,9 @@ interface ResolverHarnessProps
   inputRef: InputRef;
   defaultValue: string;
   onChange?: () => void;
-  /** Also runs the resolver from onTokensChange, which fires when the user leaves a token. */
-  resolveOnTokensChange?: boolean;
+  /** The callbacks that call resolveTokens (default: onChange, as the README wires it). */
+  resolveFrom?: 'onChange' | 'onTokensChange' | 'both';
+  immediatelyRender?: boolean;
 }
 
 function ResolverHarness({
@@ -83,7 +84,8 @@ function ResolverHarness({
   onNotFound,
   defaultValue,
   onChange,
-  resolveOnTokensChange,
+  resolveFrom = 'onChange',
+  immediatelyRender,
 }: ResolverHarnessProps) {
   const { resolveTokens } = useAsyncTokenResolver({
     inputRef,
@@ -101,19 +103,40 @@ function ResolverHarness({
       ref={inputRef}
       fields={fields}
       defaultValue={defaultValue}
+      immediatelyRender={immediatelyRender}
       onChange={() => {
         onChange?.();
-        void resolveTokens();
+        if (resolveFrom !== 'onTokensChange') void resolveTokens();
       }}
-      onTokensChange={
-        resolveOnTokensChange
-          ? () => {
-              void resolveTokens();
-            }
-          : undefined
-      }
+      onTokensChange={() => {
+        if (resolveFrom !== 'onChange') void resolveTokens();
+      }}
     />
   );
+}
+
+type LeaveTokenBy = 'Enter' | 'Tab' | 'blur';
+
+async function leaveToken(user: ReturnType<typeof userEvent.setup>, by: LeaveTokenBy) {
+  if (by === 'blur') {
+    await user.click(document.body);
+  } else {
+    await user.keyboard(`{${by}}`);
+  }
+}
+
+/** Types `country:jp` by hand, checking that the token being typed in is not resolved. */
+async function typeCountryToken(
+  user: ReturnType<typeof userEvent.setup>,
+  inputRef: InputRef,
+  resolve: ReturnType<typeof vi.fn>
+) {
+  await user.click(screen.getByRole('combobox'));
+  await user.keyboard('country:');
+  await waitFor(() => expect(document.activeElement).toBeInstanceOf(HTMLInputElement));
+  await user.keyboard('jp');
+  expect(getCountryTokenAttrs(inputRef)[0]).toMatchObject({ value: 'jp', displayValue: null });
+  expect(resolve).not.toHaveBeenCalled();
 }
 
 describe('useAsyncTokenResolver', () => {
@@ -201,7 +224,7 @@ describe('useAsyncTokenResolver', () => {
         resolve={resolve}
         defaultValue=""
         onChange={onChange}
-        resolveOnTokensChange
+        resolveFrom="both"
       />
     );
 
@@ -221,6 +244,55 @@ describe('useAsyncTokenResolver', () => {
     await waitFor(() => expect(getCountryTokenAttrs(inputRef)[0]?.displayValue).toBe('Japan'));
     expect(resolve).toHaveBeenCalledTimes(1);
     expect(resolve).toHaveBeenCalledWith(['jp']);
+  });
+
+  describe.each([
+    'onChange',
+    'onTokensChange',
+  ] as const)('resolves a hand-typed token once the user leaves it, resolving from %s', (resolveFrom) => {
+    it.each(['Enter', 'Tab', 'blur'] as const)('leaving by %s', async (by) => {
+      const user = userEvent.setup();
+      const inputRef = createRef<TokenizedSearchInputRef>();
+      const resolve = vi.fn().mockResolvedValue([{ value: 'jp', label: 'Japan' }]);
+
+      render(
+        <ResolverHarness
+          inputRef={inputRef}
+          resolve={resolve}
+          defaultValue=""
+          resolveFrom={resolveFrom}
+        />
+      );
+
+      await typeCountryToken(user, inputRef, resolve);
+      await leaveToken(user, by);
+
+      await waitFor(() => expect(getCountryTokenAttrs(inputRef)[0]?.displayValue).toBe('Japan'));
+      expect(resolve).toHaveBeenCalledTimes(1);
+      expect(resolve).toHaveBeenCalledWith(['jp']);
+    });
+  });
+
+  it('resolves a hand-typed token the user leaves when the editor is created after mount', async () => {
+    const user = userEvent.setup();
+    const inputRef = createRef<TokenizedSearchInputRef>();
+    const resolve = vi.fn().mockResolvedValue([{ value: 'jp', label: 'Japan' }]);
+
+    render(
+      <ResolverHarness
+        inputRef={inputRef}
+        resolve={resolve}
+        defaultValue=""
+        immediatelyRender={false}
+      />
+    );
+    await waitFor(() => expect(inputRef.current?.getEditor()).not.toBeNull());
+
+    await typeCountryToken(user, inputRef, resolve);
+    await leaveToken(user, 'Enter');
+
+    await waitFor(() => expect(getCountryTokenAttrs(inputRef)[0]?.displayValue).toBe('Japan'));
+    expect(resolve).toHaveBeenCalledTimes(1);
   });
 
   it('handles rejection and restores loading decoration', async () => {

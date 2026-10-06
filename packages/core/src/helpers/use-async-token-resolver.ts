@@ -1,7 +1,8 @@
-import type { Editor } from '@tiptap/core';
+import type { Editor, EditorEvents } from '@tiptap/core';
 import type { ReactNode, RefObject } from 'react';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { TokenDisplay, TokenizedSearchInputRef } from '../editor/tokenized-search-input.types';
+import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
 import { getFocusedTokenId } from '../plugins/token-focus';
 import { getApplicableDisplay, getTokenMeta } from '../plugins/token-meta-plugin';
 import { findTokenById } from '../utils/find-token';
@@ -58,7 +59,10 @@ export interface AsyncTokenResolverOptions<T> {
 }
 
 export interface AsyncTokenResolverResult {
-  /** Call this to trigger resolution (typically in onChange callback) */
+  /**
+   * Resolves the tokens that need it. Pass it to `onChange` or `onTokensChange`;
+   * either works, and calling it from both resolves each token once.
+   */
   resolveTokens: () => Promise<void>;
 }
 
@@ -94,6 +98,35 @@ function toTokenDisplay(data: ResolvedTokenData): TokenDisplay {
 /** A token is confirmed while the user is not editing it. */
 function isConfirmed(editor: Editor, id: string): boolean {
   return getFocusedTokenId(editor.state) !== id;
+}
+
+interface ReadinessSubscription {
+  editor: Editor;
+  unsubscribe: () => void;
+}
+
+/**
+ * Calls `onMaybeReady` after a transaction that changes the document or moves focus off the
+ * token being edited. Leaving a token changes no content, so `onChange` never reports it.
+ */
+function subscribeToReadiness(
+  editor: Editor,
+  onMaybeReady: () => void,
+  onDestroy: () => void
+): () => void {
+  let focusedId = getFocusedTokenId(editor.state);
+  const handleTransaction = ({ transaction }: EditorEvents['transaction']) => {
+    const nextFocusedId = getFocusedTokenId(editor.state);
+    const leftToken = focusedId !== null && nextFocusedId !== focusedId;
+    focusedId = nextFocusedId;
+    if (leftToken || !transaction.before.eq(editor.state.doc)) onMaybeReady();
+  };
+  editor.on('transaction', handleTransaction);
+  editor.on('destroy', onDestroy);
+  return () => {
+    editor.off('transaction', handleTransaction);
+    editor.off('destroy', onDestroy);
+  };
 }
 
 function readToken(editor: Editor, id: string): TokenView | null {
@@ -167,8 +200,8 @@ function collectPendingTokens(editor: Editor, fieldKey: string): PendingToken[] 
  *   },
  * });
  *
- * // Use in onChange
- * <TokenizedSearchInput onChange={resolveTokens} />
+ * // Use in onChange (or onTokensChange)
+ * <TokenizedSearchInput ref={inputRef} onChange={resolveTokens} />
  * ```
  */
 export function useAsyncTokenResolver<T>(
@@ -188,11 +221,42 @@ export function useAsyncTokenResolver<T>(
   const activeResolutionRef = useRef<Promise<void> | null>(null);
   const rerunRequestedRef = useRef(false);
   const applyingResultRef = useRef(false);
+  const subscriptionRef = useRef<ReadinessSubscription | null>(null);
+  const latestResolveTokensRef = useRef<() => Promise<void>>(() => Promise.resolve());
+
+  const stopFollowing = useCallback(() => {
+    subscriptionRef.current?.unsubscribe();
+    subscriptionRef.current = null;
+  }, []);
+
+  // The ref gives no notice when the editor is created or replaced, so the editor is
+  // followed on each render and each resolveTokens call. A token appears only through a
+  // document change, which reaches resolveTokens first, so no token is left unfollowed.
+  const followEditor = useCallback(
+    (editor: Editor | null) => {
+      if (subscriptionRef.current?.editor === editor) return;
+      stopFollowing();
+      if (!editor || editor.isDestroyed) return;
+      subscriptionRef.current = {
+        editor,
+        unsubscribe: subscribeToReadiness(
+          editor,
+          () => {
+            void latestResolveTokensRef.current();
+          },
+          stopFollowing
+        ),
+      };
+    },
+    [stopFollowing]
+  );
 
   const resolveTokens = useCallback((): Promise<void> => {
     // Transactions created by this hook can synchronously invoke onChange.
     // They are not new work and must not schedule another resolver pass.
     if (applyingResultRef.current) return Promise.resolve();
+
+    followEditor(getEditor(inputRef));
 
     if (activeResolutionRef.current) {
       rerunRequestedRef.current = true;
@@ -326,7 +390,27 @@ export function useAsyncTokenResolver<T>(
       });
     activeResolutionRef.current = activeResolution;
     return activeResolution;
-  }, [inputRef, fieldKey, resolve, getValue, getDisplayData, loadingContent, onNotFound, onError]);
+  }, [
+    inputRef,
+    fieldKey,
+    resolve,
+    getValue,
+    getDisplayData,
+    loadingContent,
+    onNotFound,
+    onError,
+    followEditor,
+  ]);
+
+  useIsomorphicLayoutEffect(() => {
+    latestResolveTokensRef.current = resolveTokens;
+  });
+
+  useEffect(() => {
+    followEditor(getEditor(inputRef));
+  });
+
+  useEffect(() => stopFollowing, [stopFollowing]);
 
   return { resolveTokens };
 }

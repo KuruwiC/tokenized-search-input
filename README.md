@@ -1073,7 +1073,7 @@ A hook for resolving display values asynchronously for pasted or deserialized to
 - `displayValue` is not set
 - Token is confirmed (not being edited)
 
-This prevents display updates during active editing which would disrupt user input.
+This prevents display updates during active editing which would disrupt user input. Pass `resolveTokens` to `onChange` or `onTokensChange`; either works, and wiring both resolves each token once. Leaving a hand-typed token (Enter, Tab, or blur) changes no content and fires no `onChange`, so the hook follows the editor's transactions itself and resolves the token when the user leaves it.
 
 <!-- example -->
 ```tsx
@@ -1118,7 +1118,7 @@ export function CountrySearch() {
     onError: (error, values) => reportResolutionError(error, values),
   });
 
-  // Trigger resolution on change
+  // Resolves pasted and deserialized tokens; tokens typed by hand resolve once the user leaves them
   return <TokenizedSearchInput ref={inputRef} fields={fields} onChange={resolveTokens} />;
 }
 ```
