@@ -14,6 +14,7 @@ import type { EditorView } from '@tiptap/pm/view';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { TOKEN_NODE_CLASS } from '../../tokens/composition/node-view-update';
 import { nearestValidCaret } from '../../utils/caret';
+import { isInputMethodKey } from '../../utils/input-method-key';
 import { isToken } from '../../utils/node-predicates';
 import { type FocusTransitionContext, getFocusedToken, leaveFocusedTokenIn } from '../token-focus';
 import { gapPosAtCoords } from '../token-gap-decorations';
@@ -402,7 +403,7 @@ export function createSelectionGuardPlugin(
       },
 
       handleKeyDown(view, event) {
-        if (event.isComposing) return false;
+        if (isInputMethodKey(event)) return false;
 
         if (getFocusedToken(view.state) !== null) return false;
 

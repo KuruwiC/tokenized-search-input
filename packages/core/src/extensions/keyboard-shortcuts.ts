@@ -1,5 +1,6 @@
 import { type Editor, Extension } from '@tiptap/core';
-import type { EditorState } from '@tiptap/pm/state';
+import { keydownHandler } from '@tiptap/pm/keymap';
+import { type EditorState, Plugin, PluginKey } from '@tiptap/pm/state';
 import {
   handleArrowDown,
   handleArrowUp,
@@ -11,7 +12,10 @@ import {
   type KeyboardContext,
 } from '../editor/keyboard';
 import { getSuggestionState } from '../plugins/suggestion';
+import { isInputMethodKey } from '../utils/input-method-key';
 import { getEditorContext } from './editor-context';
+
+const keyboardShortcutsKey = new PluginKey('keyboardShortcuts');
 
 function keyboardContext(editor: Editor, state: EditorState): KeyboardContext {
   return { editor, suggestionState: getSuggestionState(state) };
@@ -27,31 +31,35 @@ export const KeyboardShortcutsExtension = Extension.create({
   // High priority ensures shortcuts run before other extensions
   priority: 1000,
 
-  addKeyboardShortcuts() {
-    const getCallbacks = () => getEditorContext(this.editor).callbacks;
+  addProseMirrorPlugins() {
+    const editor = this.editor;
+    const getContext = () => keyboardContext(editor, editor.state);
 
-    const getContext = () => keyboardContext(this.editor, this.editor.state);
-
-    const ifEditable = (handler: () => boolean): (() => boolean) => {
-      return () => {
-        if (!this.editor.isEditable) return false;
-        return handler();
-      };
-    };
-
-    return {
-      ArrowDown: ifEditable(() => handleArrowDown(getContext())),
-      ArrowUp: ifEditable(() => handleArrowUp(getContext())),
-      Enter: ifEditable(() => {
+    const handleShortcut = keydownHandler({
+      ArrowDown: () => handleArrowDown(getContext()),
+      ArrowUp: () => handleArrowUp(getContext()),
+      Enter: () => {
         const ctx = getContext();
-        const callbacks = getCallbacks();
+        const { callbacks } = getEditorContext(editor);
         if (handleEnterOnSuggestion(ctx, callbacks)) return true;
         if (handleEnterTokenize(ctx)) return true;
         if (handleEnterSubmit(ctx)) return true;
         return false;
+      },
+      Escape: () => handleEscape(getContext()),
+      Tab: () => handleTab(getContext()),
+    });
+
+    return [
+      new Plugin({
+        key: keyboardShortcutsKey,
+        props: {
+          handleKeyDown(view, event) {
+            if (!editor.isEditable || isInputMethodKey(event)) return false;
+            return handleShortcut(view, event);
+          },
+        },
       }),
-      Escape: ifEditable(() => handleEscape(getContext())),
-      Tab: ifEditable(() => handleTab(getContext())),
-    };
+    ];
   },
 });

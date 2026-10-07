@@ -17,6 +17,7 @@ import {
 import type { TokenValidation } from '../../plugins/token-meta-plugin';
 import { getValidationDescriptionId } from '../../plugins/token-meta-plugin';
 import { cn } from '../../utils/cn';
+import { isInputMethodKey } from '../../utils/input-method-key';
 import { enterToken } from '../enter-token';
 import { isHistoryShortcut } from '../history-shortcut';
 import { TokenDeleteButton } from './blocks/token-delete-button';
@@ -30,9 +31,6 @@ import {
   type TokenFocusContextValue,
 } from './contexts/token-focus-context';
 import { entryBlock, focusEntryBlock, useFocusRegistry } from './focus';
-
-/** The key code of every key event an input method that is composing text reports. */
-const COMPOSING_KEY_CODE = 229;
 
 /** A press on a token enters it as a whole. */
 const CLICK_ENTRY: TokenFocusEntry = { source: 'click', position: 'end', target: 'all' };
@@ -238,7 +236,7 @@ export function Token({
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (!editor.isEditable) return;
-      if (e.nativeEvent.isComposing || e.keyCode === COMPOSING_KEY_CODE) {
+      if (isInputMethodKey(e.nativeEvent)) {
         e.stopPropagation();
         return;
       }
