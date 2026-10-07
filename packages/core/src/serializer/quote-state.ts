@@ -6,7 +6,7 @@ import { readQuoted } from './quoted-string';
  */
 export const TOKEN_BOUNDARY = '\ufffc';
 
-function isSpace(char: string): boolean {
+export function isSpace(char: string): boolean {
   // Also a non-breaking space, which a contenteditable inserts for a typed space.
   return char === ' ' || char === ' ';
 }

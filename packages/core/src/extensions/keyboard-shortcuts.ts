@@ -1,29 +1,26 @@
 import { type Editor, Extension } from '@tiptap/core';
-import { type EditorState, Plugin, PluginKey } from '@tiptap/pm/state';
+import type { EditorState } from '@tiptap/pm/state';
 import {
   handleArrowDown,
   handleArrowUp,
-  handleDelimiter,
   handleEnterOnSuggestion,
   handleEnterSubmit,
   handleEnterTokenize,
   handleEscape,
-  handleQuote,
-  handleSpace,
   handleTab,
   type KeyboardContext,
 } from '../editor/keyboard';
 import { getSuggestionState } from '../plugins/suggestion';
 import { getEditorContext } from './editor-context';
 
-const delimiterKeyPluginKey = new PluginKey('delimiterKey');
-
 function keyboardContext(editor: Editor, state: EditorState): KeyboardContext {
-  const { freeTextMode, delimiter } = getEditorContext(editor);
-  return { editor, freeTextMode, suggestionState: getSuggestionState(state), delimiter };
+  return { editor, suggestionState: getSuggestionState(state) };
 }
 
-// Requires EditorContextExtension to be configured with fields and callbacks.
+/**
+ * The keys that type no text; typed text is read by TypedTextExtension once it lands.
+ * Requires EditorContextExtension to be configured with fields and callbacks.
+ */
 export const KeyboardShortcutsExtension = Extension.create({
   name: 'keyboardShortcuts',
 
@@ -54,27 +51,7 @@ export const KeyboardShortcutsExtension = Extension.create({
         return false;
       }),
       Escape: ifEditable(() => handleEscape(getContext())),
-      ' ': ifEditable(() => handleSpace(getContext())),
       Tab: ifEditable(() => handleTab(getContext())),
-      '"': ifEditable(() => handleQuote(getContext())),
     };
-  },
-
-  addProseMirrorPlugins() {
-    const editor = this.editor;
-
-    return [
-      new Plugin({
-        key: delimiterKeyPluginKey,
-        props: {
-          handleKeyDown(view, event) {
-            if (!editor.isEditable) return false;
-
-            if (event.key !== getEditorContext(editor).delimiter) return false;
-            return handleDelimiter(keyboardContext(editor, view.state));
-          },
-        },
-      }),
-    ];
   },
 });

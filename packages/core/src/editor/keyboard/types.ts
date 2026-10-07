@@ -1,12 +1,10 @@
 import type { Editor } from '@tiptap/core';
 import type { SuggestionState } from '../../plugins/suggestion';
-import type { CustomSuggestion, FieldDefinition, FreeTextMode } from '../../types';
+import type { CustomSuggestion, FieldDefinition } from '../../types';
 
 export interface KeyboardContext {
   editor: Editor;
-  freeTextMode: FreeTextMode;
   suggestionState: SuggestionState | null | undefined;
-  delimiter: string;
 }
 
 export interface KeyboardCallbacks {

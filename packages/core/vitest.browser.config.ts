@@ -4,6 +4,9 @@ import { defineConfig } from 'vitest/config';
 
 const mobileFile = 'src/__tests__/browser/mobile.test.tsx';
 
+// Drive an input method through the DevTools protocol, which only Chromium has.
+const chromiumOnlyFiles = ['src/__tests__/browser/ime-triggers.test.tsx'];
+
 // Firefox runs the suites written to hold in every engine; the caret, pointer and composition
 // suites assume Chromium and WebKit behaviour.
 const crossEngineFiles = [
@@ -45,7 +48,7 @@ export default defineConfig({
       provider: playwright(),
       instances: [
         { browser: 'chromium', exclude: [mobileFile], viewport: desktop },
-        { browser: 'webkit', exclude: [mobileFile], viewport: desktop },
+        { browser: 'webkit', exclude: [mobileFile, ...chromiumOnlyFiles], viewport: desktop },
         // Firefox focuses one window at a time and each test file runs in a window of its own, so
         // files run side by side take focus from each other and blur the editor under test.
         {

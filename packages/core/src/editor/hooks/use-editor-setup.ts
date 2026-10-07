@@ -20,6 +20,7 @@ import { SelectAllShortcut } from '../../extensions/select-all-shortcut';
 import { SingleParagraphDocument } from '../../extensions/single-paragraph-document';
 import { TokenCommandsExtension } from '../../extensions/token-commands';
 import { TokenMetaExtension } from '../../extensions/token-meta';
+import { TypedTextExtension } from '../../extensions/typed-text';
 import { useIsomorphicLayoutEffect } from '../../hooks/use-isomorphic-layout-effect';
 import { DocumentRepairExtension } from '../../plugins/document-repair';
 import { SelectionInvariantExtension } from '../../plugins/selection-invariant-plugin';
@@ -108,6 +109,7 @@ export function useEditorSetup({
     SelectionInvariantExtension,
     EditorContextExtension.configure(initialContext),
     KeyboardShortcutsExtension,
+    TypedTextExtension,
     CorePluginsExtension,
     TokenMetaExtension,
     TokenCommandsExtension,

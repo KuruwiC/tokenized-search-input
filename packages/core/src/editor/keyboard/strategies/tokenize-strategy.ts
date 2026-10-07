@@ -1,47 +1,7 @@
-import { dispatchCloseSuggestion, isSuggestionOpen } from '../../../plugins/suggestion';
-import { TOKEN_BOUNDARY } from '../../../serializer/quote-state';
-import { getTextBeforeCursor, tryAutoTokenize } from '../../auto-tokenize';
-import { canAutoTokenize, isTokenizeMode } from '../guards';
+import { isSuggestionOpen } from '../../../plugins/suggestion';
+import { tryAutoTokenize } from '../../auto-tokenize';
+import { canAutoTokenize } from '../guards';
 import type { KeyboardContext } from '../types';
-
-function closeSuggestionIfOpen(ctx: KeyboardContext): void {
-  const { editor, suggestionState } = ctx;
-  if (isSuggestionOpen(suggestionState)) dispatchCloseSuggestion(editor.view);
-}
-
-/**
- * Handle delimiter key for auto-tokenization.
- * "fieldKey{delimiter}" creates an empty filter token.
- */
-export function handleDelimiter(ctx: KeyboardContext): boolean {
-  if (!canAutoTokenize(ctx.editor)) {
-    return false;
-  }
-
-  if (tryAutoTokenize(ctx.editor, ctx.delimiter)) {
-    closeSuggestionIfOpen(ctx);
-    return true;
-  }
-
-  return false;
-}
-
-/**
- * Handle space key for auto-tokenization: the word before the caret becomes a filter
- * token, or in tokenize mode a free text token.
- */
-export function handleSpace(ctx: KeyboardContext): boolean {
-  if (!canAutoTokenize(ctx.editor)) {
-    return false;
-  }
-
-  if (tryAutoTokenize(ctx.editor, ' ')) {
-    closeSuggestionIfOpen(ctx);
-    return true;
-  }
-
-  return false;
-}
 
 /**
  * Handle Tab key for auto-tokenization.
@@ -58,37 +18,6 @@ export function handleTab(ctx: KeyboardContext): boolean {
   }
 
   return tryAutoTokenize(ctx.editor, 'Tab');
-}
-
-/**
- * Handle double quote key for quoted free text token.
- * Only in tokenize mode, at word boundary.
- */
-export function handleQuote(ctx: KeyboardContext): boolean {
-  if (!canAutoTokenize(ctx.editor)) {
-    return false;
-  }
-
-  const { editor, freeTextMode } = ctx;
-
-  if (!isTokenizeMode(freeTextMode)) {
-    return false;
-  }
-
-  const textBefore = getTextBeforeCursor(editor);
-  // Only trigger at word boundary (start, after space, or after token)
-  if (textBefore && !textBefore.endsWith(' ') && !textBefore.endsWith(TOKEN_BOUNDARY)) {
-    return false;
-  }
-
-  editor.commands.insertFreeTextToken({
-    value: '',
-    quoted: true,
-    position: 'end',
-  });
-
-  closeSuggestionIfOpen(ctx);
-  return true;
 }
 
 /**

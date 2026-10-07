@@ -6,9 +6,6 @@ export {
   handleEscape,
 } from './suggestion-strategy';
 export {
-  handleDelimiter,
   handleEnterTokenize,
-  handleQuote,
-  handleSpace,
   handleTab,
 } from './tokenize-strategy';

@@ -9,7 +9,7 @@ import type { Editor } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { tryAutoTokenize } from '../../editor/auto-tokenize';
+import { readTypedText, type TypedText, tryAutoTokenize } from '../../editor/auto-tokenize';
 import { TokenizedSearchInput } from '../../editor/tokenized-search-input';
 import type { TokenizedSearchInputRef } from '../../editor/tokenized-search-input.types';
 import { getFocusContext } from '../../extensions/editor-context';
@@ -25,8 +25,14 @@ afterEach(() => {
   cleanup();
 });
 
+/** `text` typed at the caret, before it lands. */
+function typedAtCaret(editor: Editor, text: string): TypedText {
+  const { from, to } = editor.state.selection;
+  return { from, to, text, landed: false };
+}
+
 describe('Auto-tokenize - Integration Tests', () => {
-  describe('tryAutoTokenize', () => {
+  describe('a trigger at the caret', () => {
     it('creates filter token on colon trigger for known field', async () => {
       const ref = createRef<TokenizedSearchInputRef>();
       const user = userEvent.setup();
@@ -52,8 +58,8 @@ describe('Auto-tokenize - Integration Tests', () => {
         expect(editor.state.doc.textContent).toContain('status');
       });
 
-      // Call tryAutoTokenize with colon trigger
-      const result = tryAutoTokenize(editor, ':');
+      // Type the delimiter after it
+      const result = readTypedText(editor, typedAtCaret(editor, ':'));
 
       // Should create token
       expect(result).toBe(true);
@@ -90,7 +96,7 @@ describe('Auto-tokenize - Integration Tests', () => {
       // Insert unknown field name
       editor.commands.insertContent('unknown');
 
-      const result = tryAutoTokenize(editor, ':');
+      const result = readTypedText(editor, typedAtCaret(editor, ':'));
 
       // Should not create token for unknown field
       expect(result).toBe(false);
@@ -116,7 +122,7 @@ describe('Auto-tokenize - Integration Tests', () => {
       // Insert unknown field name
       editor.commands.insertContent('customfield');
 
-      const result = tryAutoTokenize(editor, ':');
+      const result = readTypedText(editor, typedAtCaret(editor, ':'));
 
       // Should create token for unknown field
       expect(result).toBe(true);
@@ -350,7 +356,7 @@ describe('Auto-tokenize - Integration Tests', () => {
         editor.view.dispatch(editor.state.tr.insertText(char));
       }
 
-      const result = tryAutoTokenize(editor, ' ');
+      const result = readTypedText(editor, typedAtCaret(editor, ' '));
 
       expect(result).toBe(false);
       expect(editor.state.doc.firstChild?.childCount).toBe(1);
@@ -365,7 +371,7 @@ describe('Auto-tokenize - Integration Tests', () => {
       editor.commands.setTextSelection(editor.state.doc.content.size - 1);
       editor.commands.insertContent(' priority');
 
-      expect(tryAutoTokenize(editor, ':')).toBe(true);
+      expect(readTypedText(editor, typedAtCaret(editor, ':'))).toBe(true);
       const keys: string[] = [];
       editor.state.doc.descendants((node) => {
         if (node.type.name === 'filterToken') keys.push(node.attrs.key);
@@ -386,7 +392,7 @@ describe('Auto-tokenize - Integration Tests', () => {
       enterTokenIn(tr, getFocusContext(editor), 'second', programEntry('end'));
       editor.view.dispatch(tr);
 
-      expect(tryAutoTokenize(editor, ':')).toBe(true);
+      expect(readTypedText(editor, typedAtCaret(editor, ':'))).toBe(true);
 
       const focusedId = getFocusedTokenId(editor.state);
       expect(focusedId).not.toBe('first');
